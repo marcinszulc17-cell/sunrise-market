@@ -1,0 +1,6 @@
+User-agent: *
+Allow: /
+Disallow: /operator
+Disallow: /sprzedawca/rozliczenia
+
+Sitemap: https://sunrise-market.vercel.app/sitemap.xml

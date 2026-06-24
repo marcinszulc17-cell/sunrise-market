@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { supabase } from "../lib/supabase";
 import { getMySeller } from "../lib/payments";
 import { becomeSeller, myOffers, createOffer, topCategories, childCategories, uploadProductImage, myBalance, mySubscription, promoteOffer, sellerOrders, markShipped } from "../lib/api";
+import { setMode } from "../lib/mode";
 
 const zl = (v: number) => Math.round(v).toLocaleString("pl-PL") + " zł";
 type Cat = { id: string; slug: string; name: string };
@@ -245,8 +246,11 @@ function Shell({ children }: { children: React.ReactNode }) {
             <span className="font-display text-xl font-semibold">Sunrise Market</span>
           </a>
           <div className="flex-1" />
-          <a href="/sprzedawca/rozliczenia" className="text-sm text-zinc-300 hover:text-white">Rozliczenia</a>
-          <a href="/" className="text-sm text-zinc-300 hover:text-white">← Sklep</a>
+          <button onClick={() => { setMode("buyer"); window.location.href = "/"; }}
+                  className="text-sm font-semibold px-3 py-1.5 rounded-lg text-black"
+                  style={{ background: "linear-gradient(135deg,#F2731D,#D9560C)" }}>🛍️ Przełącz na konto klienta</button>
+          <a href="/sprzedawca/rozliczenia" className="text-sm text-zinc-300 hover:text-white hidden sm:block">Rozliczenia</a>
+          <a href="/konto" className="text-sm text-zinc-300 hover:text-white">Konto</a>
         </div>
       </header>
       <main className="mx-auto max-w-5xl px-4 py-8">{children}</main>

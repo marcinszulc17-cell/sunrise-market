@@ -4,6 +4,7 @@ import { supabase } from "../lib/supabase";
 import { useCart } from "../lib/cart";
 import SuriChat from "../components/SuriChat";
 import NotificationsBell from "../components/NotificationsBell";
+import { useSeo } from "../lib/seo";
 
 type Offer = { offer_id: string; title: string; price_gross: number; category: string; seller: string; score: number; rating: number; reviews: number; image_url: string | null };
 type Dept = { id?: string; slug: string; name: string };
@@ -102,6 +103,8 @@ export default function Market() {
   const cartN = cart.reduce((n, x) => n + x.qty, 0);
   const [promoted, setPromoted] = useState<Offer[]>([]);
   const [banner, setBanner] = useState<{ headline: string; link_url: string; image_url: string | null; seller: string } | null>(null);
+  const [authed, setAuthed] = useState(false);
+  useSeo("Sunrise Market — marketplace ekosystemu Sunrise", "Płać portfelem Sunrise Pay, odbieraj 3% cashbacku i kupuj od zweryfikowanych sprzedawców.", "/");
 
   async function load(query: string | null, slug: string | null = null) {
     setLoading(true); setErr(null);
@@ -121,6 +124,9 @@ export default function Market() {
       .then(({ data }) => setDepts((data as Dept[]) ?? []));
     homePromoted().then((d) => setPromoted((d as any[]).map((o) => ({ ...o, score: 1 })) as Offer[])).catch(() => {});
     activeHomeBanner().then((b) => setBanner(b as any)).catch(() => {});
+    supabase.auth.getUser().then(({ data }) => setAuthed(!!data.user));
+    const urlQ = new URLSearchParams(window.location.search).get("q");
+    if (urlQ) { setQ(urlQ); load(urlQ); }
   }, []);
 
   // poziom 1: dział
@@ -173,15 +179,15 @@ export default function Market() {
                     style={{ background: "linear-gradient(135deg,#F2731D,#D9560C)" }}>Szukaj</button>
           </div>
           <a href="/sprzedawca" className="text-sm text-zinc-300 hover:text-white px-2 hidden md:block">Sprzedawaj</a>
-          <a href="/login" className="text-sm text-zinc-300 hover:text-white px-2 hidden sm:block">Zaloguj</a>
+          {!authed && <a href="/login" className="text-sm text-zinc-300 hover:text-white px-2 hidden sm:block">Zaloguj</a>}
           <NotificationsBell />
           <a href="/koszyk" className="text-sm font-medium px-3 py-2 rounded-xl relative"
              style={{ background: "var(--glass)", border: "1px solid var(--line)" }}>
             🛒 Koszyk{cartN > 0 ? ` (${cartN})` : ""}
           </a>
-          <a href="/zamowienia" className="text-sm text-zinc-300 hover:text-white px-2 hidden md:block">Zamówienia</a>
-          <a href="/portfel" className="text-sm font-medium px-3 py-2 rounded-xl hidden sm:block"
-             style={{ background: "var(--glass)", border: "1px solid var(--line)" }}>Portfel</a>
+          {authed && <a href="/zamowienia" className="text-sm text-zinc-300 hover:text-white px-2 hidden md:block">Zamówienia</a>}
+          {authed && <a href="/konto" className="text-sm font-medium px-3 py-2 rounded-xl hidden sm:block"
+             style={{ background: "var(--glass)", border: "1px solid var(--line)" }}>👤 Konto</a>}
         </div>
         {/* pasek działów */}
         <div className="mx-auto max-w-6xl px-4 pb-2 flex gap-2 overflow-x-auto">
@@ -274,7 +280,6 @@ export default function Market() {
         <div className="flex flex-wrap gap-4 justify-center mb-2">
           <a href="/cennik" className="hover:text-amber-300">Cennik</a>
           <a href="/sprzedawca" className="hover:text-amber-300">Zostań sprzedawcą</a>
-          <a href="/operator" className="hover:text-amber-300">Operator</a>
           <a href="/legal/regulamin.html" className="hover:text-amber-300">Regulamin</a>
         </div>
         Sunrise Market · Płatność wyłącznie Sunrise Pay · Cashback 3% · Prowizja 7,9%

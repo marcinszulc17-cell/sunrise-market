@@ -1,12 +1,13 @@
 import { useEffect, useState } from "react";
 import { supabase } from "../lib/supabase";
-import { operatorConsole, listReturns, resolveReturn, listPendingSellers, reviewSeller, listOffersAdmin, moderateOffer } from "../lib/api";
+import { operatorConsole, listReturns, resolveReturn, listPendingSellers, reviewSeller, listOffersAdmin, moderateOffer, amiOperator } from "../lib/api";
 
 const zl = (v: number) => Math.round(Number(v || 0)).toLocaleString("pl-PL") + " zł";
 const n = (v: number) => Number(v || 0).toLocaleString("pl-PL");
 
 export default function Operator() {
   const [authed, setAuthed] = useState<boolean | null>(null);
+  const [isOp, setIsOp] = useState<boolean | null>(null);
   const [k, setK] = useState<any>(null);
   const [err, setErr] = useState<string | null>(null);
   const [rets, setRets] = useState<any[]>([]);
@@ -23,7 +24,9 @@ export default function Operator() {
     supabase.auth.getUser().then(async ({ data }) => {
       if (!data.user) { setAuthed(false); return; }
       setAuthed(true);
-      await loadAll();
+      const op = await amiOperator();
+      setIsOp(op);
+      if (op) await loadAll();
     });
   }, []);
   async function onResolve(id: string, approve: boolean) { await resolveReturn(id, approve); await loadAll(); }
@@ -48,6 +51,12 @@ export default function Operator() {
       <main className="mx-auto max-w-5xl px-4 py-8">
         <h1 className="font-display text-3xl font-semibold mb-6">Pulpit operatora</h1>
         {authed === false && <p style={{ color: "var(--mut)" }}>Zaloguj się. <a href="/login" className="text-amber-400 underline">Logowanie</a>.</p>}
+        {authed && isOp === false && (
+          <div className="rounded-2xl p-6" style={{ background: "var(--glass)", border: "1px solid rgba(242,92,176,.4)" }}>
+            <div className="text-xl font-display font-semibold mb-1" style={{ color: "#F8A8D2" }}>Brak uprawnień</div>
+            <p className="text-sm" style={{ color: "var(--mut)" }}>To konto nie ma roli operatora. <a href="/" className="text-amber-400 underline">Wróć do sklepu</a>.</p>
+          </div>
+        )}
         {err && <p className="text-rose-400">Błąd: {err}</p>}
         {k && (
           <>

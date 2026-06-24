@@ -11,6 +11,7 @@ import Koszyk from "./pages/Koszyk";
 import Zamowienia from "./pages/Zamowienia";
 import Cennik from "./pages/Cennik";
 import Operator from "./pages/Operator";
+import Konto from "./pages/Konto";
 import "./index.css";
 
 ReactDOM.createRoot(document.getElementById("root")!).render(
@@ -25,6 +26,7 @@ ReactDOM.createRoot(document.getElementById("root")!).render(
         <Route path="/cennik" element={<Cennik />} />
         <Route path="/operator" element={<Operator />} />
         <Route path="/portfel" element={<Portfel />} />
+        <Route path="/konto" element={<Konto />} />
         <Route path="/sprzedawca" element={<Sprzedawca />} />
         <Route path="/sprzedawca/rozliczenia" element={<Rozliczenia />} />
         {/* Daniel dodaje kolejne trasy: /produkt/:id, /sprzedawca, /operator */}

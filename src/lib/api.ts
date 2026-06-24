@@ -48,6 +48,13 @@ export async function resolveReturn(returnId: string, approve: boolean) {
 }
 
 // ── Akcje operatora: KYC + moderacja ──────────────────────────────
+export async function amiOperator(): Promise<boolean> {
+  const { data, error } = await supabase.rpc("ami_operator"); if (error) return false; return data === true;
+}
+// Czy zalogowany użytkownik jest sprzedawcą (mapowanie po e-mailu)
+export async function mySeller() {
+  const { data, error } = await supabase.rpc("my_seller"); if (error) throw error; return (data && data[0]) ?? null;
+}
 export async function listPendingSellers() {
   const { data, error } = await supabase.rpc("list_pending_sellers"); if (error) throw error; return data ?? [];
 }

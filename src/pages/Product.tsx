@@ -3,6 +3,7 @@ import { useParams } from "react-router-dom";
 import { getOffer, offerReviews, addReview } from "../lib/api";
 import { addToCart } from "../lib/cart";
 import { supabase } from "../lib/supabase";
+import { useSeo, useProductJsonLd } from "../lib/seo";
 
 type Offer = {
   offer_id: string; title: string; description: string | null; price_gross: number;
@@ -45,6 +46,9 @@ export default function Product() {
   const [myRating, setMyRating] = useState(5);
   const [myComment, setMyComment] = useState("");
   const [revMsg, setRevMsg] = useState<string | null>(null);
+
+  useSeo(o ? o.title : "Produkt", o ? `${o.title} — ${zl(o.price_gross)}. ${(o.description ?? "").slice(0, 140)}` : "Produkt w Sunrise Market.", id ? `/produkt/${id}` : "");
+  useProductJsonLd(o ? { id: o.offer_id, name: o.title, price: o.price_gross, image: o.image_url, rating: o.avg_rating, reviews: o.review_count } : null);
 
   async function loadReviews(oid: string) { setReviews((await offerReviews(oid)) as Review[]); }
 
