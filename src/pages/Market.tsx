@@ -4,8 +4,19 @@ import { supabase } from "../lib/supabase";
 import { useCart } from "../lib/cart";
 import SuriChat from "../components/SuriChat";
 
-type Offer = { offer_id: string; title: string; price_gross: number; category: string; seller: string; score: number };
+type Offer = { offer_id: string; title: string; price_gross: number; category: string; seller: string; score: number; rating: number; reviews: number; image_url: string | null };
 type Dept = { id?: string; slug: string; name: string };
+
+function Stars({ rating, reviews }: { rating: number; reviews: number }) {
+  if (!reviews) return <span className="text-xs" style={{ color: "var(--mut)" }}>Nowość</span>;
+  const full = Math.round(rating);
+  return (
+    <span className="text-xs" style={{ color: "var(--gold)" }}>
+      {"★".repeat(full)}<span style={{ color: "var(--soft,#5E5E75)" }}>{"★".repeat(5 - full)}</span>
+      <span className="ml-1" style={{ color: "var(--mut)" }}>{rating.toFixed(1)} ({reviews})</span>
+    </span>
+  );
+}
 
 const zl = (v: number) => Math.round(v).toLocaleString("pl-PL") + " zł";
 
@@ -196,9 +207,11 @@ export default function Market() {
             return (
               <article key={o.offer_id} className="card-glow rounded-2xl overflow-hidden flex flex-col"
                        style={{ background: "var(--glass)", border: "1px solid var(--line)" }}>
-                <a href={`/produkt/${o.offer_id}`} className="relative h-36 grid place-items-center text-5xl"
+                <a href={`/produkt/${o.offer_id}`} className="relative h-36 grid place-items-center text-5xl overflow-hidden"
                    style={{ background: `radial-gradient(120px 80px at 50% 30%, ${v.from}33, transparent 70%), linear-gradient(135deg, ${v.from}22, ${v.to}22)` }}>
-                  <span>{v.emoji}</span>
+                  {o.image_url
+                    ? <img src={o.image_url} alt={o.title} className="absolute inset-0 w-full h-full object-cover" loading="lazy" />
+                    : <span>{v.emoji}</span>}
                   <button onClick={(e) => { e.preventDefault(); toggleFav(o.offer_id); }}
                           className="absolute top-2 right-2 w-8 h-8 rounded-full grid place-items-center text-sm"
                           style={{ background: "rgba(7,7,15,.5)", border: "1px solid var(--line)", color: fav ? "#F25CB0" : "#fff" }}>
@@ -207,6 +220,7 @@ export default function Market() {
                 </a>
                 <div className="p-4 flex flex-col gap-2 flex-1">
                   <div className="text-xs" style={{ color: "var(--mut)" }}>{o.seller} · {o.category}</div>
+                  <Stars rating={o.rating} reviews={o.reviews} />
                   <a href={`/produkt/${o.offer_id}`} className="font-semibold leading-snug flex-1 hover:text-amber-300">{o.title}</a>
                   <div className="flex items-end justify-between">
                     <div className="font-display text-2xl font-semibold">{zl(o.price_gross)}</div>

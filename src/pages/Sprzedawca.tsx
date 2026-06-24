@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { supabase } from "../lib/supabase";
 import { getMySeller } from "../lib/payments";
-import { becomeSeller, myOffers, createOffer, topCategories, childCategories } from "../lib/api";
+import { becomeSeller, myOffers, createOffer, topCategories, childCategories, uploadProductImage, myBalance } from "../lib/api";
 
 const zl = (v: number) => Math.round(v).toLocaleString("pl-PL") + " zł";
 type Cat = { id: string; slug: string; name: string };
@@ -17,6 +17,10 @@ export default function Sprzedawca() {
   // formularz "zostań sprzedawcą"
   const [legalName, setLegalName] = useState("");
   const [nip, setNip] = useState("");
+  const [accept, setAccept] = useState(false);
+  const [balance, setBalance] = useState<number>(0);
+  const [imageUrl, setImageUrl] = useState<string>("");
+  const [uploading, setUploading] = useState(false);
 
   // formularz oferty
   const [title, setTitle] = useState("");
@@ -29,7 +33,7 @@ export default function Sprzedawca() {
   async function refresh() {
     const s = await getMySeller();
     setSeller(s);
-    if (s) setOffers((await myOffers()) as Off[]);
+    if (s) { setOffers((await myOffers()) as Off[]); setBalance(await myBalance().catch(() => 0)); }
   }
   useEffect(() => {
     (async () => {
@@ -42,9 +46,18 @@ export default function Sprzedawca() {
   }, []);
 
   async function onBecome(e: React.FormEvent) {
-    e.preventDefault(); setBusy(true); setMsg(null);
-    try { await becomeSeller(legalName, nip); await refresh(); setMsg("Konto sprzedawcy aktywne."); }
+    e.preventDefault(); setMsg(null);
+    if (!accept) { setMsg("Zaakceptuj Regulamin sprzedawcy i Regulamin Sunrise Pay."); return; }
+    setBusy(true);
+    try { await becomeSeller(legalName, nip, accept); await refresh(); setMsg("Konto sprzedawcy aktywne."); }
     catch (e) { setMsg((e as Error).message); } finally { setBusy(false); }
+  }
+  async function onPickImage(e: React.ChangeEvent<HTMLInputElement>) {
+    const f = e.target.files?.[0]; if (!f) return;
+    setUploading(true); setMsg(null);
+    try { setImageUrl(await uploadProductImage(f)); }
+    catch (err) { setMsg("Błąd uploadu zdjęcia: " + (err as Error).message); }
+    finally { setUploading(false); }
   }
 
   async function pick1(slug: string) {
@@ -66,8 +79,8 @@ export default function Sprzedawca() {
     if (!chosen) { setMsg("Wybierz kategorię."); return; }
     setBusy(true);
     try {
-      await createOffer({ title, description: desc, price, stock, categorySlug: chosen.slug });
-      setTitle(""); setDesc(""); setPrice(0); setStock(1);
+      await createOffer({ title, description: desc, price, stock, categorySlug: chosen.slug, imageUrl });
+      setTitle(""); setDesc(""); setPrice(0); setStock(1); setImageUrl("");
       await refresh();
       setMsg("Oferta wystawiona ✅");
     } catch (e) { setMsg((e as Error).message); } finally { setBusy(false); }
@@ -89,9 +102,21 @@ export default function Sprzedawca() {
           <h2 className="font-semibold text-lg">Zostań sprzedawcą</h2>
           <input className={inp} placeholder="Nazwa firmy" value={legalName} onChange={(e) => setLegalName(e.target.value)} required />
           <input className={inp} placeholder="NIP (opcjonalnie)" value={nip} onChange={(e) => setNip(e.target.value)} />
-          <button disabled={busy} className="rounded-xl py-2 font-semibold text-black" style={{ background: "linear-gradient(135deg,#F2731D,#E0A21B)" }}>{busy ? "…" : "Aktywuj konto sprzedawcy"}</button>
+          <label className="flex items-start gap-2 text-sm" style={{ color: "var(--mut)" }}>
+            <input type="checkbox" checked={accept} onChange={(e) => setAccept(e.target.checked)} className="mt-1" />
+            <span>Akceptuję <a href="/legal/regulamin-sprzedawcy.html" target="_blank" className="text-amber-400 underline">Regulamin sprzedawcy</a> oraz <a href="/legal/regulamin.html" target="_blank" className="text-amber-400 underline">Regulamin Sunrise Pay</a> (prowizja 7,9%, wypłata na portfel Sunrise Pay).</span>
+          </label>
+          <button disabled={busy || !accept} className="rounded-xl py-2 font-semibold text-black disabled:opacity-50" style={{ background: "linear-gradient(135deg,#F2731D,#E0A21B)" }}>{busy ? "…" : "Aktywuj konto sprzedawcy"}</button>
         </form>
       ) : (
+        <div className="flex flex-col gap-6">
+        <div className="rounded-2xl p-4 flex items-center justify-between" style={{ background: "var(--glass)", border: "1px solid rgba(52,227,160,.25)" }}>
+          <div>
+            <div className="text-sm" style={{ color: "var(--mut)" }}>Saldo portfela ({seller.legal_name}) — zarobki ze sprzedaży + cashback</div>
+            <div className="font-display text-2xl font-semibold" style={{ color: "var(--green)" }}>{zl(balance)}</div>
+          </div>
+          <a href="/portfel" className="text-sm rounded-lg px-3 py-2" style={{ background: "var(--glass)", border: "1px solid var(--line)" }}>Portfel →</a>
+        </div>
         <div className="grid gap-8 lg:grid-cols-2">
           {/* wystaw ofertę */}
           <form onSubmit={onCreate} className="rounded-2xl p-5 flex flex-col gap-3 h-fit" style={{ background: "var(--glass)", border: "1px solid var(--line)" }}>
@@ -120,8 +145,15 @@ export default function Sprzedawca() {
                 </select>
               )}
             </div>
-            <p className="text-xs" style={{ color: "var(--mut)" }}>Kategoria: {chosen?.name ?? "—"}. Prowizja platformy 7,9%.</p>
-            <button disabled={busy} className="rounded-xl py-2 font-semibold text-black" style={{ background: "linear-gradient(135deg,#F2731D,#D9560C)" }}>{busy ? "…" : "Wystaw"}</button>
+            <div className="flex items-center gap-3">
+              <label className="text-sm cursor-pointer rounded-lg px-3 py-2" style={{ background: "var(--glass)", border: "1px solid var(--line)" }}>
+                {uploading ? "Wgrywam…" : imageUrl ? "Zmień zdjęcie" : "📷 Dodaj zdjęcie"}
+                <input type="file" accept="image/*" onChange={onPickImage} className="hidden" />
+              </label>
+              {imageUrl && <img src={imageUrl} alt="podgląd" className="w-12 h-12 rounded-lg object-cover" />}
+            </div>
+            <p className="text-xs" style={{ color: "var(--mut)" }}>Kategoria: {chosen?.name ?? "—"}. Prowizja platformy 7,9%. Wypłata netto na Twój portfel Sunrise Pay.</p>
+            <button disabled={busy || uploading} className="rounded-xl py-2 font-semibold text-black disabled:opacity-50" style={{ background: "linear-gradient(135deg,#F2731D,#D9560C)" }}>{busy ? "…" : "Wystaw"}</button>
           </form>
 
           {/* moje oferty */}
@@ -141,6 +173,7 @@ export default function Sprzedawca() {
               {offers.length === 0 && <p style={{ color: "var(--mut)" }}>Brak ofert. Wystaw pierwszą po lewej.</p>}
             </div>
           </div>
+        </div>
         </div>
       )}
     </Shell>
