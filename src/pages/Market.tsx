@@ -1,9 +1,9 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { searchOffers } from "../lib/api";
 import { supabase } from "../lib/supabase";
 
 type Offer = { offer_id: string; title: string; price_gross: number; category: string; seller: string; score: number };
-type Dept = { slug: string; name: string };
+type Dept = { id?: string; slug: string; name: string };
 
 const zl = (v: number) => Math.round(v).toLocaleString("pl-PL") + " zł";
 
@@ -43,32 +43,43 @@ function deptEmoji(name: string) { return catVisual(name).emoji; }
 export default function Market() {
   const [offers, setOffers] = useState<Offer[]>([]);
   const [q, setQ] = useState("");
-  const [activeCat, setActiveCat] = useState<string | null>(null);
+  const [activeDept, setActiveDept] = useState<Dept | null>(null);
+  const [activeSub, setActiveSub] = useState<string | null>(null); // slug podkategorii
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState<string | null>(null);
   const [favs, setFavs] = useState<Set<string>>(new Set());
   const [depts, setDepts] = useState<Dept[]>([]);
+  const [subs, setSubs] = useState<Dept[]>([]);
 
-  async function load(query: string | null) {
+  async function load(query: string | null, slug: string | null = null) {
     setLoading(true); setErr(null);
-    try { setOffers(await searchOffers(query)); }
+    try { setOffers(await searchOffers(query, slug)); }
     catch (e) { setErr(String((e as Error).message ?? e)); }
     finally { setLoading(false); }
   }
   useEffect(() => {
     load(null);
-    supabase.from("categories").select("slug,name").is("parent_id", null).order("sort_order")
+    supabase.from("categories").select("id,slug,name").is("parent_id", null).order("sort_order")
       .then(({ data }) => setDepts((data as Dept[]) ?? []));
   }, []);
 
-  // ile ofert w danym dziale (po nazwie)
-  const counts = useMemo(() => {
-    const m: Record<string, number> = {};
-    offers.forEach((o) => { m[o.category] = (m[o.category] ?? 0) + 1; });
-    return m;
-  }, [offers]);
+  // wybór działu: ładuje oferty działu + jego podkategorie
+  async function pickDept(d: Dept | null) {
+    setActiveSub(null); setActiveDept(d); setQ("");
+    if (!d) { setSubs([]); load(null); return; }
+    load(null, d.slug);
+    const { data } = await supabase.from("categories").select("id,slug,name")
+      .eq("parent_id", d.id ?? "").order("sort_order");
+    setSubs((data as Dept[]) ?? []);
+  }
+  function pickSub(slug: string | null) {
+    setActiveSub(slug);
+    load(null, slug ?? activeDept?.slug ?? null);
+  }
 
-  const shown = activeCat ? offers.filter((o) => o.category === activeCat) : offers;
+  const heading = activeSub
+    ? (subs.find((s) => s.slug === activeSub)?.name ?? "Oferty")
+    : activeDept ? activeDept.name : "🔥 Okazje tygodnia";
 
   function toggleFav(id: string) {
     setFavs((prev) => { const n = new Set(prev); n.has(id) ? n.delete(id) : n.add(id); return n; });
@@ -99,14 +110,23 @@ export default function Market() {
              style={{ background: "var(--glass)", border: "1px solid var(--line)" }}>🛒 Portfel</a>
         </div>
         {/* pasek działów */}
-        <div className="mx-auto max-w-6xl px-4 pb-3 flex gap-2 overflow-x-auto">
-          <Chip active={activeCat === null} onClick={() => setActiveCat(null)}>☰ Wszystkie</Chip>
+        <div className="mx-auto max-w-6xl px-4 pb-2 flex gap-2 overflow-x-auto">
+          <Chip active={activeDept === null} onClick={() => pickDept(null)}>☰ Wszystkie</Chip>
           {depts.map((d) => (
-            <Chip key={d.slug} active={activeCat === d.name} onClick={() => setActiveCat(d.name)}>
-              {deptEmoji(d.name)} {d.name}{counts[d.name] ? ` ${counts[d.name]}` : ""}
+            <Chip key={d.slug} active={activeDept?.slug === d.slug} onClick={() => pickDept(d)}>
+              {deptEmoji(d.name)} {d.name}
             </Chip>
           ))}
         </div>
+        {/* pasek podkategorii (po wyborze działu) */}
+        {activeDept && subs.length > 0 && (
+          <div className="mx-auto max-w-6xl px-4 pb-3 flex gap-2 overflow-x-auto">
+            <Chip active={activeSub === null} onClick={() => pickSub(null)}>Wszystko w: {activeDept.name}</Chip>
+            {subs.map((s) => (
+              <Chip key={s.slug} active={activeSub === s.slug} onClick={() => pickSub(s.slug)}>{s.name}</Chip>
+            ))}
+          </div>
+        )}
       </header>
 
       {/* ── HERO ── */}
@@ -127,16 +147,16 @@ export default function Market() {
       {/* ── OFERTY ── */}
       <section className="mx-auto max-w-6xl px-4 pb-20">
         <div className="flex items-end justify-between mb-5">
-          <h2 className="font-display text-2xl font-semibold">🔥 Okazje tygodnia</h2>
-          <span className="text-sm" style={{ color: "var(--mut)" }}>{shown.length} ofert</span>
+          <h2 className="font-display text-2xl font-semibold">{heading}</h2>
+          <span className="text-sm" style={{ color: "var(--mut)" }}>{offers.length} ofert</span>
         </div>
 
         {loading && <p style={{ color: "var(--mut)" }}>Ładowanie ofert…</p>}
         {err && <p className="text-rose-400">Błąd: {err}</p>}
-        {!loading && !err && shown.length === 0 && <p style={{ color: "var(--mut)" }}>Brak ofert w tej kategorii.</p>}
+        {!loading && !err && offers.length === 0 && <p style={{ color: "var(--mut)" }}>Brak ofert w tej kategorii — wybierz inną lub wróć do „Wszystkie".</p>}
 
         <div className="grid gap-5" style={{ gridTemplateColumns: "repeat(auto-fill,minmax(240px,1fr))" }}>
-          {shown.map((o) => {
+          {offers.map((o) => {
             const v = catVisual(o.category, o.title);
             const cb = o.price_gross * 0.03;
             const fav = favs.has(o.offer_id);
