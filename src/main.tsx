@@ -4,6 +4,7 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import Market from "./pages/Market";
 import Portfel from "./pages/Portfel";
 import Rozliczenia from "./pages/Rozliczenia";
+import Sprzedawca from "./pages/Sprzedawca";
 import Login from "./pages/Login";
 import Product from "./pages/Product";
 import Koszyk from "./pages/Koszyk";
@@ -18,6 +19,7 @@ ReactDOM.createRoot(document.getElementById("root")!).render(
         <Route path="/produkt/:id" element={<Product />} />
         <Route path="/koszyk" element={<Koszyk />} />
         <Route path="/portfel" element={<Portfel />} />
+        <Route path="/sprzedawca" element={<Sprzedawca />} />
         <Route path="/sprzedawca/rozliczenia" element={<Rozliczenia />} />
         {/* Daniel dodaje kolejne trasy: /produkt/:id, /sprzedawca, /operator */}
       </Routes>

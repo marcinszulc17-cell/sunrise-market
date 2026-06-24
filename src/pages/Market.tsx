@@ -123,6 +123,7 @@ export default function Market() {
             <button onClick={() => load(q)} className="px-5 py-2 text-sm font-semibold text-black"
                     style={{ background: "linear-gradient(135deg,#F2731D,#D9560C)" }}>Szukaj</button>
           </div>
+          <a href="/sprzedawca" className="text-sm text-zinc-300 hover:text-white px-2 hidden md:block">Sprzedawaj</a>
           <a href="/login" className="text-sm text-zinc-300 hover:text-white px-2 hidden sm:block">Zaloguj</a>
           <a href="/koszyk" className="text-sm font-medium px-3 py-2 rounded-xl relative"
              style={{ background: "var(--glass)", border: "1px solid var(--line)" }}>
