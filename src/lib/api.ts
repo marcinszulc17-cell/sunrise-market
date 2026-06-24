@@ -47,6 +47,20 @@ export async function resolveReturn(returnId: string, approve: boolean) {
   const { error } = await supabase.rpc("resolve_return", { p_return: returnId, p_approve: approve }); if (error) throw error;
 }
 
+// ── Akcje operatora: KYC + moderacja ──────────────────────────────
+export async function listPendingSellers() {
+  const { data, error } = await supabase.rpc("list_pending_sellers"); if (error) throw error; return data ?? [];
+}
+export async function reviewSeller(sellerId: string, approve: boolean) {
+  const { error } = await supabase.rpc("review_seller", { p_seller: sellerId, p_approve: approve }); if (error) throw error;
+}
+export async function listOffersAdmin() {
+  const { data, error } = await supabase.rpc("list_offers_admin"); if (error) throw error; return data ?? [];
+}
+export async function moderateOffer(offerId: string, hide: boolean) {
+  const { error } = await supabase.rpc("moderate_offer", { p_offer: offerId, p_hide: hide }); if (error) throw error;
+}
+
 // ── Przychody / cennik / operator / promocje / powiadomienia ──────
 export async function pricingList() {
   const { data, error } = await supabase.rpc("pricing_list"); if (error) throw error; return data;

@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { supabase } from "../lib/supabase";
-import { operatorConsole, listReturns, resolveReturn } from "../lib/api";
+import { operatorConsole, listReturns, resolveReturn, listPendingSellers, reviewSeller, listOffersAdmin, moderateOffer } from "../lib/api";
 
 const zl = (v: number) => Math.round(Number(v || 0)).toLocaleString("pl-PL") + " zł";
 const n = (v: number) => Number(v || 0).toLocaleString("pl-PL");
@@ -10,10 +10,14 @@ export default function Operator() {
   const [k, setK] = useState<any>(null);
   const [err, setErr] = useState<string | null>(null);
   const [rets, setRets] = useState<any[]>([]);
+  const [sellers, setSellers] = useState<any[]>([]);
+  const [offers, setOffers] = useState<any[]>([]);
 
   async function loadAll() {
     try { setK(await operatorConsole()); } catch (e) { setErr((e as Error).message); }
     try { setRets((await listReturns()) as any[]); } catch { /* ignore */ }
+    try { setSellers((await listPendingSellers()) as any[]); } catch { /* ignore */ }
+    try { setOffers((await listOffersAdmin()) as any[]); } catch { /* ignore */ }
   }
   useEffect(() => {
     supabase.auth.getUser().then(async ({ data }) => {
@@ -23,6 +27,8 @@ export default function Operator() {
     });
   }, []);
   async function onResolve(id: string, approve: boolean) { await resolveReturn(id, approve); await loadAll(); }
+  async function onReviewSeller(id: string, approve: boolean) { await reviewSeller(id, approve); await loadAll(); }
+  async function onModerate(id: string, hide: boolean) { await moderateOffer(id, hide); await loadAll(); }
 
   const revenue = k ? Number(k.przychod_prowizje || 0) + Number(k.przychod_banery || 0) + Number(k.przychod_promowanie || 0) : 0;
 
@@ -82,6 +88,43 @@ export default function Operator() {
                   </div>
                 ))}
                 {rets.length === 0 && <p style={{ color: "var(--mut)" }}>Brak zgłoszeń.</p>}
+              </div>
+            </section>
+
+            <section className="mt-8">
+              <h2 className="font-display text-2xl font-semibold mb-4">Weryfikacja sprzedawców (KYC)</h2>
+              <div className="flex flex-col gap-2">
+                {sellers.map((s) => (
+                  <div key={s.seller_id} className="rounded-xl p-4 flex items-center justify-between gap-3" style={{ background: "var(--glass)", border: "1px solid var(--line)" }}>
+                    <div className="min-w-0">
+                      <div className="text-sm font-semibold truncate">{s.legal_name}</div>
+                      <div className="text-xs truncate" style={{ color: "var(--mut)" }}>{s.email}{s.nip && <> · NIP {s.nip}</>} · {s.kyc_status}</div>
+                    </div>
+                    <div className="flex gap-2 shrink-0">
+                      <button onClick={() => onReviewSeller(s.seller_id, true)} className="text-xs font-semibold px-3 py-1.5 rounded-lg text-black" style={{ background: "linear-gradient(135deg,#34E3A0,#38E0F0)" }}>Zatwierdź</button>
+                      <button onClick={() => onReviewSeller(s.seller_id, false)} className="text-xs px-3 py-1.5 rounded-lg" style={{ background: "var(--glass)", border: "1px solid var(--line)" }}>Odrzuć</button>
+                    </div>
+                  </div>
+                ))}
+                {sellers.length === 0 && <p style={{ color: "var(--mut)" }}>Brak sprzedawców do weryfikacji.</p>}
+              </div>
+            </section>
+
+            <section className="mt-8">
+              <h2 className="font-display text-2xl font-semibold mb-4">Moderacja ofert</h2>
+              <div className="flex flex-col gap-2">
+                {offers.map((o) => (
+                  <div key={o.offer_id} className="rounded-xl p-4 flex items-center justify-between gap-3" style={{ background: "var(--glass)", border: "1px solid var(--line)", opacity: o.status === "hidden" ? 0.55 : 1 }}>
+                    <div className="min-w-0">
+                      <a href={`/produkt/${o.offer_id}`} className="text-sm font-semibold truncate hover:text-amber-300">{o.title}</a>
+                      <div className="text-xs truncate" style={{ color: "var(--mut)" }}>{o.seller} · {zl(o.price_gross)} · {o.status === "hidden" ? "ukryta" : "aktywna"}</div>
+                    </div>
+                    {o.status === "hidden"
+                      ? <button onClick={() => onModerate(o.offer_id, false)} className="text-xs font-semibold px-3 py-1.5 rounded-lg shrink-0 text-black" style={{ background: "linear-gradient(135deg,#34E3A0,#38E0F0)" }}>Przywróć</button>
+                      : <button onClick={() => onModerate(o.offer_id, true)} className="text-xs px-3 py-1.5 rounded-lg shrink-0" style={{ background: "rgba(242,92,176,.14)", border: "1px solid rgba(242,92,176,.4)", color: "#F8A8D2" }}>Ukryj</button>}
+                  </div>
+                ))}
+                {offers.length === 0 && <p style={{ color: "var(--mut)" }}>Brak ofert.</p>}
               </div>
             </section>
           </>
