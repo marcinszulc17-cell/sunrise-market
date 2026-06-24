@@ -1,0 +1,96 @@
+import { useRef, useState } from "react";
+import { askSuri } from "../lib/api";
+
+type Msg = { role: "user" | "suri"; text: string };
+type Rec = { offer_id: string; title: string; price: number; reason?: string };
+
+const zl = (v: number) => Math.round(v).toLocaleString("pl-PL") + " zł";
+
+export default function SuriChat() {
+  const [open, setOpen] = useState(false);
+  const [msgs, setMsgs] = useState<Msg[]>([
+    { role: "suri", text: "Cześć, jestem Suri 🌅 — Twoja asystentka zakupowa. Powiedz, czego szukasz, np. panel PV do 800 zł." },
+  ]);
+  const [recs, setRecs] = useState<Rec[]>([]);
+  const [input, setInput] = useState("");
+  const [busy, setBusy] = useState(false);
+  const boxRef = useRef<HTMLDivElement>(null);
+
+  function scroll() { setTimeout(() => boxRef.current?.scrollTo(0, boxRef.current.scrollHeight), 50); }
+
+  async function send() {
+    const m = input.trim();
+    if (!m || busy) return;
+    setInput(""); setMsgs((x) => [...x, { role: "user", text: m }]); setBusy(true); scroll();
+    try {
+      const res = await askSuri(m);
+      setMsgs((x) => [...x, { role: "suri", text: res.reply ?? "…" }]);
+      setRecs((res.offers ?? []).map((o: any) => ({ offer_id: o.offer_id, title: o.title, price: o.price, reason: o.reason })));
+    } catch (e) {
+      setMsgs((x) => [...x, { role: "suri", text: "Ups, nie udało się połączyć. Spróbuj ponownie." }]);
+    } finally { setBusy(false); scroll(); }
+  }
+
+  return (
+    <>
+      {/* bąbel */}
+      <button onClick={() => setOpen((o) => !o)}
+        className="fixed bottom-5 right-5 z-40 w-14 h-14 rounded-full grid place-items-center text-2xl shadow-xl"
+        style={{ background: "linear-gradient(135deg,#F2731D,#E0A21B)", boxShadow: "0 10px 30px -8px rgba(242,115,29,.7)" }}
+        aria-label="Suri">
+        {open ? "✕" : "🌅"}
+      </button>
+
+      {open && (
+        <div className="fixed bottom-24 right-5 z-40 w-[360px] max-w-[92vw] rounded-2xl overflow-hidden flex flex-col"
+             style={{ background: "rgba(12,12,24,.96)", border: "1px solid var(--line)", height: 520, backdropFilter: "blur(8px)" }}>
+          {/* header */}
+          <div className="px-4 py-3 flex items-center gap-2" style={{ borderBottom: "1px solid var(--line)" }}>
+            <div className="w-8 h-8 rounded-full grid place-items-center" style={{ background: "linear-gradient(135deg,#F2731D,#E0A21B)" }}>🌅</div>
+            <div>
+              <div className="font-semibold text-sm">Suri</div>
+              <div className="text-[11px]" style={{ color: "var(--green)" }}>● adwokat kupującego</div>
+            </div>
+          </div>
+
+          {/* wiadomości */}
+          <div ref={boxRef} className="flex-1 overflow-y-auto px-3 py-3 flex flex-col gap-2">
+            {msgs.map((m, i) => (
+              <div key={i} className={"max-w-[85%] rounded-2xl px-3 py-2 text-sm " + (m.role === "user" ? "self-end text-black" : "self-start")}
+                   style={m.role === "user"
+                     ? { background: "linear-gradient(135deg,#F2731D,#E0A21B)" }
+                     : { background: "var(--glass)", border: "1px solid var(--line)", color: "var(--ink)" }}>
+                {m.text}
+              </div>
+            ))}
+            {busy && <div className="self-start text-xs px-2" style={{ color: "var(--mut)" }}>Suri pisze…</div>}
+
+            {recs.length > 0 && (
+              <div className="flex flex-col gap-2 mt-1">
+                {recs.map((r) => (
+                  <a key={r.offer_id} href={`/produkt/${r.offer_id}`}
+                     className="rounded-xl p-2 flex items-center justify-between gap-2"
+                     style={{ background: "var(--glass)", border: "1px solid var(--line)" }}>
+                    <div className="min-w-0">
+                      <div className="text-sm font-medium truncate">{r.title}</div>
+                      {r.reason && <div className="text-[11px] truncate" style={{ color: "var(--mut)" }}>{r.reason}</div>}
+                    </div>
+                    <div className="font-display font-semibold whitespace-nowrap">{zl(r.price)}</div>
+                  </a>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* input */}
+          <div className="p-3 flex gap-2" style={{ borderTop: "1px solid var(--line)" }}>
+            <input value={input} onChange={(e) => setInput(e.target.value)} onKeyDown={(e) => e.key === "Enter" && send()}
+                   placeholder="Zapytaj Suri…" className="flex-1 rounded-xl px-3 py-2 text-sm bg-zinc-900 outline-none" />
+            <button onClick={send} disabled={busy} className="px-4 rounded-xl font-semibold text-black disabled:opacity-50"
+                    style={{ background: "linear-gradient(135deg,#F2731D,#D9560C)" }}>→</button>
+          </div>
+        </div>
+      )}
+    </>
+  );
+}

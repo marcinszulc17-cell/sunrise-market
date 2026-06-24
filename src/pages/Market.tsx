@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { searchOffers } from "../lib/api";
 import { supabase } from "../lib/supabase";
 import { useCart } from "../lib/cart";
+import SuriChat from "../components/SuriChat";
 
 type Offer = { offer_id: string; title: string; price_gross: number; category: string; seller: string; score: number };
 type Dept = { id?: string; slug: string; name: string };
@@ -228,6 +229,7 @@ export default function Market() {
       <footer className="mx-auto max-w-6xl px-4 py-8 text-center text-xs" style={{ color: "var(--mut)", borderTop: "1px solid var(--line)" }}>
         Sunrise Market · Płatność wyłącznie Sunrise Pay · Cashback 3% · Prowizja 7,9%
       </footer>
+      <SuriChat />
     </div>
   );
 }
