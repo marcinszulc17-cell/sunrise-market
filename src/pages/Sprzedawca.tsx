@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { supabase } from "../lib/supabase";
 import { getMySeller } from "../lib/payments";
-import { becomeSeller, myOffers, createOffer, topCategories, childCategories, uploadProductImage, myBalance } from "../lib/api";
+import { becomeSeller, myOffers, createOffer, topCategories, childCategories, uploadProductImage, myBalance, mySubscription, promoteOffer, sellerOrders, markShipped } from "../lib/api";
 
 const zl = (v: number) => Math.round(v).toLocaleString("pl-PL") + " zł";
 type Cat = { id: string; slug: string; name: string };
@@ -21,6 +21,8 @@ export default function Sprzedawca() {
   const [balance, setBalance] = useState<number>(0);
   const [imageUrl, setImageUrl] = useState<string>("");
   const [uploading, setUploading] = useState(false);
+  const [sub, setSub] = useState<any>(null);
+  const [sorders, setSorders] = useState<any[]>([]);
 
   // formularz oferty
   const [title, setTitle] = useState("");
@@ -33,7 +35,20 @@ export default function Sprzedawca() {
   async function refresh() {
     const s = await getMySeller();
     setSeller(s);
-    if (s) { setOffers((await myOffers()) as Off[]); setBalance(await myBalance().catch(() => 0)); }
+    if (s) {
+      setOffers((await myOffers()) as Off[]); setBalance(await myBalance().catch(() => 0));
+      setSub(await mySubscription().catch(() => null)); setSorders((await sellerOrders().catch(() => [])) as any[]);
+    }
+  }
+  async function onShip(orderId: string) {
+    setMsg(null);
+    try { const t = await markShipped(orderId); setMsg("Oznaczono wysłane. Nr przesyłki: " + t); await refresh(); }
+    catch (e) { setMsg((e as Error).message); }
+  }
+  async function onPromote(offerId: string) {
+    setMsg(null);
+    try { const cost = await promoteOffer(offerId, 7); setMsg(`Wyróżniono na 7 dni za ${cost} zł (z portfela).`); await refresh(); }
+    catch (e) { setMsg((e as Error).message); }
   }
   useEffect(() => {
     (async () => {
@@ -117,6 +132,17 @@ export default function Sprzedawca() {
           </div>
           <a href="/portfel" className="text-sm rounded-lg px-3 py-2" style={{ background: "var(--glass)", border: "1px solid var(--line)" }}>Portfel →</a>
         </div>
+        {sub && (
+          <div className="rounded-2xl p-4 text-sm flex items-center justify-between" style={{ background: "var(--glass)", border: "1px solid var(--line)" }}>
+            <span style={{ color: "var(--mut)" }}>
+              Subskrypcja Sunrise Pay:{" "}
+              {sub.in_free
+                ? <b style={{ color: "var(--green)" }}>darmowa do {sub.promo_until} ({sub.days_left} dni)</b>
+                : <b style={{ color: "var(--gold)" }}>{Number(sub.monthly_fee).toFixed(0)} zł/mc</b>}
+            </span>
+            <a href="/cennik" className="text-amber-400 underline text-xs">Cennik</a>
+          </div>
+        )}
         <div className="grid gap-8 lg:grid-cols-2">
           {/* wystaw ofertę */}
           <form onSubmit={onCreate} className="rounded-2xl p-5 flex flex-col gap-3 h-fit" style={{ background: "var(--glass)", border: "1px solid var(--line)" }}>
@@ -161,17 +187,46 @@ export default function Sprzedawca() {
             <h2 className="font-semibold text-lg mb-3">Twoje oferty ({offers.length})</h2>
             <div className="flex flex-col gap-2">
               {offers.map((o) => (
-                <a key={o.offer_id} href={`/produkt/${o.offer_id}`} className="flex items-center justify-between rounded-xl p-3 hover:border-amber-500/40"
-                   style={{ background: "var(--glass)", border: "1px solid var(--line)" }}>
-                  <div>
-                    <div className="font-medium">{o.title}</div>
+                <div key={o.offer_id} className="flex items-center justify-between gap-3 rounded-xl p-3"
+                     style={{ background: "var(--glass)", border: "1px solid var(--line)" }}>
+                  <div className="flex-1 min-w-0">
+                    <a href={`/produkt/${o.offer_id}`} className="font-medium hover:text-amber-300">{o.title}</a>
                     <div className="text-xs" style={{ color: "var(--mut)" }}>{o.category} · {o.stock} szt.</div>
                   </div>
-                  <div className="font-display text-lg font-semibold">{zl(o.price_gross)}</div>
-                </a>
+                  <button onClick={() => onPromote(o.offer_id)} className="text-xs px-3 py-1.5 rounded-lg whitespace-nowrap"
+                          style={{ background: "var(--glass)", border: "1px solid var(--line)" }}>✨ Promuj</button>
+                  <div className="font-display text-lg font-semibold whitespace-nowrap">{zl(o.price_gross)}</div>
+                </div>
               ))}
               {offers.length === 0 && <p style={{ color: "var(--mut)" }}>Brak ofert. Wystaw pierwszą po lewej.</p>}
             </div>
+          </div>
+        </div>
+
+        {/* zamówienia sprzedawcy */}
+        <div>
+          <h2 className="font-semibold text-lg mb-3">Zamówienia ({sorders.length})</h2>
+          <div className="flex flex-col gap-2">
+            {sorders.map((o) => (
+              <div key={o.order_id} className="rounded-xl p-4" style={{ background: "var(--glass)", border: "1px solid var(--line)" }}>
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-sm" style={{ color: "var(--mut)" }}>
+                    {new Date(o.created_at).toLocaleString("pl-PL")} · {({ paid: "Opłacone", shipped: "Wysłane", delivered: "Dostarczone", completed: "Zakończone" } as any)[o.status] ?? o.status}
+                    {o.tracking_no && <> · {o.tracking_no}</>}
+                  </span>
+                  {o.status === "paid"
+                    ? <button onClick={() => onShip(o.order_id)} className="text-xs font-semibold px-3 py-1.5 rounded-lg text-black" style={{ background: "linear-gradient(135deg,#F2731D,#E0A21B)" }}>Oznacz wysłane</button>
+                    : <span className="text-xs" style={{ color: "var(--green)" }}>✓</span>}
+                </div>
+                <div className="flex flex-col gap-0.5">
+                  {(o.items ?? []).map((it: any, i: number) => (
+                    <div key={i} className="flex justify-between text-sm"><span>{it.title} × {it.qty}</span><span style={{ color: "var(--mut)" }}>{zl(it.payout)}</span></div>
+                  ))}
+                </div>
+                <div className="text-right text-sm mt-2 pt-2" style={{ borderTop: "1px solid var(--line)" }}>Twoje netto: <b style={{ color: "var(--green)" }}>{zl(o.my_total)}</b></div>
+              </div>
+            ))}
+            {sorders.length === 0 && <p style={{ color: "var(--mut)" }}>Brak zamówień.</p>}
           </div>
         </div>
         </div>

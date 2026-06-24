@@ -1,8 +1,9 @@
 import { useEffect, useState } from "react";
-import { searchOffers } from "../lib/api";
+import { searchOffers, homePromoted, activeHomeBanner } from "../lib/api";
 import { supabase } from "../lib/supabase";
 import { useCart } from "../lib/cart";
 import SuriChat from "../components/SuriChat";
+import NotificationsBell from "../components/NotificationsBell";
 
 type Offer = { offer_id: string; title: string; price_gross: number; category: string; seller: string; score: number; rating: number; reviews: number; image_url: string | null };
 type Dept = { id?: string; slug: string; name: string };
@@ -53,6 +54,38 @@ function catVisual(cat: string, title = ""): { emoji: string; from: string; to: 
 // emoji dla chipa działu
 function deptEmoji(name: string) { return catVisual(name).emoji; }
 
+function OfferCard({ o, fav, onToggleFav, badge }: { o: Offer; fav: boolean; onToggleFav: (id: string) => void; badge?: string }) {
+  const v = catVisual(o.category, o.title);
+  const cb = o.price_gross * 0.03;
+  return (
+    <article className="card-glow rounded-2xl overflow-hidden flex flex-col" style={{ background: "var(--glass)", border: "1px solid var(--line)" }}>
+      <a href={`/produkt/${o.offer_id}`} className="relative h-36 grid place-items-center text-5xl overflow-hidden"
+         style={{ background: `radial-gradient(120px 80px at 50% 30%, ${v.from}33, transparent 70%), linear-gradient(135deg, ${v.from}22, ${v.to}22)` }}>
+        {o.image_url
+          ? <img src={o.image_url} alt={o.title} className="absolute inset-0 w-full h-full object-cover" loading="lazy" />
+          : <span>{v.emoji}</span>}
+        {badge && <span className="absolute top-2 left-2 text-[10px] font-bold px-2 py-1 rounded-full text-black" style={{ background: "linear-gradient(135deg,#F2731D,#E0A21B)" }}>{badge}</span>}
+        <button onClick={(e) => { e.preventDefault(); onToggleFav(o.offer_id); }}
+                className="absolute top-2 right-2 w-8 h-8 rounded-full grid place-items-center text-sm"
+                style={{ background: "rgba(7,7,15,.5)", border: "1px solid var(--line)", color: fav ? "#F25CB0" : "#fff" }}>
+          {fav ? "♥" : "♡"}
+        </button>
+      </a>
+      <div className="p-4 flex flex-col gap-2 flex-1">
+        <div className="text-xs" style={{ color: "var(--mut)" }}>{o.seller} · {o.category}</div>
+        <Stars rating={o.rating} reviews={o.reviews} />
+        <a href={`/produkt/${o.offer_id}`} className="font-semibold leading-snug flex-1 hover:text-amber-300">{o.title}</a>
+        <div className="flex items-end justify-between">
+          <div className="font-display text-2xl font-semibold">{zl(o.price_gross)}</div>
+          <span className="text-xs font-semibold px-2 py-1 rounded-full" style={{ background: "rgba(52,227,160,.12)", color: "var(--green)" }}>+{zl(cb)} cashback</span>
+        </div>
+        <a href={`/produkt/${o.offer_id}`} className="mt-1 text-center text-sm font-semibold py-2 rounded-xl text-black"
+           style={{ background: "linear-gradient(135deg,#F2731D,#E0A21B)" }}>Zobacz</a>
+      </div>
+    </article>
+  );
+}
+
 export default function Market() {
   const [offers, setOffers] = useState<Offer[]>([]);
   const [q, setQ] = useState("");
@@ -67,6 +100,8 @@ export default function Market() {
   const [subs2, setSubs2] = useState<Dept[]>([]);
   const cart = useCart();
   const cartN = cart.reduce((n, x) => n + x.qty, 0);
+  const [promoted, setPromoted] = useState<Offer[]>([]);
+  const [banner, setBanner] = useState<{ headline: string; link_url: string; image_url: string | null; seller: string } | null>(null);
 
   async function load(query: string | null, slug: string | null = null) {
     setLoading(true); setErr(null);
@@ -84,6 +119,8 @@ export default function Market() {
     load(null);
     supabase.from("categories").select("id,slug,name").is("parent_id", null).order("sort_order")
       .then(({ data }) => setDepts((data as Dept[]) ?? []));
+    homePromoted().then((d) => setPromoted((d as any[]).map((o) => ({ ...o, score: 1 })) as Offer[])).catch(() => {});
+    activeHomeBanner().then((b) => setBanner(b as any)).catch(() => {});
   }, []);
 
   // poziom 1: dział
@@ -137,10 +174,12 @@ export default function Market() {
           </div>
           <a href="/sprzedawca" className="text-sm text-zinc-300 hover:text-white px-2 hidden md:block">Sprzedawaj</a>
           <a href="/login" className="text-sm text-zinc-300 hover:text-white px-2 hidden sm:block">Zaloguj</a>
+          <NotificationsBell />
           <a href="/koszyk" className="text-sm font-medium px-3 py-2 rounded-xl relative"
              style={{ background: "var(--glass)", border: "1px solid var(--line)" }}>
             🛒 Koszyk{cartN > 0 ? ` (${cartN})` : ""}
           </a>
+          <a href="/zamowienia" className="text-sm text-zinc-300 hover:text-white px-2 hidden md:block">Zamówienia</a>
           <a href="/portfel" className="text-sm font-medium px-3 py-2 rounded-xl hidden sm:block"
              style={{ background: "var(--glass)", border: "1px solid var(--line)" }}>Portfel</a>
         </div>
@@ -173,6 +212,19 @@ export default function Market() {
         )}
       </header>
 
+      {/* ── BANER REKLAMOWY (hero slot) ── */}
+      {banner && (
+        <a href={banner.link_url || "/"} className="block mx-auto max-w-6xl px-4 pt-5">
+          <div className="rounded-2xl overflow-hidden relative flex items-center px-8 py-10"
+               style={{ background: banner.image_url ? `url(${banner.image_url}) center/cover` : "linear-gradient(135deg, rgba(242,115,29,.25), rgba(124,58,237,.25))", border: "1px solid rgba(242,115,29,.35)" }}>
+            <div>
+              <div className="text-[11px] font-semibold tracking-wider mb-2" style={{ color: "var(--gold)" }}>SPONSOROWANE · {banner.seller}</div>
+              <div className="font-display text-2xl sm:text-3xl font-semibold max-w-xl">{banner.headline}</div>
+            </div>
+          </div>
+        </a>
+      )}
+
       {/* ── HERO ── */}
       <section className="mx-auto max-w-6xl px-4 pt-12 pb-8 text-center">
         <div className="inline-block text-xs font-semibold tracking-wider mb-4 px-3 py-1 rounded-full"
@@ -188,6 +240,18 @@ export default function Market() {
         </p>
       </section>
 
+      {/* ── WYRÓŻNIONE / PROMOWANE ── */}
+      {!activeDept && promoted.length > 0 && (
+        <section className="mx-auto max-w-6xl px-4 pb-4">
+          <h2 className="font-display text-2xl font-semibold mb-5">✨ Wyróżnione</h2>
+          <div className="grid gap-5" style={{ gridTemplateColumns: "repeat(auto-fill,minmax(240px,1fr))" }}>
+            {promoted.map((o) => (
+              <OfferCard key={"p" + o.offer_id} o={o} fav={favs.has(o.offer_id)} onToggleFav={toggleFav} badge={(o as any).kind ?? "Wyróżnione"} />
+            ))}
+          </div>
+        </section>
+      )}
+
       {/* ── OFERTY ── */}
       <section className="mx-auto max-w-6xl px-4 pb-20">
         <div className="flex items-end justify-between mb-5">
@@ -200,47 +264,19 @@ export default function Market() {
         {!loading && !err && offers.length === 0 && <p style={{ color: "var(--mut)" }}>Brak ofert w tej kategorii — wybierz inną lub wróć do „Wszystkie".</p>}
 
         <div className="grid gap-5" style={{ gridTemplateColumns: "repeat(auto-fill,minmax(240px,1fr))" }}>
-          {offers.map((o) => {
-            const v = catVisual(o.category, o.title);
-            const cb = o.price_gross * 0.03;
-            const fav = favs.has(o.offer_id);
-            return (
-              <article key={o.offer_id} className="card-glow rounded-2xl overflow-hidden flex flex-col"
-                       style={{ background: "var(--glass)", border: "1px solid var(--line)" }}>
-                <a href={`/produkt/${o.offer_id}`} className="relative h-36 grid place-items-center text-5xl overflow-hidden"
-                   style={{ background: `radial-gradient(120px 80px at 50% 30%, ${v.from}33, transparent 70%), linear-gradient(135deg, ${v.from}22, ${v.to}22)` }}>
-                  {o.image_url
-                    ? <img src={o.image_url} alt={o.title} className="absolute inset-0 w-full h-full object-cover" loading="lazy" />
-                    : <span>{v.emoji}</span>}
-                  <button onClick={(e) => { e.preventDefault(); toggleFav(o.offer_id); }}
-                          className="absolute top-2 right-2 w-8 h-8 rounded-full grid place-items-center text-sm"
-                          style={{ background: "rgba(7,7,15,.5)", border: "1px solid var(--line)", color: fav ? "#F25CB0" : "#fff" }}>
-                    {fav ? "♥" : "♡"}
-                  </button>
-                </a>
-                <div className="p-4 flex flex-col gap-2 flex-1">
-                  <div className="text-xs" style={{ color: "var(--mut)" }}>{o.seller} · {o.category}</div>
-                  <Stars rating={o.rating} reviews={o.reviews} />
-                  <a href={`/produkt/${o.offer_id}`} className="font-semibold leading-snug flex-1 hover:text-amber-300">{o.title}</a>
-                  <div className="flex items-end justify-between">
-                    <div className="font-display text-2xl font-semibold">{zl(o.price_gross)}</div>
-                    <span className="text-xs font-semibold px-2 py-1 rounded-full"
-                          style={{ background: "rgba(52,227,160,.12)", color: "var(--green)" }}>
-                      +{zl(cb)} cashback
-                    </span>
-                  </div>
-                  <a href={`/produkt/${o.offer_id}`} className="mt-1 text-center text-sm font-semibold py-2 rounded-xl text-black"
-                     style={{ background: "linear-gradient(135deg,#F2731D,#E0A21B)" }}>
-                    Zobacz
-                  </a>
-                </div>
-              </article>
-            );
-          })}
+          {offers.map((o) => (
+            <OfferCard key={o.offer_id} o={o} fav={favs.has(o.offer_id)} onToggleFav={toggleFav} />
+          ))}
         </div>
       </section>
 
       <footer className="mx-auto max-w-6xl px-4 py-8 text-center text-xs" style={{ color: "var(--mut)", borderTop: "1px solid var(--line)" }}>
+        <div className="flex flex-wrap gap-4 justify-center mb-2">
+          <a href="/cennik" className="hover:text-amber-300">Cennik</a>
+          <a href="/sprzedawca" className="hover:text-amber-300">Zostań sprzedawcą</a>
+          <a href="/operator" className="hover:text-amber-300">Operator</a>
+          <a href="/legal/regulamin.html" className="hover:text-amber-300">Regulamin</a>
+        </div>
         Sunrise Market · Płatność wyłącznie Sunrise Pay · Cashback 3% · Prowizja 7,9%
       </footer>
       <SuriChat />

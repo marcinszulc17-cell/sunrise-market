@@ -13,12 +13,60 @@ export async function getOffer(id: string) {
   if (error) throw error;
   return (data && data[0]) ?? null;
 }
-// Checkout przez edge function (kupujący z JWT; płaci z portfela, nalicza cashback)
-export async function checkout(items: { offer_id: string; qty: number }[]) {
-  const { data, error } = await supabase.functions.invoke("checkout", { body: { items } });
+// Checkout przez edge function (kupujący z JWT; płaci z portfela, nalicza cashback, dostawa)
+export async function checkout(items: { offer_id: string; qty: number }[], shippingCode?: string) {
+  const { data, error } = await supabase.functions.invoke("checkout", { body: { items, shipping_code: shippingCode ?? null } });
   if (error) throw error;
   return data;
 }
+
+// ── Dostawa / cykl zamówienia ─────────────────────────────────────
+export async function listShipping() {
+  const { data, error } = await supabase.rpc("list_shipping"); if (error) throw error; return data ?? [];
+}
+export async function sellerOrders() {
+  const { data, error } = await supabase.rpc("seller_orders"); if (error) throw error; return data ?? [];
+}
+export async function markShipped(orderId: string) {
+  const { data, error } = await supabase.rpc("mark_shipped", { p_order: orderId }); if (error) throw error; return data as string;
+}
+export async function confirmDelivery(orderId: string) {
+  const { error } = await supabase.rpc("confirm_delivery", { p_order: orderId }); if (error) throw error;
+}
+// ── Przychody / cennik / operator / promocje / powiadomienia ──────
+export async function pricingList() {
+  const { data, error } = await supabase.rpc("pricing_list"); if (error) throw error; return data;
+}
+export async function operatorConsole() {
+  const { data, error } = await supabase.rpc("operator_console"); if (error) throw error; return data;
+}
+export async function mySubscription() {
+  const { data, error } = await supabase.rpc("my_subscription"); if (error) throw error; return (data && data[0]) ?? null;
+}
+export async function homePromoted() {
+  const { data, error } = await supabase.rpc("home_promoted"); if (error) throw error; return data ?? [];
+}
+export async function activeHomeBanner() {
+  const { data, error } = await supabase.rpc("active_home_banner"); if (error) throw error; return (data && data[0]) ?? null;
+}
+export async function promoteOffer(offerId: string, days: number) {
+  const { data, error } = await supabase.rpc("my_promote_offer", { p_offer: offerId, p_days: days });
+  if (error) throw error; return Number(data);
+}
+export async function myNotifications() {
+  const { data, error } = await supabase.rpc("my_notifications"); if (error) throw error; return data ?? [];
+}
+export async function markNotificationsRead() {
+  const { error } = await supabase.rpc("mark_notifications_read"); if (error) throw error;
+}
+
+// ── Zamówienia kupującego ─────────────────────────────────────────
+export async function myOrders() {
+  const { data, error } = await supabase.rpc("my_orders");
+  if (error) throw error;
+  return data ?? [];
+}
+
 // ── Opinie ────────────────────────────────────────────────────────
 export async function offerReviews(offerId: string) {
   const { data, error } = await supabase.rpc("offer_reviews", { p_offer: offerId });

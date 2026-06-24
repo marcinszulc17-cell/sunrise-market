@@ -1,9 +1,10 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { supabase } from "../lib/supabase";
-import { checkout } from "../lib/api";
+import { checkout, listShipping } from "../lib/api";
 import { useCart, setQty, removeItem, clearCart, cartTotal } from "../lib/cart";
 
 const zl = (v: number) => Math.round(v).toLocaleString("pl-PL") + " zł";
+type Ship = { code: string; name: string; carrier: string | null; price_gross: number };
 
 export default function Koszyk() {
   const cart = useCart();
@@ -12,7 +13,13 @@ export default function Koszyk() {
   const [needTopup, setNeedTopup] = useState(false);
   const [done, setDone] = useState<{ order: string; paid: number; cashback: number; balance: number | null } | null>(null);
 
+  const [ship, setShip] = useState<Ship[]>([]);
+  const [shipCode, setShipCode] = useState<string>("");
+  useEffect(() => { listShipping().then((d) => { const s = d as Ship[]; setShip(s); if (s[0]) setShipCode(s[0].code); }).catch(() => {}); }, []);
+
   const total = cartTotal();
+  const shipCost = ship.find((s) => s.code === shipCode)?.price_gross ?? 0;
+  const grand = total + Number(shipCost);
   const cashback = Math.round(total * 0.03);
 
   async function pay() {
@@ -21,7 +28,7 @@ export default function Koszyk() {
     if (!user) { window.location.href = "/login"; return; }
     setBusy(true);
     try {
-      const res = await checkout(cart.map((i) => ({ offer_id: i.offer_id, qty: i.qty })));
+      const res = await checkout(cart.map((i) => ({ offer_id: i.offer_id, qty: i.qty })), shipCode);
       clearCart();
       setDone({ order: res.order_id, paid: res.paid, cashback: res.cashback, balance: res.balance });
     } catch (e: any) {
@@ -57,6 +64,7 @@ export default function Koszyk() {
             <p className="text-xs mt-2" style={{ color: "var(--mut)" }}>Nr zamówienia: {done.order}</p>
             <div className="flex gap-3 mt-4">
               <a href="/" className="rounded-xl px-5 py-2 font-semibold text-black" style={{ background: "linear-gradient(135deg,#F2731D,#E0A21B)" }}>Kupuj dalej</a>
+              <a href="/zamowienia" className="rounded-xl px-5 py-2 text-sm" style={{ background: "var(--glass)", border: "1px solid var(--line)" }}>Moje zamówienia</a>
               <a href="/portfel" className="rounded-xl px-5 py-2 text-sm" style={{ background: "var(--glass)", border: "1px solid var(--line)" }}>Portfel</a>
             </div>
           </div>
@@ -85,7 +93,21 @@ export default function Koszyk() {
 
             {/* podsumowanie */}
             <div className="rounded-2xl p-5 h-fit" style={{ background: "var(--glass)", border: "1px solid var(--line)" }}>
-              <div className="flex justify-between mb-2"><span style={{ color: "var(--mut)" }}>Razem</span><span className="font-display text-2xl font-semibold">{zl(total)}</span></div>
+              <div className="mb-4">
+                <div className="text-sm mb-2" style={{ color: "var(--mut)" }}>Dostawa</div>
+                <div className="flex flex-col gap-1">
+                  {ship.map((s) => (
+                    <label key={s.code} className="flex items-center justify-between text-sm cursor-pointer rounded-lg px-2 py-1.5"
+                           style={{ border: shipCode === s.code ? "1px solid rgba(242,115,29,.5)" : "1px solid var(--line)" }}>
+                      <span className="flex items-center gap-2"><input type="radio" checked={shipCode === s.code} onChange={() => setShipCode(s.code)} />{s.name}</span>
+                      <span style={{ color: "var(--mut)" }}>{Number(s.price_gross) === 0 ? "0 zł" : zl(s.price_gross)}</span>
+                    </label>
+                  ))}
+                </div>
+              </div>
+              <div className="flex justify-between text-sm"><span style={{ color: "var(--mut)" }}>Produkty</span><span>{zl(total)}</span></div>
+              <div className="flex justify-between text-sm"><span style={{ color: "var(--mut)" }}>Dostawa</span><span>{zl(Number(shipCost))}</span></div>
+              <div className="flex justify-between mb-2 mt-1"><span style={{ color: "var(--mut)" }}>Razem</span><span className="font-display text-2xl font-semibold">{zl(grand)}</span></div>
               <div className="flex justify-between text-sm mb-4"><span style={{ color: "var(--mut)" }}>Cashback 3%</span><span style={{ color: "var(--green)" }}>+{zl(cashback)}</span></div>
 
               {msg && <div className="mb-3 rounded-lg px-3 py-2 text-sm" style={{ background: "rgba(242,92,176,.12)", color: "#F8A8D2" }}>{msg}</div>}

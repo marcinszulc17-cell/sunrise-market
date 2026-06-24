@@ -8,6 +8,9 @@ import Sprzedawca from "./pages/Sprzedawca";
 import Login from "./pages/Login";
 import Product from "./pages/Product";
 import Koszyk from "./pages/Koszyk";
+import Zamowienia from "./pages/Zamowienia";
+import Cennik from "./pages/Cennik";
+import Operator from "./pages/Operator";
 import "./index.css";
 
 ReactDOM.createRoot(document.getElementById("root")!).render(
@@ -18,6 +21,9 @@ ReactDOM.createRoot(document.getElementById("root")!).render(
         <Route path="/login" element={<Login />} />
         <Route path="/produkt/:id" element={<Product />} />
         <Route path="/koszyk" element={<Koszyk />} />
+        <Route path="/zamowienia" element={<Zamowienia />} />
+        <Route path="/cennik" element={<Cennik />} />
+        <Route path="/operator" element={<Operator />} />
         <Route path="/portfel" element={<Portfel />} />
         <Route path="/sprzedawca" element={<Sprzedawca />} />
         <Route path="/sprzedawca/rozliczenia" element={<Rozliczenia />} />
