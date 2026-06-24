@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { supabase } from "../lib/supabase";
-import { myOrders, confirmDelivery } from "../lib/api";
+import { myOrders, confirmDelivery, openReturn, myReturns } from "../lib/api";
 
 const zl = (v: number) => Math.round(v).toLocaleString("pl-PL") + " zł";
 type Item = { offer_id: string; title: string; qty: number; price: number };
@@ -18,8 +18,13 @@ const statusColor: Record<string, string> = {
 export default function Zamowienia() {
   const [authed, setAuthed] = useState<boolean | null>(null);
   const [orders, setOrders] = useState<Order[]>([]);
+  const [returns, setReturns] = useState<Record<string, string>>({});
 
-  async function load() { setOrders((await myOrders()) as Order[]); }
+  async function load() {
+    setOrders((await myOrders()) as Order[]);
+    const r = (await myReturns()) as { order_id: string; status: string }[];
+    setReturns(Object.fromEntries(r.map((x) => [x.order_id, x.status])));
+  }
   useEffect(() => {
     supabase.auth.getUser().then(async ({ data }) => {
       if (!data.user) { setAuthed(false); return; }
@@ -28,6 +33,12 @@ export default function Zamowienia() {
     });
   }, []);
   async function onConfirm(id: string) { await confirmDelivery(id); await load(); }
+  async function onReturn(id: string) {
+    const reason = window.prompt("Powód zwrotu / reklamacji:");
+    if (reason === null) return;
+    try { await openReturn(id, reason); await load(); } catch (e) { alert((e as Error).message); }
+  }
+  const retLabel: Record<string, string> = { requested: "Zwrot: w trakcie", approved: "Zwrot: zaakceptowany", refunded: "Zwrot: zwrócono na portfel", rejected: "Zwrot: odrzucony" };
 
   return (
     <div className="min-h-screen">
@@ -76,9 +87,14 @@ export default function Zamowienia() {
                 </div>
               )}
               {o.status === "shipped" && (
-                <button onClick={() => onConfirm(o.order_id)} className="mb-3 text-sm font-semibold px-4 py-2 rounded-xl text-black"
+                <button onClick={() => onConfirm(o.order_id)} className="mb-3 mr-2 text-sm font-semibold px-4 py-2 rounded-xl text-black"
                         style={{ background: "linear-gradient(135deg,#34E3A0,#38E0F0)" }}>Potwierdź odbiór</button>
               )}
+              {returns[o.order_id]
+                ? <div className="mb-3 text-sm" style={{ color: "var(--gold)" }}>{retLabel[returns[o.order_id]] ?? returns[o.order_id]}</div>
+                : (["paid", "shipped", "delivered"].includes(o.status) &&
+                    <button onClick={() => onReturn(o.order_id)} className="mb-3 text-sm px-4 py-2 rounded-xl"
+                            style={{ background: "var(--glass)", border: "1px solid var(--line)" }}>Zwróć / reklamuj</button>)}
               <div className="flex justify-between items-center pt-3" style={{ borderTop: "1px solid var(--line)" }}>
                 <span className="text-xs" style={{ color: "var(--green)" }}>Cashback +{zl(o.cashback)}</span>
                 <span className="font-display text-xl font-semibold">{zl(o.total)}</span>

@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { supabase } from "../lib/supabase";
-import { operatorConsole } from "../lib/api";
+import { operatorConsole, listReturns, resolveReturn } from "../lib/api";
 
 const zl = (v: number) => Math.round(Number(v || 0)).toLocaleString("pl-PL") + " zł";
 const n = (v: number) => Number(v || 0).toLocaleString("pl-PL");
@@ -9,14 +9,20 @@ export default function Operator() {
   const [authed, setAuthed] = useState<boolean | null>(null);
   const [k, setK] = useState<any>(null);
   const [err, setErr] = useState<string | null>(null);
+  const [rets, setRets] = useState<any[]>([]);
 
+  async function loadAll() {
+    try { setK(await operatorConsole()); } catch (e) { setErr((e as Error).message); }
+    try { setRets((await listReturns()) as any[]); } catch { /* ignore */ }
+  }
   useEffect(() => {
     supabase.auth.getUser().then(async ({ data }) => {
       if (!data.user) { setAuthed(false); return; }
       setAuthed(true);
-      try { setK(await operatorConsole()); } catch (e) { setErr((e as Error).message); }
+      await loadAll();
     });
   }, []);
+  async function onResolve(id: string, approve: boolean) { await resolveReturn(id, approve); await loadAll(); }
 
   const revenue = k ? Number(k.przychod_prowizje || 0) + Number(k.przychod_banery || 0) + Number(k.przychod_promowanie || 0) : 0;
 
@@ -57,6 +63,27 @@ export default function Operator() {
               <Kpi label="Spory otwarte" value={n(k.spory_otwarte)} color={Number(k.spory_otwarte) ? "#F25CB0" : undefined} />
               <Kpi label="Moderacja: kolejka" value={n(k.moderacja_kolejka)} />
             </div>
+
+            <section className="mt-8">
+              <h2 className="font-display text-2xl font-semibold mb-4">Zwroty i reklamacje</h2>
+              <div className="flex flex-col gap-2">
+                {rets.map((r) => (
+                  <div key={r.return_id} className="rounded-xl p-4 flex items-center justify-between gap-3" style={{ background: "var(--glass)", border: "1px solid var(--line)" }}>
+                    <div className="min-w-0">
+                      <div className="text-sm">Zam. {String(r.order_id).slice(0, 8)} · {zl(r.refund_amount)}</div>
+                      <div className="text-xs truncate" style={{ color: "var(--mut)" }}>{r.reason}</div>
+                    </div>
+                    {r.status === "requested"
+                      ? <div className="flex gap-2 shrink-0">
+                          <button onClick={() => onResolve(r.return_id, true)} className="text-xs font-semibold px-3 py-1.5 rounded-lg text-black" style={{ background: "linear-gradient(135deg,#34E3A0,#38E0F0)" }}>Zwróć na portfel</button>
+                          <button onClick={() => onResolve(r.return_id, false)} className="text-xs px-3 py-1.5 rounded-lg" style={{ background: "var(--glass)", border: "1px solid var(--line)" }}>Odrzuć</button>
+                        </div>
+                      : <span className="text-xs shrink-0" style={{ color: "var(--mut)" }}>{r.status}</span>}
+                  </div>
+                ))}
+                {rets.length === 0 && <p style={{ color: "var(--mut)" }}>Brak zgłoszeń.</p>}
+              </div>
+            </section>
           </>
         )}
       </main>

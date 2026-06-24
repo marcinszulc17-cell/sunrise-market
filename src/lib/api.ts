@@ -33,6 +33,20 @@ export async function markShipped(orderId: string) {
 export async function confirmDelivery(orderId: string) {
   const { error } = await supabase.rpc("confirm_delivery", { p_order: orderId }); if (error) throw error;
 }
+// ── Zwroty / reklamacje ───────────────────────────────────────────
+export async function openReturn(orderId: string, reason: string) {
+  const { data, error } = await supabase.rpc("open_return", { p_order: orderId, p_reason: reason }); if (error) throw error; return data;
+}
+export async function myReturns() {
+  const { data, error } = await supabase.rpc("my_returns"); if (error) throw error; return data ?? [];
+}
+export async function listReturns() {
+  const { data, error } = await supabase.rpc("list_returns"); if (error) throw error; return data ?? [];
+}
+export async function resolveReturn(returnId: string, approve: boolean) {
+  const { error } = await supabase.rpc("resolve_return", { p_return: returnId, p_approve: approve }); if (error) throw error;
+}
+
 // ── Przychody / cennik / operator / promocje / powiadomienia ──────
 export async function pricingList() {
   const { data, error } = await supabase.rpc("pricing_list"); if (error) throw error; return data;
