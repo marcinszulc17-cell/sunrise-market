@@ -1,19 +1,44 @@
 import { useEffect, useMemo, useState } from "react";
 import { searchOffers } from "../lib/api";
+import { supabase } from "../lib/supabase";
 
 type Offer = { offer_id: string; title: string; price_gross: number; category: string; seller: string; score: number };
+type Dept = { slug: string; name: string };
 
 const zl = (v: number) => Math.round(v).toLocaleString("pl-PL") + " zł";
 
-// wizual karty wg kategorii (emoji + gradient poświaty)
-function catVisual(cat: string): { emoji: string; from: string; to: string } {
-  const c = (cat || "").toLowerCase();
-  if (c.includes("panel")) return { emoji: "🔆", from: "#F2731D", to: "#E0A21B" };
-  if (c.includes("magazyn")) return { emoji: "🔋", from: "#34E3A0", to: "#38E0F0" };
-  if (c.includes("dom") || c.includes("ogr")) return { emoji: "🏡", from: "#A78BFA", to: "#7C3AED" };
-  if (c.includes("elektronik")) return { emoji: "⚡", from: "#38E0F0", to: "#A78BFA" };
-  return { emoji: "🌅", from: "#F2731D", to: "#D9560C" };
+// wizual karty wg kategorii / nazwy produktu (emoji + gradient poświaty)
+function catVisual(cat: string, title = ""): { emoji: string; from: string; to: string } {
+  const t = (cat + " " + title).toLowerCase();
+  const O = "#F2731D", G = "#E0A21B", GR = "#34E3A0", CY = "#38E0F0", VI = "#A78BFA", PU = "#7C3AED", PK = "#F25CB0";
+  if (t.includes("panel") || t.includes("fotowolt")) return { emoji: "🔆", from: O, to: G };
+  if (t.includes("magazyn") || t.includes("bateri") || t.includes("inwerter")) return { emoji: "🔋", from: GR, to: CY };
+  if (t.includes("pompa") || t.includes("ogrzew") || t.includes("kolektor")) return { emoji: "♨️", from: O, to: PK };
+  if (t.includes("oze") || t.includes("energi")) return { emoji: "⚡", from: G, to: O };
+  if (t.includes("smartfon") || t.includes("telefon")) return { emoji: "📱", from: CY, to: VI };
+  if (t.includes("słuchaw") || t.includes("audio")) return { emoji: "🎧", from: VI, to: PU };
+  if (t.includes("laptop") || t.includes("komputer")) return { emoji: "💻", from: CY, to: PU };
+  if (t.includes("kamera") || t.includes("foto")) return { emoji: "📷", from: VI, to: CY };
+  if (t.includes("elektronik")) return { emoji: "🔌", from: CY, to: VI };
+  if (t.includes("agd") || t.includes("ekspres") || t.includes("odkurz") || t.includes("pral")) return { emoji: "🧺", from: CY, to: GR };
+  if (t.includes("moda") || t.includes("kurtk") || t.includes("sneaker") || t.includes("but")) return { emoji: "👟", from: PK, to: VI };
+  if (t.includes("dziecko") || t.includes("fotelik")) return { emoji: "🍼", from: PK, to: G };
+  if (t.includes("motoryz") || t.includes("samochod")) return { emoji: "🚗", from: O, to: PK };
+  if (t.includes("sport") || t.includes("rower") || t.includes("namiot")) return { emoji: "🚴", from: GR, to: CY };
+  if (t.includes("zdrowie") || t.includes("uroda") || t.includes("wellness") || t.includes("szczotecz")) return { emoji: "💆", from: PK, to: O };
+  if (t.includes("zwierz") || t.includes("karma")) return { emoji: "🐾", from: G, to: GR };
+  if (t.includes("supermarket") || t.includes("kawa") || t.includes("kaw ")) return { emoji: "🛒", from: O, to: G };
+  if (t.includes("dom") || t.includes("ogr")) return { emoji: "🏡", from: VI, to: PU };
+  if (t.includes("kultura") || t.includes("rozryw")) return { emoji: "🎬", from: VI, to: PK };
+  if (t.includes("bilet") || t.includes("wydarz")) return { emoji: "🎟️", from: O, to: VI };
+  if (t.includes("sztuk") || t.includes("kolekcj")) return { emoji: "🎨", from: PK, to: CY };
+  if (t.includes("przemys") || t.includes("firma")) return { emoji: "🏭", from: CY, to: VI };
+  if (t.includes("usług") || t.includes("reklam")) return { emoji: "🛠️", from: G, to: O };
+  return { emoji: "🌅", from: O, to: "#D9560C" };
 }
+
+// emoji dla chipa działu
+function deptEmoji(name: string) { return catVisual(name).emoji; }
 
 export default function Market() {
   const [offers, setOffers] = useState<Offer[]>([]);
@@ -22,6 +47,7 @@ export default function Market() {
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState<string | null>(null);
   const [favs, setFavs] = useState<Set<string>>(new Set());
+  const [depts, setDepts] = useState<Dept[]>([]);
 
   async function load(query: string | null) {
     setLoading(true); setErr(null);
@@ -29,12 +55,17 @@ export default function Market() {
     catch (e) { setErr(String((e as Error).message ?? e)); }
     finally { setLoading(false); }
   }
-  useEffect(() => { load(null); }, []);
+  useEffect(() => {
+    load(null);
+    supabase.from("categories").select("slug,name").is("parent_id", null).order("sort_order")
+      .then(({ data }) => setDepts((data as Dept[]) ?? []));
+  }, []);
 
-  const cats = useMemo(() => {
-    const s = new Set<string>();
-    offers.forEach((o) => o.category && s.add(o.category));
-    return Array.from(s);
+  // ile ofert w danym dziale (po nazwie)
+  const counts = useMemo(() => {
+    const m: Record<string, number> = {};
+    offers.forEach((o) => { m[o.category] = (m[o.category] ?? 0) + 1; });
+    return m;
   }, [offers]);
 
   const shown = activeCat ? offers.filter((o) => o.category === activeCat) : offers;
@@ -70,8 +101,10 @@ export default function Market() {
         {/* pasek działów */}
         <div className="mx-auto max-w-6xl px-4 pb-3 flex gap-2 overflow-x-auto">
           <Chip active={activeCat === null} onClick={() => setActiveCat(null)}>☰ Wszystkie</Chip>
-          {cats.map((c) => (
-            <Chip key={c} active={activeCat === c} onClick={() => setActiveCat(c)}>{c}</Chip>
+          {depts.map((d) => (
+            <Chip key={d.slug} active={activeCat === d.name} onClick={() => setActiveCat(d.name)}>
+              {deptEmoji(d.name)} {d.name}{counts[d.name] ? ` ${counts[d.name]}` : ""}
+            </Chip>
           ))}
         </div>
       </header>
@@ -104,7 +137,7 @@ export default function Market() {
 
         <div className="grid gap-5" style={{ gridTemplateColumns: "repeat(auto-fill,minmax(240px,1fr))" }}>
           {shown.map((o) => {
-            const v = catVisual(o.category);
+            const v = catVisual(o.category, o.title);
             const cb = o.price_gross * 0.03;
             const fav = favs.has(o.offer_id);
             return (
