@@ -44,12 +44,14 @@ export default function Market() {
   const [offers, setOffers] = useState<Offer[]>([]);
   const [q, setQ] = useState("");
   const [activeDept, setActiveDept] = useState<Dept | null>(null);
-  const [activeSub, setActiveSub] = useState<string | null>(null); // slug podkategorii
+  const [activeSub, setActiveSub] = useState<Dept | null>(null);
+  const [activeSub2, setActiveSub2] = useState<string | null>(null); // slug pod-podkategorii
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState<string | null>(null);
   const [favs, setFavs] = useState<Set<string>>(new Set());
   const [depts, setDepts] = useState<Dept[]>([]);
   const [subs, setSubs] = useState<Dept[]>([]);
+  const [subs2, setSubs2] = useState<Dept[]>([]);
 
   async function load(query: string | null, slug: string | null = null) {
     setLoading(true); setErr(null);
@@ -57,28 +59,41 @@ export default function Market() {
     catch (e) { setErr(String((e as Error).message ?? e)); }
     finally { setLoading(false); }
   }
+  async function children(parentId?: string): Promise<Dept[]> {
+    if (!parentId) return [];
+    const { data } = await supabase.from("categories").select("id,slug,name")
+      .eq("parent_id", parentId).order("sort_order");
+    return (data as Dept[]) ?? [];
+  }
   useEffect(() => {
     load(null);
     supabase.from("categories").select("id,slug,name").is("parent_id", null).order("sort_order")
       .then(({ data }) => setDepts((data as Dept[]) ?? []));
   }, []);
 
-  // wybór działu: ładuje oferty działu + jego podkategorie
+  // poziom 1: dział
   async function pickDept(d: Dept | null) {
-    setActiveSub(null); setActiveDept(d); setQ("");
+    setActiveSub(null); setActiveSub2(null); setSubs2([]); setActiveDept(d); setQ("");
     if (!d) { setSubs([]); load(null); return; }
     load(null, d.slug);
-    const { data } = await supabase.from("categories").select("id,slug,name")
-      .eq("parent_id", d.id ?? "").order("sort_order");
-    setSubs((data as Dept[]) ?? []);
+    setSubs(await children(d.id));
   }
-  function pickSub(slug: string | null) {
-    setActiveSub(slug);
-    load(null, slug ?? activeDept?.slug ?? null);
+  // poziom 2: podkategoria
+  async function pickSub(s: Dept | null) {
+    setActiveSub2(null); setActiveSub(s);
+    if (!s) { setSubs2([]); load(null, activeDept?.slug ?? null); return; }
+    load(null, s.slug);
+    setSubs2(await children(s.id));
+  }
+  // poziom 3: pod-podkategoria
+  function pickSub2(slug: string | null) {
+    setActiveSub2(slug);
+    load(null, slug ?? activeSub?.slug ?? activeDept?.slug ?? null);
   }
 
-  const heading = activeSub
-    ? (subs.find((s) => s.slug === activeSub)?.name ?? "Oferty")
+  const heading = activeSub2
+    ? (subs2.find((s) => s.slug === activeSub2)?.name ?? "Oferty")
+    : activeSub ? activeSub.name
     : activeDept ? activeDept.name : "🔥 Okazje tygodnia";
 
   function toggleFav(id: string) {
@@ -118,12 +133,21 @@ export default function Market() {
             </Chip>
           ))}
         </div>
-        {/* pasek podkategorii (po wyborze działu) */}
+        {/* poziom 2: podkategorie */}
         {activeDept && subs.length > 0 && (
-          <div className="mx-auto max-w-6xl px-4 pb-3 flex gap-2 overflow-x-auto">
+          <div className="mx-auto max-w-6xl px-4 pb-2 flex gap-2 overflow-x-auto">
             <Chip active={activeSub === null} onClick={() => pickSub(null)}>Wszystko w: {activeDept.name}</Chip>
             {subs.map((s) => (
-              <Chip key={s.slug} active={activeSub === s.slug} onClick={() => pickSub(s.slug)}>{s.name}</Chip>
+              <Chip key={s.slug} active={activeSub?.slug === s.slug} onClick={() => pickSub(s)}>{s.name}</Chip>
+            ))}
+          </div>
+        )}
+        {/* poziom 3: pod-podkategorie */}
+        {activeSub && subs2.length > 0 && (
+          <div className="mx-auto max-w-6xl px-4 pb-3 flex gap-2 overflow-x-auto" style={{ borderTop: "1px dashed var(--line)", paddingTop: 8 }}>
+            <Chip active={activeSub2 === null} onClick={() => pickSub2(null)}>Wszystko w: {activeSub.name}</Chip>
+            {subs2.map((s) => (
+              <Chip key={s.slug} active={activeSub2 === s.slug} onClick={() => pickSub2(s.slug)}>{s.name}</Chip>
             ))}
           </div>
         )}
