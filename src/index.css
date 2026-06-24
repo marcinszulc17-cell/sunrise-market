@@ -1,4 +1,36 @@
+@import url('https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&display=swap');
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
-body { font-family: system-ui, sans-serif; background: #FBF7F0; }
+
+:root {
+  --bg: #07070F;
+  --ink: #EDEDF5;
+  --mut: #9A9AB0;
+  --line: rgba(255,255,255,.08);
+  --glass: rgba(22,22,40,.55);
+  --primary: #F2731D;
+  --primaryd: #D9560C;
+  --gold: #E0A21B;
+  --green: #34E3A0;
+}
+
+html, body, #root { min-height: 100%; }
+body {
+  margin: 0;
+  font-family: 'Manrope', system-ui, sans-serif;
+  color: var(--ink);
+  background:
+    radial-gradient(1200px 600px at 80% -10%, rgba(242,115,29,.18), transparent 60%),
+    radial-gradient(900px 500px at -10% 10%, rgba(124,58,237,.16), transparent 55%),
+    var(--bg);
+  background-attachment: fixed;
+}
+.font-display { font-family: 'Fraunces', serif; }
+
+.card-glow { transition: transform .18s ease, box-shadow .18s ease, border-color .18s ease; }
+.card-glow:hover {
+  transform: translateY(-3px);
+  border-color: rgba(242,115,29,.45);
+  box-shadow: 0 12px 40px -12px rgba(242,115,29,.35);
+}
