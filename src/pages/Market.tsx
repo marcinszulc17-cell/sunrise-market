@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { searchOffers } from "../lib/api";
 import { supabase } from "../lib/supabase";
+import { useCart } from "../lib/cart";
 
 type Offer = { offer_id: string; title: string; price_gross: number; category: string; seller: string; score: number };
 type Dept = { id?: string; slug: string; name: string };
@@ -52,6 +53,8 @@ export default function Market() {
   const [depts, setDepts] = useState<Dept[]>([]);
   const [subs, setSubs] = useState<Dept[]>([]);
   const [subs2, setSubs2] = useState<Dept[]>([]);
+  const cart = useCart();
+  const cartN = cart.reduce((n, x) => n + x.qty, 0);
 
   async function load(query: string | null, slug: string | null = null) {
     setLoading(true); setErr(null);
@@ -121,8 +124,12 @@ export default function Market() {
                     style={{ background: "linear-gradient(135deg,#F2731D,#D9560C)" }}>Szukaj</button>
           </div>
           <a href="/login" className="text-sm text-zinc-300 hover:text-white px-2 hidden sm:block">Zaloguj</a>
-          <a href="/portfel" className="text-sm font-medium px-3 py-2 rounded-xl"
-             style={{ background: "var(--glass)", border: "1px solid var(--line)" }}>🛒 Portfel</a>
+          <a href="/koszyk" className="text-sm font-medium px-3 py-2 rounded-xl relative"
+             style={{ background: "var(--glass)", border: "1px solid var(--line)" }}>
+            🛒 Koszyk{cartN > 0 ? ` (${cartN})` : ""}
+          </a>
+          <a href="/portfel" className="text-sm font-medium px-3 py-2 rounded-xl hidden sm:block"
+             style={{ background: "var(--glass)", border: "1px solid var(--line)" }}>Portfel</a>
         </div>
         {/* pasek działów */}
         <div className="mx-auto max-w-6xl px-4 pb-2 flex gap-2 overflow-x-auto">

@@ -13,9 +13,9 @@ export async function getOffer(id: string) {
   if (error) throw error;
   return (data && data[0]) ?? null;
 }
-// Checkout przez edge function (placi z portfela, nalicza cashback)
-export async function checkout(buyerId: string, items: { offer_id: string; qty: number }[]) {
-  const { data, error } = await supabase.functions.invoke("checkout", { body: { buyer_id: buyerId, items } });
+// Checkout przez edge function (kupujący z JWT; płaci z portfela, nalicza cashback)
+export async function checkout(items: { offer_id: string; qty: number }[]) {
+  const { data, error } = await supabase.functions.invoke("checkout", { body: { items } });
   if (error) throw error;
   return data;
 }

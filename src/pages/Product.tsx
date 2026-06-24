@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
 import { getOffer } from "../lib/api";
+import { addToCart } from "../lib/cart";
 
 type Offer = {
   offer_id: string; title: string; description: string | null; price_gross: number;
@@ -93,13 +94,15 @@ export default function Product() {
               )}
 
               <div className="flex gap-3 mt-2">
-                <a href="/login" className="flex-1 text-center font-semibold py-3 rounded-2xl text-black"
-                   style={{ background: "linear-gradient(135deg,#F2731D,#E0A21B)" }}>
+                <button
+                  onClick={() => { addToCart({ offer_id: o.offer_id, title: o.title, price: o.price_gross }); window.location.href = "/koszyk"; }}
+                  className="flex-1 text-center font-semibold py-3 rounded-2xl text-black"
+                  style={{ background: "linear-gradient(135deg,#F2731D,#E0A21B)" }}>
                   Do koszyka
-                </a>
-                <a href="/portfel" className="px-5 py-3 rounded-2xl text-sm font-medium"
+                </button>
+                <a href="/koszyk" className="px-5 py-3 rounded-2xl text-sm font-medium"
                    style={{ background: "var(--glass)", border: "1px solid var(--line)" }}>
-                  Portfel
+                  Koszyk
                 </a>
               </div>
 

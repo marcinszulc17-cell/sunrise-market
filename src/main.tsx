@@ -6,6 +6,7 @@ import Portfel from "./pages/Portfel";
 import Rozliczenia from "./pages/Rozliczenia";
 import Login from "./pages/Login";
 import Product from "./pages/Product";
+import Koszyk from "./pages/Koszyk";
 import "./index.css";
 
 ReactDOM.createRoot(document.getElementById("root")!).render(
@@ -15,6 +16,7 @@ ReactDOM.createRoot(document.getElementById("root")!).render(
         <Route path="/" element={<Market />} />
         <Route path="/login" element={<Login />} />
         <Route path="/produkt/:id" element={<Product />} />
+        <Route path="/koszyk" element={<Koszyk />} />
         <Route path="/portfel" element={<Portfel />} />
         <Route path="/sprzedawca/rozliczenia" element={<Rozliczenia />} />
         {/* Daniel dodaje kolejne trasy: /produkt/:id, /sprzedawca, /operator */}
