@@ -7,6 +7,12 @@ export async function searchOffers(query: string | null, categorySlug: string | 
   if (error) throw error;
   return data ?? [];
 }
+// Szczegóły jednej oferty (RPC get_offer — security definer, omija RLS)
+export async function getOffer(id: string) {
+  const { data, error } = await supabase.rpc("get_offer", { p_id: id });
+  if (error) throw error;
+  return (data && data[0]) ?? null;
+}
 // Checkout przez edge function (placi z portfela, nalicza cashback)
 export async function checkout(buyerId: string, items: { offer_id: string; qty: number }[]) {
   const { data, error } = await supabase.functions.invoke("checkout", { body: { buyer_id: buyerId, items } });

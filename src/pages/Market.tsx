@@ -187,18 +187,18 @@ export default function Market() {
             return (
               <article key={o.offer_id} className="card-glow rounded-2xl overflow-hidden flex flex-col"
                        style={{ background: "var(--glass)", border: "1px solid var(--line)" }}>
-                <div className="relative h-36 grid place-items-center text-5xl"
-                     style={{ background: `radial-gradient(120px 80px at 50% 30%, ${v.from}33, transparent 70%), linear-gradient(135deg, ${v.from}22, ${v.to}22)` }}>
+                <a href={`/produkt/${o.offer_id}`} className="relative h-36 grid place-items-center text-5xl"
+                   style={{ background: `radial-gradient(120px 80px at 50% 30%, ${v.from}33, transparent 70%), linear-gradient(135deg, ${v.from}22, ${v.to}22)` }}>
                   <span>{v.emoji}</span>
-                  <button onClick={() => toggleFav(o.offer_id)}
+                  <button onClick={(e) => { e.preventDefault(); toggleFav(o.offer_id); }}
                           className="absolute top-2 right-2 w-8 h-8 rounded-full grid place-items-center text-sm"
                           style={{ background: "rgba(7,7,15,.5)", border: "1px solid var(--line)", color: fav ? "#F25CB0" : "#fff" }}>
                     {fav ? "♥" : "♡"}
                   </button>
-                </div>
+                </a>
                 <div className="p-4 flex flex-col gap-2 flex-1">
                   <div className="text-xs" style={{ color: "var(--mut)" }}>{o.seller} · {o.category}</div>
-                  <div className="font-semibold leading-snug flex-1">{o.title}</div>
+                  <a href={`/produkt/${o.offer_id}`} className="font-semibold leading-snug flex-1 hover:text-amber-300">{o.title}</a>
                   <div className="flex items-end justify-between">
                     <div className="font-display text-2xl font-semibold">{zl(o.price_gross)}</div>
                     <span className="text-xs font-semibold px-2 py-1 rounded-full"
@@ -206,9 +206,9 @@ export default function Market() {
                       +{zl(cb)} cashback
                     </span>
                   </div>
-                  <a href="/login" className="mt-1 text-center text-sm font-semibold py-2 rounded-xl text-black"
+                  <a href={`/produkt/${o.offer_id}`} className="mt-1 text-center text-sm font-semibold py-2 rounded-xl text-black"
                      style={{ background: "linear-gradient(135deg,#F2731D,#E0A21B)" }}>
-                    Do koszyka
+                    Zobacz
                   </a>
                 </div>
               </article>
