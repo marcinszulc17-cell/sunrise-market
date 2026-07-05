@@ -13,6 +13,12 @@ export async function getOffer(id: string) {
   if (error) throw error;
   return (data && data[0]) ?? null;
 }
+// Galeria zdjęć oferty (główne + dodatkowe)
+export async function offerImages(id: string): Promise<string[]> {
+  const { data, error } = await supabase.rpc("offer_images", { p_offer: id });
+  if (error) return [];
+  return (data ?? []).map((r: any) => r.url);
+}
 // Checkout przez edge function (kupujący z JWT; płaci z portfela, nalicza cashback, dostawa)
 export type ShipAddress = { name: string; phone: string; street: string; city: string; postal: string; country?: string };
 export async function checkout(items: { offer_id: string; qty: number }[], shippingCode?: string, shipping?: ShipAddress) {

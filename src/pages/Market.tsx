@@ -4,6 +4,7 @@ import { supabase } from "../lib/supabase";
 import { useCart } from "../lib/cart";
 import SuriChat from "../components/SuriChat";
 import NotificationsBell from "../components/NotificationsBell";
+import ThemeToggle from "../components/ThemeToggle";
 import { useSeo } from "../lib/seo";
 
 type Offer = { offer_id: string; title: string; price_gross: number; category: string; seller: string; score: number; rating: number; reviews: number; image_url: string | null };
@@ -180,6 +181,7 @@ export default function Market() {
           </div>
           <a href="/sprzedawca" className="text-sm text-zinc-300 hover:text-white px-2 hidden md:block">Sprzedawaj</a>
           {!authed && <a href="/login" className="text-sm text-zinc-300 hover:text-white px-2 hidden sm:block">Zaloguj</a>}
+          <ThemeToggle />
           <NotificationsBell />
           <a href="/koszyk" className="text-sm font-medium px-3 py-2 rounded-xl relative"
              style={{ background: "var(--glass)", border: "1px solid var(--line)" }}>

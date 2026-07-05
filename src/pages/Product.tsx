@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
-import { getOffer, offerReviews, addReview } from "../lib/api";
+import { getOffer, offerReviews, addReview, offerImages } from "../lib/api";
 import { addToCart } from "../lib/cart";
 import { supabase } from "../lib/supabase";
 import { useSeo, useProductJsonLd } from "../lib/seo";
@@ -50,12 +50,16 @@ export default function Product() {
   useSeo(o ? o.title : "Produkt", o ? `${o.title} — ${zl(o.price_gross)}. ${(o.description ?? "").slice(0, 140)}` : "Produkt w Sunrise Market.", id ? `/produkt/${id}` : "");
   useProductJsonLd(o ? { id: o.offer_id, name: o.title, price: o.price_gross, image: o.image_url, rating: o.avg_rating, reviews: o.review_count } : null);
 
+  const [imgs, setImgs] = useState<string[]>([]);
+  const [active, setActive] = useState(0);
+
   async function loadReviews(oid: string) { setReviews((await offerReviews(oid)) as Review[]); }
 
   useEffect(() => {
     if (!id) return;
     getOffer(id).then((d) => setO(d as Offer)).catch((e) => setErr(String((e as Error).message))).finally(() => setLoading(false));
     loadReviews(id).catch(() => {});
+    offerImages(id).then((u) => { setImgs(u); setActive(0); }).catch(() => {});
     supabase.auth.getUser().then(({ data }) => setAuthed(!!data.user));
   }, [id]);
 
@@ -92,12 +96,24 @@ export default function Product() {
 
         {o && (<>
           <div className="grid gap-8 md:grid-cols-2">
-            {/* obraz */}
-            <div className="rounded-3xl grid place-items-center text-8xl h-80 md:h-full min-h-80 overflow-hidden"
-                 style={{ background: `radial-gradient(220px 160px at 50% 35%, ${visual(o.title + o.category).from}33, transparent 70%), linear-gradient(135deg, ${visual(o.title + o.category).from}22, ${visual(o.title + o.category).to}22)`, border: "1px solid var(--line)" }}>
-              {o.image_url
-                ? <img src={o.image_url} alt={o.title} className="w-full h-full object-cover" />
-                : visual(o.title + o.category).emoji}
+            {/* galeria */}
+            <div className="flex flex-col gap-3">
+              <div className="rounded-3xl grid place-items-center text-8xl h-96 overflow-hidden"
+                   style={{ background: `radial-gradient(220px 160px at 50% 35%, ${visual(o.title + o.category).from}33, transparent 70%), linear-gradient(135deg, ${visual(o.title + o.category).from}22, ${visual(o.title + o.category).to}22)`, border: "1px solid var(--line)" }}>
+                {(imgs[active] || o.image_url)
+                  ? <img src={imgs[active] || o.image_url!} alt={o.title} className="w-full h-full object-cover" />
+                  : visual(o.title + o.category).emoji}
+              </div>
+              {imgs.length > 1 && (
+                <div className="flex gap-2 overflow-x-auto pb-1">
+                  {imgs.map((u, i) => (
+                    <button key={i} onClick={() => setActive(i)} className="w-16 h-16 rounded-xl overflow-hidden shrink-0"
+                            style={{ border: active === i ? "2px solid var(--primary)" : "1px solid var(--line)" }}>
+                      <img src={u} alt="" className="w-full h-full object-cover" />
+                    </button>
+                  ))}
+                </div>
+              )}
             </div>
 
             {/* szczegóły */}
@@ -125,7 +141,9 @@ export default function Product() {
               </div>
 
               {o.description && (
-                <p className="text-sm leading-relaxed" style={{ color: "var(--ink)" }}>{o.description}</p>
+                <p className="text-sm leading-relaxed" style={{ color: "var(--mut)" }}>
+                  {o.description.split(/\n\s*\n/)[0].slice(0, 220)}{o.description.length > 220 ? "…" : ""}
+                </p>
               )}
 
               <div className="flex gap-3 mt-2">
@@ -147,6 +165,18 @@ export default function Product() {
               </div>
             </div>
           </div>
+
+          {/* ── OPIS PRODUKTU ── */}
+          {o.description && (
+            <section className="mt-12 max-w-3xl">
+              <h2 className="font-display text-2xl font-semibold mb-4">Opis produktu</h2>
+              <div className="flex flex-col gap-4">
+                {o.description.split(/\n\s*\n/).filter(Boolean).map((par, i) => (
+                  <p key={i} className="leading-relaxed" style={{ color: "var(--ink)" }}>{par.trim()}</p>
+                ))}
+              </div>
+            </section>
+          )}
 
           {/* ── OPINIE ── */}
           <section className="mt-12">
