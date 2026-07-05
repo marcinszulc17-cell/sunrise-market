@@ -3,4 +3,4 @@ Allow: /
 Disallow: /operator
 Disallow: /sprzedawca/rozliczenia
 
-Sitemap: https://sunrise-market.vercel.app/sitemap.xml
+Sitemap: https://sunrisemarket.pl/sitemap.xml

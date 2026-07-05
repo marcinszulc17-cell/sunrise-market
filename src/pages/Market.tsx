@@ -280,6 +280,7 @@ export default function Market() {
         <div className="flex flex-wrap gap-4 justify-center mb-2">
           <a href="/cennik" className="hover:text-amber-300">Cennik</a>
           <a href="/sprzedawca" className="hover:text-amber-300">Zostań sprzedawcą</a>
+          <a href="/legal/zwroty.html" className="hover:text-amber-300">Zwroty i reklamacje</a>
           <a href="/legal/regulamin.html" className="hover:text-amber-300">Regulamin</a>
         </div>
         Sunrise Market · Płatność wyłącznie Sunrise Pay · Cashback 3% · Prowizja 7,9%

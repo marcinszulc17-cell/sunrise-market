@@ -14,8 +14,9 @@ export async function getOffer(id: string) {
   return (data && data[0]) ?? null;
 }
 // Checkout przez edge function (kupujący z JWT; płaci z portfela, nalicza cashback, dostawa)
-export async function checkout(items: { offer_id: string; qty: number }[], shippingCode?: string) {
-  const { data, error } = await supabase.functions.invoke("checkout", { body: { items, shipping_code: shippingCode ?? null } });
+export type ShipAddress = { name: string; phone: string; street: string; city: string; postal: string; country?: string };
+export async function checkout(items: { offer_id: string; qty: number }[], shippingCode?: string, shipping?: ShipAddress) {
+  const { data, error } = await supabase.functions.invoke("checkout", { body: { items, shipping_code: shippingCode ?? null, shipping: shipping ?? null } });
   if (error) throw error;
   return data;
 }
@@ -66,6 +67,14 @@ export async function listOffersAdmin() {
 }
 export async function moderateOffer(offerId: string, hide: boolean) {
   const { error } = await supabase.rpc("moderate_offer", { p_offer: offerId, p_hide: hide }); if (error) throw error;
+}
+
+// ── Most fulfillmentu TeemDrop (operator) ─────────────────────────
+export async function listBridgeOrders() {
+  const { data, error } = await supabase.rpc("list_bridge_orders"); if (error) throw error; return data ?? [];
+}
+export async function retryBridgeOrder(bridgeId: string) {
+  const { error } = await supabase.rpc("retry_bridge_order", { p_bridge: bridgeId }); if (error) throw error;
 }
 
 // ── Przychody / cennik / operator / promocje / powiadomienia ──────

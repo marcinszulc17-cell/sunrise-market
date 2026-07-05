@@ -1,6 +1,6 @@
 import { useEffect } from "react";
 
-const BASE = "https://sunrise-market.vercel.app";
+const BASE = "https://sunrisemarket.pl";
 
 function setMeta(attr: "name" | "property", key: string, content: string) {
   let el = document.head.querySelector<HTMLMetaElement>(`meta[${attr}="${key}"]`);

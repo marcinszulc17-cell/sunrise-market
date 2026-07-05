@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { supabase } from "../lib/supabase";
-import { operatorConsole, listReturns, resolveReturn, listPendingSellers, reviewSeller, listOffersAdmin, moderateOffer, amiOperator } from "../lib/api";
+import { operatorConsole, listReturns, resolveReturn, listPendingSellers, reviewSeller, listOffersAdmin, moderateOffer, amiOperator, listBridgeOrders, retryBridgeOrder } from "../lib/api";
 
 const zl = (v: number) => Math.round(Number(v || 0)).toLocaleString("pl-PL") + " zł";
 const n = (v: number) => Number(v || 0).toLocaleString("pl-PL");
@@ -13,12 +13,14 @@ export default function Operator() {
   const [rets, setRets] = useState<any[]>([]);
   const [sellers, setSellers] = useState<any[]>([]);
   const [offers, setOffers] = useState<any[]>([]);
+  const [bridge, setBridge] = useState<any[]>([]);
 
   async function loadAll() {
     try { setK(await operatorConsole()); } catch (e) { setErr((e as Error).message); }
     try { setRets((await listReturns()) as any[]); } catch { /* ignore */ }
     try { setSellers((await listPendingSellers()) as any[]); } catch { /* ignore */ }
     try { setOffers((await listOffersAdmin()) as any[]); } catch { /* ignore */ }
+    try { setBridge((await listBridgeOrders()) as any[]); } catch { /* ignore */ }
   }
   useEffect(() => {
     supabase.auth.getUser().then(async ({ data }) => {
@@ -32,6 +34,8 @@ export default function Operator() {
   async function onResolve(id: string, approve: boolean) { await resolveReturn(id, approve); await loadAll(); }
   async function onReviewSeller(id: string, approve: boolean) { await reviewSeller(id, approve); await loadAll(); }
   async function onModerate(id: string, hide: boolean) { await moderateOffer(id, hide); await loadAll(); }
+  async function onRetryBridge(id: string) { await retryBridgeOrder(id); await loadAll(); }
+  const bridgeColor: Record<string, string> = { pending: "var(--gold)", pushed: "#38E0F0", processing: "#38E0F0", shipped: "#34E3A0", delivered: "#34E3A0", error: "#F25CB0" };
 
   const revenue = k ? Number(k.przychod_prowizje || 0) + Number(k.przychod_banery || 0) + Number(k.przychod_promowanie || 0) : 0;
 
@@ -134,6 +138,25 @@ export default function Operator() {
                   </div>
                 ))}
                 {offers.length === 0 && <p style={{ color: "var(--mut)" }}>Brak ofert.</p>}
+              </div>
+            </section>
+
+            <section className="mt-8">
+              <h2 className="font-display text-2xl font-semibold mb-4">Fulfillment TeemDrop (dropship)</h2>
+              <div className="flex flex-col gap-2">
+                {bridge.map((b) => (
+                  <div key={b.bridge_id} className="rounded-xl p-4 flex items-center justify-between gap-3" style={{ background: "var(--glass)", border: "1px solid var(--line)" }}>
+                    <div className="min-w-0">
+                      <div className="text-sm">Zam. {String(b.order_id).slice(0, 8)}{b.woo_order_id && <> · Woo #{b.woo_order_id}</>}{b.tracking_number && <> · 📦 {b.tracking_number}</>}</div>
+                      {b.last_error && <div className="text-xs truncate" style={{ color: "#F8A8D2" }}>{b.last_error}</div>}
+                    </div>
+                    <div className="flex items-center gap-2 shrink-0">
+                      <span className="text-xs px-2.5 py-1 rounded-full" style={{ background: "var(--glass)", border: "1px solid var(--line)", color: bridgeColor[b.status] ?? "var(--ink)" }}>{b.status}</span>
+                      {b.status === "error" && <button onClick={() => onRetryBridge(b.bridge_id)} className="text-xs px-3 py-1.5 rounded-lg" style={{ background: "var(--glass)", border: "1px solid var(--line)" }}>Ponów</button>}
+                    </div>
+                  </div>
+                ))}
+                {bridge.length === 0 && <p style={{ color: "var(--mut)" }}>Brak zamówień dropship.</p>}
               </div>
             </section>
           </>
