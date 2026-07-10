@@ -1,125 +1,66 @@
 import { useEffect, useState } from "react";
 import { supabase } from "../lib/supabase";
 import { getMySeller } from "../lib/payments";
-import { becomeSeller, myOffers, createOffer, topCategories, childCategories, uploadProductImage, myBalance, mySubscription, promoteOffer, sellerOrders, markShipped, sellerWallet, type SellerWallet } from "../lib/api";
+import {
+  becomeSeller, myOffers, createOffer, topCategories, childCategories, uploadProductImage,
+  mySubscription, promoteOffer, sellerOrders, markShipped, sellerWallet, sellerSummary, walletHistory,
+  type SellerWallet,
+} from "../lib/api";
 import { setMode } from "../lib/mode";
 
-const zl = (v: number) => Math.round(v).toLocaleString("pl-PL") + " zł";
+const zl = (v: number) => Math.round(Number(v || 0)).toLocaleString("pl-PL") + " zł";
+const dt = (s: string) => new Date(s).toLocaleString("pl-PL");
+const opLabel: Record<string, string> = { topup: "Doładowanie", payment: "Zakup", cashback: "Cashback", refund: "Zwrot", payout: "Wpływ ze sprzedaży" };
 type Cat = { id: string; slug: string; name: string };
 type Off = { offer_id: string; title: string; price_gross: number; stock: number; status: string; category: string };
+type Tab = "pulpit" | "oferty" | "zamowienia" | "portfel";
+const TABS: { id: Tab; label: string }[] = [
+  { id: "pulpit", label: "📊 Pulpit" },
+  { id: "oferty", label: "📦 Oferty" },
+  { id: "zamowienia", label: "🧾 Zamówienia" },
+  { id: "portfel", label: "💳 Portfel" },
+];
 
 export default function Sprzedawca() {
   const [authed, setAuthed] = useState<boolean | null>(null);
   const [seller, setSeller] = useState<any>(null);
-  const [offers, setOffers] = useState<Off[]>([]);
+  const [tab, setTab] = useState<Tab>("pulpit");
   const [msg, setMsg] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [legalName, setLegalName] = useState(""); const [nip, setNip] = useState(""); const [accept, setAccept] = useState(false);
 
-  // formularz "zostań sprzedawcą"
-  const [legalName, setLegalName] = useState("");
-  const [nip, setNip] = useState("");
-  const [accept, setAccept] = useState(false);
-  const [balance, setBalance] = useState<number>(0);
-  const [imageUrl, setImageUrl] = useState<string>("");
-  const [uploading, setUploading] = useState(false);
-  const [sub, setSub] = useState<any>(null);
-  const [sorders, setSorders] = useState<any[]>([]);
-  const [swallet, setSwallet] = useState<SellerWallet>({ available: false });
-
-  // formularz oferty
-  const [title, setTitle] = useState("");
-  const [desc, setDesc] = useState("");
-  const [price, setPrice] = useState<number>(0);
-  const [stock, setStock] = useState<number>(1);
-  const [d1, setD1] = useState<Cat[]>([]); const [d2, setD2] = useState<Cat[]>([]); const [d3, setD3] = useState<Cat[]>([]);
-  const [s1, setS1] = useState<Cat | null>(null); const [s2, setS2] = useState<Cat | null>(null); const [s3, setS3] = useState<Cat | null>(null);
-
-  async function refresh() {
-    const s = await getMySeller();
-    setSeller(s);
-    if (s) {
-      setOffers((await myOffers()) as Off[]); setBalance(await myBalance().catch(() => 0));
-      setSub(await mySubscription().catch(() => null)); setSorders((await sellerOrders().catch(() => [])) as any[]);
-      setSwallet(await sellerWallet().catch(() => ({ available: false })));
-    }
-  }
-  async function onShip(orderId: string) {
-    setMsg(null);
-    try { const t = await markShipped(orderId); setMsg("Oznaczono wysłane. Nr przesyłki: " + t); await refresh(); }
-    catch (e) { setMsg((e as Error).message); }
-  }
-  async function onPromote(offerId: string) {
-    setMsg(null);
-    try { const cost = await promoteOffer(offerId, 7); setMsg(`Wyróżniono na 7 dni za ${cost} zł (z portfela).`); await refresh(); }
-    catch (e) { setMsg((e as Error).message); }
-  }
+  async function refreshSeller() { const s = await getMySeller(); setSeller(s); }
   useEffect(() => {
-    (async () => {
-      const { data } = await supabase.auth.getUser();
+    supabase.auth.getUser().then(async ({ data }) => {
       if (!data.user) { setAuthed(false); return; }
-      setAuthed(true);
-      await refresh();
-      setD1((await topCategories()) as Cat[]);
-    })();
+      setAuthed(true); await refreshSeller();
+    });
   }, []);
 
   async function onBecome(e: React.FormEvent) {
     e.preventDefault(); setMsg(null);
     if (!accept) { setMsg("Zaakceptuj Regulamin sprzedawcy i Regulamin Sunrise Pay."); return; }
     setBusy(true);
-    try { await becomeSeller(legalName, nip, accept); await refresh(); setMsg("Konto sprzedawcy aktywne."); }
+    try { await becomeSeller(legalName, nip, accept); await refreshSeller(); setMsg("Konto sprzedawcy aktywne."); }
     catch (e) { setMsg((e as Error).message); } finally { setBusy(false); }
   }
-  async function onPickImage(e: React.ChangeEvent<HTMLInputElement>) {
-    const f = e.target.files?.[0]; if (!f) return;
-    setUploading(true); setMsg(null);
-    try { setImageUrl(await uploadProductImage(f)); }
-    catch (err) { setMsg("Błąd uploadu zdjęcia: " + (err as Error).message); }
-    finally { setUploading(false); }
-  }
 
-  async function pick1(slug: string) {
-    const c = d1.find((x) => x.slug === slug) ?? null;
-    setS1(c); setS2(null); setS3(null); setD2([]); setD3([]);
-    if (c) setD2((await childCategories(c.id)) as Cat[]);
-  }
-  async function pick2(slug: string) {
-    const c = d2.find((x) => x.slug === slug) ?? null;
-    setS2(c); setS3(null); setD3([]);
-    if (c) setD3((await childCategories(c.id)) as Cat[]);
-  }
-  function pick3(slug: string) { setS3(d3.find((x) => x.slug === slug) ?? null); }
-
-  const chosen = s3 ?? s2 ?? s1;
-
-  async function onCreate(e: React.FormEvent) {
-    e.preventDefault(); setMsg(null);
-    if (!chosen) { setMsg("Wybierz kategorię."); return; }
-    setBusy(true);
-    try {
-      await createOffer({ title, description: desc, price, stock, categorySlug: chosen.slug, imageUrl });
-      setTitle(""); setDesc(""); setPrice(0); setStock(1); setImageUrl("");
-      await refresh();
-      setMsg("Oferta wystawiona ✅");
-    } catch (e) { setMsg((e as Error).message); } finally { setBusy(false); }
-  }
-
-  const inp = "w-full rounded-lg px-3 py-2 bg-zinc-900 text-zinc-100 outline-none";
-  const sel = "rounded-lg px-3 py-2 bg-zinc-900 text-zinc-100 outline-none";
+  const inp = "w-full rounded-lg px-3 py-2 outline-none";
+  const inpStyle = { background: "var(--glass)", border: "1px solid var(--line)", color: "var(--ink)" } as React.CSSProperties;
 
   if (authed === false) return <Shell><p style={{ color: "var(--mut)" }}>Zaloguj się, aby wystawiać oferty. <a href="/login" className="text-amber-400 underline">Logowanie</a>.</p></Shell>;
   if (authed === null) return <Shell><p style={{ color: "var(--mut)" }}>Ładowanie…</p></Shell>;
 
   return (
-    <Shell>
-      <h1 className="font-display text-3xl font-semibold mb-6">Panel sprzedawcy</h1>
+    <Shell tabs={seller ? { tab, setTab } : undefined}>
+      <h1 className="font-display text-3xl font-semibold mb-6">Centrum sprzedawcy</h1>
       {msg && <div className="mb-5 rounded-lg px-4 py-2 text-sm" style={{ background: "rgba(242,115,29,.12)", color: "var(--gold)" }}>{msg}</div>}
 
       {!seller ? (
         <form onSubmit={onBecome} className="max-w-md rounded-2xl p-5 flex flex-col gap-3" style={{ background: "var(--glass)", border: "1px solid var(--line)" }}>
           <h2 className="font-semibold text-lg">Zostań sprzedawcą</h2>
-          <input className={inp} placeholder="Nazwa firmy" value={legalName} onChange={(e) => setLegalName(e.target.value)} required />
-          <input className={inp} placeholder="NIP (opcjonalnie)" value={nip} onChange={(e) => setNip(e.target.value)} />
+          <input className={inp} style={inpStyle} placeholder="Nazwa firmy" value={legalName} onChange={(e) => setLegalName(e.target.value)} required />
+          <input className={inp} style={inpStyle} placeholder="NIP (opcjonalnie)" value={nip} onChange={(e) => setNip(e.target.value)} />
           <label className="flex items-start gap-2 text-sm" style={{ color: "var(--mut)" }}>
             <input type="checkbox" checked={accept} onChange={(e) => setAccept(e.target.checked)} className="mt-1" />
             <span>Akceptuję <a href="/legal/regulamin-sprzedawcy.html" target="_blank" className="text-amber-400 underline">Regulamin sprzedawcy</a> oraz <a href="/legal/regulamin.html" target="_blank" className="text-amber-400 underline">Regulamin Sunrise Pay</a> (prowizja 7,9%, wypłata na portfel Sunrise Pay).</span>
@@ -127,151 +68,190 @@ export default function Sprzedawca() {
           <button disabled={busy || !accept} className="rounded-xl py-2 font-semibold text-black disabled:opacity-50" style={{ background: "linear-gradient(135deg,#F2731D,#E0A21B)" }}>{busy ? "…" : "Aktywuj konto sprzedawcy"}</button>
         </form>
       ) : (
-        <div className="flex flex-col gap-6">
-        <div className="rounded-2xl p-5" style={{ background: "var(--glass)", border: "1px solid rgba(52,227,160,.25)" }}>
-          <div className="flex items-center justify-between mb-3">
-            <div className="text-sm" style={{ color: "var(--mut)" }}>Portfel partnera ({seller.legal_name}) — wpływy ze sprzedaży</div>
-            <span className="text-xs px-2 py-0.5 rounded-full" style={{ background: swallet.available ? "rgba(52,227,160,.15)" : "rgba(56,224,240,.12)", color: swallet.available ? "var(--green)" : "#8fe3ef" }}>
-              {swallet.available ? "Sunrise Pay: połączony" : "wypłaty wkrótce"}
-            </span>
-          </div>
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-            <div>
-              <div className="text-xs" style={{ color: "var(--mut)" }}>Sunrise Pay</div>
-              <div className="font-display text-2xl font-semibold" style={{ color: "var(--green)" }}>{zl(swallet.available ? (swallet.sunrise_pay ?? 0) : balance)}</div>
-            </div>
-            {swallet.available && swallet.gold != null && (
-              <div>
-                <div className="text-xs" style={{ color: "var(--mut)" }}>Gold Pay</div>
-                <div className="font-display text-2xl font-semibold" style={{ color: "#F2D047" }}>{swallet.gold.toLocaleString("pl-PL")} <span className="text-base">g</span></div>
-              </div>
-            )}
-            {swallet.available && (
-              <div>
-                <div className="text-xs" style={{ color: "var(--mut)" }}>W rozliczeniu</div>
-                <div className="font-display text-2xl font-semibold" style={{ color: "var(--gold)" }}>{zl(swallet.pending ?? 0)}</div>
-              </div>
-            )}
-            <div className="flex items-end">
-              {swallet.available && swallet.withdraw_enabled ? (
-                <button onClick={() => alert("Wypłata inicjowana po stronie MySunrise (KYC, limity).")}
-                        className="text-sm rounded-lg px-4 py-2 font-semibold text-black w-full" style={{ background: "linear-gradient(135deg,#34E3A0,#38E0F0)" }}>Wypłać</button>
-              ) : (
-                <button disabled title="Dostępne po uruchomieniu portfela partnera w MySunrise"
-                        className="text-sm rounded-lg px-4 py-2 w-full opacity-60 cursor-not-allowed" style={{ background: "var(--glass)", border: "1px solid var(--line)" }}>Wypłać — wkrótce</button>
-              )}
-            </div>
-          </div>
-          <div className="text-xs mt-3" style={{ color: "var(--mut)" }}>
-            {swallet.available
-              ? "Wpływy ze sprzedaży trafiają tu w walucie, którą zapłacił kupujący (Sunrise Pay lub Gold). Wypłatę na konto realizuje MySunrise."
-              : "Po sprzedaży dostajesz zapłatę na portfel Sunrise Pay/Gold Pay. Wypłata na konto bankowe i saldo Gold ruszą, gdy MySunrise wystawi moduł wypłat partnera."}
-          </div>
-        </div>
-        {sub && (
-          <div className="rounded-2xl p-4 text-sm flex items-center justify-between" style={{ background: "var(--glass)", border: "1px solid var(--line)" }}>
-            <span style={{ color: "var(--mut)" }}>
-              Subskrypcja Sunrise Pay:{" "}
-              {sub.in_free
-                ? <b style={{ color: "var(--green)" }}>darmowa do {sub.promo_until} ({sub.days_left} dni)</b>
-                : <b style={{ color: "var(--gold)" }}>{Number(sub.monthly_fee).toFixed(0)} zł/mc</b>}
-            </span>
-            <a href="/cennik" className="text-amber-400 underline text-xs">Cennik</a>
-          </div>
-        )}
-        <div className="grid gap-8 lg:grid-cols-2">
-          {/* wystaw ofertę */}
-          <form onSubmit={onCreate} className="rounded-2xl p-5 flex flex-col gap-3 h-fit" style={{ background: "var(--glass)", border: "1px solid var(--line)" }}>
-            <h2 className="font-semibold text-lg">Wystaw ofertę</h2>
-            <input className={inp} placeholder="Nazwa produktu" value={title} onChange={(e) => setTitle(e.target.value)} required />
-            <textarea className={inp} placeholder="Opis" value={desc} onChange={(e) => setDesc(e.target.value)} rows={3} />
-            <div className="flex gap-3">
-              <input className={inp} type="number" min={0} step="0.01" placeholder="Cena zł" value={price || ""} onChange={(e) => setPrice(Number(e.target.value))} required />
-              <input className={inp} type="number" min={0} placeholder="Sztuk" value={stock} onChange={(e) => setStock(Number(e.target.value))} />
-            </div>
-            <div className="flex flex-col gap-2">
-              <select className={sel} value={s1?.slug ?? ""} onChange={(e) => pick1(e.target.value)} required>
-                <option value="">— Dział —</option>
-                {d1.map((c) => <option key={c.slug} value={c.slug}>{c.name}</option>)}
-              </select>
-              {d2.length > 0 && (
-                <select className={sel} value={s2?.slug ?? ""} onChange={(e) => pick2(e.target.value)}>
-                  <option value="">— Podkategoria (opcjonalnie) —</option>
-                  {d2.map((c) => <option key={c.slug} value={c.slug}>{c.name}</option>)}
-                </select>
-              )}
-              {d3.length > 0 && (
-                <select className={sel} value={s3?.slug ?? ""} onChange={(e) => pick3(e.target.value)}>
-                  <option value="">— Szczegółowa (opcjonalnie) —</option>
-                  {d3.map((c) => <option key={c.slug} value={c.slug}>{c.name}</option>)}
-                </select>
-              )}
-            </div>
-            <div className="flex items-center gap-3">
-              <label className="text-sm cursor-pointer rounded-lg px-3 py-2" style={{ background: "var(--glass)", border: "1px solid var(--line)" }}>
-                {uploading ? "Wgrywam…" : imageUrl ? "Zmień zdjęcie" : "📷 Dodaj zdjęcie"}
-                <input type="file" accept="image/*" onChange={onPickImage} className="hidden" />
-              </label>
-              {imageUrl && <img src={imageUrl} alt="podgląd" className="w-12 h-12 rounded-lg object-cover" />}
-            </div>
-            <p className="text-xs" style={{ color: "var(--mut)" }}>Kategoria: {chosen?.name ?? "—"}. Prowizja platformy 7,9%. Wypłata netto na Twój portfel Sunrise Pay.</p>
-            <button disabled={busy || uploading} className="rounded-xl py-2 font-semibold text-black disabled:opacity-50" style={{ background: "linear-gradient(135deg,#F2731D,#D9560C)" }}>{busy ? "…" : "Wystaw"}</button>
-          </form>
-
-          {/* moje oferty */}
-          <div>
-            <h2 className="font-semibold text-lg mb-3">Twoje oferty ({offers.length})</h2>
-            <div className="flex flex-col gap-2">
-              {offers.map((o) => (
-                <div key={o.offer_id} className="flex items-center justify-between gap-3 rounded-xl p-3"
-                     style={{ background: "var(--glass)", border: "1px solid var(--line)" }}>
-                  <div className="flex-1 min-w-0">
-                    <a href={`/produkt/${o.offer_id}`} className="font-medium hover:text-amber-300">{o.title}</a>
-                    <div className="text-xs" style={{ color: "var(--mut)" }}>{o.category} · {o.stock} szt.</div>
-                  </div>
-                  <button onClick={() => onPromote(o.offer_id)} className="text-xs px-3 py-1.5 rounded-lg whitespace-nowrap"
-                          style={{ background: "var(--glass)", border: "1px solid var(--line)" }}>✨ Promuj</button>
-                  <div className="font-display text-lg font-semibold whitespace-nowrap">{zl(o.price_gross)}</div>
-                </div>
-              ))}
-              {offers.length === 0 && <p style={{ color: "var(--mut)" }}>Brak ofert. Wystaw pierwszą po lewej.</p>}
-            </div>
-          </div>
-        </div>
-
-        {/* zamówienia sprzedawcy */}
-        <div>
-          <h2 className="font-semibold text-lg mb-3">Zamówienia ({sorders.length})</h2>
-          <div className="flex flex-col gap-2">
-            {sorders.map((o) => (
-              <div key={o.order_id} className="rounded-xl p-4" style={{ background: "var(--glass)", border: "1px solid var(--line)" }}>
-                <div className="flex items-center justify-between mb-2">
-                  <span className="text-sm" style={{ color: "var(--mut)" }}>
-                    {new Date(o.created_at).toLocaleString("pl-PL")} · {({ paid: "Opłacone", shipped: "Wysłane", delivered: "Dostarczone", completed: "Zakończone" } as any)[o.status] ?? o.status}
-                    {o.tracking_no && <> · {o.tracking_no}</>}
-                  </span>
-                  {o.status === "paid"
-                    ? <button onClick={() => onShip(o.order_id)} className="text-xs font-semibold px-3 py-1.5 rounded-lg text-black" style={{ background: "linear-gradient(135deg,#F2731D,#E0A21B)" }}>Oznacz wysłane</button>
-                    : <span className="text-xs" style={{ color: "var(--green)" }}>✓</span>}
-                </div>
-                <div className="flex flex-col gap-0.5">
-                  {(o.items ?? []).map((it: any, i: number) => (
-                    <div key={i} className="flex justify-between text-sm"><span>{it.title} × {it.qty}</span><span style={{ color: "var(--mut)" }}>{zl(it.payout)}</span></div>
-                  ))}
-                </div>
-                <div className="text-right text-sm mt-2 pt-2" style={{ borderTop: "1px solid var(--line)" }}>Twoje netto: <b style={{ color: "var(--green)" }}>{zl(o.my_total)}</b></div>
-              </div>
-            ))}
-            {sorders.length === 0 && <p style={{ color: "var(--mut)" }}>Brak zamówień.</p>}
-          </div>
-        </div>
-        </div>
+        <>
+          {tab === "pulpit" && <Pulpit seller={seller} />}
+          {tab === "oferty" && <Oferty />}
+          {tab === "zamowienia" && <Zamowienia />}
+          {tab === "portfel" && <Portfel seller={seller} />}
+        </>
       )}
     </Shell>
   );
 }
 
-function Shell({ children }: { children: React.ReactNode }) {
+function Card({ children, className = "" }: { children: React.ReactNode; className?: string }) {
+  return <div className={`rounded-2xl p-5 ${className}`} style={{ background: "var(--glass)", border: "1px solid var(--line)" }}>{children}</div>;
+}
+function Kpi({ label, value, color }: { label: string; value: string; color?: string }) {
+  return <div className="rounded-2xl p-5" style={{ background: "var(--glass)", border: "1px solid var(--line)" }}><div className="text-xs mb-1" style={{ color: "var(--mut)" }}>{label}</div><div className="font-display text-2xl font-semibold" style={{ color: color ?? "var(--ink)" }}>{value}</div></div>;
+}
+
+// ── PULPIT ──────────────────────────────────────────────────────────
+function Pulpit({ seller }: { seller: any }) {
+  const [s, setS] = useState<any>(null);
+  const [sub, setSub] = useState<any>(null);
+  useEffect(() => { sellerSummary().then(setS).catch(() => {}); mySubscription().then(setSub).catch(() => {}); }, []);
+  return (
+    <div className="flex flex-col gap-4">
+      <div className="rounded-2xl p-6" style={{ background: "linear-gradient(135deg, rgba(52,227,160,.14), rgba(56,224,240,.10))", border: "1px solid rgba(52,227,160,.3)" }}>
+        <div className="text-sm" style={{ color: "var(--mut)" }}>Sprzedaż netto ({seller.legal_name}) — 92,1% po prowizji 7,9%</div>
+        <div className="font-display text-4xl font-bold" style={{ color: "var(--green)" }}>{zl(s?.sales_net ?? 0)}</div>
+      </div>
+      <div className="grid gap-4 sm:grid-cols-4">
+        <Kpi label="Zamówienia (łącznie)" value={String(s?.orders_total ?? 0)} />
+        <Kpi label="Do wysłania" value={String(s?.orders_to_ship ?? 0)} color={s?.orders_to_ship ? "var(--gold)" : undefined} />
+        <Kpi label="Oferty aktywne" value={String(s?.offers_count ?? 0)} />
+        <Kpi label="Oferty ukryte" value={String(s?.offers_hidden ?? 0)} />
+      </div>
+      {sub && (
+        <Card>
+          <span className="text-sm" style={{ color: "var(--mut)" }}>Subskrypcja Sunrise Pay:{" "}
+            {sub.in_free ? <b style={{ color: "var(--green)" }}>darmowa do {sub.promo_until} ({sub.days_left} dni)</b> : <b style={{ color: "var(--gold)" }}>{Number(sub.monthly_fee).toFixed(0)} zł/mc</b>}
+          </span>
+        </Card>
+      )}
+    </div>
+  );
+}
+
+// ── OFERTY ──────────────────────────────────────────────────────────
+function Oferty() {
+  const [offers, setOffers] = useState<Off[]>([]);
+  const [msg, setMsg] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [title, setTitle] = useState(""); const [desc, setDesc] = useState(""); const [price, setPrice] = useState(0); const [stock, setStock] = useState(1);
+  const [imageUrl, setImageUrl] = useState(""); const [uploading, setUploading] = useState(false);
+  const [d1, setD1] = useState<Cat[]>([]); const [d2, setD2] = useState<Cat[]>([]); const [d3, setD3] = useState<Cat[]>([]);
+  const [s1, setS1] = useState<Cat | null>(null); const [s2, setS2] = useState<Cat | null>(null); const [s3, setS3] = useState<Cat | null>(null);
+  const chosen = s3 ?? s2 ?? s1;
+
+  async function load() { setOffers((await myOffers()) as Off[]); }
+  useEffect(() => { load(); topCategories().then((c) => setD1(c as Cat[])); }, []);
+  async function pick1(slug: string) { const c = d1.find((x) => x.slug === slug) ?? null; setS1(c); setS2(null); setS3(null); setD2([]); setD3([]); if (c) setD2((await childCategories(c.id)) as Cat[]); }
+  async function pick2(slug: string) { const c = d2.find((x) => x.slug === slug) ?? null; setS2(c); setS3(null); setD3([]); if (c) setD3((await childCategories(c.id)) as Cat[]); }
+  function pick3(slug: string) { setS3(d3.find((x) => x.slug === slug) ?? null); }
+  async function onPickImage(e: React.ChangeEvent<HTMLInputElement>) { const f = e.target.files?.[0]; if (!f) return; setUploading(true); setMsg(null); try { setImageUrl(await uploadProductImage(f)); } catch (err) { setMsg("Błąd uploadu: " + (err as Error).message); } finally { setUploading(false); } }
+  async function onCreate(e: React.FormEvent) {
+    e.preventDefault(); setMsg(null);
+    if (!chosen) { setMsg("Wybierz kategorię."); return; }
+    setBusy(true);
+    try { await createOffer({ title, description: desc, price, stock, categorySlug: chosen.slug, imageUrl }); setTitle(""); setDesc(""); setPrice(0); setStock(1); setImageUrl(""); await load(); setMsg("Oferta wystawiona ✅"); }
+    catch (e) { setMsg((e as Error).message); } finally { setBusy(false); }
+  }
+  async function onPromote(id: string) { setMsg(null); try { const cost = await promoteOffer(id, 7); setMsg(`Wyróżniono na 7 dni za ${cost} zł.`); await load(); } catch (e) { setMsg((e as Error).message); } }
+
+  const inp = "w-full rounded-lg px-3 py-2 outline-none";
+  const inpStyle = { background: "var(--glass)", border: "1px solid var(--line)", color: "var(--ink)" } as React.CSSProperties;
+  return (
+    <div className="grid gap-8 lg:grid-cols-2">
+      <form onSubmit={onCreate} className="rounded-2xl p-5 flex flex-col gap-3 h-fit" style={{ background: "var(--glass)", border: "1px solid var(--line)" }}>
+        <h2 className="font-semibold text-lg">Wystaw ofertę</h2>
+        {msg && <div className="text-sm" style={{ color: "var(--gold)" }}>{msg}</div>}
+        <input className={inp} style={inpStyle} placeholder="Nazwa produktu" value={title} onChange={(e) => setTitle(e.target.value)} required />
+        <textarea className={inp} style={inpStyle} placeholder="Opis" value={desc} onChange={(e) => setDesc(e.target.value)} rows={3} />
+        <div className="flex gap-3">
+          <input className={inp} style={inpStyle} type="number" min={0} step="0.01" placeholder="Cena zł" value={price || ""} onChange={(e) => setPrice(Number(e.target.value))} required />
+          <input className={inp} style={inpStyle} type="number" min={0} placeholder="Sztuk" value={stock} onChange={(e) => setStock(Number(e.target.value))} />
+        </div>
+        <select className={inp} style={inpStyle} value={s1?.slug ?? ""} onChange={(e) => pick1(e.target.value)} required>
+          <option value="">— Dział —</option>{d1.map((c) => <option key={c.slug} value={c.slug}>{c.name}</option>)}
+        </select>
+        {d2.length > 0 && <select className={inp} style={inpStyle} value={s2?.slug ?? ""} onChange={(e) => pick2(e.target.value)}><option value="">— Podkategoria —</option>{d2.map((c) => <option key={c.slug} value={c.slug}>{c.name}</option>)}</select>}
+        {d3.length > 0 && <select className={inp} style={inpStyle} value={s3?.slug ?? ""} onChange={(e) => pick3(e.target.value)}><option value="">— Szczegółowa —</option>{d3.map((c) => <option key={c.slug} value={c.slug}>{c.name}</option>)}</select>}
+        <div className="flex items-center gap-3">
+          <label className="text-sm cursor-pointer rounded-lg px-3 py-2" style={inpStyle}>{uploading ? "Wgrywam…" : imageUrl ? "Zmień zdjęcie" : "📷 Dodaj zdjęcie"}<input type="file" accept="image/*" onChange={onPickImage} className="hidden" /></label>
+          {imageUrl && <img src={imageUrl} alt="podgląd" className="w-12 h-12 rounded-lg object-cover" />}
+        </div>
+        <p className="text-xs" style={{ color: "var(--mut)" }}>Kategoria: {chosen?.name ?? "—"}. Prowizja 7,9%, wypłata netto (92,1%) na portfel Sunrise Pay.</p>
+        <button disabled={busy || uploading} className="rounded-xl py-2 font-semibold text-black disabled:opacity-50" style={{ background: "linear-gradient(135deg,#F2731D,#D9560C)" }}>{busy ? "…" : "Wystaw"}</button>
+      </form>
+      <div>
+        <h2 className="font-semibold text-lg mb-3">Twoje oferty ({offers.length})</h2>
+        <div className="flex flex-col gap-2">
+          {offers.map((o) => (
+            <div key={o.offer_id} className="flex items-center justify-between gap-3 rounded-xl p-3" style={{ background: "var(--glass)", border: "1px solid var(--line)" }}>
+              <div className="flex-1 min-w-0"><a href={`/produkt/${o.offer_id}`} className="font-medium hover:text-amber-300">{o.title}</a><div className="text-xs" style={{ color: "var(--mut)" }}>{o.category} · {o.stock} szt. · {o.status === "hidden" ? "ukryta" : "aktywna"}</div></div>
+              <button onClick={() => onPromote(o.offer_id)} className="text-xs px-3 py-1.5 rounded-lg whitespace-nowrap" style={{ background: "var(--glass)", border: "1px solid var(--line)" }}>✨ Promuj</button>
+              <div className="font-display text-lg font-semibold whitespace-nowrap">{zl(o.price_gross)}</div>
+            </div>
+          ))}
+          {offers.length === 0 && <p style={{ color: "var(--mut)" }}>Brak ofert. Wystaw pierwszą po lewej.</p>}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ── ZAMÓWIENIA ──────────────────────────────────────────────────────
+function Zamowienia() {
+  const [sorders, setSorders] = useState<any[]>([]);
+  const [msg, setMsg] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
+  async function load() { setLoading(true); try { setSorders((await sellerOrders().catch(() => [])) as any[]); } finally { setLoading(false); } }
+  useEffect(() => { load(); }, []);
+  async function onShip(id: string) { setMsg(null); try { const t = await markShipped(id); setMsg("Oznaczono wysłane. Nr przesyłki: " + t); await load(); } catch (e) { setMsg((e as Error).message); } }
+  if (loading) return <p style={{ color: "var(--mut)" }}>Ładowanie…</p>;
+  return (
+    <div className="flex flex-col gap-3">
+      {msg && <div className="rounded-lg px-4 py-2 text-sm" style={{ background: "rgba(52,227,160,.12)", color: "var(--green)" }}>{msg}</div>}
+      {sorders.map((o) => (
+        <Card key={o.order_id}>
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-sm" style={{ color: "var(--mut)" }}>{dt(o.created_at)} · {({ paid: "Opłacone", shipped: "Wysłane", delivered: "Dostarczone", completed: "Zakończone" } as any)[o.status] ?? o.status}{o.tracking_no ? ` · ${o.tracking_no}` : ""}</span>
+            {o.status === "paid" ? <button onClick={() => onShip(o.order_id)} className="text-xs font-semibold px-3 py-1.5 rounded-lg text-black" style={{ background: "linear-gradient(135deg,#F2731D,#E0A21B)" }}>Oznacz wysłane</button> : <span className="text-xs" style={{ color: "var(--green)" }}>✓</span>}
+          </div>
+          <div className="flex flex-col gap-0.5">
+            {(o.items ?? []).map((it: any, i: number) => <div key={i} className="flex justify-between text-sm"><span>{it.title} × {it.qty}</span><span style={{ color: "var(--mut)" }}>{zl(it.payout)}</span></div>)}
+          </div>
+          <div className="text-right text-sm mt-2 pt-2" style={{ borderTop: "1px solid var(--line)" }}>Twoje netto: <b style={{ color: "var(--green)" }}>{zl(o.my_total)}</b></div>
+        </Card>
+      ))}
+      {sorders.length === 0 && <p style={{ color: "var(--mut)" }}>Brak zamówień.</p>}
+    </div>
+  );
+}
+
+// ── PORTFEL ─────────────────────────────────────────────────────────
+function Portfel({ seller }: { seller: any }) {
+  const [w, setW] = useState<SellerWallet>({ available: false });
+  const [ops, setOps] = useState<any[]>([]);
+  useEffect(() => { sellerWallet().then(setW).catch(() => {}); walletHistory().then(setOps).catch(() => {}); }, []);
+  return (
+    <div className="flex flex-col gap-4">
+      <Card className="ring-1 ring-emerald-500/20">
+        <div className="flex items-center justify-between mb-3">
+          <div className="text-sm" style={{ color: "var(--mut)" }}>Portfel partnera ({seller.legal_name}) — wpływy ze sprzedaży</div>
+          <span className="text-xs px-2 py-0.5 rounded-full" style={{ background: w.available ? "rgba(52,227,160,.15)" : "rgba(56,224,240,.12)", color: w.available ? "var(--green)" : "#8fe3ef" }}>{w.available ? "Sunrise Pay: połączony" : "wypłaty wkrótce"}</span>
+        </div>
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+          <div><div className="text-xs" style={{ color: "var(--mut)" }}>Sunrise Pay</div><div className="font-display text-2xl font-semibold" style={{ color: "var(--green)" }}>{zl(w.available ? (w.sunrise_pay ?? 0) : 0)}</div></div>
+          {w.available && w.gold != null && <div><div className="text-xs" style={{ color: "var(--mut)" }}>Gold Pay</div><div className="font-display text-2xl font-semibold" style={{ color: "#F2D047" }}>{w.gold.toLocaleString("pl-PL")} <span className="text-base">g</span></div></div>}
+          {w.available && <div><div className="text-xs" style={{ color: "var(--mut)" }}>W rozliczeniu</div><div className="font-display text-2xl font-semibold" style={{ color: "var(--gold)" }}>{zl(w.pending ?? 0)}</div></div>}
+          <div className="flex items-end">
+            {w.available && w.withdraw_enabled
+              ? <button onClick={() => alert("Wypłata inicjowana po stronie MySunrise (KYC, limity).")} className="text-sm rounded-lg px-4 py-2 font-semibold text-black w-full" style={{ background: "linear-gradient(135deg,#34E3A0,#38E0F0)" }}>Przelej / wypłać</button>
+              : <button disabled title="Dostępne po uruchomieniu modułu wypłat w MySunrise" className="text-sm rounded-lg px-4 py-2 w-full opacity-60 cursor-not-allowed" style={{ background: "var(--glass)", border: "1px solid var(--line)" }}>Wypłać — wkrótce</button>}
+          </div>
+        </div>
+        <div className="text-xs mt-3" style={{ color: "var(--mut)" }}>{w.available ? "Wpływy ze sprzedaży trafiają tu w walucie zapłaty kupującego (Sunrise Pay lub Gold). Wypłatę na konto realizuje MySunrise." : "Po sprzedaży dostajesz zapłatę netto (92,1%) na portfel. Wypłata na konto i saldo Gold ruszą, gdy MySunrise wystawi moduł wypłat."}</div>
+      </Card>
+      <div>
+        <h2 className="font-semibold mb-2">Historia portfela</h2>
+        <div className="flex flex-col">
+          {ops.map((o, i) => (
+            <div key={i} className="flex justify-between py-2 text-sm" style={{ borderBottom: "1px solid var(--line)" }}>
+              <span style={{ color: "var(--mut)" }}>{opLabel[o.type] ?? o.type} · {dt(o.created_at)}</span>
+              <span style={{ color: Number(o.amount) >= 0 ? "var(--green)" : "#F8A8D2" }}>{Number(o.amount) >= 0 ? "+" : ""}{zl(o.amount)}</span>
+            </div>
+          ))}
+          {ops.length === 0 && <p className="py-2 text-sm" style={{ color: "var(--mut)" }}>Brak operacji.</p>}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function Shell({ children, tabs }: { children: React.ReactNode; tabs?: { tab: Tab; setTab: (t: Tab) => void } }) {
   return (
     <div className="min-h-screen">
       <header className="sticky top-0 z-20 backdrop-blur" style={{ background: "rgba(7,7,15,.72)", borderBottom: "1px solid var(--line)" }}>
@@ -281,12 +261,17 @@ function Shell({ children }: { children: React.ReactNode }) {
             <span className="font-display text-xl font-semibold">Sunrise Market</span>
           </a>
           <div className="flex-1" />
-          <button onClick={() => { setMode("buyer"); window.location.href = "/"; }}
-                  className="text-sm font-semibold px-3 py-1.5 rounded-lg text-black"
-                  style={{ background: "linear-gradient(135deg,#F2731D,#D9560C)" }}>🛍️ Przełącz na konto klienta</button>
-          <a href="/sprzedawca/rozliczenia" className="text-sm text-zinc-300 hover:text-white hidden sm:block">Rozliczenia</a>
+          <button onClick={() => { setMode("buyer"); window.location.href = "/"; }} className="text-sm font-semibold px-3 py-1.5 rounded-lg text-black" style={{ background: "linear-gradient(135deg,#F2731D,#D9560C)" }}>🛍️ Konto klienta</button>
           <a href="/konto" className="text-sm text-zinc-300 hover:text-white">Konto</a>
         </div>
+        {tabs && (
+          <div className="mx-auto max-w-5xl px-4 pb-2 flex gap-2 overflow-x-auto">
+            {TABS.map((t) => (
+              <button key={t.id} onClick={() => tabs.setTab(t.id)} className="shrink-0 text-sm px-3 py-1.5 rounded-full whitespace-nowrap"
+                      style={tabs.tab === t.id ? { background: "linear-gradient(135deg,#34E3A0,#38E0F0)", color: "#000", fontWeight: 600 } : { background: "var(--glass)", border: "1px solid var(--line)", color: "var(--ink)" }}>{t.label}</button>
+            ))}
+          </div>
+        )}
       </header>
       <main className="mx-auto max-w-5xl px-4 py-8">{children}</main>
     </div>

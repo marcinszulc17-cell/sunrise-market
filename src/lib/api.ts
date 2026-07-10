@@ -103,6 +103,14 @@ export async function resolveReturn(returnId: string, approve: boolean) {
   const { error } = await supabase.rpc("resolve_return", { p_return: returnId, p_approve: approve }); if (error) throw error;
 }
 
+// ── Historia portfela + podsumowanie sprzedawcy ───────────────────
+export async function walletHistory() {
+  const { data, error } = await supabase.rpc("wallet_history"); if (error) return []; return data ?? [];
+}
+export async function sellerSummary() {
+  const { data, error } = await supabase.rpc("seller_summary"); if (error) return null; return (data && data[0]) ?? null;
+}
+
 // ── Back-office admina ────────────────────────────────────────────
 export async function adminOverview() {
   const { data, error } = await supabase.rpc("admin_overview"); if (error) throw error; return data ?? {};
