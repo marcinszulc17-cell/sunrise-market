@@ -103,6 +103,29 @@ export async function resolveReturn(returnId: string, approve: boolean) {
   const { error } = await supabase.rpc("resolve_return", { p_return: returnId, p_approve: approve }); if (error) throw error;
 }
 
+// ── Back-office admina ────────────────────────────────────────────
+export async function adminOverview() {
+  const { data, error } = await supabase.rpc("admin_overview"); if (error) throw error; return data ?? {};
+}
+export async function adminOrders(status?: string, search?: string) {
+  const { data, error } = await supabase.rpc("admin_orders", { p_status: status ?? null, p_search: search ?? null, p_limit: 200 }); if (error) throw error; return data ?? [];
+}
+export async function adminOrderItems(orderId: string) {
+  const { data, error } = await supabase.rpc("admin_order_items", { p_order: orderId }); if (error) return []; return data ?? [];
+}
+export async function adminSetOrderStatus(orderId: string, status: string) {
+  const { error } = await supabase.rpc("admin_set_order_status", { p_order: orderId, p_status: status }); if (error) throw error;
+}
+export async function adminCustomers(search?: string) {
+  const { data, error } = await supabase.rpc("admin_customers", { p_search: search ?? null, p_limit: 200 }); if (error) throw error; return data ?? [];
+}
+export async function adminSellers(search?: string) {
+  const { data, error } = await supabase.rpc("admin_sellers", { p_search: search ?? null, p_limit: 200 }); if (error) throw error; return data ?? [];
+}
+export async function adminSetSellerStatus(sellerId: string, status: string) {
+  const { error } = await supabase.rpc("admin_set_seller_status", { p_seller: sellerId, p_status: status }); if (error) throw error;
+}
+
 // ── Akcje operatora: KYC + moderacja ──────────────────────────────
 export async function amiOperator(): Promise<boolean> {
   const { data, error } = await supabase.rpc("ami_operator"); if (error) return false; return data === true;
