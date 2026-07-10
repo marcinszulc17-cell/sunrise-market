@@ -48,6 +48,19 @@ export default function Koszyk() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [idsKey]);
 
+  // cross-sell: podobne do pierwszej pozycji, w razie czego „dla Ciebie"
+  useEffect(() => {
+    if (!ids.length) { setRecs([]); return; }
+    (async () => {
+      let list: any[] = [];
+      try { list = await similarOffers(ids[0], 12); } catch { /* ignore */ }
+      if (!list.length) { try { list = await recommendedOffers(12); } catch { /* ignore */ } }
+      const inCart = new Set(ids);
+      setRecs(list.filter((r) => r && !inCart.has(r.offer_id)).slice(0, 4));
+    })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [idsKey]);
+
   // które tory są obecne w koszyku
   const presentLanes = useMemo(() => {
     const s = new Set<string>();
@@ -139,6 +152,7 @@ export default function Koszyk() {
         ) : cart.length === 0 ? (
           <p style={{ color: "var(--mut)" }}>Koszyk jest pusty. <a href="/" className="text-amber-400 underline">Przejdź do sklepu</a>.</p>
         ) : (
+          <>
           <div className="grid gap-6 md:grid-cols-3">
             {/* pozycje pogrupowane po torze realizacji */}
             <div className="md:col-span-2 flex flex-col gap-5">
@@ -267,6 +281,24 @@ export default function Koszyk() {
               </p>
             </div>
           </div>
+          {recs.length > 0 && (
+            <section className="mt-8">
+              <h2 className="font-display text-xl font-semibold mb-4">Może Cię zainteresować</h2>
+              <div className="grid gap-4" style={{ gridTemplateColumns: "repeat(auto-fill,minmax(200px,1fr))" }}>
+                {recs.map((r) => (
+                  <div key={r.offer_id} className="rounded-2xl p-3 flex flex-col" style={{ background: "var(--glass)", border: "1px solid var(--line)" }}>
+                    <a href={`/produkt/${r.offer_id}`} className="font-medium text-sm hover:text-amber-300 flex-1">{r.title}</a>
+                    <div className="flex items-center justify-between mt-2">
+                      <span className="font-display text-lg font-semibold">{zl(r.price_gross)}</span>
+                      <button onClick={() => addToCart({ offer_id: r.offer_id, title: r.title, price: Number(r.price_gross) })}
+                              className="text-xs font-semibold px-3 py-1.5 rounded-lg text-black" style={{ background: "linear-gradient(135deg,#F2731D,#E0A21B)" }}>+ Dodaj</button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </section>
+          )}
+          </>
         )}
       </main>
     </div>

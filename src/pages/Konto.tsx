@@ -1,7 +1,6 @@
 import { useEffect, useState } from "react";
 import { supabase } from "../lib/supabase";
 import { walletBalance, myOrders, myReturns, confirmDelivery, openReturn, myWatchlist, walletHistory, toggleWatch, mySeller, amiOperator, type WalletLive } from "../lib/api";
-import { topupWallet } from "../lib/payments";
 import { setMode } from "../lib/mode";
 import { useSeo } from "../lib/seo";
 
@@ -153,12 +152,8 @@ function Zamowienia() {
 }
 
 function Portfel({ w }: { w: WalletLive | null }) {
-  const [amount, setAmount] = useState(50);
-  const [busy, setBusy] = useState(false);
-  const [msg, setMsg] = useState<string | null>(null);
   const [ops, setOps] = useState<any[]>([]);
   useEffect(() => { walletHistory().then(setOps).catch(() => {}); }, []);
-  async function handleTopup() { setBusy(true); setMsg(null); try { await topupWallet(amount); } catch (e) { setMsg((e as Error).message); setBusy(false); } }
   return (
     <div className="flex flex-col gap-4">
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
@@ -167,13 +162,9 @@ function Portfel({ w }: { w: WalletLive | null }) {
         {w?.gold != null && <Card className="ring-1 ring-yellow-500/20"><div className="text-sm" style={{ color: "var(--mut)" }}>Gold Pay</div><div className="text-3xl font-extrabold" style={{ color: "#F2D047" }}>{w.gold.toLocaleString("pl-PL")} <span className="text-lg">g</span></div></Card>}
       </div>
       <Card>
-        <div className="text-sm mb-2" style={{ color: "var(--mut)" }}>Doładuj portfel (BLIK / Przelewy24 / karta)</div>
-        <div className="flex items-center gap-3">
-          <input type="number" min={10} max={5000} value={amount} onChange={(e) => setAmount(Number(e.target.value))} className="w-32 rounded-lg px-3 py-2 text-right" style={{ background: "var(--glass)", border: "1px solid var(--line)", color: "var(--ink)" }} />
-          <span style={{ color: "var(--mut)" }}>zł</span>
-          <button onClick={handleTopup} disabled={busy} className="rounded-xl px-5 py-2 font-semibold text-black disabled:opacity-50" style={{ background: "linear-gradient(135deg,#F2731D,#E0A21B)" }}>{busy ? "Przekierowuję…" : "Doładuj"}</button>
-        </div>
-        {msg && <div className="mt-3 text-sm" style={{ color: "#F8A8D2" }}>{msg}</div>}
+        <div className="text-sm mb-2" style={{ color: "var(--mut)" }}>Doładowanie robisz w MySunrise — to ten sam portfel Sunrise Pay, środki od razu są tutaj.</div>
+        <a href="https://mysunrise.com.pl" target="_blank" rel="noopener" className="inline-block rounded-xl px-5 py-2.5 font-semibold text-black" style={{ background: "linear-gradient(135deg,#F2731D,#E0A21B)" }}>Doładuj w MySunrise →</a>
+        <p className="text-xs mt-3" style={{ color: "var(--mut)" }}>Wkrótce doładujesz też bezpośrednio tutaj (przelew) — gdy MySunrise uruchomi tę opcję.</p>
       </Card>
       <div>
         <h2 className="font-semibold mb-2">Historia</h2>

@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { supabase } from "../lib/supabase";
-import { topupWallet, getWalletOps } from "../lib/payments";
+import { getWalletOps } from "../lib/payments";
 import { walletBalance } from "../lib/api";
 
 // Strona Portfel: saldo Sunrise Pay + doładowanie przez Stripe + historia.
@@ -12,8 +12,6 @@ export default function Portfel() {
   const [gold, setGold] = useState<number | null>(null);
   const [linked, setLinked] = useState<boolean>(true);
   const [ops, setOps] = useState<{ type: string; amount: number; balance_after: number; created_at: string }[]>([]);
-  const [amount, setAmount] = useState<number>(50);
-  const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
 
   useEffect(() => {
@@ -32,18 +30,12 @@ export default function Portfel() {
     if (p === "cancel") setMsg("Doładowanie anulowane.");
   }, []);
 
-  async function handleTopup() {
-    setBusy(true); setMsg(null);
-    try { await topupWallet(amount); }
-    catch (e) { setMsg((e as Error).message); setBusy(false); }
-  }
-
   if (!userId) return <div className="p-6 text-zinc-300">Zaloguj się, aby zobaczyć portfel. <a href="/login" className="text-amber-400 underline">Przejdź do logowania</a>.</div>;
 
   return (
     <div className="mx-auto max-w-2xl p-6 text-zinc-100">
       <h1 className="text-2xl font-bold mb-1">Portfel Sunrise Pay</h1>
-      <p className="text-zinc-400 mb-6">Saldem płacisz za zakupy. Saldo doładujesz przez Stripe (BLIK / Przelewy24 / karta).</p>
+      <p className="text-zinc-400 mb-6">Saldem płacisz za zakupy. Portfel doładujesz w aplikacji MySunrise — to ten sam portfel Sunrise Pay.</p>
 
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-6">
         <div className="rounded-2xl bg-zinc-900/70 p-6 ring-1 ring-amber-500/20">
@@ -69,19 +61,11 @@ export default function Portfel() {
       )}
       {msg && <div className="mb-4 rounded-lg bg-amber-500/10 px-4 py-2 text-amber-300 text-sm">{msg}</div>}
 
-      <div className="flex items-center gap-3 mb-8">
-        <input
-          type="number" min={10} max={5000} value={amount}
-          onChange={(e) => setAmount(Number(e.target.value))}
-          className="w-32 rounded-lg bg-zinc-800 px-3 py-2 text-right"
-        />
-        <span className="text-zinc-400">zł</span>
-        <button
-          onClick={handleTopup} disabled={busy}
-          className="rounded-xl bg-amber-500 px-5 py-2 font-semibold text-zinc-900 disabled:opacity-50"
-        >
-          {busy ? "Przekierowuję…" : "Doładuj"}
-        </button>
+      <div className="rounded-2xl bg-zinc-900/70 p-5 mb-8 ring-1 ring-amber-500/10">
+        <div className="text-sm text-zinc-300 mb-3">Doładowanie robisz w MySunrise — środki od razu są dostępne tu, w Markecie (to jedno saldo Sunrise Pay).</div>
+        <a href="https://mysunrise.com.pl" target="_blank" rel="noopener"
+           className="inline-block rounded-xl bg-amber-500 px-5 py-2.5 font-semibold text-zinc-900">Doładuj w MySunrise →</a>
+        <p className="text-xs text-zinc-500 mt-3">Wkrótce doładujesz też bezpośrednio tutaj (przelew z unikalnym tytułem) — gdy MySunrise uruchomi tę opcję.</p>
       </div>
 
       <h2 className="text-lg font-semibold mb-3">Historia</h2>
