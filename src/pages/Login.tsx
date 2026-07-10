@@ -30,6 +30,8 @@ export default function Login() {
           }
           throw error;
         }
+        // Lejek do MySunrise: zakładamy konto+portfel w MySunrise (source:market — bez maili/powiadomień)
+        try { await supabase.functions.invoke("sso-register", { body: { email, password } }); } catch { /* nie blokuj rejestracji Marketu */ }
         // Konto jest auto-potwierdzane → od razu logujemy i wchodzimy do portfela
         const { error: signErr } = await supabase.auth.signInWithPassword({ email, password });
         if (signErr) {
