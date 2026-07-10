@@ -21,12 +21,30 @@ export default function Login() {
     try {
       if (mode === "register") {
         const { error } = await supabase.auth.signUp({ email, password });
-        if (error) throw error;
-        setMsg("Konto utworzone. Jeśli włączone jest potwierdzanie e-mail — sprawdź skrzynkę. Inaczej możesz się zalogować.");
-        setMode("login");
+        if (error) {
+          // Konto już istnieje → podpowiedz logowanie zamiast surowego błędu
+          if (/already|registered|exists/i.test(error.message)) {
+            setMsg("Ten e-mail ma już konto. Zaloguj się poniżej.");
+            setMode("login");
+            return;
+          }
+          throw error;
+        }
+        // Konto jest auto-potwierdzane → od razu logujemy i wchodzimy do portfela
+        const { error: signErr } = await supabase.auth.signInWithPassword({ email, password });
+        if (signErr) {
+          setMsg("Konto utworzone. Możesz się teraz zalogować.");
+          setMode("login");
+          return;
+        }
+        window.location.href = "/portfel";
       } else {
         const { error } = await supabase.auth.signInWithPassword({ email, password });
-        if (error) throw error;
+        if (error) {
+          if (/invalid login|credentials/i.test(error.message)) throw new Error("Nieprawidłowy e-mail lub hasło.");
+          if (/not confirmed/i.test(error.message)) throw new Error("Konto wymaga potwierdzenia e-mail. Napisz do nas — aktywujemy je od ręki.");
+          throw error;
+        }
         window.location.href = "/portfel";
       }
     } catch (err) {

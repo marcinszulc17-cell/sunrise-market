@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { supabase } from "../lib/supabase";
 import { getMySeller } from "../lib/payments";
-import { becomeSeller, myOffers, createOffer, topCategories, childCategories, uploadProductImage, myBalance, mySubscription, promoteOffer, sellerOrders, markShipped } from "../lib/api";
+import { becomeSeller, myOffers, createOffer, topCategories, childCategories, uploadProductImage, myBalance, mySubscription, promoteOffer, sellerOrders, markShipped, sellerWallet, type SellerWallet } from "../lib/api";
 import { setMode } from "../lib/mode";
 
 const zl = (v: number) => Math.round(v).toLocaleString("pl-PL") + " zł";
@@ -24,6 +24,7 @@ export default function Sprzedawca() {
   const [uploading, setUploading] = useState(false);
   const [sub, setSub] = useState<any>(null);
   const [sorders, setSorders] = useState<any[]>([]);
+  const [swallet, setSwallet] = useState<SellerWallet>({ available: false });
 
   // formularz oferty
   const [title, setTitle] = useState("");
@@ -39,6 +40,7 @@ export default function Sprzedawca() {
     if (s) {
       setOffers((await myOffers()) as Off[]); setBalance(await myBalance().catch(() => 0));
       setSub(await mySubscription().catch(() => null)); setSorders((await sellerOrders().catch(() => [])) as any[]);
+      setSwallet(await sellerWallet().catch(() => ({ available: false })));
     }
   }
   async function onShip(orderId: string) {
@@ -126,12 +128,45 @@ export default function Sprzedawca() {
         </form>
       ) : (
         <div className="flex flex-col gap-6">
-        <div className="rounded-2xl p-4 flex items-center justify-between" style={{ background: "var(--glass)", border: "1px solid rgba(52,227,160,.25)" }}>
-          <div>
-            <div className="text-sm" style={{ color: "var(--mut)" }}>Saldo portfela ({seller.legal_name}) — zarobki ze sprzedaży + cashback</div>
-            <div className="font-display text-2xl font-semibold" style={{ color: "var(--green)" }}>{zl(balance)}</div>
+        <div className="rounded-2xl p-5" style={{ background: "var(--glass)", border: "1px solid rgba(52,227,160,.25)" }}>
+          <div className="flex items-center justify-between mb-3">
+            <div className="text-sm" style={{ color: "var(--mut)" }}>Portfel partnera ({seller.legal_name}) — wpływy ze sprzedaży</div>
+            <span className="text-xs px-2 py-0.5 rounded-full" style={{ background: swallet.available ? "rgba(52,227,160,.15)" : "rgba(56,224,240,.12)", color: swallet.available ? "var(--green)" : "#8fe3ef" }}>
+              {swallet.available ? "Sunrise Pay: połączony" : "wypłaty wkrótce"}
+            </span>
           </div>
-          <a href="/portfel" className="text-sm rounded-lg px-3 py-2" style={{ background: "var(--glass)", border: "1px solid var(--line)" }}>Portfel →</a>
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+            <div>
+              <div className="text-xs" style={{ color: "var(--mut)" }}>Sunrise Pay</div>
+              <div className="font-display text-2xl font-semibold" style={{ color: "var(--green)" }}>{zl(swallet.available ? (swallet.sunrise_pay ?? 0) : balance)}</div>
+            </div>
+            {swallet.available && swallet.gold != null && (
+              <div>
+                <div className="text-xs" style={{ color: "var(--mut)" }}>Gold Pay</div>
+                <div className="font-display text-2xl font-semibold" style={{ color: "#F2D047" }}>{swallet.gold.toLocaleString("pl-PL")} <span className="text-base">g</span></div>
+              </div>
+            )}
+            {swallet.available && (
+              <div>
+                <div className="text-xs" style={{ color: "var(--mut)" }}>W rozliczeniu</div>
+                <div className="font-display text-2xl font-semibold" style={{ color: "var(--gold)" }}>{zl(swallet.pending ?? 0)}</div>
+              </div>
+            )}
+            <div className="flex items-end">
+              {swallet.available && swallet.withdraw_enabled ? (
+                <button onClick={() => alert("Wypłata inicjowana po stronie MySunrise (KYC, limity).")}
+                        className="text-sm rounded-lg px-4 py-2 font-semibold text-black w-full" style={{ background: "linear-gradient(135deg,#34E3A0,#38E0F0)" }}>Wypłać</button>
+              ) : (
+                <button disabled title="Dostępne po uruchomieniu portfela partnera w MySunrise"
+                        className="text-sm rounded-lg px-4 py-2 w-full opacity-60 cursor-not-allowed" style={{ background: "var(--glass)", border: "1px solid var(--line)" }}>Wypłać — wkrótce</button>
+              )}
+            </div>
+          </div>
+          <div className="text-xs mt-3" style={{ color: "var(--mut)" }}>
+            {swallet.available
+              ? "Wpływy ze sprzedaży trafiają tu w walucie, którą zapłacił kupujący (Sunrise Pay lub Gold). Wypłatę na konto realizuje MySunrise."
+              : "Po sprzedaży dostajesz zapłatę na portfel Sunrise Pay/Gold Pay. Wypłata na konto bankowe i saldo Gold ruszą, gdy MySunrise wystawi moduł wypłat partnera."}
+          </div>
         </div>
         {sub && (
           <div className="rounded-2xl p-4 text-sm flex items-center justify-between" style={{ background: "var(--glass)", border: "1px solid var(--line)" }}>

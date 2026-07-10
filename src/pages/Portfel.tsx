@@ -1,12 +1,16 @@
 import { useEffect, useState } from "react";
 import { supabase } from "../lib/supabase";
-import { topupWallet, getWalletBalance, getWalletOps } from "../lib/payments";
+import { topupWallet, getWalletOps } from "../lib/payments";
+import { walletBalance } from "../lib/api";
 
 // Strona Portfel: saldo Sunrise Pay + doładowanie przez Stripe + historia.
 // Trasa proponowana: /portfel  (success_url/cancel_url edge funkcji wskazują tutaj).
 export default function Portfel() {
   const [userId, setUserId] = useState<string | null>(null);
   const [balance, setBalance] = useState<number>(0);
+  const [points, setPoints] = useState<number>(0);
+  const [gold, setGold] = useState<number | null>(null);
+  const [linked, setLinked] = useState<boolean>(true);
   const [ops, setOps] = useState<{ type: string; amount: number; balance_after: number; created_at: string }[]>([]);
   const [amount, setAmount] = useState<number>(50);
   const [busy, setBusy] = useState(false);
@@ -17,7 +21,8 @@ export default function Portfel() {
       const uid = data.user?.id ?? null;
       setUserId(uid);
       if (uid) {
-        setBalance(await getWalletBalance(uid));
+        const w = await walletBalance(); // żywe saldo Sunrise Pay z MySunrise
+        setBalance(w.balance); setPoints(w.points); setGold(w.gold); setLinked(w.linked);
         setOps(await getWalletOps(uid));
       }
     });
@@ -40,11 +45,28 @@ export default function Portfel() {
       <h1 className="text-2xl font-bold mb-1">Portfel Sunrise Pay</h1>
       <p className="text-zinc-400 mb-6">Saldem płacisz za zakupy. Saldo doładujesz przez Stripe (BLIK / Przelewy24 / karta).</p>
 
-      <div className="rounded-2xl bg-zinc-900/70 p-6 mb-6 ring-1 ring-amber-500/20">
-        <div className="text-sm text-zinc-400">Dostępne saldo</div>
-        <div className="text-4xl font-extrabold text-amber-400">{balance.toFixed(2)} zł</div>
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-6">
+        <div className="rounded-2xl bg-zinc-900/70 p-6 ring-1 ring-amber-500/20">
+          <div className="text-sm text-zinc-400">Saldo Sunrise Pay</div>
+          <div className="text-4xl font-extrabold text-amber-400">{balance.toFixed(2)} zł</div>
+        </div>
+        <div className="rounded-2xl bg-zinc-900/70 p-6 ring-1 ring-emerald-500/20">
+          <div className="text-sm text-zinc-400">Punkty (cashback)</div>
+          <div className="text-4xl font-extrabold text-emerald-400">{points.toLocaleString("pl-PL")} <span className="text-lg">pkt</span></div>
+        </div>
+        {gold != null && (
+          <div className="rounded-2xl bg-zinc-900/70 p-6 ring-1 ring-yellow-500/20">
+            <div className="text-sm text-zinc-400">Gold Pay</div>
+            <div className="text-4xl font-extrabold text-yellow-300">{gold.toLocaleString("pl-PL")} <span className="text-lg">g</span></div>
+          </div>
+        )}
       </div>
 
+      {!linked && (
+        <div className="mb-4 rounded-lg bg-sky-500/10 px-4 py-2 text-sky-300 text-sm">
+          Twoje konto nie jest jeszcze połączone z portfelem MySunrise. Załóż/aktywuj portfel Sunrise Pay w aplikacji MySunrise na ten sam e‑mail, aby płacić za zakupy.
+        </div>
+      )}
       {msg && <div className="mb-4 rounded-lg bg-amber-500/10 px-4 py-2 text-amber-300 text-sm">{msg}</div>}
 
       <div className="flex items-center gap-3 mb-8">

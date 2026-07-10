@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 
-export type CartItem = { offer_id: string; title: string; price: number; qty: number };
+export type CartItem = { offer_id: string; title: string; price: number; qty: number; variant?: string };
 const KEY = "sunrise_cart";
 
 export function getCart(): CartItem[] {
@@ -12,7 +12,7 @@ function save(c: CartItem[]) {
 }
 export function addToCart(it: Omit<CartItem, "qty">, qty = 1) {
   const c = getCart();
-  const f = c.find((x) => x.offer_id === it.offer_id);
+  const f = c.find((x) => x.offer_id === it.offer_id && (x.variant || "") === (it.variant || ""));
   if (f) f.qty += qty; else c.push({ ...it, qty });
   save(c);
 }

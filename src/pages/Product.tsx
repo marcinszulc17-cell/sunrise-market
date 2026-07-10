@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
-import { getOffer, offerReviews, addReview, offerImages } from "../lib/api";
+import { getOffer, offerReviews, addReview, offerImages, trackView, similarOffers } from "../lib/api";
 import { addToCart } from "../lib/cart";
 import { supabase } from "../lib/supabase";
 import { useSeo, useProductJsonLd } from "../lib/seo";
@@ -9,6 +9,10 @@ type Offer = {
   offer_id: string; title: string; description: string | null; price_gross: number;
   stock: number; status: string; category: string; category_slug: string;
   seller: string; seller_id: string; avg_rating: number; review_count: number; image_url: string | null;
+  attributes?: {
+    colors?: string[]; sizes?: string[]; specs?: Record<string, string>;
+    features?: string[]; packing?: string[];
+  } | null;
 };
 type Review = { rating: number; comment: string | null; author: string; created_at: string };
 
@@ -52,6 +56,18 @@ export default function Product() {
 
   const [imgs, setImgs] = useState<string[]>([]);
   const [active, setActive] = useState(0);
+  const [color, setColor] = useState<string>("");
+  const [size, setSize] = useState<string>("");
+  const [similar, setSimilar] = useState<any[]>([]);
+  const A = o?.attributes || {};
+  const colors = A.colors ?? [];
+  const sizes = A.sizes ?? [];
+  const specs = A.specs ?? {};
+  const features = A.features ?? [];
+  const packing = A.packing ?? [];
+  const needColor = colors.length > 0 && !color;
+  const needSize = sizes.length > 0 && !size;
+  const variantLabel = [color && `Kolor: ${color}`, size && `Rozmiar: ${size}`].filter(Boolean).join(", ");
 
   async function loadReviews(oid: string) { setReviews((await offerReviews(oid)) as Review[]); }
 
@@ -61,6 +77,8 @@ export default function Product() {
     loadReviews(id).catch(() => {});
     offerImages(id).then((u) => { setImgs(u); setActive(0); }).catch(() => {});
     supabase.auth.getUser().then(({ data }) => setAuthed(!!data.user));
+    trackView(id);
+    similarOffers(id, 8).then(setSimilar).catch(() => {});
   }, [id]);
 
   async function submitReview(e: React.FormEvent) {
@@ -132,13 +150,44 @@ export default function Product() {
                 <div className="font-display text-4xl font-bold">{zl(o.price_gross)}</div>
                 <span className="text-sm font-semibold px-3 py-1 rounded-full"
                       style={{ background: "rgba(52,227,160,.12)", color: "var(--green)" }}>
-                  +{zl(o.price_gross * 0.03)} cashback na portfel
+                  +{Math.round(o.price_gross * 0.03).toLocaleString("pl-PL")} pkt na portfel
                 </span>
               </div>
 
               <div className="text-sm" style={{ color: o.stock > 0 ? "var(--green)" : "#F25CB0" }}>
                 {o.stock > 0 ? `Dostępne: ${o.stock} szt.` : "Chwilowo niedostępne"}
               </div>
+              {(() => {
+                const fp = (o as any).fulfillment_provider;
+                const eta = (o as any).delivery_eta || (o as any).attributes?.delivery_eta;
+                const txt = fp === "teemdrop" ? `🚚 Dostawa kurierem: ${eta || "15–25 dni roboczych"} (wysyłka z magazynu partnera)`
+                          : fp === "mysunrise" ? "🔧 Montaż i dostawa po ustaleniu terminu z instalatorem Sunrise"
+                          : "🚚 Wysyłka: Paczkomat InPost lub kurier · darmowa dostawa od 149 zł";
+                return <div className="text-xs" style={{ color: "var(--mut)" }}>{txt}</div>;
+              })()}
+
+              {colors.length > 0 && (
+                <div>
+                  <div className="text-sm mb-2" style={{ color: "var(--mut)" }}>Kolor{color ? `: ${color}` : ""}</div>
+                  <div className="flex flex-wrap gap-2">
+                    {colors.map((c) => (
+                      <button key={c} onClick={() => setColor(c)} className="text-sm px-3 py-1.5 rounded-xl"
+                              style={color === c ? { background: "linear-gradient(135deg,#F2731D,#D9560C)", color: "#000", fontWeight: 600 } : { background: "var(--glass)", border: "1px solid var(--line)" }}>{c}</button>
+                    ))}
+                  </div>
+                </div>
+              )}
+              {sizes.length > 0 && (
+                <div>
+                  <div className="text-sm mb-2" style={{ color: "var(--mut)" }}>Rozmiar{size ? `: ${size}` : ""}</div>
+                  <div className="flex flex-wrap gap-2">
+                    {sizes.map((s) => (
+                      <button key={s} onClick={() => setSize(s)} className="min-w-10 text-sm px-3 py-1.5 rounded-xl"
+                              style={size === s ? { background: "linear-gradient(135deg,#F2731D,#D9560C)", color: "#000", fontWeight: 600 } : { background: "var(--glass)", border: "1px solid var(--line)" }}>{s}</button>
+                    ))}
+                  </div>
+                </div>
+              )}
 
               {o.description && (
                 <p className="text-sm leading-relaxed" style={{ color: "var(--mut)" }}>
@@ -146,10 +195,16 @@ export default function Product() {
                 </p>
               )}
 
+              {(needColor || needSize) && (
+                <div className="text-xs" style={{ color: "var(--gold)" }}>
+                  Wybierz {needColor ? "kolor" : ""}{needColor && needSize ? " i " : ""}{needSize ? "rozmiar" : ""}, aby dodać do koszyka.
+                </div>
+              )}
               <div className="flex gap-3 mt-2">
                 <button
-                  onClick={() => { addToCart({ offer_id: o.offer_id, title: o.title, price: o.price_gross }); window.location.href = "/koszyk"; }}
-                  className="flex-1 text-center font-semibold py-3 rounded-2xl text-black"
+                  disabled={needColor || needSize}
+                  onClick={() => { addToCart({ offer_id: o.offer_id, title: o.title, price: o.price_gross, variant: variantLabel || undefined }); window.location.href = "/koszyk"; }}
+                  className="flex-1 text-center font-semibold py-3 rounded-2xl text-black disabled:opacity-50"
                   style={{ background: "linear-gradient(135deg,#F2731D,#E0A21B)" }}>
                   Do koszyka
                 </button>
@@ -173,6 +228,72 @@ export default function Product() {
               <div className="flex flex-col gap-4">
                 {o.description.split(/\n\s*\n/).filter(Boolean).map((par, i) => (
                   <p key={i} className="leading-relaxed" style={{ color: "var(--ink)" }}>{par.trim()}</p>
+                ))}
+              </div>
+            </section>
+          )}
+
+          {/* ── CECHY / SPECYFIKACJA / ZESTAW ── */}
+          {(features.length > 0 || Object.keys(specs).length > 0 || packing.length > 0) && (
+            <section className="mt-10 grid gap-8 md:grid-cols-2 max-w-4xl">
+              {features.length > 0 && (
+                <div className="md:col-span-2">
+                  <h2 className="font-display text-2xl font-semibold mb-4">Najważniejsze cechy</h2>
+                  <ul className="flex flex-col gap-2">
+                    {features.map((f, i) => (
+                      <li key={i} className="flex gap-2 leading-relaxed" style={{ color: "var(--ink)" }}>
+                        <span style={{ color: "var(--green)" }}>✓</span><span>{f}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+              {Object.keys(specs).length > 0 && (
+                <div>
+                  <h2 className="font-display text-2xl font-semibold mb-4">Specyfikacja</h2>
+                  <div className="rounded-2xl overflow-hidden" style={{ border: "1px solid var(--line)" }}>
+                    {Object.entries(specs).map(([k, v], i) => (
+                      <div key={k} className="flex justify-between gap-4 px-4 py-2.5 text-sm"
+                           style={{ background: i % 2 ? "transparent" : "var(--glass)", borderBottom: "1px solid var(--line)" }}>
+                        <span style={{ color: "var(--mut)" }}>{k}</span>
+                        <span className="text-right font-medium">{String(v)}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+              {packing.length > 0 && (
+                <div>
+                  <h2 className="font-display text-2xl font-semibold mb-4">Zawartość zestawu</h2>
+                  <ul className="flex flex-col gap-2">
+                    {packing.map((p, i) => (
+                      <li key={i} className="flex gap-2 text-sm" style={{ color: "var(--ink)" }}>
+                        <span style={{ color: "var(--gold)" }}>•</span><span>{p}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+            </section>
+          )}
+
+          {/* ── PODOBNE PRODUKTY ── */}
+          {similar.length > 0 && (
+            <section className="mt-12">
+              <h2 className="font-display text-2xl font-semibold mb-4">Podobne produkty</h2>
+              <div className="grid gap-4" style={{ gridTemplateColumns: "repeat(auto-fill,minmax(180px,1fr))" }}>
+                {similar.map((s: any) => (
+                  <a key={s.offer_id} href={`/produkt/${s.offer_id}`} className="rounded-2xl overflow-hidden"
+                     style={{ background: "var(--glass)", border: "1px solid var(--line)" }}>
+                    <div className="h-28 grid place-items-center overflow-hidden"
+                         style={{ background: "linear-gradient(135deg,#F2731D22,#7C3AED22)" }}>
+                      {s.image_url ? <img src={s.image_url} alt={s.title} className="w-full h-full object-cover" loading="lazy" /> : <span className="text-3xl">🌅</span>}
+                    </div>
+                    <div className="p-3">
+                      <div className="text-sm font-medium leading-snug">{String(s.title).slice(0, 60)}</div>
+                      <div className="font-display font-semibold mt-1">{zl(s.price_gross)}</div>
+                    </div>
+                  </a>
                 ))}
               </div>
             </section>

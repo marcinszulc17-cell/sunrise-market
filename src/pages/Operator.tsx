@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { supabase } from "../lib/supabase";
-import { operatorConsole, listReturns, resolveReturn, listPendingSellers, reviewSeller, listOffersAdmin, moderateOffer, amiOperator, listBridgeOrders, retryBridgeOrder } from "../lib/api";
+import { operatorConsole, listReturns, resolveReturn, listPendingSellers, reviewSeller, listOffersAdmin, moderateOffer, amiOperator, bridgeQueue, retryBridgeOrder, getAutoForward, setAutoForward, approveBridgeForward, rejectBridgeForward } from "../lib/api";
 
 const zl = (v: number) => Math.round(Number(v || 0)).toLocaleString("pl-PL") + " zł";
 const n = (v: number) => Number(v || 0).toLocaleString("pl-PL");
@@ -14,13 +14,30 @@ export default function Operator() {
   const [sellers, setSellers] = useState<any[]>([]);
   const [offers, setOffers] = useState<any[]>([]);
   const [bridge, setBridge] = useState<any[]>([]);
+  const [autoFwd, setAutoFwd] = useState<boolean>(false);
+  const [fwdBusy, setFwdBusy] = useState(false);
 
   async function loadAll() {
     try { setK(await operatorConsole()); } catch (e) { setErr((e as Error).message); }
     try { setRets((await listReturns()) as any[]); } catch { /* ignore */ }
     try { setSellers((await listPendingSellers()) as any[]); } catch { /* ignore */ }
     try { setOffers((await listOffersAdmin()) as any[]); } catch { /* ignore */ }
-    try { setBridge((await listBridgeOrders()) as any[]); } catch { /* ignore */ }
+    try { setBridge((await bridgeQueue()) as any[]); } catch { /* ignore */ }
+    try { setAutoFwd(await getAutoForward()); } catch { /* ignore */ }
+  }
+  async function onToggleAuto() {
+    const next = !autoFwd;
+    if (next && !window.confirm("Włączyć AUTOMATYCZNY przekaz zamówień dropship do TeemDrop?\n\nUWAGA: każde opłacone zamówienie dropship będzie automatycznie kupowane u dostawcy (realny wydatek), bez ręcznego zatwierdzania.")) return;
+    setFwdBusy(true);
+    try { setAutoFwd(await setAutoForward(next)); await loadAll(); } catch (e) { alert((e as Error).message); } finally { setFwdBusy(false); }
+  }
+  async function onApproveBridge(id: string) {
+    if (!window.confirm("Przekazać to zamówienie do TeemDrop? Zostanie kupione u dostawcy (realny wydatek).")) return;
+    try { await approveBridgeForward(id); await loadAll(); } catch (e) { alert((e as Error).message); }
+  }
+  async function onRejectBridge(id: string) {
+    if (!window.confirm("Odrzucić przekazanie tego zamówienia do TeemDrop?")) return;
+    try { await rejectBridgeForward(id); await loadAll(); } catch (e) { alert((e as Error).message); }
   }
   useEffect(() => {
     supabase.auth.getUser().then(async ({ data }) => {
@@ -35,7 +52,9 @@ export default function Operator() {
   async function onReviewSeller(id: string, approve: boolean) { await reviewSeller(id, approve); await loadAll(); }
   async function onModerate(id: string, hide: boolean) { await moderateOffer(id, hide); await loadAll(); }
   async function onRetryBridge(id: string) { await retryBridgeOrder(id); await loadAll(); }
-  const bridgeColor: Record<string, string> = { pending: "var(--gold)", pushed: "#38E0F0", processing: "#38E0F0", shipped: "#34E3A0", delivered: "#34E3A0", error: "#F25CB0" };
+  const bridgeColor: Record<string, string> = { awaiting_approval: "#F2A93B", pending: "var(--gold)", pushed: "#38E0F0", processing: "#38E0F0", shipped: "#34E3A0", delivered: "#34E3A0", error: "#F25CB0", cancelled: "var(--mut)" };
+  const bridgeLabel: Record<string, string> = { awaiting_approval: "do zatwierdzenia", pending: "w kolejce", pushed: "przekazane", processing: "realizacja", shipped: "wysłane", delivered: "dostarczone", error: "błąd", cancelled: "odrzucone" };
+  const awaitingCount = bridge.filter((b) => b.status === "awaiting_approval").length;
 
   const revenue = k ? Number(k.przychod_prowizje || 0) + Number(k.przychod_banery || 0) + Number(k.przychod_promowanie || 0) : 0;
 
@@ -142,17 +161,48 @@ export default function Operator() {
             </section>
 
             <section className="mt-8">
-              <h2 className="font-display text-2xl font-semibold mb-4">Fulfillment TeemDrop (dropship)</h2>
+              <div className="flex items-center justify-between mb-4 flex-wrap gap-3">
+                <h2 className="font-display text-2xl font-semibold">
+                  Fulfillment TeemDrop (dropship)
+                  {awaitingCount > 0 && <span className="ml-2 text-sm px-2.5 py-1 rounded-full align-middle" style={{ background: "rgba(242,169,59,.16)", color: "#F2A93B" }}>{awaitingCount} do zatwierdzenia</span>}
+                </h2>
+                {/* Przełącznik automatu — domyślnie OFF, bo to realny wydatek u dostawcy */}
+                <button onClick={onToggleAuto} disabled={fwdBusy}
+                        className="text-sm px-4 py-2 rounded-xl font-semibold disabled:opacity-50"
+                        style={{ background: autoFwd ? "linear-gradient(135deg,#34E3A0,#38E0F0)" : "var(--glass)", border: "1px solid var(--line)", color: autoFwd ? "#000" : "var(--ink)" }}>
+                  Auto‑przekaz: {autoFwd ? "WŁĄCZONY ✅" : "wyłączony"}
+                </button>
+              </div>
+              <p className="text-xs mb-4" style={{ color: "var(--mut)" }}>
+                {autoFwd
+                  ? "Automat WŁĄCZONY: każde opłacone zamówienie dropship jest kupowane u dostawcy bez pytania. Kliknij, by wyłączyć."
+                  : "Automat wyłączony (bezpiecznie): zamówienia dropship czekają na Twoje ręczne „Przekaż”. Nic nie kupujemy u dostawcy bez zatwierdzenia."}
+              </p>
               <div className="flex flex-col gap-2">
                 {bridge.map((b) => (
-                  <div key={b.bridge_id} className="rounded-xl p-4 flex items-center justify-between gap-3" style={{ background: "var(--glass)", border: "1px solid var(--line)" }}>
+                  <div key={b.bridge_id} className="rounded-xl p-4 flex items-center justify-between gap-3"
+                       style={{ background: "var(--glass)", border: b.status === "awaiting_approval" ? "1px solid rgba(242,169,59,.5)" : "1px solid var(--line)" }}>
                     <div className="min-w-0">
-                      <div className="text-sm">Zam. {String(b.order_id).slice(0, 8)}{b.woo_order_id && <> · Woo #{b.woo_order_id}</>}{b.tracking_number && <> · 📦 {b.tracking_number}</>}</div>
+                      <div className="text-sm">
+                        Zam. {String(b.order_id).slice(0, 8)}
+                        {b.total_gross != null && <> · {zl(b.total_gross)}</>}
+                        {b.dropship_items != null && <> · {b.dropship_items} poz.</>}
+                        {b.woo_order_id && <> · Woo #{b.woo_order_id}</>}
+                        {b.tracking_number && <> · 📦 {b.tracking_number}</>}
+                      </div>
+                      <div className="text-xs truncate" style={{ color: "var(--mut)" }}>{b.buyer_email}{b.ship_city && <> · {b.ship_city}</>}</div>
                       {b.last_error && <div className="text-xs truncate" style={{ color: "#F8A8D2" }}>{b.last_error}</div>}
                     </div>
                     <div className="flex items-center gap-2 shrink-0">
-                      <span className="text-xs px-2.5 py-1 rounded-full" style={{ background: "var(--glass)", border: "1px solid var(--line)", color: bridgeColor[b.status] ?? "var(--ink)" }}>{b.status}</span>
-                      {b.status === "error" && <button onClick={() => onRetryBridge(b.bridge_id)} className="text-xs px-3 py-1.5 rounded-lg" style={{ background: "var(--glass)", border: "1px solid var(--line)" }}>Ponów</button>}
+                      <span className="text-xs px-2.5 py-1 rounded-full" style={{ background: "var(--glass)", border: "1px solid var(--line)", color: bridgeColor[b.status] ?? "var(--ink)" }}>{bridgeLabel[b.status] ?? b.status}</span>
+                      {b.status === "awaiting_approval" && <>
+                        <button onClick={() => onApproveBridge(b.bridge_id)} className="text-xs font-semibold px-3 py-1.5 rounded-lg text-black" style={{ background: "linear-gradient(135deg,#F2731D,#E0A21B)" }}>Przekaż →</button>
+                        <button onClick={() => onRejectBridge(b.bridge_id)} className="text-xs px-3 py-1.5 rounded-lg" style={{ background: "var(--glass)", border: "1px solid var(--line)" }}>Odrzuć</button>
+                      </>}
+                      {b.status === "error" && <>
+                        <button onClick={() => onRetryBridge(b.bridge_id)} className="text-xs px-3 py-1.5 rounded-lg" style={{ background: "var(--glass)", border: "1px solid var(--line)" }}>Ponów</button>
+                        <button onClick={() => onRejectBridge(b.bridge_id)} className="text-xs px-3 py-1.5 rounded-lg" style={{ background: "var(--glass)", border: "1px solid var(--line)" }}>Odrzuć</button>
+                      </>}
                     </div>
                   </div>
                 ))}

@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { searchOffers, homePromoted, activeHomeBanner } from "../lib/api";
+import { searchOffers, homePromoted, activeHomeBanner, categoryCounts, recommendedOffers, toggleWatch, watchedIds, myWatchlist } from "../lib/api";
 import { supabase } from "../lib/supabase";
 import { useCart } from "../lib/cart";
 import SuriChat from "../components/SuriChat";
@@ -79,7 +79,7 @@ function OfferCard({ o, fav, onToggleFav, badge }: { o: Offer; fav: boolean; onT
         <a href={`/produkt/${o.offer_id}`} className="font-semibold leading-snug flex-1 hover:text-amber-300">{o.title}</a>
         <div className="flex items-end justify-between">
           <div className="font-display text-2xl font-semibold">{zl(o.price_gross)}</div>
-          <span className="text-xs font-semibold px-2 py-1 rounded-full" style={{ background: "rgba(52,227,160,.12)", color: "var(--green)" }}>+{zl(cb)} cashback</span>
+          <span className="text-xs font-semibold px-2 py-1 rounded-full" style={{ background: "rgba(52,227,160,.12)", color: "var(--green)" }}>+{Math.round(cb).toLocaleString("pl-PL")} pkt</span>
         </div>
         <a href={`/produkt/${o.offer_id}`} className="mt-1 text-center text-sm font-semibold py-2 rounded-xl text-black"
            style={{ background: "linear-gradient(135deg,#F2731D,#E0A21B)" }}>Zobacz</a>
@@ -105,14 +105,31 @@ export default function Market() {
   const [promoted, setPromoted] = useState<Offer[]>([]);
   const [banner, setBanner] = useState<{ headline: string; link_url: string; image_url: string | null; seller: string } | null>(null);
   const [authed, setAuthed] = useState(false);
+  const [counts, setCounts] = useState<Record<string, number>>({});
+  const [total, setTotal] = useState(0);
+  const [recs, setRecs] = useState<Offer[]>([]);
+  const [sort, setSort] = useState("trafnosc");
+  const [pMin, setPMin] = useState("");
+  const [pMax, setPMax] = useState("");
+  const [curSlug, setCurSlug] = useState<string | null>(null);
+  const [wishMode, setWishMode] = useState(false);
+  const [wish, setWish] = useState<(Offer & { price_dropped?: boolean })[]>([]);
   useSeo("Sunrise Market — marketplace ekosystemu Sunrise", "Płać portfelem Sunrise Pay, odbieraj 3% cashbacku i kupuj od zweryfikowanych sprzedawców.", "/");
 
-  async function load(query: string | null, slug: string | null = null) {
-    setLoading(true); setErr(null);
-    try { setOffers(await searchOffers(query, slug)); }
+  async function load(query: string | null, slug: string | null = null, sortOverride?: string) {
+    setLoading(true); setErr(null); setCurSlug(slug);
+    try {
+      setOffers(await searchOffers(query, slug, {
+        sort: sortOverride ?? sort,
+        priceMin: pMin ? Number(pMin) : null,
+        priceMax: pMax ? Number(pMax) : null,
+      }));
+    }
     catch (e) { setErr(String((e as Error).message ?? e)); }
     finally { setLoading(false); }
   }
+  // ponów wyszukiwanie z aktualnymi filtrami (sort/cena)
+  function rerun() { load(q || null, curSlug); }
   async function children(parentId?: string): Promise<Dept[]> {
     if (!parentId) return [];
     const { data } = await supabase.from("categories").select("id,slug,name")
@@ -123,9 +140,16 @@ export default function Market() {
     load(null);
     supabase.from("categories").select("id,slug,name").is("parent_id", null).order("sort_order")
       .then(({ data }) => setDepts((data as Dept[]) ?? []));
+    categoryCounts().then(({ byId, total }) => { setCounts(byId); setTotal(total); }).catch(() => {});
     homePromoted().then((d) => setPromoted((d as any[]).map((o) => ({ ...o, score: 1 })) as Offer[])).catch(() => {});
     activeHomeBanner().then((b) => setBanner(b as any)).catch(() => {});
-    supabase.auth.getUser().then(({ data }) => setAuthed(!!data.user));
+    supabase.auth.getUser().then(({ data }) => {
+      setAuthed(!!data.user);
+      if (data.user) {
+        recommendedOffers(8).then((r) => setRecs(r as Offer[])).catch(() => {});
+        watchedIds().then((ids) => setFavs(new Set(ids))).catch(() => {});
+      }
+    });
     const urlQ = new URLSearchParams(window.location.search).get("q");
     if (urlQ) { setQ(urlQ); load(urlQ); }
   }, []);
@@ -156,7 +180,16 @@ export default function Market() {
     : activeDept ? activeDept.name : "🔥 Okazje tygodnia";
 
   function toggleFav(id: string) {
-    setFavs((prev) => { const n = new Set(prev); n.has(id) ? n.delete(id) : n.add(id); return n; });
+    if (!authed) { window.location.href = "/login"; return; }
+    setFavs((prev) => { const n = new Set(prev); n.has(id) ? n.delete(id) : n.add(id); return n; }); // optymistycznie
+    toggleWatch(id).then((watched) => {
+      setFavs((prev) => { const n = new Set(prev); watched ? n.add(id) : n.delete(id); return n; });
+      if (wishMode) openWishlist(); // odśwież widok listy życzeń
+    }).catch(() => {});
+  }
+  async function openWishlist() {
+    setWishMode(true);
+    try { setWish(await myWatchlist() as any[]); } catch { setWish([]); }
   }
 
   return (
@@ -193,10 +226,10 @@ export default function Market() {
         </div>
         {/* pasek działów */}
         <div className="mx-auto max-w-6xl px-4 pb-2 flex gap-2 overflow-x-auto">
-          <Chip active={activeDept === null} onClick={() => pickDept(null)}>☰ Wszystkie</Chip>
+          <Chip active={activeDept === null} onClick={() => pickDept(null)}>☰ Wszystkie{total ? ` (${total.toLocaleString("pl-PL")})` : ""}</Chip>
           {depts.map((d) => (
             <Chip key={d.slug} active={activeDept?.slug === d.slug} onClick={() => pickDept(d)}>
-              {deptEmoji(d.name)} {d.name}
+              {deptEmoji(d.name)} {d.name}{d.id && counts[d.id] ? <span style={{ opacity: .6 }}> ({counts[d.id]})</span> : null}
             </Chip>
           ))}
         </div>
@@ -205,7 +238,7 @@ export default function Market() {
           <div className="mx-auto max-w-6xl px-4 pb-2 flex gap-2 overflow-x-auto">
             <Chip active={activeSub === null} onClick={() => pickSub(null)}>Wszystko w: {activeDept.name}</Chip>
             {subs.map((s) => (
-              <Chip key={s.slug} active={activeSub?.slug === s.slug} onClick={() => pickSub(s)}>{s.name}</Chip>
+              <Chip key={s.slug} active={activeSub?.slug === s.slug} onClick={() => pickSub(s)}>{s.name}{s.id && counts[s.id] ? <span style={{ opacity: .6 }}> ({counts[s.id]})</span> : null}</Chip>
             ))}
           </div>
         )}
@@ -248,6 +281,18 @@ export default function Market() {
         </p>
       </section>
 
+      {/* ── DLA CIEBIE (rekomendacje wg preferencji) ── */}
+      {!activeDept && authed && recs.length > 0 && (
+        <section className="mx-auto max-w-6xl px-4 pb-4 pt-2">
+          <h2 className="font-display text-2xl font-semibold mb-5">💛 Dla Ciebie</h2>
+          <div className="grid gap-5" style={{ gridTemplateColumns: "repeat(auto-fill,minmax(240px,1fr))" }}>
+            {recs.map((o) => (
+              <OfferCard key={"r" + o.offer_id} o={o} fav={favs.has(o.offer_id)} onToggleFav={toggleFav} badge="Dla Ciebie" />
+            ))}
+          </div>
+        </section>
+      )}
+
       {/* ── WYRÓŻNIONE / PROMOWANE ── */}
       {!activeDept && promoted.length > 0 && (
         <section className="mx-auto max-w-6xl px-4 pb-4">
@@ -262,20 +307,64 @@ export default function Market() {
 
       {/* ── OFERTY ── */}
       <section className="mx-auto max-w-6xl px-4 pb-20">
-        <div className="flex items-end justify-between mb-5">
-          <h2 className="font-display text-2xl font-semibold">{heading}</h2>
-          <span className="text-sm" style={{ color: "var(--mut)" }}>{offers.length} ofert</span>
+        <div className="flex items-center justify-between mb-4 flex-wrap gap-3">
+          <h2 className="font-display text-2xl font-semibold">{wishMode ? "♥ Lista życzeń" : heading}</h2>
+          {authed && (
+            <button onClick={() => (wishMode ? setWishMode(false) : openWishlist())}
+                    className="text-sm px-3 py-1.5 rounded-xl"
+                    style={{ background: wishMode ? "linear-gradient(135deg,#F2731D,#D9560C)" : "var(--glass)", border: "1px solid var(--line)", color: wishMode ? "#000" : "var(--ink)", fontWeight: wishMode ? 600 : 400 }}>
+              {wishMode ? "← Wróć do ofert" : `♥ Lista życzeń${favs.size ? ` (${favs.size})` : ""}`}
+            </button>
+          )}
         </div>
 
-        {loading && <p style={{ color: "var(--mut)" }}>Ładowanie ofert…</p>}
+        {/* pasek sortowania + filtr ceny (ukryty w widoku listy życzeń) */}
+        {!wishMode && (
+          <div className="flex items-center gap-2 mb-5 flex-wrap text-sm">
+            <span style={{ color: "var(--mut)" }}>Sortuj:</span>
+            <select value={sort} onChange={(e) => { setSort(e.target.value); load(q || null, curSlug, e.target.value); }}
+                    className="rounded-lg px-3 py-1.5 outline-none" style={{ background: "var(--glass)", border: "1px solid var(--line)", color: "var(--ink)" }}>
+              <option value="trafnosc">Trafność</option>
+              <option value="cena_rosnaco">Cena: rosnąco</option>
+              <option value="cena_malejaco">Cena: malejąco</option>
+              <option value="oceny">Najlepiej oceniane</option>
+              <option value="najnowsze">Najnowsze</option>
+            </select>
+            <span className="ml-2" style={{ color: "var(--mut)" }}>Cena:</span>
+            <input value={pMin} onChange={(e) => setPMin(e.target.value.replace(/[^0-9]/g, ""))} placeholder="od"
+                   className="w-20 rounded-lg px-2 py-1.5 outline-none" style={{ background: "var(--glass)", border: "1px solid var(--line)" }} />
+            <input value={pMax} onChange={(e) => setPMax(e.target.value.replace(/[^0-9]/g, ""))} placeholder="do"
+                   className="w-20 rounded-lg px-2 py-1.5 outline-none" style={{ background: "var(--glass)", border: "1px solid var(--line)" }} />
+            <button onClick={rerun} className="px-3 py-1.5 rounded-lg font-semibold text-black" style={{ background: "linear-gradient(135deg,#F2731D,#E0A21B)" }}>Filtruj</button>
+            {(pMin || pMax || sort !== "trafnosc") && (
+              <button onClick={() => { setPMin(""); setPMax(""); setSort("trafnosc"); load(q || null, curSlug, "trafnosc"); }}
+                      className="px-3 py-1.5 rounded-lg" style={{ background: "var(--glass)", border: "1px solid var(--line)" }}>Wyczyść</button>
+            )}
+            <span className="ml-auto" style={{ color: "var(--mut)" }}>{offers.length} ofert</span>
+          </div>
+        )}
+
+        {loading && !wishMode && <p style={{ color: "var(--mut)" }}>Ładowanie ofert…</p>}
         {err && <p className="text-rose-400">Błąd: {err}</p>}
-        {!loading && !err && offers.length === 0 && <p style={{ color: "var(--mut)" }}>Brak ofert w tej kategorii — wybierz inną lub wróć do „Wszystkie".</p>}
 
-        <div className="grid gap-5" style={{ gridTemplateColumns: "repeat(auto-fill,minmax(240px,1fr))" }}>
-          {offers.map((o) => (
-            <OfferCard key={o.offer_id} o={o} fav={favs.has(o.offer_id)} onToggleFav={toggleFav} />
-          ))}
-        </div>
+        {wishMode ? (
+          wish.length === 0
+            ? <p style={{ color: "var(--mut)" }}>Twoja lista życzeń jest pusta. Kliknij ♡ na produkcie, aby dodać.</p>
+            : <div className="grid gap-5" style={{ gridTemplateColumns: "repeat(auto-fill,minmax(240px,1fr))" }}>
+                {wish.map((o) => (
+                  <OfferCard key={"w" + o.offer_id} o={o} fav={favs.has(o.offer_id)} onToggleFav={toggleFav} badge={o.price_dropped ? "Cena spadła" : undefined} />
+                ))}
+              </div>
+        ) : (
+          <>
+            {!loading && !err && offers.length === 0 && <p style={{ color: "var(--mut)" }}>Brak ofert w tej kategorii — wybierz inną lub wróć do „Wszystkie".</p>}
+            <div className="grid gap-5" style={{ gridTemplateColumns: "repeat(auto-fill,minmax(240px,1fr))" }}>
+              {offers.map((o) => (
+                <OfferCard key={o.offer_id} o={o} fav={favs.has(o.offer_id)} onToggleFav={toggleFav} />
+              ))}
+            </div>
+          </>
+        )}
       </section>
 
       <footer className="mx-auto max-w-6xl px-4 py-8 text-center text-xs" style={{ color: "var(--mut)", borderTop: "1px solid var(--line)" }}>

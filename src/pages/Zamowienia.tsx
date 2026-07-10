@@ -96,7 +96,7 @@ export default function Zamowienia() {
                     <button onClick={() => onReturn(o.order_id)} className="mb-3 text-sm px-4 py-2 rounded-xl"
                             style={{ background: "var(--glass)", border: "1px solid var(--line)" }}>Zwróć / reklamuj</button>)}
               <div className="flex justify-between items-center pt-3" style={{ borderTop: "1px solid var(--line)" }}>
-                <span className="text-xs" style={{ color: "var(--green)" }}>Cashback +{zl(o.cashback)}</span>
+                <span className="text-xs" style={{ color: "var(--green)" }}>Cashback +{Math.round(o.cashback).toLocaleString("pl-PL")} pkt</span>
                 <span className="font-display text-xl font-semibold">{zl(o.total)}</span>
               </div>
             </div>

@@ -1,15 +1,17 @@
 import { useRef, useState } from "react";
 import { askSuri } from "../lib/api";
+import { supabase } from "../lib/supabase";
 
 type Msg = { role: "user" | "suri"; text: string };
 type Rec = { offer_id: string; title: string; price: number; reason?: string };
 
 const zl = (v: number) => Math.round(v).toLocaleString("pl-PL") + " zł";
+const SURI_AVATAR = "https://www.mysunrise.com.pl/assets/suri-fab-face-CdFEf7im.png";
 
 export default function SuriChat() {
   const [open, setOpen] = useState(false);
   const [msgs, setMsgs] = useState<Msg[]>([
-    { role: "suri", text: "Cześć, jestem Suri 🌅 — Twoja asystentka zakupowa. Powiedz, czego szukasz, np. panel PV do 800 zł." },
+    { role: "suri", text: "Hej, tu Suri ☀️ Twoja ekspertka Sunrise Market. Powiedz, czego szukasz — dobiorę najlepszą okazję, a płacisz wygodnie portfelem Sunrise Pay i zgarniasz punkty!" },
   ]);
   const [recs, setRecs] = useState<Rec[]>([]);
   const [input, setInput] = useState("");
@@ -23,7 +25,8 @@ export default function SuriChat() {
     if (!m || busy) return;
     setInput(""); setMsgs((x) => [...x, { role: "user", text: m }]); setBusy(true); scroll();
     try {
-      const res = await askSuri(m);
+      const { data: { user } } = await supabase.auth.getUser();
+      const res = await askSuri(m, undefined, user?.id);
       setMsgs((x) => [...x, { role: "suri", text: res.reply ?? "…" }]);
       setRecs((res.offers ?? []).map((o: any) => ({ offer_id: o.offer_id, title: o.title, price: o.price, reason: o.reason })));
     } catch (e) {
@@ -35,10 +38,11 @@ export default function SuriChat() {
     <>
       {/* bąbel */}
       <button onClick={() => setOpen((o) => !o)}
-        className="fixed bottom-5 right-5 z-40 w-14 h-14 rounded-full grid place-items-center text-2xl shadow-xl"
-        style={{ background: "linear-gradient(135deg,#F2731D,#E0A21B)", boxShadow: "0 10px 30px -8px rgba(242,115,29,.7)" }}
-        aria-label="Suri">
-        {open ? "✕" : "🌅"}
+        className="fixed bottom-5 right-5 z-40 w-16 h-16 rounded-full grid place-items-center overflow-hidden shadow-xl"
+        style={{ border: "2px solid #F2731D", boxShadow: "0 10px 30px -8px rgba(242,115,29,.7)", background: "#12121e" }}
+        aria-label="Suri — ekspertka Sunrise">
+        {open ? <span className="text-2xl">✕</span>
+              : <img src={SURI_AVATAR} alt="Suri" className="w-full h-full object-cover" />}
       </button>
 
       {open && (
@@ -46,10 +50,10 @@ export default function SuriChat() {
              style={{ background: "rgba(12,12,24,.96)", border: "1px solid var(--line)", height: 520, backdropFilter: "blur(8px)" }}>
           {/* header */}
           <div className="px-4 py-3 flex items-center gap-2" style={{ borderBottom: "1px solid var(--line)" }}>
-            <div className="w-8 h-8 rounded-full grid place-items-center" style={{ background: "linear-gradient(135deg,#F2731D,#E0A21B)" }}>🌅</div>
+            <img src={SURI_AVATAR} alt="Suri" className="w-9 h-9 rounded-full object-cover" style={{ border: "1px solid var(--line)" }} />
             <div>
               <div className="font-semibold text-sm">Suri</div>
-              <div className="text-[11px]" style={{ color: "var(--green)" }}>● adwokat kupującego</div>
+              <div className="text-[11px]" style={{ color: "var(--green)" }}>● ekspertka Sunrise Market</div>
             </div>
           </div>
 
