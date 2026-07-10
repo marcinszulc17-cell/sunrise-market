@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { supabase } from "../lib/supabase";
-import { checkout, walletBalance, listShippingLanes, cartLanes, type ShipMethod, type CartLane } from "../lib/api";
-import { useCart, setQty, removeItem, clearCart, cartTotal } from "../lib/cart";
+import { checkout, walletBalance, listShippingLanes, cartLanes, recommendedOffers, similarOffers, type ShipMethod, type CartLane } from "../lib/api";
+import { useCart, setQty, removeItem, clearCart, cartTotal, addToCart } from "../lib/cart";
 
 const zl = (v: number) => Math.round(v).toLocaleString("pl-PL") + " zł";
 const FREE_SHIP = 149;
@@ -25,6 +25,7 @@ export default function Koszyk() {
   const [balance, setBalance] = useState<number | null>(null);
   const [linked, setLinked] = useState(true);
   const [currency, setCurrency] = useState<"SUNRISE_PAY" | "GOLD_PAY">("SUNRISE_PAY"); // Gold Pay: wkrótce
+  const [recs, setRecs] = useState<any[]>([]); // cross-sell „Może Cię zainteresować"
 
   const ids = cart.map((i) => i.offer_id);
   const idsKey = ids.join(",");
