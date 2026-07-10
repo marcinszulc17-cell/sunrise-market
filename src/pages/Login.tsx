@@ -39,7 +39,15 @@ export default function Login() {
         }
         window.location.href = "/portfel";
       } else {
-        const { error } = await supabase.auth.signInWithPassword({ email, password });
+        // 1) natywne logowanie Marketu
+        let { error } = await supabase.auth.signInWithPassword({ email, password });
+        // 2) jeśli nie ma konta w Markecie — most SSO: sprawdź konto MySunrise i zaloguj tym samym
+        if (error) {
+          try {
+            const { data } = await supabase.functions.invoke("sso-login", { body: { email, password } });
+            if (data?.ok) ({ error } = await supabase.auth.signInWithPassword({ email, password }));
+          } catch { /* most niedostępny — zostaje błąd logowania Marketu */ }
+        }
         if (error) {
           if (/invalid login|credentials/i.test(error.message)) throw new Error("Nieprawidłowy e-mail lub hasło.");
           if (/not confirmed/i.test(error.message)) throw new Error("Konto wymaga potwierdzenia e-mail. Napisz do nas — aktywujemy je od ręki.");
@@ -76,6 +84,7 @@ export default function Login() {
       ) : (
         <form onSubmit={submit} className="space-y-3">
           <h2 className="text-lg font-semibold">{mode === "login" ? "Zaloguj się" : "Załóż konto"}</h2>
+          {mode === "login" && <p className="text-xs text-zinc-400 -mt-1">Masz konto <b className="text-zinc-300">MySunrise</b>? Zaloguj się tymi samymi danymi — jedno konto działa w Markecie i MySunrise.</p>}
           <input type="email" required placeholder="e-mail" value={email}
                  onChange={(e) => setEmail(e.target.value)}
                  className="w-full rounded-lg bg-zinc-800 px-3 py-2" />
