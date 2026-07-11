@@ -1,0 +1,14 @@
+node_modules/
+dist/
+dist_check/
+*.local
+vite.config.ts.timestamp-*.mjs
+vite.config.js.timestamp-*.mjs
+.env
+.env.*
+!.env.example
+.DS_Store
+Thumbs.db
+*.log
+.idea/
+.vscode/

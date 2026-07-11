@@ -3,7 +3,7 @@ import { supabase } from "../lib/supabase";
 import { checkout, walletBalance, listShippingLanes, cartLanes, recommendedOffers, similarOffers, type ShipMethod, type CartLane } from "../lib/api";
 import { useCart, setQty, removeItem, clearCart, cartTotal, addToCart } from "../lib/cart";
 
-const zl = (v: number) => Math.round(v).toLocaleString("pl-PL") + " zł";
+import { zl, pkt } from "../lib/money";
 const FREE_SHIP = 149;
 
 const laneMeta: Record<string, { title: string; icon: string; note: string }> = {
@@ -89,7 +89,7 @@ export default function Koszyk() {
   const rawShip = selectedCodes.reduce((a, c) => a + Number(methods.find((m) => m.code === c)?.price_gross ?? 0), 0);
   const shipCost = freeShip ? 0 : rawShip;
   const grand = total + shipCost;
-  const cashback = Math.round(total * 0.03);
+  const cashback = Math.round(total * 0.03 * 100) / 100;
   const shortfall = balance != null ? Math.max(0, grand - balance) : 0;
   const enoughFunds = balance != null && balance >= grand;
 
@@ -139,7 +139,7 @@ export default function Koszyk() {
           <div className="rounded-2xl p-6" style={{ background: "var(--glass)", border: "1px solid rgba(52,227,160,.4)" }}>
             <div className="text-2xl font-display font-semibold mb-2" style={{ color: "var(--green)" }}>Zamówienie opłacone ✅</div>
             <p className="text-sm" style={{ color: "var(--ink)" }}>
-              Zapłacono <b>{zl(done.paid)}</b> z portfela Sunrise Pay. Cashback <b style={{ color: "var(--green)" }}>+{Math.round(done.cashback).toLocaleString("pl-PL")} pkt</b> trafił na portfel
+              Zapłacono <b>{zl(done.paid)}</b> z portfela Sunrise Pay. Cashback <b style={{ color: "var(--green)" }}>+{pkt(done.cashback)} pkt</b> trafił na portfel
               {done.balance != null && <> — nowe saldo: <b>{zl(done.balance)}</b></>}.
             </p>
             <p className="text-xs mt-2" style={{ color: "var(--mut)" }}>Nr zamówienia: {done.order}</p>
@@ -226,9 +226,9 @@ export default function Koszyk() {
                 <span style={{ color: "var(--mut)" }}>Dostawa {presentLanes.length > 1 && <>({presentLanes.length} przesyłki)</>}</span>
                 <span>{freeShip ? <span style={{ color: "var(--green)" }}>0 zł 🎉</span> : zl(shipCost)}</span>
               </div>
-              {!freeShip && <div className="text-xs mb-2" style={{ color: "var(--gold)" }}>Do darmowej dostawy: {zl(FREE_SHIP - total)}</div>}
+              {!freeShip && <div className="text-xs mb-2" style={{ color: "var(--gold)" }}>Do darmowej dostawy brakuje: {zl(FREE_SHIP - total)}</div>}
               <div className="flex justify-between mb-2 mt-1"><span style={{ color: "var(--mut)" }}>Razem</span><span className="font-display text-2xl font-semibold">{zl(grand)}</span></div>
-              <div className="flex justify-between text-sm mb-2"><span style={{ color: "var(--mut)" }}>Cashback 3% (punkty)</span><span style={{ color: "var(--green)" }}>+{Math.round(cashback).toLocaleString("pl-PL")} pkt</span></div>
+              <div className="flex justify-between text-sm mb-2"><span style={{ color: "var(--mut)" }}>Cashback 3% (punkty)</span><span style={{ color: "var(--green)" }}>+{pkt(cashback)} pkt</span></div>
 
               {/* wybór waluty portfela — Gold Pay „wkrótce" (czeka na kurs pay-fx w MySunrise) */}
               <div className="mt-4 pt-3" style={{ borderTop: "1px solid var(--line)" }}>
