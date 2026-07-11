@@ -1,0 +1,76 @@
+# .gitleaks.toml — konfiguracja skanu sekretów dla ekosystemu Sunrise
+#
+# Filozofia (zgodna z zasadami projektu):
+#   DOZWOLONE (publiczne z założenia): Supabase `anon` / `sb_publishable`, Stripe `pk_`,
+#                                      GA `G-...`, VAPID public, `NEXT_PUBLIC_*`, `VITE_SUPABASE_URL`
+#   SEKRET (blokuj):                   `service_role`, `sk_live`/`sk_test`, `whsec_`,
+#                                      connection stringi z hasłem, `AUTH_SECRET`,
+#                                      `OAUTH_ENCRYPTION_KEY`, tokeny GitHub/Anthropic/OpenAI
+
+title = "Sunrise — reguły skanu sekretów"
+
+[extend]
+useDefault = true   # standardowe reguły gitleaks (AWS, GitHub PAT, Stripe sk_, itd.)
+
+# --- Reguły własne, wprost pod incydenty znalezione w tym ekosystemie -------------
+
+[[rules]]
+id = "postgres-connection-string-z-haslem"
+description = "Connection string PostgreSQL/Supabase z hasłem (incydent: STUDIO-DEPLOY-RUNBOOK.md)"
+regex = '''postgres(ql)?://[^:\s]+:[^@\s]+@[^\s/]+'''
+tags = ["sekret", "baza", "P0"]
+
+[[rules]]
+id = "supabase-service-role"
+description = "Supabase service_role key (omija RLS — pełny dostęp do bazy)"
+regex = '''(?i)(service_role|SUPABASE_SERVICE_ROLE_KEY)\s*[:=]\s*['\"]?eyJ[A-Za-z0-9_\-\.]{40,}'''
+tags = ["sekret", "supabase", "P0"]
+
+[[rules]]
+id = "nextauth-secret"
+description = "AUTH_SECRET / NEXTAUTH_SECRET z realną wartością (incydent: SunriseStudio)"
+regex = '''(?i)(AUTH_SECRET|NEXTAUTH_SECRET)\s*[:=]\s*['\"]?[A-Za-z0-9+/=]{24,}'''
+tags = ["sekret", "auth", "P0"]
+
+[[rules]]
+id = "oauth-encryption-key"
+description = "OAUTH_ENCRYPTION_KEY z realną wartością (incydent: SunriseStudio)"
+regex = '''(?i)OAUTH_ENCRYPTION_KEY\s*[:=]\s*['\"]?[A-Za-z0-9+/=]{24,}'''
+tags = ["sekret", "auth", "P0"]
+
+[[rules]]
+id = "stripe-webhook-secret"
+description = "Stripe webhook signing secret"
+regex = '''whsec_[A-Za-z0-9]{24,}'''
+tags = ["sekret", "stripe"]
+
+[[rules]]
+id = "klucze-ai-w-bundlu-klienta"
+description = "Klucz AI wystawiony przez VITE_* (trafia do bundla — incydent: sunrise-agent BUG-2)"
+regex = '''(?i)VITE_(ANTHROPIC|OPENAI|HEYGEN)_KEY\s*[:=]\s*['\"]?(sk-|hg_)[A-Za-z0-9_\-]{20,}'''
+tags = ["sekret", "ai", "P1"]
+
+# --- Świadome wyjątki: klucze publiczne i placeholdery ---------------------------
+
+[allowlist]
+description = "Klucze publiczne z założenia + placeholdery + pliki testowe"
+
+paths = [
+  '''\.env\.example$''',
+  '''(^|/)(CLAUDE|BUGS|TASKS|DECISIONS|PROJECT_STATUS)\.md$''',   # dokumentacja opisuje NAZWY, nie wartości
+  '''(^|/)__tests__/''',
+  '''(^|/)test/setup\.ts$''',
+]
+
+regexes = [
+  '''sb_publishable_[A-Za-z0-9_\-]+''',        # publiczny klucz Supabase
+  '''pk_(test|live)_[A-Za-z0-9]+''',           # publiczny klucz Stripe
+  '''G-[A-Z0-9]{8,}''',                        # Google Analytics Measurement ID
+  '''(?i)<[a-z\-]+>''',                        # placeholdery typu <ustaw-w-vercel>
+  '''(?i)(twoje|your|example|placeholder|zmien-mnie|xxxx)''',
+]
+
+# UWAGA: publiczny `anon` key Supabase to JWT (eyJ...) i wygląda jak sekret.
+# NIE dodaję go tu globalnie do allowlisty — lepiej mieć jeden fałszywy alarm do ręcznego
+# odhaczenia niż przepuścić prawdziwy `service_role`, który wygląda niemal identycznie.
+# Różnica siedzi w polu `role` wewnątrz JWT: "anon" (OK) vs "service_role" (SEKRET).
