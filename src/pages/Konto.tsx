@@ -1,3 +1,4 @@
+import { pkt } from "../lib/money";
 import { useEffect, useState } from "react";
 import { supabase } from "../lib/supabase";
 import { walletBalance, myOrders, myReturns, confirmDelivery, openReturn, myWatchlist, walletHistory, toggleWatch, mySeller, amiOperator, type WalletLive } from "../lib/api";
@@ -84,7 +85,7 @@ function Przeglad({ w, seller, isOp, onLogout, goTab }: { w: WalletLive | null; 
       <div className="rounded-2xl p-6" style={{ background: "linear-gradient(135deg, rgba(242,115,29,.14), rgba(124,58,237,.12))", border: "1px solid rgba(242,115,29,.3)" }}>
         <div className="text-sm" style={{ color: "var(--mut)" }}>Portfel Sunrise Pay</div>
         <div className="font-display text-4xl font-bold mb-1" style={{ color: "var(--gold)" }}>{zl(w?.balance ?? 0)}</div>
-        <div className="text-sm mb-3" style={{ color: "var(--green)" }}>{(w?.points ?? 0).toLocaleString("pl-PL")} pkt cashback{w?.gold != null ? ` · ${w.gold.toLocaleString("pl-PL")} g Gold` : ""}</div>
+        <div className="text-sm mb-3" style={{ color: "var(--green)" }}>{pkt(w?.points ?? 0)} pkt cashback{w?.gold != null ? ` · ${w.gold.toLocaleString("pl-PL")} g Gold` : ""}</div>
         <button onClick={() => goTab("portfel")} className="inline-block rounded-xl px-5 py-2 font-semibold text-black" style={{ background: "linear-gradient(135deg,#F2731D,#E0A21B)" }}>Doładuj / historia</button>
       </div>
       {w && !w.linked && <Card className="!p-4"><span className="text-sm" style={{ color: "#8fe3ef" }}>Portfel niepołączony z MySunrise. Aktywuj Sunrise Pay w aplikacji MySunrise na ten sam e‑mail, aby płacić.</span></Card>}
@@ -158,7 +159,7 @@ function Portfel({ w }: { w: WalletLive | null }) {
     <div className="flex flex-col gap-4">
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
         <Card className="ring-1 ring-amber-500/20"><div className="text-sm" style={{ color: "var(--mut)" }}>Saldo Sunrise Pay</div><div className="text-3xl font-extrabold" style={{ color: "var(--gold)" }}>{zl(w?.balance ?? 0)}</div></Card>
-        <Card className="ring-1 ring-emerald-500/20"><div className="text-sm" style={{ color: "var(--mut)" }}>Punkty (cashback)</div><div className="text-3xl font-extrabold" style={{ color: "var(--green)" }}>{(w?.points ?? 0).toLocaleString("pl-PL")} <span className="text-lg">pkt</span></div></Card>
+        <Card className="ring-1 ring-emerald-500/20"><div className="text-sm" style={{ color: "var(--mut)" }}>Punkty (cashback)</div><div className="text-3xl font-extrabold" style={{ color: "var(--green)" }}>{pkt(w?.points ?? 0)} <span className="text-lg">pkt</span></div></Card>
         {w?.gold != null && <Card className="ring-1 ring-yellow-500/20"><div className="text-sm" style={{ color: "var(--mut)" }}>Gold Pay</div><div className="text-3xl font-extrabold" style={{ color: "#F2D047" }}>{w.gold.toLocaleString("pl-PL")} <span className="text-lg">g</span></div></Card>}
       </div>
       <Card>

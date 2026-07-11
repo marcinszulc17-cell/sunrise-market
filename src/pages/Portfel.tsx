@@ -1,3 +1,4 @@
+import { pkt } from "../lib/money";
 import { useEffect, useState } from "react";
 import { supabase } from "../lib/supabase";
 import { getWalletOps } from "../lib/payments";
@@ -44,7 +45,7 @@ export default function Portfel() {
         </div>
         <div className="rounded-2xl bg-zinc-900/70 p-6 ring-1 ring-emerald-500/20">
           <div className="text-sm text-zinc-400">Punkty (cashback)</div>
-          <div className="text-4xl font-extrabold text-emerald-400">{points.toLocaleString("pl-PL")} <span className="text-lg">pkt</span></div>
+          <div className="text-4xl font-extrabold text-emerald-400">{pkt(points)} <span className="text-lg">pkt</span></div>
         </div>
         {gold != null && (
           <div className="rounded-2xl bg-zinc-900/70 p-6 ring-1 ring-yellow-500/20">
