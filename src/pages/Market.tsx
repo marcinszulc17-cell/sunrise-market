@@ -1,11 +1,14 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, type MouseEvent } from "react";
+import { zl, pkt } from "../lib/money";
 import { searchOffers, homePromoted, activeHomeBanner, categoryCounts, recommendedOffers, toggleWatch, watchedIds, myWatchlist } from "../lib/api";
 import { supabase } from "../lib/supabase";
-import { useCart } from "../lib/cart";
+import { useCart, addToCart } from "../lib/cart";
 import SuriChat from "../components/SuriChat";
 import NotificationsBell from "../components/NotificationsBell";
 import ThemeToggle from "../components/ThemeToggle";
 import { useSeo } from "../lib/seo";
+
+const FREE_SHIP = 149;   // musi być spójne z Koszyk.tsx
 
 type Offer = { offer_id: string; title: string; price_gross: number; category: string; seller: string; score: number; rating: number; reviews: number; image_url: string | null };
 type Dept = { id?: string; slug: string; name: string };
@@ -21,7 +24,6 @@ function Stars({ rating, reviews }: { rating: number; reviews: number }) {
   );
 }
 
-const zl = (v: number) => Math.round(v).toLocaleString("pl-PL") + " zł";
 
 // wizual karty wg kategorii / nazwy produktu (emoji + gradient poświaty)
 function catVisual(cat: string, title = ""): { emoji: string; from: string; to: string } {
@@ -56,33 +58,83 @@ function catVisual(cat: string, title = ""): { emoji: string; from: string; to: 
 // emoji dla chipa działu
 function deptEmoji(name: string) { return catVisual(name).emoji; }
 
+function CardSkeleton() {
+  return (
+    <article className="rounded-2xl overflow-hidden animate-pulse" style={{ background: "var(--glass)", border: "1px solid var(--line)" }}>
+      <div className="h-36" style={{ background: "rgba(255,255,255,.04)" }} />
+      <div className="p-4 flex flex-col gap-2">
+        <div className="h-3 w-2/3 rounded" style={{ background: "rgba(255,255,255,.06)" }} />
+        <div className="h-4 w-full rounded" style={{ background: "rgba(255,255,255,.06)" }} />
+        <div className="h-6 w-1/2 rounded mt-2" style={{ background: "rgba(255,255,255,.06)" }} />
+        <div className="h-9 w-full rounded-xl mt-2" style={{ background: "rgba(255,255,255,.05)" }} />
+      </div>
+    </article>
+  );
+}
+
 function OfferCard({ o, fav, onToggleFav, badge }: { o: Offer; fav: boolean; onToggleFav: (id: string) => void; badge?: string }) {
   const v = catVisual(o.category, o.title);
-  const cb = o.price_gross * 0.03;
+  const cashback = Math.round(o.price_gross * 0.03 * 100) / 100;
+  const freeShip = o.price_gross >= FREE_SHIP;
+  const [added, setAdded] = useState(false);
+
+  // Dodanie do koszyka bez opuszczania katalogu — wcześniej każda karta wypychała
+  // użytkownika na stronę produktu, nawet gdy już wiedział, czego chce.
+  function add(e: MouseEvent) {
+    e.preventDefault();
+    addToCart({ offer_id: o.offer_id, title: o.title, price: o.price_gross });
+    setAdded(true);
+    setTimeout(() => setAdded(false), 1600);
+  }
+
   return (
     <article className="card-glow rounded-2xl overflow-hidden flex flex-col" style={{ background: "var(--glass)", border: "1px solid var(--line)" }}>
       <a href={`/produkt/${o.offer_id}`} className="relative h-36 grid place-items-center text-5xl overflow-hidden"
          style={{ background: `radial-gradient(120px 80px at 50% 30%, ${v.from}33, transparent 70%), linear-gradient(135deg, ${v.from}22, ${v.to}22)` }}>
         {o.image_url
           ? <img src={o.image_url} alt={o.title} className="absolute inset-0 w-full h-full object-cover" loading="lazy" />
-          : <span>{v.emoji}</span>}
+          : <span aria-hidden="true">{v.emoji}</span>}
         {badge && <span className="absolute top-2 left-2 text-[10px] font-bold px-2 py-1 rounded-full text-black" style={{ background: "linear-gradient(135deg,#F2731D,#E0A21B)" }}>{badge}</span>}
         <button onClick={(e) => { e.preventDefault(); onToggleFav(o.offer_id); }}
+                aria-label={fav ? "Usuń z listy życzeń" : "Dodaj do listy życzeń"}
                 className="absolute top-2 right-2 w-8 h-8 rounded-full grid place-items-center text-sm"
                 style={{ background: "rgba(7,7,15,.5)", border: "1px solid var(--line)", color: fav ? "#F25CB0" : "#fff" }}>
           {fav ? "♥" : "♡"}
         </button>
       </a>
+
       <div className="p-4 flex flex-col gap-2 flex-1">
         <div className="text-xs" style={{ color: "var(--mut)" }}>{o.seller} · {o.category}</div>
         <Stars rating={o.rating} reviews={o.reviews} />
         <a href={`/produkt/${o.offer_id}`} className="font-semibold leading-snug flex-1 hover:text-amber-300">{o.title}</a>
-        <div className="flex items-end justify-between">
-          <div className="font-display text-2xl font-semibold">{zl(o.price_gross)}</div>
-          <span className="text-xs font-semibold px-2 py-1 rounded-full" style={{ background: "rgba(52,227,160,.12)", color: "var(--green)" }}>+{Math.round(cb).toLocaleString("pl-PL")} pkt</span>
+
+        <div className="font-display text-2xl font-semibold">{zl(o.price_gross)}</div>
+
+        {/* Sygnały zaufania — to, po czym klient decyduje, zanim kliknie */}
+        <div className="flex flex-wrap gap-1.5">
+          <span className="text-[11px] font-semibold px-2 py-1 rounded-full" title="1 pkt = 1 zł do wykorzystania w Sunrise Pay"
+                style={{ background: "rgba(52,227,160,.12)", color: "var(--green)" }}>
+            Cashback +{pkt(cashback)} pkt
+          </span>
+          {freeShip && (
+            <span className="text-[11px] font-semibold px-2 py-1 rounded-full" style={{ background: "rgba(242,115,29,.12)", color: "var(--gold)" }}>
+              Darmowa dostawa
+            </span>
+          )}
         </div>
-        <a href={`/produkt/${o.offer_id}`} className="mt-1 text-center text-sm font-semibold py-2 rounded-xl text-black"
-           style={{ background: "linear-gradient(135deg,#F2731D,#E0A21B)" }}>Zobacz</a>
+
+        <div className="flex gap-2 mt-1">
+          <button onClick={add}
+                  className="flex-1 text-center text-sm font-semibold py-2 rounded-xl text-black transition-transform active:scale-95"
+                  style={{ background: added ? "linear-gradient(135deg,#34E3A0,#1DB47A)" : "linear-gradient(135deg,#F2731D,#E0A21B)" }}>
+            {added ? "Dodano do koszyka" : "Do koszyka"}
+          </button>
+          <a href={`/produkt/${o.offer_id}`}
+             className="px-3 grid place-items-center text-sm rounded-xl"
+             style={{ border: "1px solid var(--line)", color: "var(--mut)" }}>
+            Szczegóły
+          </a>
+        </div>
       </div>
     </article>
   );
@@ -112,21 +164,25 @@ export default function Market() {
   const [pMin, setPMin] = useState("");
   const [pMax, setPMax] = useState("");
   const [curSlug, setCurSlug] = useState<string | null>(null);
+  const [limit, setLimit] = useState(24);          // ile ofert pobrać (paginacja „pokaż więcej”)
+  const [more, setMore] = useState(false);         // czy trwa doładowywanie
   const [wishMode, setWishMode] = useState(false);
   const [wish, setWish] = useState<(Offer & { price_dropped?: boolean })[]>([]);
   useSeo("Sunrise Market — marketplace ekosystemu Sunrise", "Płać portfelem Sunrise Pay, odbieraj 3% cashbacku i kupuj od zweryfikowanych sprzedawców.", "/");
 
-  async function load(query: string | null, slug: string | null = null, sortOverride?: string) {
-    setLoading(true); setErr(null); setCurSlug(slug);
+  async function load(query: string | null, slug: string | null = null, sortOverride?: string, lim = 24) {
+    if (lim > 24) setMore(true); else setLoading(true);
+    setErr(null); setCurSlug(slug); setLimit(lim);
     try {
       setOffers(await searchOffers(query, slug, {
         sort: sortOverride ?? sort,
         priceMin: pMin ? Number(pMin) : null,
         priceMax: pMax ? Number(pMax) : null,
+        limit: lim,
       }));
     }
     catch (e) { setErr(String((e as Error).message ?? e)); }
-    finally { setLoading(false); }
+    finally { setLoading(false); setMore(false); }
   }
   // ponów wyszukiwanie z aktualnymi filtrami (sort/cena)
   function rerun() { load(q || null, curSlug); }
@@ -344,7 +400,11 @@ export default function Market() {
           </div>
         )}
 
-        {loading && !wishMode && <p style={{ color: "var(--mut)" }}>Ładowanie ofert…</p>}
+        {loading && !wishMode && (
+          <div className="grid gap-5" style={{ gridTemplateColumns: "repeat(auto-fill,minmax(240px,1fr))" }}>
+            {Array.from({ length: 8 }).map((_, i) => <CardSkeleton key={i} />)}
+          </div>
+        )}
         {err && <p className="text-rose-400">Błąd: {err}</p>}
 
         {wishMode ? (
@@ -357,12 +417,33 @@ export default function Market() {
               </div>
         ) : (
           <>
-            {!loading && !err && offers.length === 0 && <p style={{ color: "var(--mut)" }}>Brak ofert w tej kategorii — wybierz inną lub wróć do „Wszystkie".</p>}
+            {!loading && !err && offers.length === 0 && (
+              <div className="rounded-2xl p-8 text-center" style={{ background: "var(--glass)", border: "1px solid var(--line)" }}>
+                <div className="text-lg font-semibold mb-1">Nic tu jeszcze nie ma</div>
+                <p className="text-sm mb-4" style={{ color: "var(--mut)" }}>W tej kategorii nie znaleźliśmy ofert. Zajrzyj do innej albo zobacz wszystko.</p>
+                <button onClick={() => { setActiveDept(null); setActiveSub(null); setActiveSub2(null); load(null, null); }}
+                        className="text-sm font-semibold px-5 py-2 rounded-xl text-black"
+                        style={{ background: "linear-gradient(135deg,#F2731D,#E0A21B)" }}>
+                  Pokaż wszystkie oferty
+                </button>
+              </div>
+            )}
             <div className="grid gap-5" style={{ gridTemplateColumns: "repeat(auto-fill,minmax(240px,1fr))" }}>
               {offers.map((o) => (
                 <OfferCard key={o.offer_id} o={o} fav={favs.has(o.offer_id)} onToggleFav={toggleFav} />
               ))}
             </div>
+
+            {/* Doładowanie kolejnej partii. Gdy wróciło mniej niż prosiliśmy — to już koniec listy. */}
+            {!loading && offers.length >= limit && (
+              <div className="flex justify-center mt-8">
+                <button onClick={() => load(q || null, curSlug, undefined, limit + 24)} disabled={more}
+                        className="text-sm font-semibold px-6 py-3 rounded-xl"
+                        style={{ background: "var(--glass)", border: "1px solid var(--line)", opacity: more ? .6 : 1 }}>
+                  {more ? "Wczytuję…" : "Pokaż więcej ofert"}
+                </button>
+              </div>
+            )}
           </>
         )}
       </section>
