@@ -419,7 +419,7 @@ function CjDrop() {
               <button key={k} onClick={() => setSort(k)} className="text-xs px-3 py-1.5 rounded-full" style={sort === k ? { background: "rgba(242,115,29,.16)", border: "1px solid rgba(242,115,29,.5)", color: "var(--gold)" } : { background: "var(--glass)", border: "1px solid var(--line)", color: "var(--mut)" }}>{l}</button>
             ))}
           </div>
-          <p className="text-xs mb-3" style={{ color: "var(--mut)" }}>Marża brutto = cena − koszt CJ (bez wysyłki). Ujemna (różowe) = tracisz. Gdzie jest ruch (👁) + marża, tam pompuj kasę.</p>
+          <p className="text-xs mb-3" style={{ color: "var(--mut)" }}>Nasza marża = cena − koszt CJ (bez wysyłki). <b style={{ color: "var(--gold)" }}>Rynek</b> = sugerowana cena detaliczna CJ (benchmark konkurencji), <b>Marża konk.</b> = ile zarobiłby konkurent przy tej cenie, <b>Przewaga</b> = o ile jesteśmy tańsi (zielone) lub drożsi (różowe) od rynku. Gdzie jest ruch (👁) + marża, tam pompuj kasę.</p>
           {loading && <p style={{ color: "var(--mut)" }}>Ładowanie…</p>}
           <div style={{ overflowX: "auto", border: "1px solid var(--line)", borderRadius: 16 }}>
             <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
@@ -428,8 +428,11 @@ function CjDrop() {
                   <th style={{ padding: "10px 12px", textAlign: "left" }}>Produkt</th>
                   <th style={{ padding: "10px 12px", textAlign: "right" }}>Cena</th>
                   <th style={{ padding: "10px 12px", textAlign: "right" }}>Koszt</th>
-                  <th style={{ padding: "10px 12px", textAlign: "right" }}>Marża</th>
+                  <th style={{ padding: "10px 12px", textAlign: "right" }}>Nasza marża</th>
                   <th style={{ padding: "10px 12px", textAlign: "right" }}>%</th>
+                  <th style={{ padding: "10px 12px", textAlign: "right" }}>Rynek</th>
+                  <th style={{ padding: "10px 12px", textAlign: "right" }}>Marża konk.</th>
+                  <th style={{ padding: "10px 12px", textAlign: "right" }}>Przewaga</th>
                   <th style={{ padding: "10px 12px", textAlign: "right" }}>👁</th>
                   <th style={{ padding: "10px 12px", textAlign: "right" }}>🛒</th>
                   <th style={{ padding: "10px 12px", textAlign: "right" }}>Przychód</th>
@@ -448,12 +451,15 @@ function CjDrop() {
                     <td style={{ padding: "8px 12px", textAlign: "right", color: "var(--mut)" }}>{zl(r.cost_zl)}</td>
                     <td style={{ padding: "8px 12px", textAlign: "right", fontWeight: 600, color: r.margin_zl <= 0 ? "#F8A8D2" : "var(--green)" }}>{zl(r.margin_zl)}</td>
                     <td style={{ padding: "8px 12px", textAlign: "right", color: r.margin_pct <= 0 ? "#F8A8D2" : "var(--mut)" }}>{Math.round(r.margin_pct)}%</td>
+                    <td style={{ padding: "8px 12px", textAlign: "right", color: "var(--mut)" }}>{r.market_price != null ? zl(r.market_price) : "—"}</td>
+                    <td style={{ padding: "8px 12px", textAlign: "right", color: "var(--mut)" }}>{r.competitor_margin_zl != null ? zl(r.competitor_margin_zl) : "—"}</td>
+                    <td style={{ padding: "8px 12px", textAlign: "right", fontWeight: 600, color: r.edge_zl == null ? "var(--mut)" : r.edge_zl > 0 ? "var(--green)" : "#F8A8D2" }}>{r.edge_zl != null ? (r.edge_zl > 0 ? "−" + zl(r.edge_zl) + " taniej" : zl(Math.abs(r.edge_zl)) + " drożej") : "—"}</td>
                     <td style={{ padding: "8px 12px", textAlign: "right" }}>{r.views}</td>
                     <td style={{ padding: "8px 12px", textAlign: "right", fontWeight: r.sold > 0 ? 700 : 400, color: r.sold > 0 ? "var(--gold)" : "var(--mut)" }}>{r.sold}</td>
                     <td style={{ padding: "8px 12px", textAlign: "right" }}>{zl(r.revenue)}</td>
                   </tr>
                 ))}
-                {!loading && sortedStats.length === 0 && <tr><td colSpan={8} style={{ padding: "12px", color: "var(--mut)" }}>Brak danych. Zaimportuj i aktywuj produkty CJ.</td></tr>}
+                {!loading && sortedStats.length === 0 && <tr><td colSpan={11} style={{ padding: "12px", color: "var(--mut)" }}>Brak danych. Zaimportuj i aktywuj produkty CJ.</td></tr>}
               </tbody>
             </table>
           </div>

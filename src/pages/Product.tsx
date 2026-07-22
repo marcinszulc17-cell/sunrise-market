@@ -11,7 +11,7 @@ type Offer = {
   seller: string; seller_id: string; avg_rating: number; review_count: number; image_url: string | null;
   attributes?: {
     colors?: string[]; sizes?: string[]; specs?: Record<string, string>;
-    features?: string[]; packing?: string[];
+    features?: string[]; packing?: string[]; video?: string | null;
   } | null;
 };
 type Review = { rating: number; comment: string | null; author: string; created_at: string };
@@ -130,6 +130,13 @@ export default function Product() {
                       <img src={u} alt="" className="w-full h-full object-cover" />
                     </button>
                   ))}
+                </div>
+              )}
+              {A.video && (
+                <div className="rounded-2xl overflow-hidden" style={{ border: "1px solid var(--line)" }}>
+                  <video src={A.video} controls playsInline preload="metadata" poster={imgs[0] || o.image_url || undefined}
+                         className="w-full h-auto bg-black" style={{ maxHeight: 360 }} />
+                  <div className="text-xs px-3 py-2" style={{ color: "var(--mut)" }}>🎬 Wideo produktu</div>
                 </div>
               )}
             </div>
