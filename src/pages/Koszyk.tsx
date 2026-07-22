@@ -1,7 +1,9 @@
 import { useEffect, useMemo, useState } from "react";
 import { supabase } from "../lib/supabase";
-import { checkout, walletBalance, listShippingLanes, cartLanes, recommendedOffers, similarOffers, type ShipMethod, type CartLane } from "../lib/api";
+import { checkout, walletBalance, listShippingLanes, cartLanes, recommendedOffers, similarOffers, type ShipMethod, type CartLane, type ShipAddress } from "../lib/api";
 import { useCart, setQty, removeItem, clearCart, cartTotal, addToCart } from "../lib/cart";
+import { topupWallet } from "../lib/payments";
+import { saveIntent, loadIntent, clearIntent } from "../lib/checkoutIntent";
 
 import { zl, pkt } from "../lib/money";
 const FREE_SHIP = 149;
@@ -26,6 +28,8 @@ export default function Koszyk() {
   const [linked, setLinked] = useState(true);
   const [currency, setCurrency] = useState<"SUNRISE_PAY" | "GOLD_PAY">("SUNRISE_PAY"); // Gold Pay: wkrótce
   const [recs, setRecs] = useState<any[]>([]); // cross-sell „Może Cię zainteresować"
+  const [resuming, setResuming] = useState(false); // wznawianie płatności po powrocie ze Stripe
+  const [topupAmount, setTopupAmount] = useState<string>(""); // kwota w polu inline doładowania
 
   const ids = cart.map((i) => i.offer_id);
   const idsKey = ids.join(",");
@@ -92,6 +96,9 @@ export default function Koszyk() {
   const cashback = Math.round(total * 0.03 * 100) / 100;
   const shortfall = balance != null ? Math.max(0, grand - balance) : 0;
   const enoughFunds = balance != null && balance >= grand;
+  // kwota w polu doładowania: domyślnie zaokrąglony w górę brakujący shortfall
+  const topupDisplay = topupAmount !== "" ? topupAmount : (shortfall > 0 ? String(Math.ceil(shortfall)) : "");
+  const effectiveTopup = Math.max(shortfall, Math.ceil(Number(topupDisplay) || 0));
 
   // pozycje pogrupowane po torze
   const groups = useMemo(() => {
@@ -100,15 +107,12 @@ export default function Koszyk() {
     return g;
   }, [cart, lanes]);
 
-  async function pay() {
-    setMsg(null);
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) { window.location.href = "/login"; return; }
-    if (!addrOk) { setMsg("Uzupełnij adres dostawy (imię i nazwisko, ulica, miasto, kod)."); return; }
-    if (balance != null && balance < grand) { setMsg("Za mało środków w portfelu — najpierw doładuj Sunrise Pay."); return; }
-    setBusy(true);
+  // Wspólna realizacja zakupu — używana przez „Zapłać" i przez auto-wznowienie po doładowaniu.
+  async function runCheckout(useAddr: ShipAddress, useCodes: string[]) {
+    setBusy(true); setMsg(null);
     try {
-      const res = await checkout(cart.map((i) => ({ offer_id: i.offer_id, qty: i.qty })), selectedCodes, addr);
+      const res = await checkout(cart.map((i) => ({ offer_id: i.offer_id, qty: i.qty })), useCodes, useAddr);
+      clearIntent();
       clearCart();
       setDone({ order: res.order_id, paid: res.paid, cashback: res.cashback, balance: res.balance });
     } catch (e: any) {
@@ -116,8 +120,67 @@ export default function Koszyk() {
       try { const b = await e.context.json(); if (b?.error) m = b.error; } catch { /* ignore */ }
       setMsg(m);
       refreshWallet();
-    } finally { setBusy(false); }
+    } finally { setBusy(false); setResuming(false); }
   }
+
+  async function pay() {
+    setMsg(null);
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) { window.location.href = "/login"; return; }
+    if (!addrOk) { setMsg("Uzupełnij adres dostawy (imię i nazwisko, ulica, miasto, kod)."); return; }
+    if (balance != null && balance < grand) { setMsg("Za mało środków w portfelu — doładuj brakującą kwotę poniżej."); return; }
+    await runCheckout(addr, selectedCodes);
+  }
+
+  // Auto-doładowanie w checkoutcie: dopłać brakującą kwotę przez Stripe, wróć do koszyka
+  // i dokończ płatność z portfela. Adres + wybór dostawy zapisujemy jako „zamiar".
+  async function topupAndPay(amt: number) {
+    setMsg(null);
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) { window.location.href = "/login"; return; }
+    if (!addrOk) { setMsg("Uzupełnij adres dostawy przed doładowaniem."); return; }
+    const amount = Math.max(shortfall, Math.ceil(amt) || 0);
+    if (amount <= 0) { setMsg("Podaj kwotę doładowania."); return; }
+    saveIntent({ addr, shippingCodes: selectedCodes, grand, topup: amount });
+    setBusy(true);
+    try {
+      await topupWallet(amount, "/koszyk?topup=success"); // redirect na Stripe następuje w środku
+    } catch (e: any) {
+      setBusy(false);
+      clearIntent();
+      setMsg(e?.message ?? "Nie udało się rozpocząć doładowania.");
+    }
+  }
+
+  // Powrót ze Stripe (?topup=success): odśwież saldo i — jeśli środki wystarczą — dokończ płatność.
+  useEffect(() => {
+    const p = new URLSearchParams(window.location.search).get("topup");
+    if (!p) return;
+    const clean = () => { try { window.history.replaceState({}, "", "/koszyk"); } catch { /* ignore */ } };
+    const intent = loadIntent();
+    if (intent) setAddr(intent.addr);
+    if (p === "cancel") {
+      setMsg("Doładowanie anulowane. Możesz spróbować ponownie.");
+      clean();
+      return;
+    }
+    if (p === "success") {
+      setResuming(true);
+      (async () => {
+        const w = await walletBalance().catch(() => null);
+        if (w) { setBalance(w.balance); setLinked(w.linked); }
+        const need = intent?.grand ?? grand;
+        if (w && intent && w.balance >= need) {
+          await runCheckout(intent.addr, intent.shippingCodes);
+        } else {
+          setResuming(false);
+          setMsg("Doładowanie w toku — środki zaksięgują się w portfelu za chwilę. Kliknij „Zapłać saldem”, gdy saldo wystarczy.");
+        }
+        clean();
+      })();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   return (
     <div className="min-h-screen">
@@ -262,22 +325,34 @@ export default function Koszyk() {
               {msg && <div className="mb-3 rounded-lg px-3 py-2 text-sm" style={{ background: "rgba(242,92,176,.12)", color: "#F8A8D2" }}>{msg}</div>}
 
               {balance != null && !enoughFunds ? (
-                <>
-                  <div className="mb-3 rounded-lg px-3 py-2 text-sm" style={{ background: "rgba(242,115,29,.12)", color: "var(--gold)" }}>
-                    Za mało środków. Brakuje <b>{zl(shortfall)}</b> — doładuj Sunrise Pay.
+                <div className="flex flex-col gap-2">
+                  <div className="rounded-lg px-3 py-2 text-sm" style={{ background: "rgba(242,115,29,.12)", color: "var(--gold)" }}>
+                    Brakuje <b>{zl(shortfall)}</b> w portfelu. Doładuj i zapłać bez wychodzenia z koszyka:
                   </div>
-                  <a href="/portfel" className="block text-center rounded-xl py-3 font-semibold text-black"
-                     style={{ background: "linear-gradient(135deg,#F2731D,#E0A21B)" }}>Doładuj brakujące {zl(shortfall)} →</a>
-                </>
+                  <div className="flex items-center gap-2">
+                    <input type="number" min={Math.ceil(shortfall)} step={1} inputMode="numeric"
+                           value={topupDisplay} onChange={(e) => setTopupAmount(e.target.value)}
+                           className="w-28 rounded-lg px-3 py-2 text-sm outline-none"
+                           style={{ background: "var(--glass)", border: "1px solid var(--line)" }} />
+                    <span className="text-xs" style={{ color: "var(--mut)" }}>zł · min {zl(shortfall)}</span>
+                  </div>
+                  <button onClick={() => topupAndPay(effectiveTopup)} disabled={busy || resuming || !addrOk}
+                          className="w-full rounded-xl py-3 font-semibold text-black disabled:opacity-50"
+                          style={{ background: "linear-gradient(135deg,#F2731D,#E0A21B)" }}>
+                    {busy ? "Przekierowuję do płatności…" : `Doładuj ${zl(effectiveTopup)} i zapłać →`}
+                  </button>
+                  {!addrOk && <div className="text-xs" style={{ color: "var(--gold)" }}>Najpierw uzupełnij adres dostawy powyżej.</div>}
+                  <a href="/portfel" className="text-center text-xs underline" style={{ color: "var(--mut)" }}>albo doładuj w aplikacji MySunrise</a>
+                </div>
               ) : (
-                <button onClick={pay} disabled={busy || !addrOk || (balance != null && !enoughFunds)}
+                <button onClick={pay} disabled={busy || resuming || !addrOk || (balance != null && !enoughFunds)}
                         className="w-full rounded-xl py-3 font-semibold text-black disabled:opacity-50"
                         style={{ background: "linear-gradient(135deg,#F2731D,#D9560C)" }}>
-                  {busy ? "Płacę…" : "Zapłać saldem (Sunrise Pay)"}
+                  {resuming ? "Dokańczam zamówienie…" : busy ? "Płacę…" : "Zapłać saldem (Sunrise Pay)"}
                 </button>
               )}
               <p className="text-xs mt-3" style={{ color: "var(--mut)" }}>
-                Płatność wyłącznie z portfela Sunrise Pay. Po zakupie 3% wraca jako punkty na portfel.
+                Płatność wyłącznie z portfela Sunrise Pay. Doładowanie kartą (Stripe) zasila portfel; po zakupie 3% wraca jako punkty.
               </p>
             </div>
           </div>

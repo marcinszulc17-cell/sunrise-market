@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { supabase } from "../lib/supabase";
 import { getWalletOps } from "../lib/payments";
 import { walletBalance } from "../lib/api";
+import { hasIntent } from "../lib/checkoutIntent";
 
 // Strona Portfel: saldo Sunrise Pay + doładowanie przez Stripe + historia.
 // Trasa proponowana: /portfel  (success_url/cancel_url edge funkcji wskazują tutaj).
@@ -61,6 +62,13 @@ export default function Portfel() {
         </div>
       )}
       {msg && <div className="mb-4 rounded-lg bg-amber-500/10 px-4 py-2 text-amber-300 text-sm">{msg}</div>}
+
+      {hasIntent() && (
+        <div className="mb-4 rounded-lg bg-amber-500/15 px-4 py-3 text-amber-200 text-sm flex items-center justify-between gap-3 ring-1 ring-amber-500/30">
+          <span>Masz zamówienie w toku — wróć do koszyka i dokończ płatność z portfela.</span>
+          <a href="/koszyk?topup=success" className="whitespace-nowrap rounded-lg bg-amber-500 px-3 py-1.5 font-semibold text-zinc-900">Dokończ →</a>
+        </div>
+      )}
 
       <div className="rounded-2xl bg-zinc-900/70 p-5 mb-8 ring-1 ring-amber-500/10">
         <div className="text-sm text-zinc-300 mb-3">Doładowanie robisz w MySunrise — środki od razu są dostępne tu, w Markecie (to jedno saldo Sunrise Pay).</div>

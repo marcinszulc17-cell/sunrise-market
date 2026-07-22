@@ -2,9 +2,12 @@ import { supabase } from "./supabase";
 
 // Doładowanie portfela: tworzy Stripe Checkout i przekierowuje do płatności.
 // user_id NIE jest wysyłany — backend bierze go z JWT (bezpieczeństwo).
-export async function topupWallet(amountPln: number): Promise<void> {
+// returnTo (opcjonalne): ścieżka powrotu po płatności — podpowiedź dla backendu,
+// aby wrócić np. do koszyka i dokończyć płatność (auto-doładowanie w checkoutcie).
+// Gdy backend jeszcze tego nie honoruje, parametr jest po prostu ignorowany.
+export async function topupWallet(amountPln: number, returnTo?: string): Promise<void> {
   const { data, error } = await supabase.functions.invoke("wallet-topup", {
-    body: { amount: amountPln },
+    body: { amount: amountPln, return_to: returnTo ?? null },
   });
   if (error) throw error;
   if (!data?.url) throw new Error(data?.error ?? "Nie udało się utworzyć płatności");
