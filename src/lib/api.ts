@@ -369,3 +369,8 @@ export async function sponsoredOffers(placement = "search", category: string | n
   const { data, error } = await supabase.rpc("sponsored_offers", { p_placement: placement, p_category: category, p_limit: limit });
   if (error) return []; return data ?? [];
 }
+
+export async function genDescription(title: string, category?: string, mode?: string): Promise<string> {
+  const { data, error } = await supabase.functions.invoke("gen-description", { body: { title, category, mode } });
+  if (error) throw error; return (data as any)?.description ?? "";
+}

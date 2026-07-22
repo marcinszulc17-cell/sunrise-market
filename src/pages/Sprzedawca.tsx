@@ -3,7 +3,7 @@ import { supabase } from "../lib/supabase";
 import { getMySeller } from "../lib/payments";
 import {
   becomeSeller, myOffers, createOffer, topCategories, childCategories, uploadProductImage,
-  mySubscription, promoteOffer, sellerOrders, markShipped, sellerWallet, sellerSummary, walletHistory, adRates, adBuy,
+  mySubscription, promoteOffer, sellerOrders, markShipped, sellerWallet, sellerSummary, walletHistory, adRates, adBuy, genDescription,
   type SellerWallet,
 } from "../lib/api";
 import { setMode } from "../lib/mode";
@@ -151,6 +151,7 @@ function Oferty() {
         {msg && <div className="text-sm" style={{ color: "var(--gold)" }}>{msg}</div>}
         <input className={inp} style={inpStyle} placeholder="Nazwa produktu" value={title} onChange={(e) => setTitle(e.target.value)} required />
         <textarea className={inp} style={inpStyle} placeholder="Opis" value={desc} onChange={(e) => setDesc(e.target.value)} rows={3} />
+        <button type="button" disabled={busy} onClick={async () => { if (!title) { setMsg("Najpierw wpisz nazwę produktu."); return; } setBusy(true); try { setDesc(await genDescription(title, chosen?.name)); } catch (e) { setMsg((e as Error).message); } finally { setBusy(false); } }} className="text-xs px-3 py-1.5 rounded-lg self-start disabled:opacity-50" style={{ background: "var(--glass)", border: "1px solid rgba(242,115,29,.5)", color: "var(--gold)" }}>✨ Generuj opis AI</button>
         <div className="flex gap-3">
           <input className={inp} style={inpStyle} type="number" min={0} step="0.01" placeholder="Cena zł" value={price || ""} onChange={(e) => setPrice(Number(e.target.value))} required />
           <input className={inp} style={inpStyle} type="number" min={0} placeholder="Sztuk" value={stock} onChange={(e) => setStock(Number(e.target.value))} />

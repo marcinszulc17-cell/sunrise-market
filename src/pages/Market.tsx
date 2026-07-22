@@ -455,7 +455,7 @@ export default function Market() {
           <a href="/legal/zwroty.html" className="hover:text-amber-300">Zwroty i reklamacje</a>
           <a href="/legal/regulamin.html" className="hover:text-amber-300">Regulamin</a>
         </div>
-        Sunrise Market · Płatność wyłącznie Sunrise Pay · Cashback 3% · Prowizja 7,9%
+        Sunrise Market · Płatność wyłącznie Sunrise Pay · Cashback 3%
       </footer>
       <SuriChat />
     </div>

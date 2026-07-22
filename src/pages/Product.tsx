@@ -223,7 +223,7 @@ export default function Product() {
 
               <div className="mt-2 rounded-2xl p-4 text-xs" style={{ background: "var(--glass)", border: "1px solid var(--line)", color: "var(--mut)" }}>
                 Płatność wyłącznie <b style={{ color: "var(--gold)" }}>Sunrise Pay</b> (saldo portfela). Cashback 3% wraca na portfel po zakupie.
-                Ochrona kupującego i zwroty na saldo. Prowizja platformy 7,9%.
+                Ochrona kupującego i zwroty na saldo.
               </div>
             </div>
           </div>
