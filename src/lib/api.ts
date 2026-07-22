@@ -319,6 +319,12 @@ export async function cjStats(): Promise<CjStat[]> {
   if (error) throw error;
   return (data?.items ?? []) as CjStat[];
 }
+export type CatalogStat = CjStat & { provider: string };
+export async function catalogStats(opts: { provider?: string | null; search?: string | null; sort?: string; limit?: number; offset?: number } = {}): Promise<CatalogStat[]> {
+  const { data, error } = await supabase.functions.invoke("cj-admin", { body: { action: "catalog_stats", provider: opts.provider ?? null, search: opts.search ?? null, sort: opts.sort ?? "sold", limit: opts.limit ?? 200, offset: opts.offset ?? 0 } });
+  if (error) throw error;
+  return (data?.items ?? []) as CatalogStat[];
+}
 // Kategorie (drzewo) — do formularza oferty
 export async function topCategories() {
   const { data, error } = await supabase.from("categories").select("id,slug,name").is("parent_id", null).order("sort_order");

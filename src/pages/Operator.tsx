@@ -5,7 +5,7 @@ import {
   adminCustomers, adminSellers, adminSetSellerStatus,
   listReturns, resolveReturn, listPendingSellers, reviewSeller, listOffersAdmin, moderateOffer,
   bridgeQueue, retryBridgeOrder, getAutoForward, setAutoForward, approveBridgeForward, rejectBridgeForward,
-  cjImport, cjDrafts, cjSetStatus, cjActivateAll, cjStats, type CjDraft, type CjStat,
+  cjImport, cjDrafts, cjSetStatus, cjActivateAll, cjStats, catalogStats, type CjDraft, type CjStat, type CatalogStat,
 } from "../lib/api";
 
 const zl = (v: number) => Math.round(Number(v || 0)).toLocaleString("pl-PL") + " zł";
@@ -326,7 +326,9 @@ function Oferty() {
 function CjDrop() {
   const [view, setView] = useState<"drafty" | "statystyki">("drafty");
   const [drafts, setDrafts] = useState<CjDraft[]>([]);
-  const [stats, setStats] = useState<CjStat[]>([]);
+  const [stats, setStats] = useState<CatalogStat[]>([]);
+  const [provider, setProvider] = useState<"" | "cj" | "teemdrop">("");
+  const [statSearch, setStatSearch] = useState("");
   const [sort, setSort] = useState<"sold" | "views" | "margin" | "marginPct" | "price">("sold");
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
@@ -335,9 +337,9 @@ function CjDrop() {
   const [keyword, setKeyword] = useState("");
 
   async function load() { setLoading(true); try { setDrafts(await cjDrafts()); } catch (e) { setMsg((e as Error).message); } finally { setLoading(false); } }
-  async function loadStats() { setLoading(true); try { setStats(await cjStats()); } catch (e) { setMsg((e as Error).message); } finally { setLoading(false); } }
+  async function loadStats() { setLoading(true); try { setStats(await catalogStats({ provider: provider || null, search: statSearch || null, sort, limit: 200 })); } catch (e) { setMsg((e as Error).message); } finally { setLoading(false); } }
   useEffect(() => { load(); }, []);
-  useEffect(() => { if (view === "statystyki") loadStats(); }, [view]);
+  useEffect(() => { if (view === "statystyki") loadStats(); }, [view, provider, sort]);
 
   const sortedStats = [...stats].sort((a, b) => {
     if (sort === "sold") return b.sold - a.sold;
@@ -413,19 +415,24 @@ function CjDrop() {
       {view === "statystyki" && (
         <>
           <div className="flex items-center gap-2 mb-2 flex-wrap">
-            <span className="font-semibold">Statystyki produktów CJ</span>
+            <span className="font-semibold">Statystyki produktów</span>
+            {(([["", "Wszyscy"], ["cj", "CJ"], ["teemdrop", "TeemDrop"]]) as ["" | "cj" | "teemdrop", string][]).map(([k, l]) => (
+              <button key={k || "all"} onClick={() => setProvider(k)} className="text-xs px-3 py-1.5 rounded-full" style={provider === k ? { background: "rgba(52,227,160,.16)", border: "1px solid rgba(52,227,160,.5)", color: "var(--green)" } : { background: "var(--glass)", border: "1px solid var(--line)", color: "var(--mut)" }}>{l}</button>
+            ))}
+            <input value={statSearch} onChange={(e) => setStatSearch(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") loadStats(); }} placeholder="Szukaj po nazwie… (Enter)" className="text-xs px-3 py-1.5 rounded-full outline-none" style={{ background: "var(--glass)", border: "1px solid var(--line)", color: "var(--ink)", minWidth: 170 }} />
             <span className="text-xs" style={{ color: "var(--mut)" }}>· sortuj:</span>
             {(([["sold", "🛒 sprzedaż"], ["views", "👁 wyświetlenia"], ["margin", "💰 marża zł"], ["marginPct", "% marży"], ["price", "cena"]]) as [typeof sort, string][]).map(([k, l]) => (
               <button key={k} onClick={() => setSort(k)} className="text-xs px-3 py-1.5 rounded-full" style={sort === k ? { background: "rgba(242,115,29,.16)", border: "1px solid rgba(242,115,29,.5)", color: "var(--gold)" } : { background: "var(--glass)", border: "1px solid var(--line)", color: "var(--mut)" }}>{l}</button>
             ))}
           </div>
-          <p className="text-xs mb-3" style={{ color: "var(--mut)" }}>Nasza marża = cena − koszt CJ (bez wysyłki). <b style={{ color: "var(--gold)" }}>Rynek</b> = sugerowana cena detaliczna CJ (benchmark konkurencji), <b>Marża konk.</b> = ile zarobiłby konkurent przy tej cenie, <b>Przewaga</b> = o ile jesteśmy tańsi (zielone) lub drożsi (różowe) od rynku. Gdzie jest ruch (👁) + marża, tam pompuj kasę.</p>
+          <p className="text-xs mb-3" style={{ color: "var(--mut)" }}>Nasza marża = cena − koszt dostawcy. <b style={{ color: "var(--gold)" }}>Rynek</b> = sugerowana cena detaliczna (benchmark konkurencji), <b>Marża konk.</b> = ile zarobiłby konkurent przy tej cenie, <b>Przewaga</b> = o ile jesteśmy tańsi (zielone) lub drożsi (różowe). Pokazujemy top 200 wg sortowania — użyj szukajki dla konkretnych produktów.</p>
           {loading && <p style={{ color: "var(--mut)" }}>Ładowanie…</p>}
           <div style={{ overflowX: "auto", border: "1px solid var(--line)", borderRadius: 16 }}>
             <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
               <thead>
                 <tr style={{ color: "var(--mut)" }}>
                   <th style={{ padding: "10px 12px", textAlign: "left" }}>Produkt</th>
+                  <th style={{ padding: "10px 12px", textAlign: "left" }}>Dostawca</th>
                   <th style={{ padding: "10px 12px", textAlign: "right" }}>Cena</th>
                   <th style={{ padding: "10px 12px", textAlign: "right" }}>Koszt</th>
                   <th style={{ padding: "10px 12px", textAlign: "right" }}>Nasza marża</th>
@@ -447,6 +454,7 @@ function CjDrop() {
                         <span style={{ display: "-webkit-box", WebkitLineClamp: 1, WebkitBoxOrient: "vertical", overflow: "hidden" }}>{r.title}</span>
                       </div>
                     </td>
+                    <td style={{ padding: "8px 12px", textAlign: "left", color: "var(--mut)", fontSize: 11 }}>{r.provider === "cj" ? "CJ" : r.provider === "teemdrop" ? "TeemDrop" : r.provider}</td>
                     <td style={{ padding: "8px 12px", textAlign: "right" }}>{zl(r.price_gross)}</td>
                     <td style={{ padding: "8px 12px", textAlign: "right", color: "var(--mut)" }}>{zl(r.cost_zl)}</td>
                     <td style={{ padding: "8px 12px", textAlign: "right", fontWeight: 600, color: r.margin_zl <= 0 ? "#F8A8D2" : "var(--green)" }}>{zl(r.margin_zl)}</td>
@@ -459,7 +467,7 @@ function CjDrop() {
                     <td style={{ padding: "8px 12px", textAlign: "right" }}>{zl(r.revenue)}</td>
                   </tr>
                 ))}
-                {!loading && sortedStats.length === 0 && <tr><td colSpan={11} style={{ padding: "12px", color: "var(--mut)" }}>Brak danych. Zaimportuj i aktywuj produkty CJ.</td></tr>}
+                {!loading && sortedStats.length === 0 && <tr><td colSpan={12} style={{ padding: "12px", color: "var(--mut)" }}>Brak danych. Zaimportuj i aktywuj produkty CJ.</td></tr>}
               </tbody>
             </table>
           </div>
