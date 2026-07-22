@@ -289,6 +289,29 @@ export async function energyReferral(): Promise<EnergyReferral> {
   if (error || !data) return { available: false };
   return data as EnergyReferral;
 }
+
+// ── Dropshipping CJ (operator) ────────────────────────────────────
+// Import katalogu CJ (oferty lądują jako draft), przegląd i aktywacja.
+export async function cjImport(opts: { page?: number; pageSize?: number; categoryKeyword?: string } = {}) {
+  const { data, error } = await supabase.functions.invoke("cj-import-feed", { body: opts });
+  if (error) throw error;
+  return data;
+}
+export type CjDraft = { id: string; title: string; price_gross: number; image_url: string | null; status: string; created_at: string };
+export async function cjDrafts(): Promise<CjDraft[]> {
+  const { data, error } = await supabase.functions.invoke("cj-admin", { body: { action: "list" } });
+  if (error) throw error;
+  return (data?.items ?? []) as CjDraft[];
+}
+export async function cjSetStatus(offerId: string, status: "active" | "draft" | "blocked") {
+  const { error } = await supabase.functions.invoke("cj-admin", { body: { action: "set", offer_id: offerId, status } });
+  if (error) throw error;
+}
+export async function cjActivateAll(): Promise<number> {
+  const { data, error } = await supabase.functions.invoke("cj-admin", { body: { action: "activateAll" } });
+  if (error) throw error;
+  return Number(data?.activated ?? 0);
+}
 // Kategorie (drzewo) — do formularza oferty
 export async function topCategories() {
   const { data, error } = await supabase.from("categories").select("id,slug,name").is("parent_id", null).order("sort_order");

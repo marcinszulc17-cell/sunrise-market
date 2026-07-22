@@ -5,19 +5,21 @@ import {
   adminCustomers, adminSellers, adminSetSellerStatus,
   listReturns, resolveReturn, listPendingSellers, reviewSeller, listOffersAdmin, moderateOffer,
   bridgeQueue, retryBridgeOrder, getAutoForward, setAutoForward, approveBridgeForward, rejectBridgeForward,
+  cjImport, cjDrafts, cjSetStatus, cjActivateAll, type CjDraft,
 } from "../lib/api";
 
 const zl = (v: number) => Math.round(Number(v || 0)).toLocaleString("pl-PL") + " zł";
 const n = (v: number) => Number(v || 0).toLocaleString("pl-PL");
 const dt = (s: string) => new Date(s).toLocaleString("pl-PL");
 
-type Tab = "pulpit" | "zamowienia" | "klienci" | "sprzedawcy" | "oferty" | "fulfillment" | "zwroty";
+type Tab = "pulpit" | "zamowienia" | "klienci" | "sprzedawcy" | "oferty" | "cjdrop" | "fulfillment" | "zwroty";
 const TABS: { id: Tab; label: string }[] = [
   { id: "pulpit", label: "📊 Pulpit" },
   { id: "zamowienia", label: "🧾 Zamówienia" },
   { id: "klienci", label: "👤 Klienci" },
   { id: "sprzedawcy", label: "🏪 Sprzedawcy" },
   { id: "oferty", label: "📦 Oferty" },
+  { id: "cjdrop", label: "🛒 CJ Drop" },
   { id: "fulfillment", label: "🚚 Fulfillment" },
   { id: "zwroty", label: "↩️ Zwroty" },
 ];
@@ -79,6 +81,7 @@ export default function Operator() {
         {isOp && tab === "klienci" && <Klienci />}
         {isOp && tab === "sprzedawcy" && <Sprzedawcy />}
         {isOp && tab === "oferty" && <Oferty />}
+        {isOp && tab === "cjdrop" && <CjDrop />}
         {isOp && tab === "fulfillment" && <Fulfillment />}
         {isOp && tab === "zwroty" && <Zwroty />}
       </main>
@@ -314,6 +317,75 @@ function Oferty() {
           </Card>
         ))}
         {!loading && rows.length === 0 && <p style={{ color: "var(--mut)" }}>Brak ofert.</p>}
+      </div>
+    </>
+  );
+}
+
+// ── CJ DROPSHIPPING (import + akceptacja draftów) ───────────────────
+function CjDrop() {
+  const [drafts, setDrafts] = useState<CjDraft[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [busy, setBusy] = useState(false);
+  const [msg, setMsg] = useState<string | null>(null);
+  const [pageSize, setPageSize] = useState("20");
+  const [keyword, setKeyword] = useState("");
+
+  async function load() { setLoading(true); try { setDrafts(await cjDrafts()); } catch (e) { setMsg((e as Error).message); } finally { setLoading(false); } }
+  useEffect(() => { load(); }, []);
+
+  async function onImport() {
+    setBusy(true); setMsg(null);
+    try {
+      const r: any = await cjImport({ pageSize: Math.min(Number(pageSize) || 20, 50), categoryKeyword: keyword || undefined });
+      if (r?.available === false) setMsg(r.error ?? "Brak/nieprawidłowy klucz CJ (ustaw sekret CJ_API_KEY).");
+      else setMsg(`Zaimportowano ${r?.imported ?? 0} nowych (str. ${r?.page}), zaktualizowano ${r?.updated ?? 0}. Wszystko jako draft.`);
+      await load();
+    } catch (e) { setMsg((e as Error).message); } finally { setBusy(false); }
+  }
+  async function onSet(id: string, status: "active" | "blocked") { try { await cjSetStatus(id, status); setDrafts((d) => d.filter((x) => x.id !== id)); } catch (e) { alert((e as Error).message); } }
+  async function onActivateAll() {
+    if (!window.confirm(`Aktywować wszystkie ${drafts.length} draftów CJ? Trafią do sklepu jako aktywne oferty.`)) return;
+    setBusy(true);
+    try { const cnt = await cjActivateAll(); setMsg(`Aktywowano ${cnt} ofert.`); await load(); } catch (e) { setMsg((e as Error).message); } finally { setBusy(false); }
+  }
+
+  return (
+    <>
+      <Card className="mb-4">
+        <div className="font-semibold mb-1">Import z CJ Dropshipping</div>
+        <p className="text-xs mb-3" style={{ color: "var(--mut)" }}>Pobiera produkty CJ jako <b>drafty</b> (Sunrise first-party, cashback-only). Cena = cena CJ × kurs × marża (konfiguracja w platform_config). Nic nie trafia do sklepu bez akceptacji poniżej.</p>
+        <div className="flex flex-wrap items-center gap-2">
+          <input value={keyword} onChange={(e) => setKeyword(e.target.value)} placeholder="Słowo klucz (opcjonalnie, np. lamp)" className={inp} style={{ ...inpStyle, minWidth: 240 }} />
+          <input value={pageSize} onChange={(e) => setPageSize(e.target.value)} type="number" min={1} max={50} className={inp} style={{ ...inpStyle, width: 90 }} />
+          <span className="text-xs" style={{ color: "var(--mut)" }}>szt./import (max 50)</span>
+          <button onClick={onImport} disabled={busy} className="px-4 py-2 rounded-lg text-sm font-semibold text-black disabled:opacity-50" style={{ background: "linear-gradient(135deg,#F2731D,#E0A21B)" }}>{busy ? "Importuję…" : "Importuj z CJ →"}</button>
+        </div>
+        {msg && <div className="mt-3 text-sm rounded-lg px-3 py-2" style={{ background: "rgba(242,115,29,.12)", color: "var(--gold)" }}>{msg}</div>}
+      </Card>
+
+      <div className="flex items-center justify-between mb-3 flex-wrap gap-2">
+        <div className="font-semibold">Drafty do akceptacji <span style={{ color: "var(--mut)" }}>({drafts.length})</span></div>
+        {drafts.length > 0 && <button onClick={onActivateAll} disabled={busy} className="text-sm px-4 py-2 rounded-xl font-semibold text-black disabled:opacity-50" style={{ background: "linear-gradient(135deg,#34E3A0,#38E0F0)" }}>Aktywuj wszystkie</button>}
+      </div>
+      {loading && <p style={{ color: "var(--mut)" }}>Ładowanie…</p>}
+      <div className="grid gap-3" style={{ gridTemplateColumns: "repeat(auto-fill,minmax(260px,1fr))" }}>
+        {drafts.map((o) => (
+          <Card key={o.id}>
+            <div className="flex gap-3">
+              <div className="w-16 h-16 rounded-lg shrink-0" style={{ background: o.image_url ? `center/cover no-repeat url(${o.image_url})` : "var(--glass)", border: "1px solid var(--line)" }} />
+              <div className="min-w-0 flex-1">
+                <div className="text-sm font-medium" style={{ display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" }}>{o.title}</div>
+                <div className="text-sm mt-1" style={{ color: "var(--gold)" }}>{zl(o.price_gross)}</div>
+              </div>
+            </div>
+            <div className="flex gap-2 mt-3">
+              <button onClick={() => onSet(o.id, "active")} className="flex-1 text-xs font-semibold px-3 py-2 rounded-lg text-black" style={{ background: "linear-gradient(135deg,#34E3A0,#38E0F0)" }}>Aktywuj</button>
+              <button onClick={() => onSet(o.id, "blocked")} className="text-xs px-3 py-2 rounded-lg" style={{ background: "rgba(242,92,176,.14)", border: "1px solid rgba(242,92,176,.4)", color: "#F8A8D2" }}>Odrzuć</button>
+            </div>
+          </Card>
+        ))}
+        {!loading && drafts.length === 0 && <p style={{ color: "var(--mut)" }}>Brak draftów. Zaimportuj z CJ powyżej.</p>}
       </div>
     </>
   );
