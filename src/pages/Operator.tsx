@@ -45,7 +45,7 @@ export default function Operator() {
 
   return (
     <div className="min-h-screen">
-      <header className="sticky top-0 z-20 backdrop-blur" style={{ background: "rgba(10,18,36,.72)", borderBottom: "1px solid var(--line)" }}>
+      <header className="sticky top-0 z-20 backdrop-blur" style={{ background: "var(--header)", borderBottom: "1px solid var(--line)" }}>
         <div className="mx-auto max-w-6xl px-4 py-3 flex items-center gap-3">
           <a href="/" className="flex items-center gap-2">
             <div className="w-9 h-9 rounded-xl grid place-items-center text-lg" style={{ background: "linear-gradient(135deg,#C8965A,#E8C896)" }}>☀</div>
@@ -53,7 +53,7 @@ export default function Operator() {
           </a>
           <span className="text-sm px-2 py-0.5 rounded-full" style={{ background: "rgba(200,150,90,.12)", color: "var(--gold)" }}>Back-office</span>
           <div className="flex-1" />
-          <a href="/" className="text-sm text-zinc-300 hover:text-white">🛍️ Zakupy jako klient</a>
+          <a href="/" className="text-sm navlink">🛍️ Zakupy jako klient</a>
         </div>
         {isOp && (
           <div className="mx-auto max-w-6xl px-4 pb-2 flex gap-2 overflow-x-auto">

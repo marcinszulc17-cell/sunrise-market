@@ -257,7 +257,7 @@ function Portfel({ seller }: { seller: any }) {
 function Shell({ children, tabs }: { children: React.ReactNode; tabs?: { tab: Tab; setTab: (t: Tab) => void } }) {
   return (
     <div className="min-h-screen">
-      <header className="sticky top-0 z-20 backdrop-blur" style={{ background: "rgba(10,18,36,.72)", borderBottom: "1px solid var(--line)" }}>
+      <header className="sticky top-0 z-20 backdrop-blur" style={{ background: "var(--header)", borderBottom: "1px solid var(--line)" }}>
         <div className="mx-auto max-w-5xl px-4 py-3 flex items-center gap-3">
           <a href="/" className="flex items-center gap-2">
             <div className="w-9 h-9 rounded-xl grid place-items-center text-lg" style={{ background: "linear-gradient(135deg,#C8965A,#E8C896)" }}>☀</div>
@@ -265,7 +265,7 @@ function Shell({ children, tabs }: { children: React.ReactNode; tabs?: { tab: Ta
           </a>
           <div className="flex-1" />
           <button onClick={() => { setMode("buyer"); window.location.href = "/"; }} className="text-sm font-semibold px-3 py-1.5 rounded-lg text-black" style={{ background: "linear-gradient(135deg,#C8965A,#A97B42)" }}>🛍️ Konto klienta</button>
-          <a href="/konto" className="text-sm text-zinc-300 hover:text-white">Konto</a>
+          <a href="/konto" className="text-sm navlink">Konto</a>
         </div>
         {tabs && (
           <div className="mx-auto max-w-5xl px-4 pb-2 flex gap-2 overflow-x-auto">
