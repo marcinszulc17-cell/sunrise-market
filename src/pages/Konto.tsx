@@ -82,12 +82,7 @@ function Card({ children, className = "" }: { children: React.ReactNode; classNa
 function Przeglad({ w, seller, isOp, onLogout, goTab }: { w: WalletLive | null; seller: any; isOp: boolean; onLogout: () => void; goTab: (t: Tab) => void }) {
   return (
     <div className="flex flex-col gap-4">
-      <div className="rounded-2xl p-6" style={{ background: "linear-gradient(135deg, rgba(242,115,29,.14), rgba(124,58,237,.12))", border: "1px solid rgba(242,115,29,.3)" }}>
-        <div className="text-sm" style={{ color: "var(--mut)" }}>Portfel Sunrise Pay</div>
-        <div className="font-display text-4xl font-bold mb-1" style={{ color: "var(--gold)" }}>{zl(w?.balance ?? 0)}</div>
-        <div className="text-sm mb-3" style={{ color: "var(--green)" }}>{pkt(w?.points ?? 0)} pkt cashback{w?.gold != null ? ` · ${w.gold.toLocaleString("pl-PL")} g Gold` : ""}</div>
-        <button onClick={() => goTab("portfel")} className="inline-block rounded-xl px-5 py-2 font-semibold text-black" style={{ background: "linear-gradient(135deg,#F2731D,#E0A21B)" }}>Doładuj / historia</button>
-      </div>
+      <FamilyClub w={w} goTab={goTab} />
       {w && !w.linked && <Card className="!p-4"><span className="text-sm" style={{ color: "#8fe3ef" }}>Portfel niepołączony z MySunrise. Aktywuj Sunrise Pay w aplikacji MySunrise na ten sam e‑mail, aby płacić.</span></Card>}
       <PolecajPV />
       <div className="grid gap-3 sm:grid-cols-2">
@@ -99,6 +94,41 @@ function Przeglad({ w, seller, isOp, onLogout, goTab }: { w: WalletLive | null; 
         {isOp && <a href="/operator"><Card><div className="text-lg mb-1">🛡️ Back-office</div><div className="text-xs" style={{ color: "var(--mut)" }}>Panel operatora</div></Card></a>}
       </div>
       <button onClick={onLogout} className="self-start text-sm px-4 py-2 rounded-xl" style={{ background: "var(--glass)", border: "1px solid var(--line)" }}>Wyloguj</button>
+    </div>
+  );
+}
+
+function FamilyClub({ w, goTab }: { w: WalletLive | null; goTab: (t: Tab) => void }) {
+  return (
+    <div style={{ background: "linear-gradient(140deg,#061434,#0b2350 45%,#123a86)", border: "1px solid rgba(255,210,63,.22)", borderRadius: 20, padding: 22, color: "#fff", boxShadow: "0 22px 48px -24px rgba(11,35,80,.85)" }}>
+      <div className="flex items-center justify-between gap-3 flex-wrap">
+        <div className="flex items-center gap-3">
+          <div style={{ width: 44, height: 44, borderRadius: 13, background: "linear-gradient(135deg,#ffd23f,#ff8a3d)", display: "grid", placeItems: "center", fontSize: 23, color: "#0b2350" }}>☀</div>
+          <div>
+            <div style={{ fontWeight: 800, letterSpacing: ".13em", fontSize: 15 }}>SUNRISE <span style={{ color: "#ffd23f" }}>FAMILY CLUB</span></div>
+            <div style={{ fontSize: 12.5, color: "#aecbf5" }}>cashback dla całej rodziny · Twoje korzyści w jednym miejscu</div>
+          </div>
+        </div>
+        <a href="https://mysunrise.com.pl" target="_blank" rel="noopener" style={{ fontSize: 13, fontWeight: 700, padding: "8px 14px", borderRadius: 10, background: "rgba(255,255,255,.12)", border: "1px solid rgba(255,255,255,.22)", color: "#fff" }}>Moje MySunrise →</a>
+      </div>
+
+      <div className="grid gap-3 sm:grid-cols-2 mt-4">
+        <div style={{ background: "rgba(255,255,255,.06)", borderRadius: 14, padding: "12px 15px" }}>
+          <div style={{ fontSize: 12, color: "#aecbf5" }}>Portfel Sunrise Pay</div>
+          <div style={{ fontSize: 26, fontWeight: 800, color: "#ffd23f" }}>{zl(w?.balance ?? 0)}</div>
+        </div>
+        <div style={{ background: "rgba(255,255,255,.06)", borderRadius: 14, padding: "12px 15px" }}>
+          <div style={{ fontSize: 12, color: "#aecbf5" }}>Punkty cashback</div>
+          <div style={{ fontSize: 26, fontWeight: 800, color: "#7ee0a8" }}>{pkt(w?.points ?? 0)} <span style={{ fontSize: 14 }}>pkt</span>{w?.gold != null ? <span style={{ fontSize: 13, color: "#ffd23f" }}> · {w.gold.toLocaleString("pl-PL")} g Gold</span> : null}</div>
+        </div>
+      </div>
+
+      <div className="flex gap-2 mt-3 flex-wrap items-center">
+        <span style={{ fontSize: 12.5, fontWeight: 600, padding: "6px 12px", borderRadius: 999, background: "rgba(126,224,168,.16)", color: "#7ee0a8", border: "1px solid rgba(126,224,168,.3)" }}>3% od wszystkich zakupów</span>
+        <span style={{ fontSize: 12.5, fontWeight: 600, padding: "6px 12px", borderRadius: 999, background: "rgba(255,210,63,.16)", color: "#ffd23f", border: "1px solid rgba(255,210,63,.3)" }}>5% za polecenia marek własnych</span>
+        <span style={{ fontSize: 12.5, fontWeight: 600, padding: "6px 12px", borderRadius: 999, background: "rgba(255,255,255,.08)", color: "#cfe0fb", border: "1px solid rgba(255,255,255,.16)" }}>Nagrody tygodnia</span>
+        <button onClick={() => goTab("portfel")} style={{ marginLeft: "auto", fontSize: 13, fontWeight: 700, padding: "8px 16px", borderRadius: 11, background: "linear-gradient(135deg,#ffd23f,#ff8a3d)", color: "#0b2350", border: 0, cursor: "pointer" }}>Doładuj / historia</button>
+      </div>
     </div>
   );
 }
