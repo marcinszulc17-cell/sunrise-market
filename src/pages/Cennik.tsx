@@ -10,10 +10,10 @@ export default function Cennik() {
 
   return (
     <div className="min-h-screen">
-      <header className="sticky top-0 z-20 backdrop-blur" style={{ background: "rgba(7,7,15,.72)", borderBottom: "1px solid var(--line)" }}>
+      <header className="sticky top-0 z-20 backdrop-blur" style={{ background: "rgba(10,18,36,.72)", borderBottom: "1px solid var(--line)" }}>
         <div className="mx-auto max-w-4xl px-4 py-3 flex items-center gap-3">
           <a href="/" className="flex items-center gap-2">
-            <div className="w-9 h-9 rounded-xl grid place-items-center text-lg" style={{ background: "linear-gradient(135deg,#F2731D,#E0A21B)" }}>☀</div>
+            <div className="w-9 h-9 rounded-xl grid place-items-center text-lg" style={{ background: "linear-gradient(135deg,#C8965A,#E8C896)" }}>☀</div>
             <span className="font-display text-xl font-semibold">Sunrise Market</span>
           </a>
           <div className="flex-1" />
@@ -59,7 +59,7 @@ export default function Cennik() {
 
 function Card({ title, children, highlight }: { title: string; children: React.ReactNode; highlight?: boolean }) {
   return (
-    <div className="rounded-2xl p-5" style={{ background: "var(--glass)", border: highlight ? "1px solid rgba(242,115,29,.4)" : "1px solid var(--line)" }}>
+    <div className="rounded-2xl p-5" style={{ background: "var(--glass)", border: highlight ? "1px solid rgba(200,150,90,.4)" : "1px solid var(--line)" }}>
       <h2 className="font-display text-xl font-semibold mb-3">{title}</h2>
       <div className="flex flex-col gap-2">{children}</div>
     </div>

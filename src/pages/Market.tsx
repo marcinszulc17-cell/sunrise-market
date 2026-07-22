@@ -29,7 +29,7 @@ function Stars({ rating, reviews }: { rating: number; reviews: number }) {
 // wizual karty wg kategorii / nazwy produktu (emoji + gradient poświaty)
 function catVisual(cat: string, title = ""): { emoji: string; from: string; to: string } {
   const t = (cat + " " + title).toLowerCase();
-  const O = "#F2731D", G = "#E0A21B", GR = "#34E3A0", CY = "#38E0F0", VI = "#A78BFA", PU = "#7C3AED", PK = "#F25CB0";
+  const O = "#C8965A", G = "#E8C896", GR = "#7AB89A", CY = "#38E0F0", VI = "#8FB0EE", PU = "#3A6FD9", PK = "#F25CB0";
   if (t.includes("panel") || t.includes("fotowolt")) return { emoji: "🔆", from: O, to: G };
   if (t.includes("magazyn") || t.includes("bateri") || t.includes("inwerter")) return { emoji: "🔋", from: GR, to: CY };
   if (t.includes("pompa") || t.includes("ogrzew") || t.includes("kolektor")) return { emoji: "♨️", from: O, to: PK };
@@ -53,7 +53,7 @@ function catVisual(cat: string, title = ""): { emoji: string; from: string; to: 
   if (t.includes("sztuk") || t.includes("kolekcj")) return { emoji: "🎨", from: PK, to: CY };
   if (t.includes("przemys") || t.includes("firma")) return { emoji: "🏭", from: CY, to: VI };
   if (t.includes("usług") || t.includes("reklam")) return { emoji: "🛠️", from: G, to: O };
-  return { emoji: "🌅", from: O, to: "#D9560C" };
+  return { emoji: "🌅", from: O, to: "#A97B42" };
 }
 
 // emoji dla chipa działu
@@ -95,11 +95,11 @@ function OfferCard({ o, fav, onToggleFav, badge }: { o: Offer; fav: boolean; onT
         {o.image_url
           ? <img src={o.image_url} alt={o.title} className="absolute inset-0 w-full h-full object-cover" loading="lazy" />
           : <span aria-hidden="true">{v.emoji}</span>}
-        {badge && <span className="absolute top-2 left-2 text-[10px] font-bold px-2 py-1 rounded-full text-black" style={{ background: "linear-gradient(135deg,#F2731D,#E0A21B)" }}>{badge}</span>}
+        {badge && <span className="absolute top-2 left-2 text-[10px] font-bold px-2 py-1 rounded-full text-black" style={{ background: "linear-gradient(135deg,#C8965A,#E8C896)" }}>{badge}</span>}
         <button onClick={(e) => { e.preventDefault(); onToggleFav(o.offer_id); }}
                 aria-label={fav ? "Usuń z listy życzeń" : "Dodaj do listy życzeń"}
                 className="absolute top-2 right-2 w-8 h-8 rounded-full grid place-items-center text-sm"
-                style={{ background: "rgba(7,7,15,.5)", border: "1px solid var(--line)", color: fav ? "#F25CB0" : "#fff" }}>
+                style={{ background: "rgba(10,18,36,.5)", border: "1px solid var(--line)", color: fav ? "#F25CB0" : "#fff" }}>
           {fav ? "♥" : "♡"}
         </button>
       </a>
@@ -114,11 +114,11 @@ function OfferCard({ o, fav, onToggleFav, badge }: { o: Offer; fav: boolean; onT
         {/* Sygnały zaufania — to, po czym klient decyduje, zanim kliknie */}
         <div className="flex flex-wrap gap-1.5">
           <span className="text-[11px] font-semibold px-2 py-1 rounded-full" title="1 pkt = 1 zł do wykorzystania w Sunrise Pay"
-                style={{ background: "rgba(52,227,160,.12)", color: "var(--green)" }}>
+                style={{ background: "rgba(122,184,154,.12)", color: "var(--green)" }}>
             Cashback +{pkt(cashback)} pkt
           </span>
           {freeShip && (
-            <span className="text-[11px] font-semibold px-2 py-1 rounded-full" style={{ background: "rgba(242,115,29,.12)", color: "var(--gold)" }}>
+            <span className="text-[11px] font-semibold px-2 py-1 rounded-full" style={{ background: "rgba(200,150,90,.12)", color: "var(--gold)" }}>
               Darmowa dostawa
             </span>
           )}
@@ -127,7 +127,7 @@ function OfferCard({ o, fav, onToggleFav, badge }: { o: Offer; fav: boolean; onT
         <div className="flex gap-2 mt-1">
           <button onClick={add}
                   className="flex-1 text-center text-sm font-semibold py-2 rounded-xl text-black transition-transform active:scale-95"
-                  style={{ background: added ? "linear-gradient(135deg,#34E3A0,#1DB47A)" : "linear-gradient(135deg,#F2731D,#E0A21B)" }}>
+                  style={{ background: added ? "linear-gradient(135deg,#7AB89A,#1DB47A)" : "linear-gradient(135deg,#C8965A,#E8C896)" }}>
             {added ? "Dodano do koszyka" : "Do koszyka"}
           </button>
           <a href={`/produkt/${o.offer_id}`}
@@ -266,11 +266,11 @@ export default function Market() {
     <div className="min-h-screen">
       {/* ── HEADER ── */}
       <header className="sticky top-0 z-20 backdrop-blur"
-              style={{ background: "rgba(7,7,15,.72)", borderBottom: "1px solid var(--line)" }}>
+              style={{ background: "rgba(10,18,36,.72)", borderBottom: "1px solid var(--line)" }}>
         <div className="mx-auto max-w-6xl px-4 py-3 flex items-center gap-3">
           <a href="/" className="flex items-center gap-2 shrink-0">
             <div className="w-9 h-9 rounded-xl grid place-items-center text-lg shadow-lg"
-                 style={{ background: "linear-gradient(135deg,#F2731D,#E0A21B)", boxShadow: "0 6px 20px -6px rgba(242,115,29,.6)" }}>☀</div>
+                 style={{ background: "linear-gradient(135deg,#C8965A,#E8C896)", boxShadow: "0 6px 20px -6px rgba(200,150,90,.6)" }}>☀</div>
             <span className="font-display text-xl font-semibold tracking-tight">Sunrise Market</span>
           </a>
           <div className="flex-1 flex items-center rounded-xl overflow-hidden"
@@ -280,7 +280,7 @@ export default function Market() {
                    placeholder="Szukaj produktów…"
                    className="flex-1 bg-transparent px-4 py-2 text-sm outline-none placeholder:text-zinc-500" />
             <button onClick={() => load(q)} className="px-5 py-2 text-sm font-semibold text-black"
-                    style={{ background: "linear-gradient(135deg,#F2731D,#D9560C)" }}>Szukaj</button>
+                    style={{ background: "linear-gradient(135deg,#C8965A,#A97B42)" }}>Szukaj</button>
           </div>
           <a href="/sprzedawca" className="text-sm text-zinc-300 hover:text-white px-2 hidden md:block">Sprzedawaj</a>
           {!authed && <a href="/login" className="text-sm text-zinc-300 hover:text-white px-2 hidden sm:block">Zaloguj</a>}
@@ -331,7 +331,7 @@ export default function Market() {
         return (
           <div className="mx-auto max-w-6xl px-4 pt-5">
             <a href={b.link_url || "/"} className="block rounded-2xl overflow-hidden relative"
-               style={{ border: "1px solid rgba(242,115,29,.28)", boxShadow: "0 18px 50px -22px rgba(242,115,29,.4)" }}>
+               style={{ border: "1px solid rgba(200,150,90,.28)", boxShadow: "0 18px 50px -22px rgba(200,150,90,.4)" }}>
               {b.image_url ? (
                 <picture>
                   <source media="(max-width: 640px)" srcSet={b.image_url.replace(/(\.\w+)$/, "_m$1")} />
@@ -340,7 +340,7 @@ export default function Market() {
                 </picture>
               ) : (
                 <div className="flex items-center px-8 py-10"
-                     style={{ background: "linear-gradient(135deg, rgba(242,115,29,.25), rgba(124,58,237,.25))" }}>
+                     style={{ background: "linear-gradient(135deg, rgba(200,150,90,.25), rgba(90,138,229,.25))" }}>
                   <div>
                     <div className="text-[11px] font-semibold tracking-wider mb-2" style={{ color: "var(--gold)" }}>SPONSOROWANE · {b.seller}</div>
                     <div className="font-display text-2xl sm:text-3xl font-semibold max-w-xl">{b.headline}</div>
@@ -434,7 +434,7 @@ export default function Market() {
           {authed && (
             <button onClick={() => (wishMode ? setWishMode(false) : openWishlist())}
                     className="text-sm px-3 py-1.5 rounded-xl"
-                    style={{ background: wishMode ? "linear-gradient(135deg,#F2731D,#D9560C)" : "var(--glass)", border: "1px solid var(--line)", color: wishMode ? "#000" : "var(--ink)", fontWeight: wishMode ? 600 : 400 }}>
+                    style={{ background: wishMode ? "linear-gradient(135deg,#C8965A,#A97B42)" : "var(--glass)", border: "1px solid var(--line)", color: wishMode ? "#000" : "var(--ink)", fontWeight: wishMode ? 600 : 400 }}>
               {wishMode ? "← Wróć do ofert" : `♥ Lista życzeń${favs.size ? ` (${favs.size})` : ""}`}
             </button>
           )}
@@ -457,7 +457,7 @@ export default function Market() {
                    className="w-20 rounded-lg px-2 py-1.5 outline-none" style={{ background: "var(--glass)", border: "1px solid var(--line)" }} />
             <input value={pMax} onChange={(e) => setPMax(e.target.value.replace(/[^0-9]/g, ""))} placeholder="do"
                    className="w-20 rounded-lg px-2 py-1.5 outline-none" style={{ background: "var(--glass)", border: "1px solid var(--line)" }} />
-            <button onClick={rerun} className="px-3 py-1.5 rounded-lg font-semibold text-black" style={{ background: "linear-gradient(135deg,#F2731D,#E0A21B)" }}>Filtruj</button>
+            <button onClick={rerun} className="px-3 py-1.5 rounded-lg font-semibold text-black" style={{ background: "linear-gradient(135deg,#C8965A,#E8C896)" }}>Filtruj</button>
             {(pMin || pMax || sort !== "trafnosc") && (
               <button onClick={() => { setPMin(""); setPMax(""); setSort("trafnosc"); load(q || null, curSlug, "trafnosc"); }}
                       className="px-3 py-1.5 rounded-lg" style={{ background: "var(--glass)", border: "1px solid var(--line)" }}>Wyczyść</button>
@@ -489,7 +489,7 @@ export default function Market() {
                 <p className="text-sm mb-4" style={{ color: "var(--mut)" }}>W tej kategorii nie znaleźliśmy ofert. Zajrzyj do innej albo zobacz wszystko.</p>
                 <button onClick={() => { setActiveDept(null); setActiveSub(null); setActiveSub2(null); load(null, null); }}
                         className="text-sm font-semibold px-5 py-2 rounded-xl text-black"
-                        style={{ background: "linear-gradient(135deg,#F2731D,#E0A21B)" }}>
+                        style={{ background: "linear-gradient(135deg,#C8965A,#E8C896)" }}>
                   Pokaż wszystkie oferty
                 </button>
               </div>
@@ -533,7 +533,7 @@ function Chip({ active, onClick, children }: { active: boolean; onClick: () => v
     <button onClick={onClick}
             className="shrink-0 text-sm px-3 py-1.5 rounded-full whitespace-nowrap"
             style={active
-              ? { background: "linear-gradient(135deg,#F2731D,#D9560C)", color: "#000", fontWeight: 600 }
+              ? { background: "linear-gradient(135deg,#C8965A,#A97B42)", color: "#000", fontWeight: 600 }
               : { background: "var(--glass)", border: "1px solid var(--line)", color: "var(--ink)" }}>
       {children}
     </button>

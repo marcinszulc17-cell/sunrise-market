@@ -219,10 +219,10 @@ export default function Koszyk() {
 
   return (
     <div className="min-h-screen">
-      <header className="sticky top-0 z-20 backdrop-blur" style={{ background: "rgba(7,7,15,.72)", borderBottom: "1px solid var(--line)" }}>
+      <header className="sticky top-0 z-20 backdrop-blur" style={{ background: "rgba(10,18,36,.72)", borderBottom: "1px solid var(--line)" }}>
         <div className="mx-auto max-w-4xl px-4 py-3 flex items-center gap-3">
           <a href="/" className="flex items-center gap-2">
-            <div className="w-9 h-9 rounded-xl grid place-items-center text-lg" style={{ background: "linear-gradient(135deg,#F2731D,#E0A21B)" }}>☀</div>
+            <div className="w-9 h-9 rounded-xl grid place-items-center text-lg" style={{ background: "linear-gradient(135deg,#C8965A,#E8C896)" }}>☀</div>
             <span className="font-display text-xl font-semibold">Sunrise Market</span>
           </a>
           <div className="flex-1" />
@@ -234,7 +234,7 @@ export default function Koszyk() {
         <h1 className="font-display text-3xl font-semibold mb-6">Koszyk</h1>
 
         {done ? (
-          <div className="rounded-2xl p-6" style={{ background: "var(--glass)", border: "1px solid rgba(52,227,160,.4)" }}>
+          <div className="rounded-2xl p-6" style={{ background: "var(--glass)", border: "1px solid rgba(122,184,154,.4)" }}>
             <div className="text-2xl font-display font-semibold mb-2" style={{ color: "var(--green)" }}>Zamówienie opłacone ✅</div>
             <p className="text-sm" style={{ color: "var(--ink)" }}>
               Zapłacono <b>{zl(done.paid)}</b> z portfela Sunrise Pay. Cashback <b style={{ color: "var(--green)" }}>+{pkt(done.cashback)} pkt</b> trafił na portfel
@@ -242,7 +242,7 @@ export default function Koszyk() {
             </p>
             <p className="text-xs mt-2" style={{ color: "var(--mut)" }}>Nr zamówienia: {done.order}</p>
             <div className="flex gap-3 mt-4">
-              <a href="/" className="rounded-xl px-5 py-2 font-semibold text-black" style={{ background: "linear-gradient(135deg,#F2731D,#E0A21B)" }}>Kupuj dalej</a>
+              <a href="/" className="rounded-xl px-5 py-2 font-semibold text-black" style={{ background: "linear-gradient(135deg,#C8965A,#E8C896)" }}>Kupuj dalej</a>
               <a href="/zamowienia" className="rounded-xl px-5 py-2 text-sm" style={{ background: "var(--glass)", border: "1px solid var(--line)" }}>Moje zamówienia</a>
               <a href="/portfel" className="rounded-xl px-5 py-2 text-sm" style={{ background: "var(--glass)", border: "1px solid var(--line)" }}>Portfel</a>
             </div>
@@ -262,7 +262,7 @@ export default function Koszyk() {
                   <div key={lane} className="rounded-2xl p-4" style={{ background: "var(--glass)", border: "1px solid var(--line)" }}>
                     <div className="flex items-center justify-between mb-1">
                       <div className="font-semibold flex items-center gap-2">{meta.icon} {meta.title}</div>
-                      {etaSample && <span className="text-xs px-2 py-0.5 rounded-full" style={{ background: "rgba(242,115,29,.12)", color: "var(--gold)" }}>⏱ {etaSample}</span>}
+                      {etaSample && <span className="text-xs px-2 py-0.5 rounded-full" style={{ background: "rgba(200,150,90,.12)", color: "var(--gold)" }}>⏱ {etaSample}</span>}
                     </div>
                     <div className="text-xs mb-3" style={{ color: "var(--mut)" }}>{meta.note}</div>
                     <div className="flex flex-col gap-2">
@@ -289,7 +289,7 @@ export default function Koszyk() {
                       <div className="flex flex-wrap gap-2">
                         {opt.map((m) => (
                           <label key={m.code} className="flex items-center gap-2 text-sm cursor-pointer rounded-lg px-3 py-1.5"
-                                 style={{ border: selected[lane] === m.code ? "1px solid rgba(242,115,29,.6)" : "1px solid var(--line)" }}>
+                                 style={{ border: selected[lane] === m.code ? "1px solid rgba(200,150,90,.6)" : "1px solid var(--line)" }}>
                             <input type="radio" name={`ship-${lane}`} checked={selected[lane] === m.code} onChange={() => setSelected({ ...selected, [lane]: m.code })} />
                             {m.name}
                             <span style={{ color: freeShip && Number(m.price_gross) > 0 ? "var(--green)" : "var(--mut)" }}>
@@ -335,7 +335,7 @@ export default function Koszyk() {
                 <div className="grid grid-cols-2 gap-2">
                   <button onClick={() => setCurrency("SUNRISE_PAY")}
                           className="text-sm rounded-lg px-3 py-2 text-left"
-                          style={{ border: currency === "SUNRISE_PAY" ? "1px solid rgba(242,115,29,.6)" : "1px solid var(--line)", background: "var(--glass)" }}>
+                          style={{ border: currency === "SUNRISE_PAY" ? "1px solid rgba(200,150,90,.6)" : "1px solid var(--line)", background: "var(--glass)" }}>
                     ☀ Sunrise Pay <span style={{ color: "var(--mut)" }}>(zł)</span>
                   </button>
                   <button disabled title="Gold Pay ruszy po uruchomieniu kursu Gold w MySunrise"
@@ -362,14 +362,14 @@ export default function Koszyk() {
 
               {balance != null && !enoughFunds ? (
                 <div className="flex flex-col gap-2">
-                  <div className="rounded-lg px-3 py-2 text-sm" style={{ background: "rgba(242,115,29,.12)", color: "var(--gold)" }}>
+                  <div className="rounded-lg px-3 py-2 text-sm" style={{ background: "rgba(200,150,90,.12)", color: "var(--gold)" }}>
                     Brakuje <b>{zl(shortfall)}</b> w portfelu. Zapłać punktami albo doładuj — bez wychodzenia z koszyka:
                   </div>
                   {points >= Math.ceil(shortfall) && (
                     <>
                       <button onClick={redeemAndPay} disabled={busy || resuming || !addrOk}
                               className="w-full rounded-xl py-3 font-semibold text-black disabled:opacity-50"
-                              style={{ background: "linear-gradient(135deg,#34E3A0,#12b981)" }}>
+                              style={{ background: "linear-gradient(135deg,#7AB89A,#12b981)" }}>
                         Wymień {pkt(Math.ceil(shortfall))} pkt i zapłać →
                       </button>
                       <div className="text-center text-xs" style={{ color: "var(--mut)" }}>masz {pkt(points)} pkt · albo doładuj kartą:</div>
@@ -379,7 +379,7 @@ export default function Koszyk() {
                     {topupSuggestions.map((v) => (
                       <button key={v} onClick={() => setTopupAmount(String(v))}
                               className="rounded-lg px-3 py-1.5 text-sm"
-                              style={{ border: topupDisplay === String(v) ? "1px solid rgba(242,115,29,.6)" : "1px solid var(--line)", background: "var(--glass)" }}>
+                              style={{ border: topupDisplay === String(v) ? "1px solid rgba(200,150,90,.6)" : "1px solid var(--line)", background: "var(--glass)" }}>
                         {zl(v)}
                       </button>
                     ))}
@@ -392,7 +392,7 @@ export default function Koszyk() {
                   <div className="text-xs" style={{ color: "var(--mut)" }}>Większe doładowanie = mniej opłat i zapas w portfelu na kolejne zakupy.</div>
                   <button onClick={() => topupAndPay(effectiveTopup)} disabled={busy || resuming || !addrOk}
                           className="w-full rounded-xl py-3 font-semibold text-black disabled:opacity-50"
-                          style={{ background: "linear-gradient(135deg,#F2731D,#E0A21B)" }}>
+                          style={{ background: "linear-gradient(135deg,#C8965A,#E8C896)" }}>
                     {busy ? "Przekierowuję do płatności…" : `Doładuj ${zl(effectiveTopup)} i zapłać →`}
                   </button>
                   {!addrOk && <div className="text-xs" style={{ color: "var(--gold)" }}>Najpierw uzupełnij adres dostawy powyżej.</div>}
@@ -401,7 +401,7 @@ export default function Koszyk() {
               ) : (
                 <button onClick={pay} disabled={busy || resuming || !addrOk || (balance != null && !enoughFunds)}
                         className="w-full rounded-xl py-3 font-semibold text-black disabled:opacity-50"
-                        style={{ background: "linear-gradient(135deg,#F2731D,#D9560C)" }}>
+                        style={{ background: "linear-gradient(135deg,#C8965A,#A97B42)" }}>
                   {resuming ? "Dokańczam zamówienie…" : busy ? "Płacę…" : "Zapłać saldem (Sunrise Pay)"}
                 </button>
               )}
@@ -420,7 +420,7 @@ export default function Koszyk() {
                     <div className="flex items-center justify-between mt-2">
                       <span className="font-display text-lg font-semibold">{zl(r.price_gross)}</span>
                       <button onClick={() => addToCart({ offer_id: r.offer_id, title: r.title, price: Number(r.price_gross) })}
-                              className="text-xs font-semibold px-3 py-1.5 rounded-lg text-black" style={{ background: "linear-gradient(135deg,#F2731D,#E0A21B)" }}>+ Dodaj</button>
+                              className="text-xs font-semibold px-3 py-1.5 rounded-lg text-black" style={{ background: "linear-gradient(135deg,#C8965A,#E8C896)" }}>+ Dodaj</button>
                     </div>
                   </div>
                 ))}
@@ -440,17 +440,17 @@ function SmartCard() {
   const [msg, setMsg] = useState<string | null>(null);
   useEffect(() => { smartStatus().then(setMember).catch(() => setMember(false)); }, []);
   if (member === null) return null;
-  if (member) return <div className="mt-3 rounded-xl px-3 py-2 text-xs" style={{ background: "rgba(52,227,160,.10)", border: "1px solid rgba(52,227,160,.4)", color: "var(--green)" }}>⚡ Sunrise Smart aktywny — darmowa dostawa InPost od 49 zł</div>;
+  if (member) return <div className="mt-3 rounded-xl px-3 py-2 text-xs" style={{ background: "rgba(122,184,154,.10)", border: "1px solid rgba(122,184,154,.4)", color: "var(--green)" }}>⚡ Sunrise Smart aktywny — darmowa dostawa InPost od 49 zł</div>;
   async function buy() {
     setBusy(true); setMsg(null);
     try { const r: any = await smartSubscribe(); if (r?.need_topup) setMsg("Za mało środków w portfelu — doładuj Sunrise Pay."); else setMember(true); }
     catch (e) { setMsg((e as Error).message); } finally { setBusy(false); }
   }
   return (
-    <div className="mt-3 rounded-xl p-3" style={{ background: "linear-gradient(140deg,#061434,#123a86)", border: "1px solid rgba(255,210,63,.4)" }}>
-      <div className="text-sm font-semibold" style={{ color: "#ffd23f" }}>⚡ Sunrise Smart — darmowe wysyłki</div>
+    <div className="mt-3 rounded-xl p-3" style={{ background: "linear-gradient(140deg,#061434,#123a86)", border: "1px solid rgba(232,200,150,.4)" }}>
+      <div className="text-sm font-semibold" style={{ color: "#E8C896" }}>⚡ Sunrise Smart — darmowe wysyłki</div>
       <div className="text-xs mt-1" style={{ color: "rgba(255,255,255,.75)" }}>Darmowa dostawa InPost na wszystkie zamówienia od 49 zł. 59 zł/rok.</div>
-      <button onClick={buy} disabled={busy} className="mt-2 text-sm font-semibold px-3 py-1.5 rounded-lg text-black disabled:opacity-50" style={{ background: "linear-gradient(135deg,#F2731D,#E0A21B)" }}>{busy ? "Kupuję…" : "Kup Sunrise Smart (59 zł/rok)"}</button>
+      <button onClick={buy} disabled={busy} className="mt-2 text-sm font-semibold px-3 py-1.5 rounded-lg text-black disabled:opacity-50" style={{ background: "linear-gradient(135deg,#C8965A,#E8C896)" }}>{busy ? "Kupuję…" : "Kup Sunrise Smart (59 zł/rok)"}</button>
       {msg && <div className="text-xs mt-1" style={{ color: "#F8A8D2" }}>{msg}</div>}
     </div>
   );

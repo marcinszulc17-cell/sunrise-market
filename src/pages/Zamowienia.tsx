@@ -11,7 +11,7 @@ const statusLabel: Record<string, string> = {
   delivered: "Dostarczone", completed: "Zakończone", cancelled: "Anulowane", disputed: "Spór",
 };
 const statusColor: Record<string, string> = {
-  paid: "var(--green)", shipped: "#38E0F0", delivered: "#34E3A0", completed: "#34E3A0",
+  paid: "var(--green)", shipped: "#38E0F0", delivered: "#7AB89A", completed: "#7AB89A",
   cancelled: "#F25CB0", disputed: "#F25CB0",
 };
 
@@ -42,10 +42,10 @@ export default function Zamowienia() {
 
   return (
     <div className="min-h-screen">
-      <header className="sticky top-0 z-20 backdrop-blur" style={{ background: "rgba(7,7,15,.72)", borderBottom: "1px solid var(--line)" }}>
+      <header className="sticky top-0 z-20 backdrop-blur" style={{ background: "rgba(10,18,36,.72)", borderBottom: "1px solid var(--line)" }}>
         <div className="mx-auto max-w-3xl px-4 py-3 flex items-center gap-3">
           <a href="/" className="flex items-center gap-2">
-            <div className="w-9 h-9 rounded-xl grid place-items-center text-lg" style={{ background: "linear-gradient(135deg,#F2731D,#E0A21B)" }}>☀</div>
+            <div className="w-9 h-9 rounded-xl grid place-items-center text-lg" style={{ background: "linear-gradient(135deg,#C8965A,#E8C896)" }}>☀</div>
             <span className="font-display text-xl font-semibold">Sunrise Market</span>
           </a>
           <div className="flex-1" />
@@ -88,7 +88,7 @@ export default function Zamowienia() {
               )}
               {o.status === "shipped" && (
                 <button onClick={() => onConfirm(o.order_id)} className="mb-3 mr-2 text-sm font-semibold px-4 py-2 rounded-xl text-black"
-                        style={{ background: "linear-gradient(135deg,#34E3A0,#38E0F0)" }}>Potwierdź odbiór</button>
+                        style={{ background: "linear-gradient(135deg,#7AB89A,#38E0F0)" }}>Potwierdź odbiór</button>
               )}
               {returns[o.order_id]
                 ? <div className="mb-3 text-sm" style={{ color: "var(--gold)" }}>{retLabel[returns[o.order_id]] ?? returns[o.order_id]}</div>

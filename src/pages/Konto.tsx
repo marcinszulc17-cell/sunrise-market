@@ -41,10 +41,10 @@ export default function Konto() {
 
   return (
     <div className="min-h-screen">
-      <header className="sticky top-0 z-20 backdrop-blur" style={{ background: "rgba(7,7,15,.72)", borderBottom: "1px solid var(--line)" }}>
+      <header className="sticky top-0 z-20 backdrop-blur" style={{ background: "rgba(10,18,36,.72)", borderBottom: "1px solid var(--line)" }}>
         <div className="mx-auto max-w-4xl px-4 py-3 flex items-center gap-3">
           <a href="/" className="flex items-center gap-2">
-            <div className="w-9 h-9 rounded-xl grid place-items-center text-lg" style={{ background: "linear-gradient(135deg,#F2731D,#E0A21B)" }}>☀</div>
+            <div className="w-9 h-9 rounded-xl grid place-items-center text-lg" style={{ background: "linear-gradient(135deg,#C8965A,#E8C896)" }}>☀</div>
             <span className="font-display text-xl font-semibold">Sunrise Market</span>
           </a>
           <div className="flex-1" />
@@ -54,7 +54,7 @@ export default function Konto() {
           <div className="mx-auto max-w-4xl px-4 pb-2 flex gap-2 overflow-x-auto">
             {TABS.map((t) => (
               <button key={t.id} onClick={() => setTab(t.id)} className="shrink-0 text-sm px-3 py-1.5 rounded-full whitespace-nowrap"
-                      style={tab === t.id ? { background: "linear-gradient(135deg,#F2731D,#D9560C)", color: "#000", fontWeight: 600 } : { background: "var(--glass)", border: "1px solid var(--line)", color: "var(--ink)" }}>{t.label}</button>
+                      style={tab === t.id ? { background: "linear-gradient(135deg,#C8965A,#A97B42)", color: "#000", fontWeight: 600 } : { background: "var(--glass)", border: "1px solid var(--line)", color: "var(--ink)" }}>{t.label}</button>
             ))}
           </div>
         )}
@@ -100,12 +100,12 @@ function Przeglad({ w, seller, isOp, onLogout, goTab }: { w: WalletLive | null; 
 
 function FamilyClub({ w, goTab }: { w: WalletLive | null; goTab: (t: Tab) => void }) {
   return (
-    <div style={{ background: "linear-gradient(140deg,#061434,#0b2350 45%,#123a86)", border: "1px solid rgba(255,210,63,.22)", borderRadius: 20, padding: 22, color: "#fff", boxShadow: "0 22px 48px -24px rgba(11,35,80,.85)" }}>
+    <div style={{ background: "linear-gradient(140deg,#061434,#0b2350 45%,#123a86)", border: "1px solid rgba(232,200,150,.22)", borderRadius: 20, padding: 22, color: "#fff", boxShadow: "0 22px 48px -24px rgba(11,35,80,.85)" }}>
       <div className="flex items-center justify-between gap-3 flex-wrap">
         <div className="flex items-center gap-3">
-          <div style={{ width: 44, height: 44, borderRadius: 13, background: "linear-gradient(135deg,#ffd23f,#ff8a3d)", display: "grid", placeItems: "center", fontSize: 23, color: "#0b2350" }}>☀</div>
+          <div style={{ width: 44, height: 44, borderRadius: 13, background: "linear-gradient(135deg,#E8C896,#E0B074)", display: "grid", placeItems: "center", fontSize: 23, color: "#0b2350" }}>☀</div>
           <div>
-            <div style={{ fontWeight: 800, letterSpacing: ".13em", fontSize: 15 }}>SUNRISE <span style={{ color: "#ffd23f" }}>FAMILY CLUB</span></div>
+            <div style={{ fontWeight: 800, letterSpacing: ".13em", fontSize: 15 }}>SUNRISE <span style={{ color: "#E8C896" }}>FAMILY CLUB</span></div>
             <div style={{ fontSize: 12.5, color: "#aecbf5" }}>cashback dla całej rodziny · Twoje korzyści w jednym miejscu</div>
           </div>
         </div>
@@ -115,19 +115,19 @@ function FamilyClub({ w, goTab }: { w: WalletLive | null; goTab: (t: Tab) => voi
       <div className="grid gap-3 sm:grid-cols-2 mt-4">
         <div style={{ background: "rgba(255,255,255,.06)", borderRadius: 14, padding: "12px 15px" }}>
           <div style={{ fontSize: 12, color: "#aecbf5" }}>Portfel Sunrise Pay</div>
-          <div style={{ fontSize: 26, fontWeight: 800, color: "#ffd23f" }}>{zl(w?.balance ?? 0)}</div>
+          <div style={{ fontSize: 26, fontWeight: 800, color: "#E8C896" }}>{zl(w?.balance ?? 0)}</div>
         </div>
         <div style={{ background: "rgba(255,255,255,.06)", borderRadius: 14, padding: "12px 15px" }}>
           <div style={{ fontSize: 12, color: "#aecbf5" }}>Punkty cashback</div>
-          <div style={{ fontSize: 26, fontWeight: 800, color: "#7ee0a8" }}>{pkt(w?.points ?? 0)} <span style={{ fontSize: 14 }}>pkt</span>{w?.gold != null ? <span style={{ fontSize: 13, color: "#ffd23f" }}> · {w.gold.toLocaleString("pl-PL")} g Gold</span> : null}</div>
+          <div style={{ fontSize: 26, fontWeight: 800, color: "#9BC7AE" }}>{pkt(w?.points ?? 0)} <span style={{ fontSize: 14 }}>pkt</span>{w?.gold != null ? <span style={{ fontSize: 13, color: "#E8C896" }}> · {w.gold.toLocaleString("pl-PL")} g Gold</span> : null}</div>
         </div>
       </div>
 
       <div className="flex gap-2 mt-3 flex-wrap items-center">
-        <span style={{ fontSize: 12.5, fontWeight: 600, padding: "6px 12px", borderRadius: 999, background: "rgba(126,224,168,.16)", color: "#7ee0a8", border: "1px solid rgba(126,224,168,.3)" }}>3% od wszystkich zakupów</span>
-        <span style={{ fontSize: 12.5, fontWeight: 600, padding: "6px 12px", borderRadius: 999, background: "rgba(255,210,63,.16)", color: "#ffd23f", border: "1px solid rgba(255,210,63,.3)" }}>5% za polecenia marek własnych</span>
+        <span style={{ fontSize: 12.5, fontWeight: 600, padding: "6px 12px", borderRadius: 999, background: "rgba(122,184,154,.16)", color: "#9BC7AE", border: "1px solid rgba(122,184,154,.3)" }}>3% od wszystkich zakupów</span>
+        <span style={{ fontSize: 12.5, fontWeight: 600, padding: "6px 12px", borderRadius: 999, background: "rgba(232,200,150,.16)", color: "#E8C896", border: "1px solid rgba(232,200,150,.3)" }}>5% za polecenia marek własnych</span>
         <span style={{ fontSize: 12.5, fontWeight: 600, padding: "6px 12px", borderRadius: 999, background: "rgba(255,255,255,.08)", color: "#cfe0fb", border: "1px solid rgba(255,255,255,.16)" }}>Nagrody tygodnia</span>
-        <button onClick={() => goTab("portfel")} style={{ marginLeft: "auto", fontSize: 13, fontWeight: 700, padding: "8px 16px", borderRadius: 11, background: "linear-gradient(135deg,#ffd23f,#ff8a3d)", color: "#0b2350", border: 0, cursor: "pointer" }}>Doładuj / historia</button>
+        <button onClick={() => goTab("portfel")} style={{ marginLeft: "auto", fontSize: 13, fontWeight: 700, padding: "8px 16px", borderRadius: 11, background: "linear-gradient(135deg,#E8C896,#E0B074)", color: "#0b2350", border: 0, cursor: "pointer" }}>Doładuj / historia</button>
       </div>
     </div>
   );
@@ -143,7 +143,7 @@ function PolecajPV() {
     try { await navigator.clipboard.writeText(link); setCopied(true); setTimeout(() => setCopied(false), 2000); } catch { /* ignore */ }
   }
   return (
-    <div className="rounded-2xl p-5" style={{ background: "linear-gradient(135deg, rgba(242,115,29,.12), rgba(56,224,240,.08))", border: "1px solid rgba(242,115,29,.3)" }}>
+    <div className="rounded-2xl p-5" style={{ background: "linear-gradient(135deg, rgba(200,150,90,.12), rgba(56,224,240,.08))", border: "1px solid rgba(200,150,90,.3)" }}>
       <div className="flex items-center gap-2 mb-1">
         <span className="text-lg">☀️</span>
         <span className="font-display text-lg font-semibold">Poleć fotowoltaikę — zgarnij do portfela</span>
@@ -155,7 +155,7 @@ function PolecajPV() {
         <>
           <div className="flex flex-wrap items-center gap-2 mb-3">
             <input readOnly value={link} className="flex-1 min-w-[200px] rounded-lg px-3 py-2 text-sm outline-none" style={{ background: "var(--glass)", border: "1px solid var(--line)", color: "var(--ink)" }} />
-            <button onClick={copy} className="rounded-lg px-4 py-2 text-sm font-semibold text-black" style={{ background: "linear-gradient(135deg,#F2731D,#E0A21B)" }}>{copied ? "Skopiowano ✓" : "Kopiuj link"}</button>
+            <button onClick={copy} className="rounded-lg px-4 py-2 text-sm font-semibold text-black" style={{ background: "linear-gradient(135deg,#C8965A,#E8C896)" }}>{copied ? "Skopiowano ✓" : "Kopiuj link"}</button>
           </div>
           <div className="flex flex-wrap gap-4 text-xs" style={{ color: "var(--mut)" }}>
             <span>W toku: <b style={{ color: "var(--ink)" }}>{r.pending ?? 0}</b></span>
@@ -164,7 +164,7 @@ function PolecajPV() {
           </div>
         </>
       ) : (
-        <a href="https://mysunrise.com.pl" target="_blank" rel="noopener" className="inline-block rounded-lg px-4 py-2 text-sm font-semibold text-black" style={{ background: "linear-gradient(135deg,#F2731D,#E0A21B)" }}>Poleć przez MySunrise →</a>
+        <a href="https://mysunrise.com.pl" target="_blank" rel="noopener" className="inline-block rounded-lg px-4 py-2 text-sm font-semibold text-black" style={{ background: "linear-gradient(135deg,#C8965A,#E8C896)" }}>Poleć przez MySunrise →</a>
       )}
     </div>
   );
@@ -207,7 +207,7 @@ function Zamowienia() {
           </div>
           {(o.shipping_method || o.tracking_no) && <div className="text-xs mb-2" style={{ color: "var(--mut)" }}>🚚 {o.shipping_method ?? "—"}{o.tracking_no ? ` · ${o.tracking_no}` : ""}</div>}
           <div className="flex items-center gap-2">
-            {o.status === "shipped" && <button onClick={() => onConfirm(o.order_id)} className="text-sm font-semibold px-4 py-2 rounded-xl text-black" style={{ background: "linear-gradient(135deg,#34E3A0,#38E0F0)" }}>Potwierdź odbiór</button>}
+            {o.status === "shipped" && <button onClick={() => onConfirm(o.order_id)} className="text-sm font-semibold px-4 py-2 rounded-xl text-black" style={{ background: "linear-gradient(135deg,#7AB89A,#38E0F0)" }}>Potwierdź odbiór</button>}
             {returns[o.order_id]
               ? <span className="text-sm" style={{ color: "var(--gold)" }}>{retLabel[returns[o.order_id]] ?? returns[o.order_id]}</span>
               : (["paid", "shipped", "delivered"].includes(o.status) && <button onClick={() => onReturn(o.order_id)} className="text-sm px-4 py-2 rounded-xl" style={{ background: "var(--glass)", border: "1px solid var(--line)" }}>Zwróć / reklamuj</button>)}
@@ -228,11 +228,11 @@ function Portfel({ w }: { w: WalletLive | null }) {
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
         <Card className="ring-1 ring-amber-500/20"><div className="text-sm" style={{ color: "var(--mut)" }}>Saldo Sunrise Pay</div><div className="text-3xl font-extrabold" style={{ color: "var(--gold)" }}>{zl(w?.balance ?? 0)}</div></Card>
         <Card className="ring-1 ring-emerald-500/20"><div className="text-sm" style={{ color: "var(--mut)" }}>Punkty (cashback)</div><div className="text-3xl font-extrabold" style={{ color: "var(--green)" }}>{pkt(w?.points ?? 0)} <span className="text-lg">pkt</span></div></Card>
-        {w?.gold != null && <Card className="ring-1 ring-yellow-500/20"><div className="text-sm" style={{ color: "var(--mut)" }}>Gold Pay</div><div className="text-3xl font-extrabold" style={{ color: "#F2D047" }}>{w.gold.toLocaleString("pl-PL")} <span className="text-lg">g</span></div></Card>}
+        {w?.gold != null && <Card className="ring-1 ring-yellow-500/20"><div className="text-sm" style={{ color: "var(--mut)" }}>Gold Pay</div><div className="text-3xl font-extrabold" style={{ color: "#E8C896" }}>{w.gold.toLocaleString("pl-PL")} <span className="text-lg">g</span></div></Card>}
       </div>
       <Card>
         <div className="text-sm mb-2" style={{ color: "var(--mut)" }}>Doładowanie robisz w MySunrise — to ten sam portfel Sunrise Pay, środki od razu są tutaj.</div>
-        <a href="https://mysunrise.com.pl" target="_blank" rel="noopener" className="inline-block rounded-xl px-5 py-2.5 font-semibold text-black" style={{ background: "linear-gradient(135deg,#F2731D,#E0A21B)" }}>Doładuj w MySunrise →</a>
+        <a href="https://mysunrise.com.pl" target="_blank" rel="noopener" className="inline-block rounded-xl px-5 py-2.5 font-semibold text-black" style={{ background: "linear-gradient(135deg,#C8965A,#E8C896)" }}>Doładuj w MySunrise →</a>
         <p className="text-xs mt-3" style={{ color: "var(--mut)" }}>Wkrótce doładujesz też bezpośrednio tutaj (przelew) — gdy MySunrise uruchomi tę opcję.</p>
       </Card>
       <div>
@@ -267,10 +267,10 @@ function Zyczenia() {
           <div className="text-xs mb-2" style={{ color: "var(--mut)" }}>{o.seller} · {o.category}</div>
           <div className="flex items-center justify-between">
             <span className="font-display text-xl font-semibold">{zl(o.price_gross)}</span>
-            {o.price_dropped && <span className="text-xs px-2 py-0.5 rounded-full" style={{ background: "rgba(52,227,160,.14)", color: "var(--green)" }}>Cena spadła</span>}
+            {o.price_dropped && <span className="text-xs px-2 py-0.5 rounded-full" style={{ background: "rgba(122,184,154,.14)", color: "var(--green)" }}>Cena spadła</span>}
           </div>
           <div className="flex gap-2 mt-3">
-            <a href={`/produkt/${o.offer_id}`} className="flex-1 text-center text-sm font-semibold py-2 rounded-xl text-black" style={{ background: "linear-gradient(135deg,#F2731D,#E0A21B)" }}>Zobacz</a>
+            <a href={`/produkt/${o.offer_id}`} className="flex-1 text-center text-sm font-semibold py-2 rounded-xl text-black" style={{ background: "linear-gradient(135deg,#C8965A,#E8C896)" }}>Zobacz</a>
             <button onClick={() => onRemove(o.offer_id)} className="text-sm px-3 py-2 rounded-xl" style={{ background: "var(--glass)", border: "1px solid var(--line)" }}>♥</button>
           </div>
         </Card>

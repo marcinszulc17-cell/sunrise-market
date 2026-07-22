@@ -71,7 +71,7 @@ export default function Login() {
     <div className="mx-auto max-w-sm p-6 text-zinc-100">
       <div className="flex items-center gap-3 mb-6">
         <div className="w-9 h-9 rounded-xl grid place-items-center text-white"
-             style={{ background: "linear-gradient(135deg,#F26B1D,#E0A21B)" }}>☀</div>
+             style={{ background: "linear-gradient(135deg,#C8965A,#E8C896)" }}>☀</div>
         <h1 className="text-xl font-bold">Sunrise Market</h1>
       </div>
 

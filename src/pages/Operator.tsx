@@ -45,13 +45,13 @@ export default function Operator() {
 
   return (
     <div className="min-h-screen">
-      <header className="sticky top-0 z-20 backdrop-blur" style={{ background: "rgba(7,7,15,.72)", borderBottom: "1px solid var(--line)" }}>
+      <header className="sticky top-0 z-20 backdrop-blur" style={{ background: "rgba(10,18,36,.72)", borderBottom: "1px solid var(--line)" }}>
         <div className="mx-auto max-w-6xl px-4 py-3 flex items-center gap-3">
           <a href="/" className="flex items-center gap-2">
-            <div className="w-9 h-9 rounded-xl grid place-items-center text-lg" style={{ background: "linear-gradient(135deg,#F2731D,#E0A21B)" }}>☀</div>
+            <div className="w-9 h-9 rounded-xl grid place-items-center text-lg" style={{ background: "linear-gradient(135deg,#C8965A,#E8C896)" }}>☀</div>
             <span className="font-display text-xl font-semibold">Sunrise Market</span>
           </a>
-          <span className="text-sm px-2 py-0.5 rounded-full" style={{ background: "rgba(242,115,29,.12)", color: "var(--gold)" }}>Back-office</span>
+          <span className="text-sm px-2 py-0.5 rounded-full" style={{ background: "rgba(200,150,90,.12)", color: "var(--gold)" }}>Back-office</span>
           <div className="flex-1" />
           <a href="/" className="text-sm text-zinc-300 hover:text-white">🛍️ Zakupy jako klient</a>
         </div>
@@ -60,7 +60,7 @@ export default function Operator() {
             {TABS.map((t) => (
               <button key={t.id} onClick={() => setTab(t.id)}
                       className="shrink-0 text-sm px-3 py-1.5 rounded-full whitespace-nowrap"
-                      style={tab === t.id ? { background: "linear-gradient(135deg,#F2731D,#D9560C)", color: "#000", fontWeight: 600 } : { background: "var(--glass)", border: "1px solid var(--line)", color: "var(--ink)" }}>
+                      style={tab === t.id ? { background: "linear-gradient(135deg,#C8965A,#A97B42)", color: "#000", fontWeight: 600 } : { background: "var(--glass)", border: "1px solid var(--line)", color: "var(--ink)" }}>
                 {t.label}
               </button>
             ))}
@@ -112,7 +112,7 @@ function Pulpit() {
   if (!o) return <p style={{ color: "var(--mut)" }}>Ładowanie…</p>;
   return (
     <>
-      <div className="rounded-2xl p-6 mb-6" style={{ background: "linear-gradient(135deg, rgba(242,115,29,.14), rgba(124,58,237,.12))", border: "1px solid rgba(242,115,29,.3)" }}>
+      <div className="rounded-2xl p-6 mb-6" style={{ background: "linear-gradient(135deg, rgba(200,150,90,.14), rgba(90,138,229,.12))", border: "1px solid rgba(200,150,90,.3)" }}>
         <div className="text-sm" style={{ color: "var(--mut)" }}>Zysk firmy (prowizja 4,9% po cashbacku)</div>
         <div className="font-display text-4xl font-bold" style={{ color: "var(--gold)" }}>{zl(o.company)}</div>
       </div>
@@ -157,7 +157,7 @@ function Zamowienia() {
           <option value="">Wszystkie statusy</option>
           {ORDER_STATUSES.map((s) => <option key={s} value={s}>{statusLabel[s]}</option>)}
         </select>
-        <button onClick={load} className="px-4 py-2 rounded-lg text-sm font-semibold text-black" style={{ background: "linear-gradient(135deg,#F2731D,#E0A21B)" }}>Szukaj</button>
+        <button onClick={load} className="px-4 py-2 rounded-lg text-sm font-semibold text-black" style={{ background: "linear-gradient(135deg,#C8965A,#E8C896)" }}>Szukaj</button>
         <span className="ml-auto text-sm" style={{ color: "var(--mut)" }}>{rows.length} zamówień</span>
       </div>
       {loading && <p style={{ color: "var(--mut)" }}>Ładowanie…</p>}
@@ -203,7 +203,7 @@ function Klienci() {
     <>
       <div className="flex gap-2 mb-4 items-center">
         <input value={q} onChange={(e) => setQ(e.target.value)} onKeyDown={(e) => e.key === "Enter" && load()} placeholder="Szukaj: e-mail / nazwa" className={inp} style={{ ...inpStyle, minWidth: 220 }} />
-        <button onClick={load} className="px-4 py-2 rounded-lg text-sm font-semibold text-black" style={{ background: "linear-gradient(135deg,#F2731D,#E0A21B)" }}>Szukaj</button>
+        <button onClick={load} className="px-4 py-2 rounded-lg text-sm font-semibold text-black" style={{ background: "linear-gradient(135deg,#C8965A,#E8C896)" }}>Szukaj</button>
         <span className="ml-auto text-sm" style={{ color: "var(--mut)" }}>{rows.length} klientów</span>
       </div>
       {loading && <p style={{ color: "var(--mut)" }}>Ładowanie…</p>}
@@ -251,7 +251,7 @@ function Sprzedawcy() {
               <div key={s.seller_id} className="flex items-center justify-between gap-3">
                 <div className="text-sm min-w-0"><b>{s.legal_name}</b> <span style={{ color: "var(--mut)" }}>· {s.email}{s.nip ? ` · NIP ${s.nip}` : ""}</span></div>
                 <div className="flex gap-2 shrink-0">
-                  <button onClick={() => onKyc(s.seller_id, true)} className="text-xs font-semibold px-3 py-1.5 rounded-lg text-black" style={{ background: "linear-gradient(135deg,#34E3A0,#38E0F0)" }}>Zatwierdź</button>
+                  <button onClick={() => onKyc(s.seller_id, true)} className="text-xs font-semibold px-3 py-1.5 rounded-lg text-black" style={{ background: "linear-gradient(135deg,#7AB89A,#38E0F0)" }}>Zatwierdź</button>
                   <button onClick={() => onKyc(s.seller_id, false)} className="text-xs px-3 py-1.5 rounded-lg" style={{ background: "var(--glass)", border: "1px solid var(--line)" }}>Odrzuć</button>
                 </div>
               </div>
@@ -261,7 +261,7 @@ function Sprzedawcy() {
       )}
       <div className="flex gap-2 mb-4 items-center">
         <input value={q} onChange={(e) => setQ(e.target.value)} onKeyDown={(e) => e.key === "Enter" && load()} placeholder="Szukaj: nazwa / e-mail / NIP" className={inp} style={{ ...inpStyle, minWidth: 220 }} />
-        <button onClick={load} className="px-4 py-2 rounded-lg text-sm font-semibold text-black" style={{ background: "linear-gradient(135deg,#F2731D,#E0A21B)" }}>Szukaj</button>
+        <button onClick={load} className="px-4 py-2 rounded-lg text-sm font-semibold text-black" style={{ background: "linear-gradient(135deg,#C8965A,#E8C896)" }}>Szukaj</button>
         <span className="ml-auto text-sm" style={{ color: "var(--mut)" }}>{rows.length} sprzedawców</span>
       </div>
       {loading && <p style={{ color: "var(--mut)" }}>Ładowanie…</p>}
@@ -280,7 +280,7 @@ function Sprzedawcy() {
                 <span className="text-xs px-2 py-1 rounded-full" style={{ background: "var(--glass)", border: "1px solid var(--line)", color: r.status === "active" ? "var(--green)" : r.status === "suspended" ? "#F25CB0" : "var(--gold)" }}>{r.status}</span>
                 {r.status === "active"
                   ? <button onClick={() => onStatus(r.seller_id, "suspended")} className="text-xs px-3 py-1.5 rounded-lg" style={{ background: "rgba(242,92,176,.14)", border: "1px solid rgba(242,92,176,.4)", color: "#F8A8D2" }}>Zawieś</button>
-                  : <button onClick={() => onStatus(r.seller_id, "active")} className="text-xs font-semibold px-3 py-1.5 rounded-lg text-black" style={{ background: "linear-gradient(135deg,#34E3A0,#38E0F0)" }}>Aktywuj</button>}
+                  : <button onClick={() => onStatus(r.seller_id, "active")} className="text-xs font-semibold px-3 py-1.5 rounded-lg text-black" style={{ background: "linear-gradient(135deg,#7AB89A,#38E0F0)" }}>Aktywuj</button>}
               </div>
             </div>
           </Card>
@@ -311,7 +311,7 @@ function Oferty() {
                 <div className="text-xs" style={{ color: "var(--mut)" }}>{o.seller} · {zl(o.price_gross)} · {o.status === "hidden" ? "ukryta" : "aktywna"}</div>
               </div>
               {o.status === "hidden"
-                ? <button onClick={() => onMod(o.offer_id, false)} className="text-xs font-semibold px-3 py-1.5 rounded-lg text-black shrink-0" style={{ background: "linear-gradient(135deg,#34E3A0,#38E0F0)" }}>Przywróć</button>
+                ? <button onClick={() => onMod(o.offer_id, false)} className="text-xs font-semibold px-3 py-1.5 rounded-lg text-black shrink-0" style={{ background: "linear-gradient(135deg,#7AB89A,#38E0F0)" }}>Przywróć</button>
                 : <button onClick={() => onMod(o.offer_id, true)} className="text-xs px-3 py-1.5 rounded-lg shrink-0" style={{ background: "rgba(242,92,176,.14)", border: "1px solid rgba(242,92,176,.4)", color: "#F8A8D2" }}>Ukryj</button>}
             </div>
           </Card>
@@ -374,21 +374,21 @@ function CjDrop() {
           <input value={keyword} onChange={(e) => setKeyword(e.target.value)} placeholder="Słowo klucz (opcjonalnie, np. lamp)" className={inp} style={{ ...inpStyle, minWidth: 240 }} />
           <input value={pageSize} onChange={(e) => setPageSize(e.target.value)} type="number" min={1} max={50} className={inp} style={{ ...inpStyle, width: 90 }} />
           <span className="text-xs" style={{ color: "var(--mut)" }}>szt./import (max 50)</span>
-          <button onClick={onImport} disabled={busy} className="px-4 py-2 rounded-lg text-sm font-semibold text-black disabled:opacity-50" style={{ background: "linear-gradient(135deg,#F2731D,#E0A21B)" }}>{busy ? "Importuję…" : "Importuj z CJ →"}</button>
+          <button onClick={onImport} disabled={busy} className="px-4 py-2 rounded-lg text-sm font-semibold text-black disabled:opacity-50" style={{ background: "linear-gradient(135deg,#C8965A,#E8C896)" }}>{busy ? "Importuję…" : "Importuj z CJ →"}</button>
         </div>
-        {msg && <div className="mt-3 text-sm rounded-lg px-3 py-2" style={{ background: "rgba(242,115,29,.12)", color: "var(--gold)" }}>{msg}</div>}
+        {msg && <div className="mt-3 text-sm rounded-lg px-3 py-2" style={{ background: "rgba(200,150,90,.12)", color: "var(--gold)" }}>{msg}</div>}
       </Card>
 
       <div className="flex items-center gap-2 mb-4">
-        <button onClick={() => setView("drafty")} className="text-sm px-4 py-2 rounded-xl font-semibold" style={view === "drafty" ? { background: "linear-gradient(135deg,#F2731D,#D9560C)", color: "#000" } : { background: "var(--glass)", border: "1px solid var(--line)", color: "var(--ink)" }}>Drafty ({drafts.length})</button>
-        <button onClick={() => setView("statystyki")} className="text-sm px-4 py-2 rounded-xl font-semibold" style={view === "statystyki" ? { background: "linear-gradient(135deg,#F2731D,#D9560C)", color: "#000" } : { background: "var(--glass)", border: "1px solid var(--line)", color: "var(--ink)" }}>📊 Statystyki</button>
+        <button onClick={() => setView("drafty")} className="text-sm px-4 py-2 rounded-xl font-semibold" style={view === "drafty" ? { background: "linear-gradient(135deg,#C8965A,#A97B42)", color: "#000" } : { background: "var(--glass)", border: "1px solid var(--line)", color: "var(--ink)" }}>Drafty ({drafts.length})</button>
+        <button onClick={() => setView("statystyki")} className="text-sm px-4 py-2 rounded-xl font-semibold" style={view === "statystyki" ? { background: "linear-gradient(135deg,#C8965A,#A97B42)", color: "#000" } : { background: "var(--glass)", border: "1px solid var(--line)", color: "var(--ink)" }}>📊 Statystyki</button>
       </div>
 
       {view === "drafty" && (
         <>
           <div className="flex items-center justify-between mb-3 flex-wrap gap-2">
             <div className="font-semibold">Drafty do akceptacji <span style={{ color: "var(--mut)" }}>({drafts.length})</span></div>
-            {drafts.length > 0 && <button onClick={onActivateAll} disabled={busy} className="text-sm px-4 py-2 rounded-xl font-semibold text-black disabled:opacity-50" style={{ background: "linear-gradient(135deg,#34E3A0,#38E0F0)" }}>Aktywuj wszystkie</button>}
+            {drafts.length > 0 && <button onClick={onActivateAll} disabled={busy} className="text-sm px-4 py-2 rounded-xl font-semibold text-black disabled:opacity-50" style={{ background: "linear-gradient(135deg,#7AB89A,#38E0F0)" }}>Aktywuj wszystkie</button>}
           </div>
           {loading && <p style={{ color: "var(--mut)" }}>Ładowanie…</p>}
           <div className="grid gap-3" style={{ gridTemplateColumns: "repeat(auto-fill,minmax(260px,1fr))" }}>
@@ -402,7 +402,7 @@ function CjDrop() {
                   </div>
                 </div>
                 <div className="flex gap-2 mt-3">
-                  <button onClick={() => onSet(o.id, "active")} className="flex-1 text-xs font-semibold px-3 py-2 rounded-lg text-black" style={{ background: "linear-gradient(135deg,#34E3A0,#38E0F0)" }}>Aktywuj</button>
+                  <button onClick={() => onSet(o.id, "active")} className="flex-1 text-xs font-semibold px-3 py-2 rounded-lg text-black" style={{ background: "linear-gradient(135deg,#7AB89A,#38E0F0)" }}>Aktywuj</button>
                   <button onClick={() => onSet(o.id, "blocked")} className="text-xs px-3 py-2 rounded-lg" style={{ background: "rgba(242,92,176,.14)", border: "1px solid rgba(242,92,176,.4)", color: "#F8A8D2" }}>Odrzuć</button>
                 </div>
               </Card>
@@ -417,12 +417,12 @@ function CjDrop() {
           <div className="flex items-center gap-2 mb-2 flex-wrap">
             <span className="font-semibold">Statystyki produktów</span>
             {(([["", "Wszyscy"], ["cj", "CJ"], ["teemdrop", "TeemDrop"], ["mysunrise", "Sunrise (własne)"]]) as ["" | "cj" | "teemdrop" | "mysunrise", string][]).map(([k, l]) => (
-              <button key={k || "all"} onClick={() => setProvider(k)} className="text-xs px-3 py-1.5 rounded-full" style={provider === k ? { background: "rgba(52,227,160,.16)", border: "1px solid rgba(52,227,160,.5)", color: "var(--green)" } : { background: "var(--glass)", border: "1px solid var(--line)", color: "var(--mut)" }}>{l}</button>
+              <button key={k || "all"} onClick={() => setProvider(k)} className="text-xs px-3 py-1.5 rounded-full" style={provider === k ? { background: "rgba(122,184,154,.16)", border: "1px solid rgba(122,184,154,.5)", color: "var(--green)" } : { background: "var(--glass)", border: "1px solid var(--line)", color: "var(--mut)" }}>{l}</button>
             ))}
             <input value={statSearch} onChange={(e) => setStatSearch(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") loadStats(); }} placeholder="Szukaj po nazwie… (Enter)" className="text-xs px-3 py-1.5 rounded-full outline-none" style={{ background: "var(--glass)", border: "1px solid var(--line)", color: "var(--ink)", minWidth: 170 }} />
             <span className="text-xs" style={{ color: "var(--mut)" }}>· sortuj:</span>
             {(([["sold", "🛒 sprzedaż"], ["views", "👁 wyświetlenia"], ["margin", "💰 marża zł"], ["marginPct", "% marży"], ["price", "cena"]]) as [typeof sort, string][]).map(([k, l]) => (
-              <button key={k} onClick={() => setSort(k)} className="text-xs px-3 py-1.5 rounded-full" style={sort === k ? { background: "rgba(242,115,29,.16)", border: "1px solid rgba(242,115,29,.5)", color: "var(--gold)" } : { background: "var(--glass)", border: "1px solid var(--line)", color: "var(--mut)" }}>{l}</button>
+              <button key={k} onClick={() => setSort(k)} className="text-xs px-3 py-1.5 rounded-full" style={sort === k ? { background: "rgba(200,150,90,.16)", border: "1px solid rgba(200,150,90,.5)", color: "var(--gold)" } : { background: "var(--glass)", border: "1px solid var(--line)", color: "var(--mut)" }}>{l}</button>
             ))}
           </div>
           <p className="text-xs mb-3" style={{ color: "var(--mut)" }}>Nasza marża = cena − koszt dostawcy. <b style={{ color: "var(--gold)" }}>Rynek</b> = sugerowana cena detaliczna (benchmark konkurencji), <b>Marża konk.</b> = ile zarobiłby konkurent przy tej cenie, <b>Przewaga</b> = o ile jesteśmy tańsi (zielone) lub drożsi (różowe). Pokazujemy top 200 wg sortowania — użyj szukajki dla konkretnych produktów.</p>
@@ -494,15 +494,15 @@ function Fulfillment() {
   async function onReject(id: string) { if (!window.confirm("Odrzucić przekazanie?")) return; try { await rejectBridgeForward(id); await load(); } catch (e) { alert((e as Error).message); } }
   async function onRetry(id: string) { try { await retryBridgeOrder(id); await load(); } catch (e) { alert((e as Error).message); } }
 
-  const color: Record<string, string> = { awaiting_approval: "#F2A93B", pending: "var(--gold)", pushed: "#38E0F0", processing: "#38E0F0", shipped: "#34E3A0", delivered: "#34E3A0", error: "#F25CB0", cancelled: "var(--mut)" };
+  const color: Record<string, string> = { awaiting_approval: "#D6A860", pending: "var(--gold)", pushed: "#38E0F0", processing: "#38E0F0", shipped: "#7AB89A", delivered: "#7AB89A", error: "#F25CB0", cancelled: "var(--mut)" };
   const lbl: Record<string, string> = { awaiting_approval: "do zatwierdzenia", pending: "w kolejce", pushed: "przekazane", processing: "realizacja", shipped: "wysłane", delivered: "dostarczone", error: "błąd", cancelled: "odrzucone" };
   const awaiting = bridge.filter((b) => b.status === "awaiting_approval").length;
 
   return (
     <>
       <div className="flex items-center justify-between mb-4 flex-wrap gap-3">
-        <div className="font-semibold">Kolejka dropship (TeemDrop){awaiting > 0 && <span className="ml-2 text-sm px-2.5 py-1 rounded-full" style={{ background: "rgba(242,169,59,.16)", color: "#F2A93B" }}>{awaiting} do zatwierdzenia</span>}</div>
-        <button onClick={onToggle} disabled={fwdBusy} className="text-sm px-4 py-2 rounded-xl font-semibold disabled:opacity-50" style={{ background: autoFwd ? "linear-gradient(135deg,#34E3A0,#38E0F0)" : "var(--glass)", border: "1px solid var(--line)", color: autoFwd ? "#000" : "var(--ink)" }}>Auto-przekaz: {autoFwd ? "WŁĄCZONY ✅" : "wyłączony"}</button>
+        <div className="font-semibold">Kolejka dropship (TeemDrop){awaiting > 0 && <span className="ml-2 text-sm px-2.5 py-1 rounded-full" style={{ background: "rgba(214,168,96,.16)", color: "#D6A860" }}>{awaiting} do zatwierdzenia</span>}</div>
+        <button onClick={onToggle} disabled={fwdBusy} className="text-sm px-4 py-2 rounded-xl font-semibold disabled:opacity-50" style={{ background: autoFwd ? "linear-gradient(135deg,#7AB89A,#38E0F0)" : "var(--glass)", border: "1px solid var(--line)", color: autoFwd ? "#000" : "var(--ink)" }}>Auto-przekaz: {autoFwd ? "WŁĄCZONY ✅" : "wyłączony"}</button>
       </div>
       <p className="text-xs mb-4" style={{ color: "var(--mut)" }}>{autoFwd ? "Automat WŁĄCZONY: opłacone dropshipy kupowane u dostawcy bez pytania." : "Automat wyłączony (bezpiecznie): dropship czeka na ręczne „Przekaż”. Nic nie kupujemy bez zatwierdzenia."}</p>
       <div className="flex flex-col gap-2">
@@ -517,7 +517,7 @@ function Fulfillment() {
               <div className="flex items-center gap-2 shrink-0">
                 <span className="text-xs px-2.5 py-1 rounded-full" style={{ background: "var(--glass)", border: "1px solid var(--line)", color: color[b.status] ?? "var(--ink)" }}>{lbl[b.status] ?? b.status}</span>
                 {b.status === "awaiting_approval" && <>
-                  <button onClick={() => onApprove(b.bridge_id)} className="text-xs font-semibold px-3 py-1.5 rounded-lg text-black" style={{ background: "linear-gradient(135deg,#F2731D,#E0A21B)" }}>Przekaż →</button>
+                  <button onClick={() => onApprove(b.bridge_id)} className="text-xs font-semibold px-3 py-1.5 rounded-lg text-black" style={{ background: "linear-gradient(135deg,#C8965A,#E8C896)" }}>Przekaż →</button>
                   <button onClick={() => onReject(b.bridge_id)} className="text-xs px-3 py-1.5 rounded-lg" style={{ background: "var(--glass)", border: "1px solid var(--line)" }}>Odrzuć</button>
                 </>}
                 {b.status === "error" && <button onClick={() => onRetry(b.bridge_id)} className="text-xs px-3 py-1.5 rounded-lg" style={{ background: "var(--glass)", border: "1px solid var(--line)" }}>Ponów</button>}
@@ -552,7 +552,7 @@ function Zwroty() {
               </div>
               {r.status === "requested"
                 ? <div className="flex gap-2 shrink-0">
-                    <button onClick={() => onResolve(r.return_id, true)} className="text-xs font-semibold px-3 py-1.5 rounded-lg text-black" style={{ background: "linear-gradient(135deg,#34E3A0,#38E0F0)" }}>Zwróć na portfel</button>
+                    <button onClick={() => onResolve(r.return_id, true)} className="text-xs font-semibold px-3 py-1.5 rounded-lg text-black" style={{ background: "linear-gradient(135deg,#7AB89A,#38E0F0)" }}>Zwróć na portfel</button>
                     <button onClick={() => onResolve(r.return_id, false)} className="text-xs px-3 py-1.5 rounded-lg" style={{ background: "var(--glass)", border: "1px solid var(--line)" }}>Odrzuć</button>
                   </div>
                 : <span className="text-xs shrink-0" style={{ color: "var(--mut)" }}>{r.status}</span>}

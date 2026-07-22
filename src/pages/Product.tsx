@@ -22,7 +22,7 @@ function stars(n: number) { const f = Math.round(n); return "★".repeat(f) + "�
 
 function visual(t: string): { emoji: string; from: string; to: string } {
   const s = t.toLowerCase();
-  const O = "#F2731D", G = "#E0A21B", GR = "#34E3A0", CY = "#38E0F0", VI = "#A78BFA", PU = "#7C3AED", PK = "#F25CB0";
+  const O = "#C8965A", G = "#E8C896", GR = "#7AB89A", CY = "#38E0F0", VI = "#8FB0EE", PU = "#3A6FD9", PK = "#F25CB0";
   if (s.includes("panel") || s.includes("fotowolt")) return { emoji: "🔆", from: O, to: G };
   if (s.includes("magazyn") || s.includes("inwerter")) return { emoji: "🔋", from: GR, to: CY };
   if (s.includes("pompa") || s.includes("kolektor")) return { emoji: "♨️", from: O, to: PK };
@@ -38,7 +38,7 @@ function visual(t: string): { emoji: string; from: string; to: string } {
   if (s.includes("karma") || s.includes("zwierz")) return { emoji: "🐾", from: G, to: GR };
   if (s.includes("kawa") || s.includes("supermarket")) return { emoji: "🛒", from: O, to: G };
   if (s.includes("licznik") || s.includes("energi") || s.includes("oze")) return { emoji: "⚡", from: G, to: O };
-  return { emoji: "🌅", from: O, to: "#D9560C" };
+  return { emoji: "🌅", from: O, to: "#A97B42" };
 }
 
 export default function Product() {
@@ -96,11 +96,11 @@ export default function Product() {
 
   return (
     <div className="min-h-screen">
-      <header className="sticky top-0 z-20 backdrop-blur" style={{ background: "rgba(7,7,15,.72)", borderBottom: "1px solid var(--line)" }}>
+      <header className="sticky top-0 z-20 backdrop-blur" style={{ background: "rgba(10,18,36,.72)", borderBottom: "1px solid var(--line)" }}>
         <div className="mx-auto max-w-5xl px-4 py-3 flex items-center gap-3">
           <a href="/" className="flex items-center gap-2">
             <div className="w-9 h-9 rounded-xl grid place-items-center text-lg"
-                 style={{ background: "linear-gradient(135deg,#F2731D,#E0A21B)" }}>☀</div>
+                 style={{ background: "linear-gradient(135deg,#C8965A,#E8C896)" }}>☀</div>
             <span className="font-display text-xl font-semibold">Sunrise Market</span>
           </a>
           <div className="flex-1" />
@@ -157,7 +157,7 @@ export default function Product() {
               <div className="flex items-center gap-3">
                 <div className="font-display text-4xl font-bold">{zl(o.price_gross)}</div>
                 <span className="text-sm font-semibold px-3 py-1 rounded-full"
-                      style={{ background: "rgba(52,227,160,.12)", color: "var(--green)" }}>
+                      style={{ background: "rgba(122,184,154,.12)", color: "var(--green)" }}>
                   +{Math.round(o.price_gross * 0.03).toLocaleString("pl-PL")} pkt na portfel
                 </span>
               </div>
@@ -180,7 +180,7 @@ export default function Product() {
                   <div className="flex flex-wrap gap-2">
                     {colors.map((c) => (
                       <button key={c} onClick={() => setColor(c)} className="text-sm px-3 py-1.5 rounded-xl"
-                              style={color === c ? { background: "linear-gradient(135deg,#F2731D,#D9560C)", color: "#000", fontWeight: 600 } : { background: "var(--glass)", border: "1px solid var(--line)" }}>{c}</button>
+                              style={color === c ? { background: "linear-gradient(135deg,#C8965A,#A97B42)", color: "#000", fontWeight: 600 } : { background: "var(--glass)", border: "1px solid var(--line)" }}>{c}</button>
                     ))}
                   </div>
                 </div>
@@ -191,7 +191,7 @@ export default function Product() {
                   <div className="flex flex-wrap gap-2">
                     {sizes.map((s) => (
                       <button key={s} onClick={() => setSize(s)} className="min-w-10 text-sm px-3 py-1.5 rounded-xl"
-                              style={size === s ? { background: "linear-gradient(135deg,#F2731D,#D9560C)", color: "#000", fontWeight: 600 } : { background: "var(--glass)", border: "1px solid var(--line)" }}>{s}</button>
+                              style={size === s ? { background: "linear-gradient(135deg,#C8965A,#A97B42)", color: "#000", fontWeight: 600 } : { background: "var(--glass)", border: "1px solid var(--line)" }}>{s}</button>
                     ))}
                   </div>
                 </div>
@@ -213,7 +213,7 @@ export default function Product() {
                   disabled={needColor || needSize}
                   onClick={() => { addToCart({ offer_id: o.offer_id, title: o.title, price: o.price_gross, variant: variantLabel || undefined }); window.location.href = "/koszyk"; }}
                   className="flex-1 text-center font-semibold py-3 rounded-2xl text-black disabled:opacity-50"
-                  style={{ background: "linear-gradient(135deg,#F2731D,#E0A21B)" }}>
+                  style={{ background: "linear-gradient(135deg,#C8965A,#E8C896)" }}>
                   Do koszyka
                 </button>
                 <a href="/koszyk" className="px-5 py-3 rounded-2xl text-sm font-medium"
@@ -296,7 +296,7 @@ export default function Product() {
                   <a key={s.offer_id} href={`/produkt/${s.offer_id}`} className="rounded-2xl overflow-hidden"
                      style={{ background: "var(--glass)", border: "1px solid var(--line)" }}>
                     <div className="h-28 grid place-items-center overflow-hidden"
-                         style={{ background: "linear-gradient(135deg,#F2731D22,#7C3AED22)" }}>
+                         style={{ background: "linear-gradient(135deg,#C8965A22,#3A6FD922)" }}>
                       {s.image_url ? <img src={s.image_url} alt={s.title} className="w-full h-full object-cover" loading="lazy" /> : <span className="text-3xl">🌅</span>}
                     </div>
                     <div className="p-3">
@@ -340,7 +340,7 @@ export default function Product() {
                     </div>
                     <textarea value={myComment} onChange={(e) => setMyComment(e.target.value)} rows={3}
                               placeholder="Twoja opinia (opcjonalnie)" className="rounded-lg px-3 py-2 bg-zinc-900 outline-none text-sm" />
-                    <button className="rounded-xl py-2 font-semibold text-black" style={{ background: "linear-gradient(135deg,#F2731D,#E0A21B)" }}>Wyślij opinię</button>
+                    <button className="rounded-xl py-2 font-semibold text-black" style={{ background: "linear-gradient(135deg,#C8965A,#E8C896)" }}>Wyślij opinię</button>
                   </form>
                 ) : (
                   <p className="text-sm" style={{ color: "var(--mut)" }}>

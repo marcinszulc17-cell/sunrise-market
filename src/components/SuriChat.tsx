@@ -39,7 +39,7 @@ export default function SuriChat() {
       {/* bąbel */}
       <button onClick={() => setOpen((o) => !o)}
         className="fixed bottom-5 right-5 z-40 w-16 h-16 rounded-full grid place-items-center overflow-hidden shadow-xl"
-        style={{ border: "2px solid #F2731D", boxShadow: "0 10px 30px -8px rgba(242,115,29,.7)", background: "#12121e" }}
+        style={{ border: "2px solid #C8965A", boxShadow: "0 10px 30px -8px rgba(200,150,90,.7)", background: "#141F35" }}
         aria-label="Suri — ekspertka Sunrise">
         {open ? <span className="text-2xl">✕</span>
               : <img src={SURI_AVATAR} alt="Suri" className="w-full h-full object-cover" />}
@@ -47,7 +47,7 @@ export default function SuriChat() {
 
       {open && (
         <div className="fixed bottom-24 right-5 z-40 w-[360px] max-w-[92vw] rounded-2xl overflow-hidden flex flex-col"
-             style={{ background: "rgba(12,12,24,.96)", border: "1px solid var(--line)", height: 520, backdropFilter: "blur(8px)" }}>
+             style={{ background: "rgba(20,32,54,.96)", border: "1px solid var(--line)", height: 520, backdropFilter: "blur(8px)" }}>
           {/* header */}
           <div className="px-4 py-3 flex items-center gap-2" style={{ borderBottom: "1px solid var(--line)" }}>
             <img src={SURI_AVATAR} alt="Suri" className="w-9 h-9 rounded-full object-cover" style={{ border: "1px solid var(--line)" }} />
@@ -62,7 +62,7 @@ export default function SuriChat() {
             {msgs.map((m, i) => (
               <div key={i} className={"max-w-[85%] rounded-2xl px-3 py-2 text-sm " + (m.role === "user" ? "self-end text-black" : "self-start")}
                    style={m.role === "user"
-                     ? { background: "linear-gradient(135deg,#F2731D,#E0A21B)" }
+                     ? { background: "linear-gradient(135deg,#C8965A,#E8C896)" }
                      : { background: "var(--glass)", border: "1px solid var(--line)", color: "var(--ink)" }}>
                 {m.text}
               </div>
@@ -91,7 +91,7 @@ export default function SuriChat() {
             <input value={input} onChange={(e) => setInput(e.target.value)} onKeyDown={(e) => e.key === "Enter" && send()}
                    placeholder="Zapytaj Suri…" className="flex-1 rounded-xl px-3 py-2 text-sm bg-zinc-900 outline-none" />
             <button onClick={send} disabled={busy} className="px-4 rounded-xl font-semibold text-black disabled:opacity-50"
-                    style={{ background: "linear-gradient(135deg,#F2731D,#D9560C)" }}>→</button>
+                    style={{ background: "linear-gradient(135deg,#C8965A,#A97B42)" }}>→</button>
           </div>
         </div>
       )}
