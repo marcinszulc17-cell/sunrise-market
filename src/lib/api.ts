@@ -344,3 +344,28 @@ export async function askSuri(message: string, sessionId?: string, userId?: stri
   if (error) throw error;
   return data;
 }
+
+// ── Sunrise Smart (abonament darmowych wysyłek) ──
+export async function smartStatus(): Promise<boolean> {
+  const { data } = await supabase.from("smart_members").select("expires_at,active").maybeSingle();
+  if (!data || !(data as any).active) return false;
+  const exp = (data as any).expires_at;
+  return !exp || new Date(exp) > new Date();
+}
+export async function smartSubscribe() {
+  const { data, error } = await supabase.functions.invoke("smart-subscribe", { body: {} });
+  if (error) throw error; return data;
+}
+// ── Reklamy ──
+export async function adRates() {
+  const { data, error } = await supabase.rpc("ad_rates_list");
+  if (error) return []; return data ?? [];
+}
+export async function adBuy(rate_code: string, offer_id: string, budget?: number) {
+  const { data, error } = await supabase.functions.invoke("ad-buy", { body: { rate_code, offer_id, budget } });
+  if (error) throw error; return data;
+}
+export async function sponsoredOffers(placement = "search", category: string | null = null, limit = 6) {
+  const { data, error } = await supabase.rpc("sponsored_offers", { p_placement: placement, p_category: category, p_limit: limit });
+  if (error) return []; return data ?? [];
+}

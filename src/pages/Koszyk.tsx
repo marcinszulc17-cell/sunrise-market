@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { supabase } from "../lib/supabase";
-import { checkout, walletBalance, listShippingLanes, cartLanes, recommendedOffers, similarOffers, type ShipMethod, type CartLane, type ShipAddress } from "../lib/api";
+import { checkout, walletBalance, listShippingLanes, cartLanes, recommendedOffers, similarOffers, smartStatus, smartSubscribe, type ShipMethod, type CartLane, type ShipAddress } from "../lib/api";
 import { useCart, setQty, removeItem, clearCart, cartTotal, addToCart } from "../lib/cart";
 import { topupWallet, redeemPoints } from "../lib/payments";
 import { saveIntent, loadIntent, clearIntent } from "../lib/checkoutIntent";
@@ -327,6 +327,7 @@ export default function Koszyk() {
               {!freeShip && <div className="text-xs mb-2" style={{ color: "var(--gold)" }}>Do darmowej dostawy brakuje: {zl(FREE_SHIP - total)}</div>}
               <div className="flex justify-between mb-2 mt-1"><span style={{ color: "var(--mut)" }}>Razem</span><span className="font-display text-2xl font-semibold">{zl(grand)}</span></div>
               <div className="flex justify-between text-sm mb-2"><span style={{ color: "var(--mut)" }}>Cashback 3% (punkty)</span><span style={{ color: "var(--green)" }}>+{pkt(cashback)} pkt</span></div>
+              <SmartCard />
 
               {/* wybór waluty portfela — Gold Pay „wkrótce" (czeka na kurs pay-fx w MySunrise) */}
               <div className="mt-4 pt-3" style={{ borderTop: "1px solid var(--line)" }}>
@@ -429,6 +430,28 @@ export default function Koszyk() {
           </>
         )}
       </main>
+    </div>
+  );
+}
+
+function SmartCard() {
+  const [member, setMember] = useState<boolean | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [msg, setMsg] = useState<string | null>(null);
+  useEffect(() => { smartStatus().then(setMember).catch(() => setMember(false)); }, []);
+  if (member === null) return null;
+  if (member) return <div className="mt-3 rounded-xl px-3 py-2 text-xs" style={{ background: "rgba(52,227,160,.10)", border: "1px solid rgba(52,227,160,.4)", color: "var(--green)" }}>⚡ Sunrise Smart aktywny — darmowa dostawa InPost od 49 zł</div>;
+  async function buy() {
+    setBusy(true); setMsg(null);
+    try { const r: any = await smartSubscribe(); if (r?.need_topup) setMsg("Za mało środków w portfelu — doładuj Sunrise Pay."); else setMember(true); }
+    catch (e) { setMsg((e as Error).message); } finally { setBusy(false); }
+  }
+  return (
+    <div className="mt-3 rounded-xl p-3" style={{ background: "linear-gradient(140deg,#061434,#123a86)", border: "1px solid rgba(255,210,63,.4)" }}>
+      <div className="text-sm font-semibold" style={{ color: "#ffd23f" }}>⚡ Sunrise Smart — darmowe wysyłki</div>
+      <div className="text-xs mt-1" style={{ color: "rgba(255,255,255,.75)" }}>Darmowa dostawa InPost na wszystkie zamówienia od 49 zł. 59 zł/rok.</div>
+      <button onClick={buy} disabled={busy} className="mt-2 text-sm font-semibold px-3 py-1.5 rounded-lg text-black disabled:opacity-50" style={{ background: "linear-gradient(135deg,#F2731D,#E0A21B)" }}>{busy ? "Kupuję…" : "Kup Sunrise Smart (59 zł/rok)"}</button>
+      {msg && <div className="text-xs mt-1" style={{ color: "#F8A8D2" }}>{msg}</div>}
     </div>
   );
 }

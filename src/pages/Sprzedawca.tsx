@@ -3,7 +3,7 @@ import { supabase } from "../lib/supabase";
 import { getMySeller } from "../lib/payments";
 import {
   becomeSeller, myOffers, createOffer, topCategories, childCategories, uploadProductImage,
-  mySubscription, promoteOffer, sellerOrders, markShipped, sellerWallet, sellerSummary, walletHistory,
+  mySubscription, promoteOffer, sellerOrders, markShipped, sellerWallet, sellerSummary, walletHistory, adRates, adBuy,
   type SellerWallet,
 } from "../lib/api";
 import { setMode } from "../lib/mode";
@@ -13,11 +13,12 @@ const dt = (s: string) => new Date(s).toLocaleString("pl-PL");
 const opLabel: Record<string, string> = { topup: "Doładowanie", payment: "Zakup", cashback: "Cashback", refund: "Zwrot", payout: "Wpływ ze sprzedaży" };
 type Cat = { id: string; slug: string; name: string };
 type Off = { offer_id: string; title: string; price_gross: number; stock: number; status: string; category: string };
-type Tab = "pulpit" | "oferty" | "zamowienia" | "portfel";
+type Tab = "pulpit" | "oferty" | "zamowienia" | "reklamy" | "portfel";
 const TABS: { id: Tab; label: string }[] = [
   { id: "pulpit", label: "📊 Pulpit" },
   { id: "oferty", label: "📦 Oferty" },
   { id: "zamowienia", label: "🧾 Zamówienia" },
+  { id: "reklamy", label: "📣 Reklamy" },
   { id: "portfel", label: "💳 Portfel" },
 ];
 
@@ -72,6 +73,7 @@ export default function Sprzedawca() {
           {tab === "pulpit" && <Pulpit seller={seller} />}
           {tab === "oferty" && <Oferty />}
           {tab === "zamowienia" && <Zamowienia />}
+          {tab === "reklamy" && <Reklamy />}
           {tab === "portfel" && <Portfel seller={seller} />}
         </>
       )}
@@ -274,6 +276,45 @@ function Shell({ children, tabs }: { children: React.ReactNode; tabs?: { tab: Ta
         )}
       </header>
       <main className="mx-auto max-w-5xl px-4 py-8">{children}</main>
+    </div>
+  );
+}
+
+// ── REKLAMY ──
+function Reklamy() {
+  const [rates, setRates] = useState<any[]>([]);
+  const [offers, setOffers] = useState<any[]>([]);
+  const [sel, setSel] = useState(""); const [rate, setRate] = useState(""); const [budget, setBudget] = useState(20);
+  const [busy, setBusy] = useState(false); const [msg, setMsg] = useState<string | null>(null);
+  useEffect(() => { adRates().then((d: any) => setRates(d ?? [])).catch(() => {}); myOffers().then((d: any) => setOffers(d ?? [])).catch(() => {}); }, []);
+  const chosen = rates.find((r) => r.code === rate);
+  async function buy() {
+    if (!sel || !rate) { setMsg("Wybierz produkt i typ reklamy."); return; }
+    setBusy(true); setMsg(null);
+    try { const r: any = await adBuy(rate, sel, budget); if (r?.need_topup) setMsg(`Za mało środków — potrzeba ${r.required} zł.`); else setMsg("Reklama uruchomiona! ✅"); }
+    catch (e) { setMsg((e as Error).message); } finally { setBusy(false); }
+  }
+  return (
+    <div className="flex flex-col gap-4">
+      <Card>
+        <div className="font-semibold mb-1">📣 Reklamy — promuj swoje produkty</div>
+        <p className="text-xs mb-3" style={{ color: "var(--mut)" }}>Cennik konkurencyjny względem Allegro Ads. Marki własne Sunrise są sponsorowane bez opłat.</p>
+        <div className="grid gap-2 mb-3">
+          {rates.map((r) => (
+            <label key={r.code} className="flex items-center justify-between rounded-xl px-3 py-2 cursor-pointer" style={{ background: "var(--glass)", border: rate === r.code ? "1px solid rgba(242,115,29,.6)" : "1px solid var(--line)" }}>
+              <span className="text-sm"><input type="radio" name="adrate" checked={rate === r.code} onChange={() => setRate(r.code)} className="mr-2" />{r.name}</span>
+              <span className="text-sm font-semibold" style={{ color: "var(--gold)" }}>{r.model === "cpc" ? `${r.price} zł/klik` : `${Math.round(r.price)} zł`}</span>
+            </label>
+          ))}
+        </div>
+        <select value={sel} onChange={(e) => setSel(e.target.value)} className="w-full rounded-lg px-3 py-2 text-sm mb-2 bg-zinc-900 outline-none">
+          <option value="">— wybierz produkt —</option>
+          {offers.map((o) => <option key={o.offer_id} value={o.offer_id}>{o.title}</option>)}
+        </select>
+        {chosen?.model === "cpc" && <div className="mb-2 text-sm">Budżet: <input type="number" min={20} value={budget} onChange={(e) => setBudget(Number(e.target.value))} className="w-24 rounded px-2 py-1 bg-zinc-900 outline-none" /> zł</div>}
+        <button onClick={buy} disabled={busy} className="text-sm font-semibold px-4 py-2 rounded-xl text-black disabled:opacity-50" style={{ background: "linear-gradient(135deg,#F2731D,#E0A21B)" }}>{busy ? "Uruchamiam…" : "Uruchom reklamę"}</button>
+        {msg && <div className="mt-2 text-sm" style={{ color: "var(--gold)" }}>{msg}</div>}
+      </Card>
     </div>
   );
 }
