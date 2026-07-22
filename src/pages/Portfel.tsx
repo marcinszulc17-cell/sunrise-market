@@ -1,7 +1,7 @@
 import { pkt } from "../lib/money";
 import { useEffect, useState } from "react";
 import { supabase } from "../lib/supabase";
-import { getWalletOps } from "../lib/payments";
+import { getWalletOps, redeemPoints } from "../lib/payments";
 import { walletBalance } from "../lib/api";
 import { hasIntent } from "../lib/checkoutIntent";
 
@@ -15,6 +15,30 @@ export default function Portfel() {
   const [linked, setLinked] = useState<boolean>(true);
   const [ops, setOps] = useState<{ type: string; amount: number; balance_after: number; created_at: string }[]>([]);
   const [msg, setMsg] = useState<string | null>(null);
+  const [redeemAmt, setRedeemAmt] = useState<string>("");
+  const [redeeming, setRedeeming] = useState<boolean>(false);
+  const [redeemAvailable, setRedeemAvailable] = useState<boolean>(true);
+
+  async function doRedeem() {
+    const amt = Math.min(Math.floor(points), Math.floor(Number(redeemAmt) || 0));
+    if (amt <= 0) { setMsg("Podaj liczbę punktów do wymiany."); return; }
+    setRedeeming(true); setMsg(null);
+    try {
+      const r = await redeemPoints(amt);
+      if (!r.available) {
+        setRedeemAvailable(false);
+        setMsg("Zamiana punktów w Markecie ruszy wkrótce — na razie zrób to w aplikacji MySunrise.");
+        return;
+      }
+      if (r.error) { setMsg(r.error); return; }
+      if (typeof r.balance === "number") setBalance(r.balance);
+      if (typeof r.points === "number") setPoints(r.points);
+      setRedeemAmt("");
+      setMsg(`Zamieniono ${pkt(r.converted ?? amt)} pkt na saldo Sunrise Pay.`);
+    } catch (e: any) {
+      setMsg(e?.message ?? "Nie udało się zamienić punktów.");
+    } finally { setRedeeming(false); }
+  }
 
   useEffect(() => {
     supabase.auth.getUser().then(async ({ data }) => {
@@ -67,6 +91,26 @@ export default function Portfel() {
         <div className="mb-4 rounded-lg bg-amber-500/15 px-4 py-3 text-amber-200 text-sm flex items-center justify-between gap-3 ring-1 ring-amber-500/30">
           <span>Masz zamówienie w toku — wróć do koszyka i dokończ płatność z portfela.</span>
           <a href="/koszyk?topup=success" className="whitespace-nowrap rounded-lg bg-amber-500 px-3 py-1.5 font-semibold text-zinc-900">Dokończ →</a>
+        </div>
+      )}
+
+      {points > 0 && (
+        <div className="rounded-2xl bg-zinc-900/70 p-5 mb-6 ring-1 ring-emerald-500/15">
+          <div className="text-sm text-zinc-200 mb-1 font-semibold">Zamień punkty na saldo</div>
+          <div className="text-xs text-zinc-500 mb-3">1 pkt = 1 zł. Punkty przechodzą na saldo Sunrise Pay, którym płacisz za zakupy.</div>
+          <div className="flex items-center gap-2 flex-wrap">
+            <input type="number" min={1} max={Math.floor(points)} step={1} inputMode="numeric"
+                   value={redeemAmt} onChange={(e) => setRedeemAmt(e.target.value)} placeholder={String(Math.floor(points))}
+                   className="w-28 rounded-lg bg-zinc-800 px-3 py-2 text-sm outline-none ring-1 ring-zinc-700" />
+            <span className="text-xs text-zinc-500">z {pkt(points)} pkt dostępnych</span>
+            <button onClick={doRedeem} disabled={redeeming}
+                    className="ml-auto rounded-lg bg-emerald-500 px-4 py-2 font-semibold text-zinc-900 disabled:opacity-50">
+              {redeeming ? "Zamieniam…" : "Zamień na zł →"}
+            </button>
+          </div>
+          {!redeemAvailable && (
+            <a href="https://mysunrise.com.pl" target="_blank" rel="noopener" className="mt-3 inline-block text-xs text-amber-400 underline">Zamień punkty w aplikacji MySunrise →</a>
+          )}
         </div>
       )}
 

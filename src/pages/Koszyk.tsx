@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { supabase } from "../lib/supabase";
 import { checkout, walletBalance, listShippingLanes, cartLanes, recommendedOffers, similarOffers, type ShipMethod, type CartLane, type ShipAddress } from "../lib/api";
 import { useCart, setQty, removeItem, clearCart, cartTotal, addToCart } from "../lib/cart";
-import { topupWallet } from "../lib/payments";
+import { topupWallet, redeemPoints } from "../lib/payments";
 import { saveIntent, loadIntent, clearIntent } from "../lib/checkoutIntent";
 
 import { zl, pkt } from "../lib/money";
@@ -25,6 +25,7 @@ export default function Koszyk() {
   const [addr, setAddr] = useState({ name: "", phone: "", street: "", city: "", postal: "" });
   const addrOk = !!(addr.name && addr.street && addr.city && addr.postal);
   const [balance, setBalance] = useState<number | null>(null);
+  const [points, setPoints] = useState<number>(0); // saldo punktów (cashback) do wymiany
   const [linked, setLinked] = useState(true);
   const [currency, setCurrency] = useState<"SUNRISE_PAY" | "GOLD_PAY">("SUNRISE_PAY"); // Gold Pay: wkrótce
   const [recs, setRecs] = useState<any[]>([]); // cross-sell „Może Cię zainteresować"
@@ -35,7 +36,7 @@ export default function Koszyk() {
   const idsKey = ids.join(",");
 
   async function refreshWallet() {
-    try { const w = await walletBalance(); setBalance(w.balance); setLinked(w.linked); } catch { setBalance(null); }
+    try { const w = await walletBalance(); setBalance(w.balance); setLinked(w.linked); setPoints(w.points); } catch { setBalance(null); }
   }
   useEffect(() => {
     listShippingLanes().then(setMethods).catch(() => {});
@@ -99,6 +100,10 @@ export default function Koszyk() {
   // kwota w polu doładowania: domyślnie zaokrąglony w górę brakujący shortfall
   const topupDisplay = topupAmount !== "" ? topupAmount : (shortfall > 0 ? String(Math.ceil(shortfall)) : "");
   const effectiveTopup = Math.max(shortfall, Math.ceil(Number(topupDisplay) || 0));
+  // szybkie kwoty doładowania — zachęta do większego, rzadszego zasilenia (mniej opłat Stripe)
+  const ceilShort = Math.ceil(shortfall);
+  const round50 = Math.max(50, Math.ceil(shortfall / 50) * 50);
+  const topupSuggestions = Array.from(new Set([ceilShort, round50, round50 + 50, round50 + 150])).filter((v) => v >= ceilShort).slice(0, 4);
 
   // pozycje pogrupowane po torze
   const groups = useMemo(() => {
@@ -152,6 +157,36 @@ export default function Koszyk() {
     }
   }
 
+  // Synergia z punktami: zamień punkty (cashback) na saldo i od razu zapłać.
+  // Pokazujemy tylko, gdy punkty pokrywają cały brakujący shortfall.
+  async function redeemAndPay() {
+    setMsg(null);
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) { window.location.href = "/login"; return; }
+    if (!addrOk) { setMsg("Uzupełnij adres dostawy przed zapłatą."); return; }
+    const use = Math.ceil(shortfall);
+    if (use <= 0 || points < use) return;
+    setBusy(true);
+    try {
+      const r = await redeemPoints(use);
+      if (!r.available) { setBusy(false); setMsg("Zamiana punktów ruszy wkrótce — na razie doładuj kartą poniżej lub w MySunrise."); return; }
+      if (r.error) { setBusy(false); setMsg(r.error); return; }
+      if (typeof r.points === "number") setPoints(r.points);
+      let bal: number | null = typeof r.balance === "number" ? r.balance : null;
+      if (bal == null) { const w = await walletBalance().catch(() => null); if (w) { bal = w.balance; setLinked(w.linked); } }
+      if (bal != null) setBalance(bal);
+      if (bal != null && bal >= grand) {
+        await runCheckout(addr, selectedCodes);
+      } else {
+        setBusy(false);
+        setMsg("Zamieniono punkty, ale saldo wciąż nie wystarcza — dopłać brakującą kwotę poniżej.");
+      }
+    } catch (e: any) {
+      setBusy(false);
+      setMsg(e?.message ?? "Nie udało się zamienić punktów.");
+    }
+  }
+
   // Powrót ze Stripe (?topup=success): odśwież saldo i — jeśli środki wystarczą — dokończ płatność.
   useEffect(() => {
     const p = new URLSearchParams(window.location.search).get("topup");
@@ -168,7 +203,7 @@ export default function Koszyk() {
       setResuming(true);
       (async () => {
         const w = await walletBalance().catch(() => null);
-        if (w) { setBalance(w.balance); setLinked(w.linked); }
+        if (w) { setBalance(w.balance); setLinked(w.linked); setPoints(w.points); }
         const need = intent?.grand ?? grand;
         if (w && intent && w.balance >= need) {
           await runCheckout(intent.addr, intent.shippingCodes);
@@ -327,15 +362,33 @@ export default function Koszyk() {
               {balance != null && !enoughFunds ? (
                 <div className="flex flex-col gap-2">
                   <div className="rounded-lg px-3 py-2 text-sm" style={{ background: "rgba(242,115,29,.12)", color: "var(--gold)" }}>
-                    Brakuje <b>{zl(shortfall)}</b> w portfelu. Doładuj i zapłać bez wychodzenia z koszyka:
+                    Brakuje <b>{zl(shortfall)}</b> w portfelu. Zapłać punktami albo doładuj — bez wychodzenia z koszyka:
                   </div>
-                  <div className="flex items-center gap-2">
-                    <input type="number" min={Math.ceil(shortfall)} step={1} inputMode="numeric"
+                  {points >= Math.ceil(shortfall) && (
+                    <>
+                      <button onClick={redeemAndPay} disabled={busy || resuming || !addrOk}
+                              className="w-full rounded-xl py-3 font-semibold text-black disabled:opacity-50"
+                              style={{ background: "linear-gradient(135deg,#34E3A0,#12b981)" }}>
+                        Wymień {pkt(Math.ceil(shortfall))} pkt i zapłać →
+                      </button>
+                      <div className="text-center text-xs" style={{ color: "var(--mut)" }}>masz {pkt(points)} pkt · albo doładuj kartą:</div>
+                    </>
+                  )}
+                  <div className="flex flex-wrap items-center gap-2">
+                    {topupSuggestions.map((v) => (
+                      <button key={v} onClick={() => setTopupAmount(String(v))}
+                              className="rounded-lg px-3 py-1.5 text-sm"
+                              style={{ border: topupDisplay === String(v) ? "1px solid rgba(242,115,29,.6)" : "1px solid var(--line)", background: "var(--glass)" }}>
+                        {zl(v)}
+                      </button>
+                    ))}
+                    <input type="number" min={ceilShort} step={1} inputMode="numeric"
                            value={topupDisplay} onChange={(e) => setTopupAmount(e.target.value)}
-                           className="w-28 rounded-lg px-3 py-2 text-sm outline-none"
+                           className="w-24 rounded-lg px-3 py-2 text-sm outline-none"
                            style={{ background: "var(--glass)", border: "1px solid var(--line)" }} />
-                    <span className="text-xs" style={{ color: "var(--mut)" }}>zł · min {zl(shortfall)}</span>
+                    <span className="text-xs" style={{ color: "var(--mut)" }}>min {zl(shortfall)}</span>
                   </div>
+                  <div className="text-xs" style={{ color: "var(--mut)" }}>Większe doładowanie = mniej opłat i zapas w portfelu na kolejne zakupy.</div>
                   <button onClick={() => topupAndPay(effectiveTopup)} disabled={busy || resuming || !addrOk}
                           className="w-full rounded-xl py-3 font-semibold text-black disabled:opacity-50"
                           style={{ background: "linear-gradient(135deg,#F2731D,#E0A21B)" }}>

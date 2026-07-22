@@ -14,6 +14,20 @@ export async function topupWallet(amountPln: number, returnTo?: string): Promise
   window.location.href = data.url as string; // redirect na Stripe Checkout
 }
 
+// Zamiana punktów (cashback) na saldo Sunrise Pay. Konwersja dzieje się po
+// stronie MySunrise (źródło prawdy o pieniądzach); 1 pkt = 1 zł. Nie zmienia
+// stawki cashbacku — przesuwa już wyemitowane punkty do salda.
+// Dopóki MySunrise nie wystawi endpointu, zwracamy available:false (jak
+// sellerWallet) i UI degraduje się do „zrób to w MySunrise" — nic się nie psuje.
+export type RedeemResult = { available: boolean; balance?: number; points?: number; converted?: number; error?: string };
+export async function redeemPoints(amountPln: number): Promise<RedeemResult> {
+  const { data, error } = await supabase.functions.invoke("wallet-redeem-points", {
+    body: { amount: amountPln },
+  });
+  if (error || !data) return { available: false };
+  return data as RedeemResult;
+}
+
 // Saldo portfela (lustro lub MySunrise – zależnie od backendu).
 export async function getWalletBalance(userId: string): Promise<number> {
   const { data, error } = await supabase
