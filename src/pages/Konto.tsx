@@ -107,7 +107,7 @@ function PolecajPV() {
   const [r, setR] = useState<EnergyReferral | null>(null);
   const [copied, setCopied] = useState(false);
   useEffect(() => { energyReferral().then(setR).catch(() => setR({ available: false })); }, []);
-  const reward = r?.reward ?? 500;
+  const rewardPct = r?.reward_pct ?? 5;
   const link = r?.link ?? "";
   async function copy() {
     try { await navigator.clipboard.writeText(link); setCopied(true); setTimeout(() => setCopied(false), 2000); } catch { /* ignore */ }
@@ -119,7 +119,7 @@ function PolecajPV() {
         <span className="font-display text-lg font-semibold">Poleć fotowoltaikę — zgarnij do portfela</span>
       </div>
       <p className="text-sm mb-3" style={{ color: "var(--mut)" }}>
-        Poleć znajomego na instalację Sunrise Energy. Gdy podpisze umowę, <b style={{ color: "var(--gold)" }}>{zl(reward)}</b> trafia na Twój portfel Sunrise Pay — do wydania w Markecie. Zasila portfel bez opłat.
+        Poleć znajomego na instalację Sunrise Energy. Gdy podpisze umowę, <b style={{ color: "var(--gold)" }}>{rewardPct}% wartości</b> trafia na Twój portfel Sunrise Pay — do wydania w Markecie. Zasila portfel bez opłat.
       </p>
       {r && r.available ? (
         <>

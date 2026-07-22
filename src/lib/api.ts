@@ -277,12 +277,12 @@ export async function sellerWallet(): Promise<SellerWallet> {
 // energii/MySunrise nie gotowy → available:false, UI degraduje się (jak sellerWallet).
 export type EnergyReferral = {
   available: boolean;
-  code?: string;      // osobisty kod polecenia
-  link?: string;      // gotowy link do udostępnienia
-  reward?: number;    // ile zł trafia na portfel za skuteczne polecenie
-  pending?: number;   // polecenia w toku
-  converted?: number; // polecenia zamienione w umowę
-  credited?: number;  // suma skredytowana do portfela (zł)
+  code?: string;        // osobisty kod polecenia
+  link?: string;        // gotowy link do udostępnienia
+  reward_pct?: number;  // % wartości transakcji trafiający na portfel (produkty własne, np. foto)
+  pending?: number;     // polecenia w toku
+  converted?: number;   // polecenia zamienione w umowę
+  credited?: number;    // suma zł już skredytowana do portfela
 };
 export async function energyReferral(): Promise<EnergyReferral> {
   const { data, error } = await supabase.functions.invoke("energy-referral", { body: {} });
