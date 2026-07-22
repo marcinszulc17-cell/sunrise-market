@@ -329,8 +329,11 @@ export default function Market() {
             <a href={b.link_url || "/"} className="block rounded-2xl overflow-hidden relative"
                style={{ border: "1px solid rgba(242,115,29,.28)", boxShadow: "0 18px 50px -22px rgba(242,115,29,.4)" }}>
               {b.image_url ? (
-                <img src={b.image_url} alt={b.headline} loading="eager"
-                     className="block w-full h-auto" style={{ aspectRatio: "1600 / 460", objectFit: "cover" }} />
+                <picture>
+                  <source media="(max-width: 640px)" srcSet={b.image_url.replace(/(\.\w+)$/, "_m$1")} />
+                  <img src={b.image_url} alt={b.headline} loading="eager" width={1300} height={360}
+                       className="block w-full h-auto" />
+                </picture>
               ) : (
                 <div className="flex items-center px-8 py-10"
                      style={{ background: "linear-gradient(135deg, rgba(242,115,29,.25), rgba(124,58,237,.25))" }}>
