@@ -13,6 +13,7 @@
   --primaryd: #A97B42;
   --gold: #E8C896;
   --green: #7AB89A;
+  --header: rgba(10,18,36,.72);
 }
 
 /* Motyw jasny */
@@ -22,6 +23,7 @@ html[data-theme="light"] {
   --mut: #5C5C70;
   --line: rgba(0,0,0,.10);
   --glass: rgba(255,255,255,.78);
+  --header: rgba(255,255,255,.85);
 }
 
 html, body, #root { min-height: 100%; }
@@ -49,3 +51,6 @@ html[data-theme="light"] body {
   border-color: rgba(200,150,90,.45);
   box-shadow: 0 12px 40px -12px rgba(200,150,90,.35);
 }
+
+.navlink{color:var(--mut);transition:color .15s}
+.navlink:hover{color:var(--ink)}

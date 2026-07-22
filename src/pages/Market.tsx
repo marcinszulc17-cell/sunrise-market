@@ -1,11 +1,11 @@
 import { useEffect, useState, type MouseEvent } from "react";
+import ThemeToggle from "../components/ThemeToggle";
 import { zl, pkt } from "../lib/money";
 import { searchOffers, homePromoted, activeHomeBanners, activeBanners, categoryCounts, recommendedOffers, toggleWatch, watchedIds, myWatchlist } from "../lib/api";
 import { supabase } from "../lib/supabase";
 import { useCart, addToCart } from "../lib/cart";
 import SuriChat from "../components/SuriChat";
 import NotificationsBell from "../components/NotificationsBell";
-import FamilyClubBanner from "../components/FamilyClubBanner";
 import { useSeo } from "../lib/seo";
 
 const FREE_SHIP = 149;   // musi być spójne z Koszyk.tsx
@@ -265,7 +265,7 @@ export default function Market() {
     <div className="min-h-screen">
       {/* ── HEADER ── */}
       <header className="sticky top-0 z-20 backdrop-blur"
-              style={{ background: "rgba(10,18,36,.72)", borderBottom: "1px solid var(--line)" }}>
+              style={{ background: "var(--header)", borderBottom: "1px solid var(--line)" }}>
         <div className="mx-auto max-w-6xl px-4 py-3 flex items-center gap-3">
           <a href="/" className="flex items-center gap-2 shrink-0">
             <div className="w-9 h-9 rounded-xl grid place-items-center text-lg shadow-lg"
@@ -281,14 +281,15 @@ export default function Market() {
             <button onClick={() => load(q)} className="px-5 py-2 text-sm font-semibold text-black"
                     style={{ background: "linear-gradient(135deg,#C8965A,#A97B42)" }}>Szukaj</button>
           </div>
-          <a href="/sprzedawca" className="text-sm text-zinc-300 hover:text-white px-2 hidden md:block">Sprzedawaj</a>
-          {!authed && <a href="/login" className="text-sm text-zinc-300 hover:text-white px-2 hidden sm:block">Zaloguj</a>}
+          <a href="/sprzedawca" className="text-sm navlink px-2 hidden md:block">Sprzedawaj</a>
+          {!authed && <a href="/login" className="text-sm navlink px-2 hidden sm:block">Zaloguj</a>}
+          <ThemeToggle />
           <NotificationsBell />
           <a href="/koszyk" className="text-sm font-medium px-3 py-2 rounded-xl relative"
              style={{ background: "var(--glass)", border: "1px solid var(--line)" }}>
             🛒 Koszyk{cartN > 0 ? ` (${cartN})` : ""}
           </a>
-          {authed && <a href="/zamowienia" className="text-sm text-zinc-300 hover:text-white px-2 hidden md:block">Zamówienia</a>}
+          {authed && <a href="/zamowienia" className="text-sm navlink px-2 hidden md:block">Zamówienia</a>}
           {authed && <a href="/konto" className="text-sm font-medium px-3 py-2 rounded-xl hidden sm:block"
              style={{ background: "var(--glass)", border: "1px solid var(--line)" }}>👤 Konto</a>}
         </div>
@@ -321,7 +322,6 @@ export default function Market() {
         )}
       </header>
 
-      <div className="mx-auto max-w-6xl px-4 pt-5"><FamilyClubBanner /></div>
 
       {/* ── BANER REKLAMOWY (hero slot, rotacja) ── */}
       {banners.length > 0 && (() => {
