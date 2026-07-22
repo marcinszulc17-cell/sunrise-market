@@ -324,7 +324,16 @@ export default function Koszyk() {
                 <span style={{ color: "var(--mut)" }}>Dostawa {presentLanes.length > 1 && <>({presentLanes.length} przesyłki)</>}</span>
                 <span>{freeShip ? <span style={{ color: "var(--green)" }}>0 zł 🎉</span> : zl(shipCost)}</span>
               </div>
-              {!freeShip && <div className="text-xs mb-2" style={{ color: "var(--gold)" }}>Do darmowej dostawy brakuje: {zl(FREE_SHIP - total)}</div>}
+              {!freeShip ? (
+                <div className="mb-3">
+                  <div className="text-xs mb-1" style={{ color: "var(--gold)" }}>Do darmowej dostawy brakuje: <b>{zl(FREE_SHIP - total)}</b></div>
+                  <div className="h-2 rounded-full overflow-hidden" style={{ background: "var(--glass)", border: "1px solid var(--line)" }}>
+                    <div className="h-full rounded-full" style={{ width: `${Math.min(100, Math.round(total / FREE_SHIP * 100))}%`, background: "linear-gradient(90deg,#C8965A,#E8C896)", transition: "width .3s" }} />
+                  </div>
+                </div>
+              ) : (
+                <div className="text-xs mb-2" style={{ color: "var(--green)" }}>🎉 Masz darmową dostawę!</div>
+              )}
               <div className="flex justify-between mb-2 mt-1"><span style={{ color: "var(--mut)" }}>Razem</span><span className="font-display text-2xl font-semibold">{zl(grand)}</span></div>
               <div className="flex justify-between text-sm mb-2"><span style={{ color: "var(--mut)" }}>Cashback 3% (punkty)</span><span style={{ color: "var(--green)" }}>+{pkt(cashback)} pkt</span></div>
               <SmartCard />

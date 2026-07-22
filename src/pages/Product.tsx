@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
 import { getOffer, offerReviews, addReview, offerImages, trackView, similarOffers } from "../lib/api";
+import { pushRecent } from "../lib/recent";
 import { addToCart } from "../lib/cart";
 import { supabase } from "../lib/supabase";
 import { useSeo, useProductJsonLd } from "../lib/seo";
@@ -73,7 +74,7 @@ export default function Product() {
 
   useEffect(() => {
     if (!id) return;
-    getOffer(id).then((d) => setO(d as Offer)).catch((e) => setErr(String((e as Error).message))).finally(() => setLoading(false));
+    getOffer(id).then((d) => { const oo = d as Offer; setO(oo); pushRecent({ offer_id: oo.offer_id, title: oo.title, price_gross: oo.price_gross, image_url: oo.image_url }); }).catch((e) => setErr(String((e as Error).message))).finally(() => setLoading(false));
     loadReviews(id).catch(() => {});
     offerImages(id).then((u) => { setImgs(u); setActive(0); }).catch(() => {});
     supabase.auth.getUser().then(({ data }) => setAuthed(!!data.user));

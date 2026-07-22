@@ -1,6 +1,7 @@
 import { useEffect, useState, type MouseEvent } from "react";
 import ThemeToggle from "../components/ThemeToggle";
 import { zl, pkt } from "../lib/money";
+import { getRecent } from "../lib/recent";
 import { searchOffers, homePromoted, activeHomeBanners, activeBanners, categoryCounts, recommendedOffers, toggleWatch, watchedIds, myWatchlist } from "../lib/api";
 import { supabase } from "../lib/supabase";
 import { useCart, addToCart } from "../lib/cart";
@@ -160,6 +161,7 @@ export default function Market() {
   const [bi, setBi] = useState(0); // aktywny baner (rotacja)
   const [tiles, setTiles] = useState<Banner[]>([]);   // kafle kategorii OZE (640x360)
   const [strips, setStrips] = useState<Banner[]>([]); // paski promo (1300x220)
+  const [recent, setRecent] = useState<{ offer_id: string; title: string; price_gross: number; image_url: string | null }[]>([]);
   const [authed, setAuthed] = useState(false);
   const [counts, setCounts] = useState<Record<string, number>>({});
   const [total, setTotal] = useState(0);
@@ -205,6 +207,7 @@ export default function Market() {
     activeHomeBanners().then((b) => setBanners((b as Banner[]) ?? [])).catch(() => {});
     activeBanners("category_tile").then((b) => setTiles((b as Banner[]) ?? [])).catch(() => {});
     activeBanners("home_strip").then((b) => setStrips((b as Banner[]) ?? [])).catch(() => {});
+    setRecent(getRecent());
     supabase.auth.getUser().then(({ data }) => {
       setAuthed(!!data.user);
       if (data.user) {
@@ -424,6 +427,29 @@ export default function Market() {
           </div>
         );
       })()}
+
+      {/* ── OSTATNIO OGLĄDANE ── */}
+      {!activeDept && recent.length > 0 && (
+        <section className="mx-auto max-w-6xl px-4 pb-4">
+          <h2 className="font-display text-2xl font-semibold mb-5">🕘 Ostatnio oglądane</h2>
+          <div className="flex gap-4 overflow-x-auto pb-2">
+            {recent.map((r) => (
+              <a key={r.offer_id} href={`/produkt/${r.offer_id}`} className="shrink-0 w-40 rounded-2xl overflow-hidden card-glow"
+                 style={{ border: "1px solid var(--line)", background: "var(--glass)" }}>
+                <div className="h-28">
+                  {r.image_url
+                    ? <img src={r.image_url} alt={r.title} className="w-full h-full object-cover" loading="lazy" />
+                    : <div className="w-full h-full grid place-items-center text-2xl">🌅</div>}
+                </div>
+                <div className="p-2">
+                  <div className="text-xs leading-snug" style={{ minHeight: 32, color: "var(--ink)" }}>{r.title.slice(0, 46)}</div>
+                  <div className="font-display font-semibold text-sm mt-1">{zl(r.price_gross)}</div>
+                </div>
+              </a>
+            ))}
+          </div>
+        </section>
+      )}
 
       {/* ── OFERTY ── */}
       <section className="mx-auto max-w-6xl px-4 pb-20">
