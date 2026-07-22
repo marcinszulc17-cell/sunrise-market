@@ -312,6 +312,13 @@ export async function cjActivateAll(): Promise<number> {
   if (error) throw error;
   return Number(data?.activated ?? 0);
 }
+// Statystyki per produkt CJ: koszt, marża brutto (bez wysyłki), wyświetlenia, sprzedane, przychód.
+export type CjStat = { id: string; title: string; price_gross: number; image_url: string | null; status: string; cost_zl: number; margin_zl: number; margin_pct: number; views: number; sold: number; revenue: number };
+export async function cjStats(): Promise<CjStat[]> {
+  const { data, error } = await supabase.functions.invoke("cj-admin", { body: { action: "stats" } });
+  if (error) throw error;
+  return (data?.items ?? []) as CjStat[];
+}
 // Kategorie (drzewo) — do formularza oferty
 export async function topCategories() {
   const { data, error } = await supabase.from("categories").select("id,slug,name").is("parent_id", null).order("sort_order");

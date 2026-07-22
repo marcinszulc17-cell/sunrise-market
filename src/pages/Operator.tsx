@@ -5,7 +5,7 @@ import {
   adminCustomers, adminSellers, adminSetSellerStatus,
   listReturns, resolveReturn, listPendingSellers, reviewSeller, listOffersAdmin, moderateOffer,
   bridgeQueue, retryBridgeOrder, getAutoForward, setAutoForward, approveBridgeForward, rejectBridgeForward,
-  cjImport, cjDrafts, cjSetStatus, cjActivateAll, type CjDraft,
+  cjImport, cjDrafts, cjSetStatus, cjActivateAll, cjStats, type CjDraft, type CjStat,
 } from "../lib/api";
 
 const zl = (v: number) => Math.round(Number(v || 0)).toLocaleString("pl-PL") + " zł";
@@ -322,9 +322,12 @@ function Oferty() {
   );
 }
 
-// ── CJ DROPSHIPPING (import + akceptacja draftów) ───────────────────
+// ── CJ DROPSHIPPING (import + akceptacja draftów + statystyki) ───────
 function CjDrop() {
+  const [view, setView] = useState<"drafty" | "statystyki">("drafty");
   const [drafts, setDrafts] = useState<CjDraft[]>([]);
+  const [stats, setStats] = useState<CjStat[]>([]);
+  const [sort, setSort] = useState<"sold" | "views" | "margin" | "marginPct" | "price">("sold");
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
@@ -332,7 +335,17 @@ function CjDrop() {
   const [keyword, setKeyword] = useState("");
 
   async function load() { setLoading(true); try { setDrafts(await cjDrafts()); } catch (e) { setMsg((e as Error).message); } finally { setLoading(false); } }
+  async function loadStats() { setLoading(true); try { setStats(await cjStats()); } catch (e) { setMsg((e as Error).message); } finally { setLoading(false); } }
   useEffect(() => { load(); }, []);
+  useEffect(() => { if (view === "statystyki") loadStats(); }, [view]);
+
+  const sortedStats = [...stats].sort((a, b) => {
+    if (sort === "sold") return b.sold - a.sold;
+    if (sort === "views") return b.views - a.views;
+    if (sort === "marginPct") return b.margin_pct - a.margin_pct;
+    if (sort === "price") return b.price_gross - a.price_gross;
+    return b.margin_zl - a.margin_zl;
+  });
 
   async function onImport() {
     setBusy(true); setMsg(null);
@@ -364,29 +377,88 @@ function CjDrop() {
         {msg && <div className="mt-3 text-sm rounded-lg px-3 py-2" style={{ background: "rgba(242,115,29,.12)", color: "var(--gold)" }}>{msg}</div>}
       </Card>
 
-      <div className="flex items-center justify-between mb-3 flex-wrap gap-2">
-        <div className="font-semibold">Drafty do akceptacji <span style={{ color: "var(--mut)" }}>({drafts.length})</span></div>
-        {drafts.length > 0 && <button onClick={onActivateAll} disabled={busy} className="text-sm px-4 py-2 rounded-xl font-semibold text-black disabled:opacity-50" style={{ background: "linear-gradient(135deg,#34E3A0,#38E0F0)" }}>Aktywuj wszystkie</button>}
+      <div className="flex items-center gap-2 mb-4">
+        <button onClick={() => setView("drafty")} className="text-sm px-4 py-2 rounded-xl font-semibold" style={view === "drafty" ? { background: "linear-gradient(135deg,#F2731D,#D9560C)", color: "#000" } : { background: "var(--glass)", border: "1px solid var(--line)", color: "var(--ink)" }}>Drafty ({drafts.length})</button>
+        <button onClick={() => setView("statystyki")} className="text-sm px-4 py-2 rounded-xl font-semibold" style={view === "statystyki" ? { background: "linear-gradient(135deg,#F2731D,#D9560C)", color: "#000" } : { background: "var(--glass)", border: "1px solid var(--line)", color: "var(--ink)" }}>📊 Statystyki</button>
       </div>
-      {loading && <p style={{ color: "var(--mut)" }}>Ładowanie…</p>}
-      <div className="grid gap-3" style={{ gridTemplateColumns: "repeat(auto-fill,minmax(260px,1fr))" }}>
-        {drafts.map((o) => (
-          <Card key={o.id}>
-            <div className="flex gap-3">
-              <div className="w-16 h-16 rounded-lg shrink-0" style={{ background: o.image_url ? `center/cover no-repeat url(${o.image_url})` : "var(--glass)", border: "1px solid var(--line)" }} />
-              <div className="min-w-0 flex-1">
-                <div className="text-sm font-medium" style={{ display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" }}>{o.title}</div>
-                <div className="text-sm mt-1" style={{ color: "var(--gold)" }}>{zl(o.price_gross)}</div>
-              </div>
-            </div>
-            <div className="flex gap-2 mt-3">
-              <button onClick={() => onSet(o.id, "active")} className="flex-1 text-xs font-semibold px-3 py-2 rounded-lg text-black" style={{ background: "linear-gradient(135deg,#34E3A0,#38E0F0)" }}>Aktywuj</button>
-              <button onClick={() => onSet(o.id, "blocked")} className="text-xs px-3 py-2 rounded-lg" style={{ background: "rgba(242,92,176,.14)", border: "1px solid rgba(242,92,176,.4)", color: "#F8A8D2" }}>Odrzuć</button>
-            </div>
-          </Card>
-        ))}
-        {!loading && drafts.length === 0 && <p style={{ color: "var(--mut)" }}>Brak draftów. Zaimportuj z CJ powyżej.</p>}
-      </div>
+
+      {view === "drafty" && (
+        <>
+          <div className="flex items-center justify-between mb-3 flex-wrap gap-2">
+            <div className="font-semibold">Drafty do akceptacji <span style={{ color: "var(--mut)" }}>({drafts.length})</span></div>
+            {drafts.length > 0 && <button onClick={onActivateAll} disabled={busy} className="text-sm px-4 py-2 rounded-xl font-semibold text-black disabled:opacity-50" style={{ background: "linear-gradient(135deg,#34E3A0,#38E0F0)" }}>Aktywuj wszystkie</button>}
+          </div>
+          {loading && <p style={{ color: "var(--mut)" }}>Ładowanie…</p>}
+          <div className="grid gap-3" style={{ gridTemplateColumns: "repeat(auto-fill,minmax(260px,1fr))" }}>
+            {drafts.map((o) => (
+              <Card key={o.id}>
+                <div className="flex gap-3">
+                  <div className="w-16 h-16 rounded-lg shrink-0" style={{ background: o.image_url ? `center/cover no-repeat url(${o.image_url})` : "var(--glass)", border: "1px solid var(--line)" }} />
+                  <div className="min-w-0 flex-1">
+                    <div className="text-sm font-medium" style={{ display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" }}>{o.title}</div>
+                    <div className="text-sm mt-1" style={{ color: "var(--gold)" }}>{zl(o.price_gross)}</div>
+                  </div>
+                </div>
+                <div className="flex gap-2 mt-3">
+                  <button onClick={() => onSet(o.id, "active")} className="flex-1 text-xs font-semibold px-3 py-2 rounded-lg text-black" style={{ background: "linear-gradient(135deg,#34E3A0,#38E0F0)" }}>Aktywuj</button>
+                  <button onClick={() => onSet(o.id, "blocked")} className="text-xs px-3 py-2 rounded-lg" style={{ background: "rgba(242,92,176,.14)", border: "1px solid rgba(242,92,176,.4)", color: "#F8A8D2" }}>Odrzuć</button>
+                </div>
+              </Card>
+            ))}
+            {!loading && drafts.length === 0 && <p style={{ color: "var(--mut)" }}>Brak draftów. Zaimportuj z CJ powyżej.</p>}
+          </div>
+        </>
+      )}
+
+      {view === "statystyki" && (
+        <>
+          <div className="flex items-center gap-2 mb-2 flex-wrap">
+            <span className="font-semibold">Statystyki produktów CJ</span>
+            <span className="text-xs" style={{ color: "var(--mut)" }}>· sortuj:</span>
+            {(([["sold", "🛒 sprzedaż"], ["views", "👁 wyświetlenia"], ["margin", "💰 marża zł"], ["marginPct", "% marży"], ["price", "cena"]]) as [typeof sort, string][]).map(([k, l]) => (
+              <button key={k} onClick={() => setSort(k)} className="text-xs px-3 py-1.5 rounded-full" style={sort === k ? { background: "rgba(242,115,29,.16)", border: "1px solid rgba(242,115,29,.5)", color: "var(--gold)" } : { background: "var(--glass)", border: "1px solid var(--line)", color: "var(--mut)" }}>{l}</button>
+            ))}
+          </div>
+          <p className="text-xs mb-3" style={{ color: "var(--mut)" }}>Marża brutto = cena − koszt CJ (bez wysyłki). Ujemna (różowe) = tracisz. Gdzie jest ruch (👁) + marża, tam pompuj kasę.</p>
+          {loading && <p style={{ color: "var(--mut)" }}>Ładowanie…</p>}
+          <div style={{ overflowX: "auto", border: "1px solid var(--line)", borderRadius: 16 }}>
+            <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
+              <thead>
+                <tr style={{ color: "var(--mut)" }}>
+                  <th style={{ padding: "10px 12px", textAlign: "left" }}>Produkt</th>
+                  <th style={{ padding: "10px 12px", textAlign: "right" }}>Cena</th>
+                  <th style={{ padding: "10px 12px", textAlign: "right" }}>Koszt</th>
+                  <th style={{ padding: "10px 12px", textAlign: "right" }}>Marża</th>
+                  <th style={{ padding: "10px 12px", textAlign: "right" }}>%</th>
+                  <th style={{ padding: "10px 12px", textAlign: "right" }}>👁</th>
+                  <th style={{ padding: "10px 12px", textAlign: "right" }}>🛒</th>
+                  <th style={{ padding: "10px 12px", textAlign: "right" }}>Przychód</th>
+                </tr>
+              </thead>
+              <tbody>
+                {sortedStats.map((r) => (
+                  <tr key={r.id} style={{ borderTop: "1px solid var(--line)", background: r.margin_zl <= 0 ? "rgba(242,92,176,.08)" : undefined }}>
+                    <td style={{ padding: "8px 12px", maxWidth: 340 }}>
+                      <div className="flex items-center gap-2">
+                        <div className="w-8 h-8 rounded shrink-0" style={{ background: r.image_url ? `center/cover no-repeat url(${r.image_url})` : "var(--glass)", border: "1px solid var(--line)" }} />
+                        <span style={{ display: "-webkit-box", WebkitLineClamp: 1, WebkitBoxOrient: "vertical", overflow: "hidden" }}>{r.title}</span>
+                      </div>
+                    </td>
+                    <td style={{ padding: "8px 12px", textAlign: "right" }}>{zl(r.price_gross)}</td>
+                    <td style={{ padding: "8px 12px", textAlign: "right", color: "var(--mut)" }}>{zl(r.cost_zl)}</td>
+                    <td style={{ padding: "8px 12px", textAlign: "right", fontWeight: 600, color: r.margin_zl <= 0 ? "#F8A8D2" : "var(--green)" }}>{zl(r.margin_zl)}</td>
+                    <td style={{ padding: "8px 12px", textAlign: "right", color: r.margin_pct <= 0 ? "#F8A8D2" : "var(--mut)" }}>{Math.round(r.margin_pct)}%</td>
+                    <td style={{ padding: "8px 12px", textAlign: "right" }}>{r.views}</td>
+                    <td style={{ padding: "8px 12px", textAlign: "right", fontWeight: r.sold > 0 ? 700 : 400, color: r.sold > 0 ? "var(--gold)" : "var(--mut)" }}>{r.sold}</td>
+                    <td style={{ padding: "8px 12px", textAlign: "right" }}>{zl(r.revenue)}</td>
+                  </tr>
+                ))}
+                {!loading && sortedStats.length === 0 && <tr><td colSpan={8} style={{ padding: "12px", color: "var(--mut)" }}>Brak danych. Zaimportuj i aktywuj produkty CJ.</td></tr>}
+              </tbody>
+            </table>
+          </div>
+        </>
+      )}
     </>
   );
 }
