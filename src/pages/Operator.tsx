@@ -327,7 +327,7 @@ function CjDrop() {
   const [view, setView] = useState<"drafty" | "statystyki">("drafty");
   const [drafts, setDrafts] = useState<CjDraft[]>([]);
   const [stats, setStats] = useState<CatalogStat[]>([]);
-  const [provider, setProvider] = useState<"" | "cj" | "teemdrop">("");
+  const [provider, setProvider] = useState<"" | "cj" | "teemdrop" | "mysunrise">("");
   const [statSearch, setStatSearch] = useState("");
   const [sort, setSort] = useState<"sold" | "views" | "margin" | "marginPct" | "price">("sold");
   const [loading, setLoading] = useState(true);
@@ -416,7 +416,7 @@ function CjDrop() {
         <>
           <div className="flex items-center gap-2 mb-2 flex-wrap">
             <span className="font-semibold">Statystyki produktów</span>
-            {(([["", "Wszyscy"], ["cj", "CJ"], ["teemdrop", "TeemDrop"]]) as ["" | "cj" | "teemdrop", string][]).map(([k, l]) => (
+            {(([["", "Wszyscy"], ["cj", "CJ"], ["teemdrop", "TeemDrop"], ["mysunrise", "Sunrise (własne)"]]) as ["" | "cj" | "teemdrop" | "mysunrise", string][]).map(([k, l]) => (
               <button key={k || "all"} onClick={() => setProvider(k)} className="text-xs px-3 py-1.5 rounded-full" style={provider === k ? { background: "rgba(52,227,160,.16)", border: "1px solid rgba(52,227,160,.5)", color: "var(--green)" } : { background: "var(--glass)", border: "1px solid var(--line)", color: "var(--mut)" }}>{l}</button>
             ))}
             <input value={statSearch} onChange={(e) => setStatSearch(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") loadStats(); }} placeholder="Szukaj po nazwie… (Enter)" className="text-xs px-3 py-1.5 rounded-full outline-none" style={{ background: "var(--glass)", border: "1px solid var(--line)", color: "var(--ink)", minWidth: 170 }} />
@@ -454,7 +454,7 @@ function CjDrop() {
                         <span style={{ display: "-webkit-box", WebkitLineClamp: 1, WebkitBoxOrient: "vertical", overflow: "hidden" }}>{r.title}</span>
                       </div>
                     </td>
-                    <td style={{ padding: "8px 12px", textAlign: "left", color: "var(--mut)", fontSize: 11 }}>{r.provider === "cj" ? "CJ" : r.provider === "teemdrop" ? "TeemDrop" : r.provider}</td>
+                    <td style={{ padding: "8px 12px", textAlign: "left", color: "var(--mut)", fontSize: 11 }}>{r.provider === "cj" ? "CJ" : r.provider === "teemdrop" ? "TeemDrop" : r.provider === "mysunrise" ? "Sunrise" : r.provider}</td>
                     <td style={{ padding: "8px 12px", textAlign: "right" }}>{zl(r.price_gross)}</td>
                     <td style={{ padding: "8px 12px", textAlign: "right", color: "var(--mut)" }}>{zl(r.cost_zl)}</td>
                     <td style={{ padding: "8px 12px", textAlign: "right", fontWeight: 600, color: r.margin_zl <= 0 ? "#F8A8D2" : "var(--green)" }}>{zl(r.margin_zl)}</td>
