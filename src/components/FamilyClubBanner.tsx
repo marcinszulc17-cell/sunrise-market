@@ -1,7 +1,7 @@
 export default function FamilyClubBanner({ slim = false }: { slim?: boolean }) {
   return (
     <a href="/konto" className="block rounded-2xl overflow-hidden"
-       style={{ background: "linear-gradient(140deg,#061434,#0b2350 45%,#123a86)", border: "1px solid rgba(255,210,63,.35)" }}>
+       style={{ background: "linear-gradient(135deg, rgba(242,115,29,.16), rgba(224,162,27,.07)), var(--glass)", border: "1px solid rgba(224,162,27,.38)" }}>
       <div className={`flex items-center gap-4 ${slim ? "px-4 py-3" : "px-5 py-4"}`}>
         <div className="shrink-0 grid place-items-center rounded-xl"
              style={{ width: slim ? 40 : 54, height: slim ? 40 : 54, background: "rgba(255,210,63,.15)", fontSize: slim ? 22 : 30 }}>☀</div>
