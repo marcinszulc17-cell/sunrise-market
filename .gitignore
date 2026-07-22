@@ -12,3 +12,6 @@ Thumbs.db
 *.log
 .idea/
 .vscode/
+
+# tymczasowe pliki Cowork
+_git_lock_trash/
