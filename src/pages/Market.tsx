@@ -1,6 +1,6 @@
 import { useEffect, useState, type MouseEvent } from "react";
 import { zl, pkt } from "../lib/money";
-import { searchOffers, homePromoted, activeHomeBanner, categoryCounts, recommendedOffers, toggleWatch, watchedIds, myWatchlist } from "../lib/api";
+import { searchOffers, homePromoted, activeHomeBanners, categoryCounts, recommendedOffers, toggleWatch, watchedIds, myWatchlist } from "../lib/api";
 import { supabase } from "../lib/supabase";
 import { useCart, addToCart } from "../lib/cart";
 import SuriChat from "../components/SuriChat";
@@ -156,7 +156,9 @@ export default function Market() {
   const cart = useCart();
   const cartN = cart.reduce((n, x) => n + x.qty, 0);
   const [promoted, setPromoted] = useState<Offer[]>([]);
-  const [banner, setBanner] = useState<{ headline: string; link_url: string; image_url: string | null; seller: string } | null>(null);
+  type Banner = { headline: string; link_url: string; image_url: string | null; seller: string };
+  const [banners, setBanners] = useState<Banner[]>([]);
+  const [bi, setBi] = useState(0); // aktywny baner (rotacja)
   const [authed, setAuthed] = useState(false);
   const [counts, setCounts] = useState<Record<string, number>>({});
   const [total, setTotal] = useState(0);
@@ -199,7 +201,7 @@ export default function Market() {
       .then(({ data }) => setDepts((data as Dept[]) ?? []));
     categoryCounts().then(({ byId, total }) => { setCounts(byId); setTotal(total); }).catch(() => {});
     homePromoted().then((d) => setPromoted((d as any[]).map((o) => ({ ...o, score: 1 })) as Offer[])).catch(() => {});
-    activeHomeBanner().then((b) => setBanner(b as any)).catch(() => {});
+    activeHomeBanners().then((b) => setBanners((b as Banner[]) ?? [])).catch(() => {});
     supabase.auth.getUser().then(({ data }) => {
       setAuthed(!!data.user);
       if (data.user) {
@@ -210,6 +212,13 @@ export default function Market() {
     const urlQ = new URLSearchParams(window.location.search).get("q");
     if (urlQ) { setQ(urlQ); load(urlQ); }
   }, []);
+
+  // rotacja banerow hero co 6 s
+  useEffect(() => {
+    if (banners.length < 2) return;
+    const t = setInterval(() => setBi((i) => (i + 1) % banners.length), 6000);
+    return () => clearInterval(t);
+  }, [banners.length]);
 
   // poziom 1: dział
   async function pickDept(d: Dept | null) {
@@ -312,18 +321,38 @@ export default function Market() {
 
       <div className="mx-auto max-w-6xl px-4 pt-5"><FamilyClubBanner /></div>
 
-      {/* ── BANER REKLAMOWY (hero slot) ── */}
-      {banner && (
-        <a href={banner.link_url || "/"} className="block mx-auto max-w-6xl px-4 pt-5">
-          <div className="rounded-2xl overflow-hidden relative flex items-center px-8 py-10"
-               style={{ background: banner.image_url ? `url(${banner.image_url}) center/cover` : "linear-gradient(135deg, rgba(242,115,29,.25), rgba(124,58,237,.25))", border: "1px solid rgba(242,115,29,.35)" }}>
-            <div>
-              <div className="text-[11px] font-semibold tracking-wider mb-2" style={{ color: "var(--gold)" }}>SPONSOROWANE · {banner.seller}</div>
-              <div className="font-display text-2xl sm:text-3xl font-semibold max-w-xl">{banner.headline}</div>
-            </div>
+      {/* ── BANER REKLAMOWY (hero slot, rotacja) ── */}
+      {banners.length > 0 && (() => {
+        const b = banners[bi] ?? banners[0];
+        return (
+          <div className="mx-auto max-w-6xl px-4 pt-5">
+            <a href={b.link_url || "/"} className="block rounded-2xl overflow-hidden relative"
+               style={{ border: "1px solid rgba(242,115,29,.28)", boxShadow: "0 18px 50px -22px rgba(242,115,29,.4)" }}>
+              {b.image_url ? (
+                <img src={b.image_url} alt={b.headline} loading="eager"
+                     className="block w-full h-auto" style={{ aspectRatio: "1600 / 460", objectFit: "cover" }} />
+              ) : (
+                <div className="flex items-center px-8 py-10"
+                     style={{ background: "linear-gradient(135deg, rgba(242,115,29,.25), rgba(124,58,237,.25))" }}>
+                  <div>
+                    <div className="text-[11px] font-semibold tracking-wider mb-2" style={{ color: "var(--gold)" }}>SPONSOROWANE · {b.seller}</div>
+                    <div className="font-display text-2xl sm:text-3xl font-semibold max-w-xl">{b.headline}</div>
+                  </div>
+                </div>
+              )}
+              {banners.length > 1 && (
+                <div className="absolute bottom-3 right-4 flex items-center gap-1.5">
+                  {banners.map((_, i) => (
+                    <button key={i} aria-label={`Baner ${i + 1}`} onClick={(e) => { e.preventDefault(); setBi(i); }}
+                      className="rounded-full transition-all"
+                      style={{ width: i === bi ? 20 : 7, height: 7, background: i === bi ? "var(--gold)" : "rgba(255,255,255,.45)" }} />
+                  ))}
+                </div>
+              )}
+            </a>
           </div>
-        </a>
-      )}
+        );
+      })()}
 
       {/* ── HERO ── */}
       <section className="mx-auto max-w-6xl px-4 pt-12 pb-8 text-center">

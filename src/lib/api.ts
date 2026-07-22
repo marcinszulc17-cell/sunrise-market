@@ -195,6 +195,9 @@ export async function homePromoted() {
 export async function activeHomeBanner() {
   const { data, error } = await supabase.rpc("active_home_banner"); if (error) throw error; return (data && data[0]) ?? null;
 }
+export async function activeHomeBanners() {
+  const { data, error } = await supabase.rpc("active_home_banners"); if (error) throw error; return (data as any[]) ?? [];
+}
 export async function promoteOffer(offerId: string, days: number) {
   const { data, error } = await supabase.rpc("my_promote_offer", { p_offer: offerId, p_days: days });
   if (error) throw error; return Number(data);
