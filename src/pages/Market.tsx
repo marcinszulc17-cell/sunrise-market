@@ -1,6 +1,6 @@
 import { useEffect, useState, type MouseEvent } from "react";
 import { zl, pkt } from "../lib/money";
-import { searchOffers, homePromoted, activeHomeBanners, categoryCounts, recommendedOffers, toggleWatch, watchedIds, myWatchlist } from "../lib/api";
+import { searchOffers, homePromoted, activeHomeBanners, activeBanners, categoryCounts, recommendedOffers, toggleWatch, watchedIds, myWatchlist } from "../lib/api";
 import { supabase } from "../lib/supabase";
 import { useCart, addToCart } from "../lib/cart";
 import SuriChat from "../components/SuriChat";
@@ -159,6 +159,8 @@ export default function Market() {
   type Banner = { headline: string; link_url: string; image_url: string | null; seller: string };
   const [banners, setBanners] = useState<Banner[]>([]);
   const [bi, setBi] = useState(0); // aktywny baner (rotacja)
+  const [tiles, setTiles] = useState<Banner[]>([]);   // kafle kategorii OZE (640x360)
+  const [strips, setStrips] = useState<Banner[]>([]); // paski promo (1300x220)
   const [authed, setAuthed] = useState(false);
   const [counts, setCounts] = useState<Record<string, number>>({});
   const [total, setTotal] = useState(0);
@@ -202,6 +204,8 @@ export default function Market() {
     categoryCounts().then(({ byId, total }) => { setCounts(byId); setTotal(total); }).catch(() => {});
     homePromoted().then((d) => setPromoted((d as any[]).map((o) => ({ ...o, score: 1 })) as Offer[])).catch(() => {});
     activeHomeBanners().then((b) => setBanners((b as Banner[]) ?? [])).catch(() => {});
+    activeBanners("category_tile").then((b) => setTiles((b as Banner[]) ?? [])).catch(() => {});
+    activeBanners("home_strip").then((b) => setStrips((b as Banner[]) ?? [])).catch(() => {});
     supabase.auth.getUser().then(({ data }) => {
       setAuthed(!!data.user);
       if (data.user) {
@@ -372,6 +376,21 @@ export default function Market() {
         </p>
       </section>
 
+      {/* ── STREFA ENERGII SUNRISE (kafle kategorii 640x360) ── */}
+      {!activeDept && tiles.length > 0 && (
+        <section className="mx-auto max-w-6xl px-4 pb-6 pt-2">
+          <h2 className="font-display text-2xl font-semibold mb-5">⚡ Strefa Energii Sunrise</h2>
+          <div className="grid gap-5" style={{ gridTemplateColumns: "repeat(auto-fill,minmax(300px,1fr))" }}>
+            {tiles.map((t, i) => (
+              <a key={i} href={t.link_url || "/"} className="block rounded-2xl overflow-hidden transition-transform hover:-translate-y-0.5"
+                 style={{ border: "1px solid var(--line)", boxShadow: "0 10px 30px -18px rgba(0,0,0,.6)" }}>
+                <img src={t.image_url!} alt={t.headline} loading="lazy" width={640} height={360} className="block w-full h-auto" />
+              </a>
+            ))}
+          </div>
+        </section>
+      )}
+
       {/* ── DLA CIEBIE (rekomendacje wg preferencji) ── */}
       {!activeDept && authed && recs.length > 0 && (
         <section className="mx-auto max-w-6xl px-4 pb-4 pt-2">
@@ -395,6 +414,18 @@ export default function Market() {
           </div>
         </section>
       )}
+
+      {/* ── PASEK PROMOCYJNY (strip 1300x220, rotacja) ── */}
+      {!activeDept && strips.length > 0 && (() => {
+        const sB = strips[bi % strips.length];
+        return (
+          <div className="mx-auto max-w-6xl px-4 pb-8">
+            <a href={sB.link_url || "/"} className="block rounded-2xl overflow-hidden" style={{ border: "1px solid var(--line)" }}>
+              <img src={sB.image_url!} alt={sB.headline} loading="lazy" width={1300} height={220} className="block w-full h-auto" />
+            </a>
+          </div>
+        );
+      })()}
 
       {/* ── OFERTY ── */}
       <section className="mx-auto max-w-6xl px-4 pb-20">
