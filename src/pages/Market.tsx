@@ -5,7 +5,6 @@ import { supabase } from "../lib/supabase";
 import { useCart, addToCart } from "../lib/cart";
 import SuriChat from "../components/SuriChat";
 import NotificationsBell from "../components/NotificationsBell";
-import ThemeToggle from "../components/ThemeToggle";
 import FamilyClubBanner from "../components/FamilyClubBanner";
 import { useSeo } from "../lib/seo";
 
@@ -284,7 +283,6 @@ export default function Market() {
           </div>
           <a href="/sprzedawca" className="text-sm text-zinc-300 hover:text-white px-2 hidden md:block">Sprzedawaj</a>
           {!authed && <a href="/login" className="text-sm text-zinc-300 hover:text-white px-2 hidden sm:block">Zaloguj</a>}
-          <ThemeToggle />
           <NotificationsBell />
           <a href="/koszyk" className="text-sm font-medium px-3 py-2 rounded-xl relative"
              style={{ background: "var(--glass)", border: "1px solid var(--line)" }}>

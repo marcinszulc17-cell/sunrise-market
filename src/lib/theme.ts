@@ -3,7 +3,7 @@ const KEY = "sunrise_theme";
 export type Theme = "dark" | "light";
 
 export function getTheme(): Theme {
-  try { return localStorage.getItem(KEY) === "light" ? "light" : "dark"; } catch { return "dark"; }
+  try { return "dark"; } catch { return "dark"; }
 }
 export function applyTheme(t: Theme) {
   if (t === "light") document.documentElement.setAttribute("data-theme", "light");
