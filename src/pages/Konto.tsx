@@ -1,7 +1,7 @@
 import { pkt } from "../lib/money";
 import { useEffect, useState } from "react";
 import { supabase } from "../lib/supabase";
-import { walletBalance, myOrders, myReturns, confirmDelivery, openReturn, myWatchlist, walletHistory, toggleWatch, mySeller, amiOperator, type WalletLive } from "../lib/api";
+import { walletBalance, myOrders, myReturns, confirmDelivery, openReturn, myWatchlist, walletHistory, toggleWatch, mySeller, amiOperator, energyReferral, type WalletLive, type EnergyReferral } from "../lib/api";
 import { setMode } from "../lib/mode";
 import { useSeo } from "../lib/seo";
 
@@ -89,6 +89,7 @@ function Przeglad({ w, seller, isOp, onLogout, goTab }: { w: WalletLive | null; 
         <button onClick={() => goTab("portfel")} className="inline-block rounded-xl px-5 py-2 font-semibold text-black" style={{ background: "linear-gradient(135deg,#F2731D,#E0A21B)" }}>Doładuj / historia</button>
       </div>
       {w && !w.linked && <Card className="!p-4"><span className="text-sm" style={{ color: "#8fe3ef" }}>Portfel niepołączony z MySunrise. Aktywuj Sunrise Pay w aplikacji MySunrise na ten sam e‑mail, aby płacić.</span></Card>}
+      <PolecajPV />
       <div className="grid gap-3 sm:grid-cols-2">
         <button onClick={() => goTab("zamowienia")} className="text-left"><Card><div className="text-lg mb-1">📦 Moje zamówienia</div><div className="text-xs" style={{ color: "var(--mut)" }}>Status, dostawa, zwroty</div></Card></button>
         <button onClick={() => goTab("zyczenia")} className="text-left"><Card><div className="text-lg mb-1">♥ Lista życzeń</div><div className="text-xs" style={{ color: "var(--mut)" }}>Zapisane produkty</div></Card></button>
@@ -98,6 +99,43 @@ function Przeglad({ w, seller, isOp, onLogout, goTab }: { w: WalletLive | null; 
         {isOp && <a href="/operator"><Card><div className="text-lg mb-1">🛡️ Back-office</div><div className="text-xs" style={{ color: "var(--mut)" }}>Panel operatora</div></Card></a>}
       </div>
       <button onClick={onLogout} className="self-start text-sm px-4 py-2 rounded-xl" style={{ background: "var(--glass)", border: "1px solid var(--line)" }}>Wyloguj</button>
+    </div>
+  );
+}
+
+function PolecajPV() {
+  const [r, setR] = useState<EnergyReferral | null>(null);
+  const [copied, setCopied] = useState(false);
+  useEffect(() => { energyReferral().then(setR).catch(() => setR({ available: false })); }, []);
+  const reward = r?.reward ?? 500;
+  const link = r?.link ?? "";
+  async function copy() {
+    try { await navigator.clipboard.writeText(link); setCopied(true); setTimeout(() => setCopied(false), 2000); } catch { /* ignore */ }
+  }
+  return (
+    <div className="rounded-2xl p-5" style={{ background: "linear-gradient(135deg, rgba(242,115,29,.12), rgba(56,224,240,.08))", border: "1px solid rgba(242,115,29,.3)" }}>
+      <div className="flex items-center gap-2 mb-1">
+        <span className="text-lg">☀️</span>
+        <span className="font-display text-lg font-semibold">Poleć fotowoltaikę — zgarnij do portfela</span>
+      </div>
+      <p className="text-sm mb-3" style={{ color: "var(--mut)" }}>
+        Poleć znajomego na instalację Sunrise Energy. Gdy podpisze umowę, <b style={{ color: "var(--gold)" }}>{zl(reward)}</b> trafia na Twój portfel Sunrise Pay — do wydania w Markecie. Zasila portfel bez opłat.
+      </p>
+      {r && r.available ? (
+        <>
+          <div className="flex flex-wrap items-center gap-2 mb-3">
+            <input readOnly value={link} className="flex-1 min-w-[200px] rounded-lg px-3 py-2 text-sm outline-none" style={{ background: "var(--glass)", border: "1px solid var(--line)", color: "var(--ink)" }} />
+            <button onClick={copy} className="rounded-lg px-4 py-2 text-sm font-semibold text-black" style={{ background: "linear-gradient(135deg,#F2731D,#E0A21B)" }}>{copied ? "Skopiowano ✓" : "Kopiuj link"}</button>
+          </div>
+          <div className="flex flex-wrap gap-4 text-xs" style={{ color: "var(--mut)" }}>
+            <span>W toku: <b style={{ color: "var(--ink)" }}>{r.pending ?? 0}</b></span>
+            <span>Umowy: <b style={{ color: "var(--green)" }}>{r.converted ?? 0}</b></span>
+            <span>Na portfelu: <b style={{ color: "var(--gold)" }}>{zl(r.credited ?? 0)}</b></span>
+          </div>
+        </>
+      ) : (
+        <a href="https://mysunrise.com.pl" target="_blank" rel="noopener" className="inline-block rounded-lg px-4 py-2 text-sm font-semibold text-black" style={{ background: "linear-gradient(135deg,#F2731D,#E0A21B)" }}>Poleć przez MySunrise →</a>
+      )}
     </div>
   );
 }

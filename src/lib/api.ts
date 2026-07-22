@@ -271,6 +271,24 @@ export async function sellerWallet(): Promise<SellerWallet> {
   if (error || !data) return { available: false };
   return data as SellerWallet;
 }
+// Program poleceń fotowoltaiki (cross-business). Kredyt do portfela Sunrise Pay
+// za polecenie, które zamieni się w umowę — funduje go biznes energetyczny, nie
+// marża Marketu, i wpada do portfela WEWNĘTRZNIE (bez opłaty Stripe). Gdy backend
+// energii/MySunrise nie gotowy → available:false, UI degraduje się (jak sellerWallet).
+export type EnergyReferral = {
+  available: boolean;
+  code?: string;      // osobisty kod polecenia
+  link?: string;      // gotowy link do udostępnienia
+  reward?: number;    // ile zł trafia na portfel za skuteczne polecenie
+  pending?: number;   // polecenia w toku
+  converted?: number; // polecenia zamienione w umowę
+  credited?: number;  // suma skredytowana do portfela (zł)
+};
+export async function energyReferral(): Promise<EnergyReferral> {
+  const { data, error } = await supabase.functions.invoke("energy-referral", { body: {} });
+  if (error || !data) return { available: false };
+  return data as EnergyReferral;
+}
 // Kategorie (drzewo) — do formularza oferty
 export async function topCategories() {
   const { data, error } = await supabase.from("categories").select("id,slug,name").is("parent_id", null).order("sort_order");
