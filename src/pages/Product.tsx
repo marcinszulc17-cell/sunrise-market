@@ -4,6 +4,7 @@ import { getOffer, offerReviews, addReview, offerImages, trackView, similarOffer
 import { addToCart } from "../lib/cart";
 import { supabase } from "../lib/supabase";
 import { useSeo, useProductJsonLd } from "../lib/seo";
+import FamilyClubBanner from "../components/FamilyClubBanner";
 
 type Offer = {
   offer_id: string; title: string; description: string | null; price_gross: number;
@@ -227,6 +228,8 @@ export default function Product() {
               </div>
             </div>
           </div>
+
+          <div className="mt-8"><FamilyClubBanner slim /></div>
 
           {/* ── OPIS PRODUKTU ── */}
           {o.description && (

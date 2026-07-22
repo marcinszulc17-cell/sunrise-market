@@ -6,6 +6,7 @@ import { useCart, addToCart } from "../lib/cart";
 import SuriChat from "../components/SuriChat";
 import NotificationsBell from "../components/NotificationsBell";
 import ThemeToggle from "../components/ThemeToggle";
+import FamilyClubBanner from "../components/FamilyClubBanner";
 import { useSeo } from "../lib/seo";
 
 const FREE_SHIP = 149;   // musi być spójne z Koszyk.tsx
@@ -308,6 +309,8 @@ export default function Market() {
           </div>
         )}
       </header>
+
+      <div className="mx-auto max-w-6xl px-4 pt-5"><FamilyClubBanner /></div>
 
       {/* ── BANER REKLAMOWY (hero slot) ── */}
       {banner && (
