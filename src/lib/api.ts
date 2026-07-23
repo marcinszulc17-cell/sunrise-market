@@ -287,6 +287,12 @@ export async function memberStatus(): Promise<MemberStatus> {
   if (error || !data) return { club: "family", ambassador: false };
   return data as MemberStatus;
 }
+// Przypina zalogowanego klienta do ambasadora po kodzie referencyjnym (z linku ?ref=).
+export async function refAttribute(code: string) {
+  const { data, error } = await supabase.functions.invoke("ref-attribute", { body: { code } });
+  if (error) return { ok: false };
+  return data;
+}
 // ŻYWE saldo sprzedawcy z MySunrise (auto-detekcja: available=false gdy endpoint jeszcze nie wdrożony)
 export type SellerWallet = { available: boolean; sunrise_pay?: number; gold?: number | null; pending?: number; withdraw_enabled?: boolean; reason?: string };
 export async function sellerWallet(): Promise<SellerWallet> {

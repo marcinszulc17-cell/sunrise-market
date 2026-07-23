@@ -126,8 +126,24 @@ function ClubCard({ w, ms, goTab }: { w: WalletLive | null; ms: MemberStatus | n
           <div style={{ fontSize: 26, fontWeight: 800, color: "#9BC7AE" }}>{pkt(w?.points ?? 0)} <span style={{ fontSize: 14 }}>pkt</span>{w?.gold != null ? <span style={{ fontSize: 13, color: "#E8C896" }}> · {w.gold.toLocaleString("pl-PL")} g Gold</span> : null}</div>
         </div>
       </div>
+      {amb && ms?.referral_code && <AmbLink code={ms.referral_code} />}
       <div className="flex mt-3">
         <button onClick={() => goTab("portfel")} style={{ fontSize: 13, fontWeight: 700, padding: "8px 16px", borderRadius: 11, background: "linear-gradient(135deg,#E8C896,#C8965A)", color: "#241606", border: 0, cursor: "pointer" }}>Zamień punkty na zł / historia</button>
+      </div>
+    </div>
+  );
+}
+
+function AmbLink({ code }: { code: string }) {
+  const [copied, setCopied] = useState(false);
+  const link = `https://sunrisemarket.pl/?ref=${code}`;
+  async function copy() { try { await navigator.clipboard.writeText(link); setCopied(true); setTimeout(() => setCopied(false), 2000); } catch { /* ignore */ } }
+  return (
+    <div style={{ marginTop: 14, background: "rgba(232,200,150,.07)", borderRadius: 14, padding: "12px 15px", border: "1px solid rgba(232,200,150,.14)" }}>
+      <div style={{ fontSize: 12, color: "rgba(237,231,214,.6)", marginBottom: 6 }}>Twój link polecający do Marketu — prowizja od zakupów marki własnej Sunrise</div>
+      <div className="flex flex-wrap items-center gap-2">
+        <input readOnly value={link} className="flex-1 min-w-[200px] rounded-lg px-3 py-2 text-sm outline-none" style={{ background: "rgba(0,0,0,.25)", border: "1px solid rgba(232,200,150,.25)", color: "#EDE7D6" }} />
+        <button onClick={copy} style={{ fontSize: 13, fontWeight: 700, padding: "8px 16px", borderRadius: 11, background: "linear-gradient(135deg,#E8C896,#C8965A)", color: "#241606", border: 0, cursor: "pointer" }}>{copied ? "Skopiowano ✓" : "Kopiuj link"}</button>
       </div>
     </div>
   );

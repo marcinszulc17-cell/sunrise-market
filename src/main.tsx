@@ -16,6 +16,8 @@ import { initTheme } from "./lib/theme";
 import "./index.css";
 
 initTheme();
+// Link polecajacy ambasadora: zapamietaj kod z ?ref= do czasu logowania.
+try { const _r = new URLSearchParams(window.location.search).get("ref"); if (_r && _r.trim()) localStorage.setItem("sunrise_ref", _r.trim().slice(0, 64)); } catch { /* ignore */ }
 
 ReactDOM.createRoot(document.getElementById("root")!).render(
   <React.StrictMode>

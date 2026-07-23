@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { supabase } from "../lib/supabase";
+import { refAttribute } from "../lib/api";
 
 // Ekran logowania/rejestracji (Supabase Auth). Po sukcesie wraca tam, skąd
 // przyszedł użytkownik (?next=...) lub na stronę główną — nigdy nie zostawia go
@@ -7,6 +8,13 @@ import { supabase } from "../lib/supabase";
 function nextTarget(): string {
   const n = new URLSearchParams(window.location.search).get("next");
   return n && n.startsWith("/") ? n : "/";
+}
+// Po zalogowaniu: jesli byl kod polecajacy (?ref=), przypnij klienta do ambasadora.
+async function attributeRef(): Promise<void> {
+  try {
+    const code = localStorage.getItem("sunrise_ref");
+    if (code && code.trim()) { await refAttribute(code.trim()); localStorage.removeItem("sunrise_ref"); }
+  } catch { /* nie blokuj logowania */ }
 }
 
 export default function Login() {
@@ -38,6 +46,7 @@ export default function Login() {
         try { await supabase.functions.invoke("sso-register", { body: { email, password } }); } catch { /* nie blokuj rejestracji Marketu */ }
         const { error: signErr } = await supabase.auth.signInWithPassword({ email, password });
         if (signErr) { setMsg("Konto utworzone. Możesz się teraz zalogować."); setMode("login"); return; }
+        await attributeRef();
         window.location.href = nextTarget();
       } else {
         let { error } = await supabase.auth.signInWithPassword({ email, password });
@@ -52,6 +61,7 @@ export default function Login() {
           if (/not confirmed/i.test(error.message)) throw new Error("Konto wymaga potwierdzenia e-mail. Napisz do nas — aktywujemy je od ręki.");
           throw error;
         }
+        await attributeRef();
         window.location.href = nextTarget();
       }
     } catch (err) {
