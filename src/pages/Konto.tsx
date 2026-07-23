@@ -84,7 +84,7 @@ function Card({ children, className = "" }: { children: React.ReactNode; classNa
 function Przeglad({ w, ms, seller, isOp, onLogout, goTab }: { w: WalletLive | null; ms: MemberStatus | null; seller: any; isOp: boolean; onLogout: () => void; goTab: (t: Tab) => void }) {
   return (
     <div className="flex flex-col gap-4">
-      {ms?.ambassador ? <AmbassadorClub w={w} ms={ms} goTab={goTab} /> : <FamilyClub w={w} goTab={goTab} />}
+      <ClubCard w={w} ms={ms} goTab={goTab} />
       {w && !w.linked && <Card className="!p-4"><span className="text-sm" style={{ color: "#8fe3ef" }}>Portfel niepołączony z MySunrise. Aktywuj Sunrise Pay w aplikacji MySunrise na ten sam e‑mail, aby płacić.</span></Card>}
       <PolecajPV />
       <div className="grid gap-3 sm:grid-cols-2">
@@ -100,67 +100,34 @@ function Przeglad({ w, ms, seller, isOp, onLogout, goTab }: { w: WalletLive | nu
   );
 }
 
-function FamilyClub({ w, goTab }: { w: WalletLive | null; goTab: (t: Tab) => void }) {
+function ClubCard({ w, ms, goTab }: { w: WalletLive | null; ms: MemberStatus | null; goTab: (t: Tab) => void }) {
+  const amb = !!ms?.ambassador;
+  const name = amb ? "AMBASSADOR CLUB" : "FAMILY CLUB";
+  const sub = amb ? "Twój program partnerski Sunrise" : "Cashback dla całej rodziny";
   return (
-    <div style={{ background: "linear-gradient(140deg,#061434,#0b2350 45%,#123a86)", border: "1px solid rgba(232,200,150,.22)", borderRadius: 20, padding: 22, color: "#fff", boxShadow: "0 22px 48px -24px rgba(11,35,80,.85)" }}>
+    <div style={{ background: amb ? "linear-gradient(140deg,#1a1206,#2a1c08 42%,#0E1729)" : "linear-gradient(140deg,#0b1a34,#0e2350 45%,#123a86)", border: "1px solid rgba(232,200,150,.3)", borderRadius: 20, padding: 22, color: "#EDE7D6", boxShadow: "0 22px 48px -24px rgba(0,0,0,.8)" }}>
       <div className="flex items-center justify-between gap-3 flex-wrap">
         <div className="flex items-center gap-3">
-          <div style={{ width: 44, height: 44, borderRadius: 13, background: "linear-gradient(135deg,#E8C896,#E0B074)", display: "grid", placeItems: "center", fontSize: 23, color: "#0b2350" }}>☀</div>
+          <div style={{ width: 44, height: 44, borderRadius: 13, background: "linear-gradient(135deg,#E8C896,#C8965A)", display: "grid", placeItems: "center", fontSize: 22, color: "#241606" }}>{amb ? "★" : "☀"}</div>
           <div>
-            <div style={{ fontWeight: 800, letterSpacing: ".13em", fontSize: 15 }}>SUNRISE <span style={{ color: "#E8C896" }}>FAMILY CLUB</span></div>
-            <div style={{ fontSize: 12.5, color: "#aecbf5" }}>cashback dla całej rodziny · Twoje korzyści w jednym miejscu</div>
+            <div style={{ fontWeight: 800, letterSpacing: ".12em", fontSize: 15 }}>SUNRISE <span style={{ color: "#E8C896" }}>{name}</span></div>
+            <div style={{ fontSize: 12.5, color: "rgba(237,231,214,.6)" }}>{sub}</div>
           </div>
         </div>
-        <a href="https://mysunrise.com.pl" target="_blank" rel="noopener" style={{ fontSize: 13, fontWeight: 700, padding: "8px 14px", borderRadius: 10, background: "rgba(255,255,255,.12)", border: "1px solid rgba(255,255,255,.22)", color: "#fff" }}>Moje MySunrise →</a>
+        <a href="https://mysunrise.com.pl" target="_blank" rel="noopener" style={{ fontSize: 13, fontWeight: 700, padding: "8px 14px", borderRadius: 10, background: "rgba(232,200,150,.14)", border: "1px solid rgba(232,200,150,.32)", color: "#E8C896" }}>Moje MySunrise →</a>
       </div>
-
       <div className="grid gap-3 sm:grid-cols-2 mt-4">
-        <div style={{ background: "rgba(255,255,255,.06)", borderRadius: 14, padding: "12px 15px" }}>
-          <div style={{ fontSize: 12, color: "#aecbf5" }}>Portfel Sunrise Pay</div>
+        <div style={{ background: "rgba(232,200,150,.07)", borderRadius: 14, padding: "12px 15px", border: "1px solid rgba(232,200,150,.14)" }}>
+          <div style={{ fontSize: 12, color: "rgba(237,231,214,.6)" }}>Portfel Sunrise Pay</div>
           <div style={{ fontSize: 26, fontWeight: 800, color: "#E8C896" }}>{zl(w?.balance ?? 0)}</div>
         </div>
-        <div style={{ background: "rgba(255,255,255,.06)", borderRadius: 14, padding: "12px 15px" }}>
-          <div style={{ fontSize: 12, color: "#aecbf5" }}>Punkty cashback</div>
+        <div style={{ background: "rgba(232,200,150,.07)", borderRadius: 14, padding: "12px 15px", border: "1px solid rgba(232,200,150,.14)" }}>
+          <div style={{ fontSize: 12, color: "rgba(237,231,214,.6)" }}>Punkty (cashback)</div>
           <div style={{ fontSize: 26, fontWeight: 800, color: "#9BC7AE" }}>{pkt(w?.points ?? 0)} <span style={{ fontSize: 14 }}>pkt</span>{w?.gold != null ? <span style={{ fontSize: 13, color: "#E8C896" }}> · {w.gold.toLocaleString("pl-PL")} g Gold</span> : null}</div>
         </div>
       </div>
-
-      <div className="flex gap-2 mt-3 flex-wrap items-center">
-        <span style={{ fontSize: 12.5, fontWeight: 600, padding: "6px 12px", borderRadius: 999, background: "rgba(122,184,154,.16)", color: "#9BC7AE", border: "1px solid rgba(122,184,154,.3)" }}>3% od wszystkich zakupów</span>
-        <span style={{ fontSize: 12.5, fontWeight: 600, padding: "6px 12px", borderRadius: 999, background: "rgba(232,200,150,.16)", color: "#E8C896", border: "1px solid rgba(232,200,150,.3)" }}>5% za polecenia marek własnych</span>
-        <span style={{ fontSize: 12.5, fontWeight: 600, padding: "6px 12px", borderRadius: 999, background: "rgba(255,255,255,.08)", color: "#cfe0fb", border: "1px solid rgba(255,255,255,.16)" }}>Nagrody tygodnia</span>
-        <button onClick={() => goTab("portfel")} style={{ marginLeft: "auto", fontSize: 13, fontWeight: 700, padding: "8px 16px", borderRadius: 11, background: "linear-gradient(135deg,#E8C896,#E0B074)", color: "#0b2350", border: 0, cursor: "pointer" }}>Doładuj / historia</button>
-      </div>
-    </div>
-  );
-}
-
-function AmbassadorClub({ w, ms, goTab }: { w: WalletLive | null; ms: MemberStatus; goTab: (t: Tab) => void }) {
-  const tierLabel: Record<string, string> = { ambassador: "Ambassador", silver: "Silver", gold: "Gold", platinum: "Platinum", diamond: "Diamond" };
-  const box = { background: "rgba(232,200,150,.08)", borderRadius: 14, padding: "12px 15px", border: "1px solid rgba(232,200,150,.14)" } as const;
-  const chip = { fontSize: 12.5, fontWeight: 600, padding: "6px 12px", borderRadius: 999 } as const;
-  return (
-    <div style={{ background: "linear-gradient(140deg,#1a1206,#2a1c08 42%,#0E1729)", border: "1px solid rgba(232,200,150,.42)", borderRadius: 20, padding: 22, color: "#EDE7D6", boxShadow: "0 22px 48px -24px rgba(0,0,0,.85)" }}>
-      <div className="flex items-center justify-between gap-3 flex-wrap">
-        <div className="flex items-center gap-3">
-          <div style={{ width: 44, height: 44, borderRadius: 13, background: "linear-gradient(135deg,#E8C896,#C8965A)", display: "grid", placeItems: "center", fontSize: 22, color: "#241606" }}>★</div>
-          <div>
-            <div style={{ fontWeight: 800, letterSpacing: ".12em", fontSize: 15 }}>SUNRISE <span style={{ color: "#E8C896" }}>AMBASSADOR CLUB</span></div>
-            <div style={{ fontSize: 12.5, color: "rgba(237,231,214,.62)" }}>Twój program partnerski · poziom {tierLabel[ms.tier ?? "ambassador"] ?? ms.tier}</div>
-          </div>
-        </div>
-        <a href="https://mysunrise.com.pl" target="_blank" rel="noopener" style={{ fontSize: 13, fontWeight: 700, padding: "8px 14px", borderRadius: 10, background: "rgba(232,200,150,.14)", border: "1px solid rgba(232,200,150,.35)", color: "#E8C896" }}>Panel ambasadora →</a>
-      </div>
-      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4 mt-4">
-        <div style={box}><div style={{ fontSize: 12, color: "rgba(237,231,214,.6)" }}>Portfel Sunrise Pay</div><div style={{ fontSize: 24, fontWeight: 800, color: "#E8C896" }}>{zl(w?.balance ?? 0)}</div></div>
-        <div style={box}><div style={{ fontSize: 12, color: "rgba(237,231,214,.6)" }}>Prowizje MLM</div><div style={{ fontSize: 24, fontWeight: 800, color: "#9BC7AE" }}>{zl(ms.commissions_pln ?? 0)}</div></div>
-        <div style={box}><div style={{ fontSize: 12, color: "rgba(237,231,214,.6)" }}>Polecenia</div><div style={{ fontSize: 24, fontWeight: 800 }}>{ms.referrals ?? 0}</div></div>
-        <div style={box}><div style={{ fontSize: 12, color: "rgba(237,231,214,.6)" }}>Perły</div><div style={{ fontSize: 24, fontWeight: 800 }}>{ms.pearls ?? 0}</div></div>
-      </div>
-      <div className="flex gap-2 mt-3 flex-wrap items-center">
-        {ms.referral_code && <span style={{ ...chip, background: "rgba(232,200,150,.16)", color: "#E8C896", border: "1px solid rgba(232,200,150,.3)" }}>Kod polecający: <b>{ms.referral_code}</b></span>}
-        <span style={{ ...chip, background: "rgba(122,184,154,.16)", color: "#9BC7AE", border: "1px solid rgba(122,184,154,.3)" }}>Prowizje partnerskie zamiast cashbacku</span>
-        <button onClick={() => goTab("portfel")} style={{ marginLeft: "auto", fontSize: 13, fontWeight: 700, padding: "8px 16px", borderRadius: 11, background: "linear-gradient(135deg,#E8C896,#C8965A)", color: "#241606", border: 0, cursor: "pointer" }}>Portfel / historia</button>
+      <div className="flex mt-3">
+        <button onClick={() => goTab("portfel")} style={{ fontSize: 13, fontWeight: 700, padding: "8px 16px", borderRadius: 11, background: "linear-gradient(135deg,#E8C896,#C8965A)", color: "#241606", border: 0, cursor: "pointer" }}>Zamień punkty na zł / historia</button>
       </div>
     </div>
   );
