@@ -1,5 +1,5 @@
-import { useRef, useState } from "react";
-import { askSuri } from "../lib/api";
+import { useEffect, useRef, useState } from "react";
+import { askSuri, suriHistory } from "../lib/api";
 import { supabase } from "../lib/supabase";
 
 type Msg = { role: "user" | "suri"; text: string };
@@ -7,26 +7,69 @@ type Rec = { offer_id: string; title: string; price: number; reason?: string };
 
 const zl = (v: number) => Math.round(v).toLocaleString("pl-PL") + " zł";
 const SURI_AVATAR = "https://www.mysunrise.com.pl/assets/suri-fab-face-CdFEf7im.png";
+const GREETING: Msg = { role: "suri", text: "Hej, tu Suri ☀️ Twoja ekspertka Sunrise Market. Powiedz, czego szukasz — dobiorę najlepszą okazję, a płacisz wygodnie portfelem Sunrise Pay i zgarniasz punkty!" };
+
+// Stały identyfikator rozmowy: dla zalogowanych = ich user id (pamięć też między
+// urządzeniami), dla gości = UUID zapisany w przeglądarce (pamięć po zamknięciu).
+function guestSid(): string {
+  try {
+    let s = localStorage.getItem("suri_sid");
+    if (!s) {
+      s = (crypto as any)?.randomUUID ? crypto.randomUUID()
+        : "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, (c) => {
+            const r = (Math.random() * 16) | 0; const v = c === "x" ? r : (r & 0x3) | 0x8; return v.toString(16);
+          });
+      localStorage.setItem("suri_sid", s);
+    }
+    return s;
+  } catch {
+    return "";
+  }
+}
 
 export default function SuriChat() {
   const [open, setOpen] = useState(false);
-  const [msgs, setMsgs] = useState<Msg[]>([
-    { role: "suri", text: "Hej, tu Suri ☀️ Twoja ekspertka Sunrise Market. Powiedz, czego szukasz — dobiorę najlepszą okazję, a płacisz wygodnie portfelem Sunrise Pay i zgarniasz punkty!" },
-  ]);
+  const [msgs, setMsgs] = useState<Msg[]>([GREETING]);
   const [recs, setRecs] = useState<Rec[]>([]);
   const [input, setInput] = useState("");
   const [busy, setBusy] = useState(false);
+  const sidRef = useRef<string>("");
+  const uidRef = useRef<string | undefined>(undefined);
   const boxRef = useRef<HTMLDivElement>(null);
 
   function scroll() { setTimeout(() => boxRef.current?.scrollTo(0, boxRef.current.scrollHeight), 50); }
+
+  // Ustal sesję i wczytaj historię rozmowy (raz, przy montowaniu).
+  useEffect(() => {
+    let alive = true;
+    (async () => {
+      let sid = "";
+      try {
+        const { data: { user } } = await supabase.auth.getUser();
+        uidRef.current = user?.id;
+        sid = user?.id || guestSid();
+      } catch {
+        sid = guestSid();
+      }
+      if (!alive) return;
+      sidRef.current = sid;
+      if (!sid) return;
+      try {
+        const hist = await suriHistory(sid);
+        if (!alive || !hist.length) return;
+        setMsgs([GREETING, ...hist.map((h) => ({ role: h.role === "user" ? "user" : "suri", text: h.content } as Msg))]);
+        scroll();
+      } catch { /* brak historii */ }
+    })();
+    return () => { alive = false; };
+  }, []);
 
   async function send() {
     const m = input.trim();
     if (!m || busy) return;
     setInput(""); setMsgs((x) => [...x, { role: "user", text: m }]); setBusy(true); scroll();
     try {
-      const { data: { user } } = await supabase.auth.getUser();
-      const res = await askSuri(m, undefined, user?.id);
+      const res = await askSuri(m, sidRef.current || undefined, uidRef.current);
       setMsgs((x) => [...x, { role: "suri", text: res.reply ?? "…" }]);
       setRecs((res.offers ?? []).map((o: any) => ({ offer_id: o.offer_id, title: o.title, price: o.price, reason: o.reason })));
     } catch (e) {

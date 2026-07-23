@@ -290,3 +290,11 @@ export async function askSuri(message: string, sessionId?: string, userId?: stri
   if (error) throw error;
   return data;
 }
+
+// Historia rozmowy Suri (pamiec po ponownym otwarciu czatu)
+export async function suriHistory(sessionId: string) {
+  const { data, error } = await supabase.functions.invoke("suri-commerce",
+    { body: { action: "history", session_id: sessionId } });
+  if (error) return [] as { role: string; content: string }[];
+  return (data?.messages ?? []) as { role: string; content: string }[];
+}
