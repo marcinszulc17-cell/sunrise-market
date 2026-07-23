@@ -126,7 +126,7 @@ function ClubCard({ w, ms, goTab }: { w: WalletLive | null; ms: MemberStatus | n
           <div style={{ fontSize: 26, fontWeight: 800, color: "#9BC7AE" }}>{pkt(w?.points ?? 0)} <span style={{ fontSize: 14 }}>pkt</span>{w?.gold != null ? <span style={{ fontSize: 13, color: "#E8C896" }}> · {w.gold.toLocaleString("pl-PL")} g Gold</span> : null}</div>
         </div>
       </div>
-      {amb && ms?.referral_code && <AmbLink code={ms.referral_code} />}
+      {amb && ms?.referral_code && <AmbLink code={ms.referral_code} tier={ms.tier} />}
       <div className="flex mt-3">
         <button onClick={() => goTab("portfel")} style={{ fontSize: 13, fontWeight: 700, padding: "8px 16px", borderRadius: 11, background: "linear-gradient(135deg,#E8C896,#C8965A)", color: "#241606", border: 0, cursor: "pointer" }}>Zamień punkty na zł / historia</button>
       </div>
@@ -134,10 +134,12 @@ function ClubCard({ w, ms, goTab }: { w: WalletLive | null; ms: MemberStatus | n
   );
 }
 
-function AmbLink({ code }: { code: string }) {
+function AmbLink({ code, tier }: { code: string; tier?: string }) {
   const [copied, setCopied] = useState(false);
   const link = `https://sunrisemarket.pl/?ref=${code}`;
   async function copy() { try { await navigator.clipboard.writeText(link); setCopied(true); setTimeout(() => setCopied(false), 2000); } catch { /* ignore */ } }
+  const rungs: [string, string, string][] = [["ambassador", "Ambasador", "5%"], ["silver", "Silver", "10%"], ["gold", "Gold", "15%"], ["platinum", "Platinum", "20%"], ["diamond", "Diament", "22%"]];
+  const cur = (tier ?? "").toLowerCase();
   return (
     <div style={{ marginTop: 14, background: "rgba(232,200,150,.07)", borderRadius: 14, padding: "12px 15px", border: "1px solid rgba(232,200,150,.14)" }}>
       <div style={{ fontSize: 12, color: "rgba(237,231,214,.6)", marginBottom: 6 }}>Twój link polecający do Marketu — prowizja od zakupów marki własnej Sunrise</div>
@@ -145,6 +147,18 @@ function AmbLink({ code }: { code: string }) {
         <input readOnly value={link} className="flex-1 min-w-[200px] rounded-lg px-3 py-2 text-sm outline-none" style={{ background: "rgba(0,0,0,.25)", border: "1px solid rgba(232,200,150,.25)", color: "#EDE7D6" }} />
         <button onClick={copy} style={{ fontSize: 13, fontWeight: 700, padding: "8px 16px", borderRadius: 11, background: "linear-gradient(135deg,#E8C896,#C8965A)", color: "#241606", border: 0, cursor: "pointer" }}>{copied ? "Skopiowano ✓" : "Kopiuj link"}</button>
       </div>
+      <div style={{ fontSize: 12, color: "rgba(237,231,214,.6)", marginTop: 12, marginBottom: 6 }}>Prowizja za polecenie (od ceny brutto), zależna od Twojej rangi ambasadora:</div>
+      <div className="flex flex-wrap gap-1.5">
+        {rungs.map(([k, label, rate]) => {
+          const active = cur === k;
+          return (
+            <span key={k} style={{ fontSize: 12, fontWeight: 700, padding: "4px 9px", borderRadius: 9, background: active ? "linear-gradient(135deg,#E8C896,#C8965A)" : "rgba(232,200,150,.08)", color: active ? "#241606" : "#EDE7D6", border: active ? "0" : "1px solid rgba(232,200,150,.2)" }}>
+              {label} {rate}{active ? " • Ty" : ""}
+            </span>
+          );
+        })}
+      </div>
+      <div style={{ fontSize: 11, color: "rgba(237,231,214,.45)", marginTop: 6 }}>Wyższą rangę zdobywasz w programie MySunrise. Dodatkowo prowizje sieciowe: 5% / 3% / 2% z niższych poziomów struktury.</div>
     </div>
   );
 }
