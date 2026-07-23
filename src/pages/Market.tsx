@@ -162,6 +162,7 @@ export default function Market() {
   const [tiles, setTiles] = useState<Banner[]>([]);   // kafle kategorii OZE (640x360)
   const [strips, setStrips] = useState<Banner[]>([]); // paski promo (1300x220)
   const [recent, setRecent] = useState<{ offer_id: string; title: string; price_gross: number; image_url: string | null }[]>([]);
+  const [rail, setRail] = useState<Banner[]>([]);
   const [authed, setAuthed] = useState(false);
   const [counts, setCounts] = useState<Record<string, number>>({});
   const [total, setTotal] = useState(0);
@@ -208,6 +209,7 @@ export default function Market() {
     activeBanners("category_tile").then((b) => setTiles((b as Banner[]) ?? [])).catch(() => {});
     activeBanners("home_strip").then((b) => setStrips((b as Banner[]) ?? [])).catch(() => {});
     setRecent(getRecent());
+    activeBanners("sidebar_rail").then((b) => setRail((b as Banner[]) ?? [])).catch(() => {});
     supabase.auth.getUser().then(({ data }) => {
       setAuthed(!!data.user);
       if (data.user) {
@@ -453,6 +455,8 @@ export default function Market() {
 
       {/* ── OFERTY ── */}
       <section className="mx-auto max-w-6xl px-4 pb-20">
+        <div className="flex gap-6 items-start">
+          <div className="flex-1 min-w-0">
         <div className="flex items-center justify-between mb-4 flex-wrap gap-3">
           <h2 className="font-display text-2xl font-semibold">{wishMode ? "♥ Lista życzeń" : heading}</h2>
           {authed && (
@@ -536,6 +540,15 @@ export default function Market() {
             )}
           </>
         )}
+          </div>
+          {rail.length > 0 && (
+            <aside className="hidden lg:block w-[300px] shrink-0 sticky top-24">
+              <a href={rail[bi % rail.length].link_url || "/"} className="block rounded-2xl overflow-hidden" style={{ border: "1px solid var(--line)" }}>
+                <img src={rail[bi % rail.length].image_url!} alt={rail[bi % rail.length].headline} loading="lazy" width={300} height={600} className="block w-full h-auto" />
+              </a>
+            </aside>
+          )}
+        </div>
       </section>
 
       <footer className="mx-auto max-w-6xl px-4 py-8 text-center text-xs" style={{ color: "var(--mut)", borderTop: "1px solid var(--line)" }}>
