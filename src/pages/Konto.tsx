@@ -1,7 +1,7 @@
 import { pkt } from "../lib/money";
 import { useEffect, useState } from "react";
 import { supabase } from "../lib/supabase";
-import { walletBalance, myOrders, myReturns, confirmDelivery, openReturn, myWatchlist, walletHistory, toggleWatch, mySeller, amiOperator, energyReferral, type WalletLive, type EnergyReferral } from "../lib/api";
+import { walletBalance, myOrders, myReturns, confirmDelivery, openReturn, myWatchlist, walletHistory, toggleWatch, mySeller, amiOperator, energyReferral, memberStatus, type WalletLive, type EnergyReferral, type MemberStatus } from "../lib/api";
 import { setMode } from "../lib/mode";
 import { useSeo } from "../lib/seo";
 
@@ -27,6 +27,7 @@ export default function Konto() {
   const [seller, setSeller] = useState<any>(null);
   const [isOp, setIsOp] = useState(false);
   const [w, setW] = useState<WalletLive | null>(null);
+  const [ms, setMs] = useState<MemberStatus | null>(null);
 
   useEffect(() => {
     supabase.auth.getUser().then(async ({ data }) => {
@@ -35,6 +36,7 @@ export default function Konto() {
       try { setW(await walletBalance()); } catch { /* ignore */ }
       try { setSeller(await mySeller()); } catch { /* ignore */ }
       try { setIsOp(await amiOperator()); } catch { /* ignore */ }
+      try { setMs(await memberStatus()); } catch { /* ignore */ }
     });
   }, []);
   async function logout() { await supabase.auth.signOut(); window.location.href = "/"; }
@@ -65,7 +67,7 @@ export default function Konto() {
         {email && <p className="text-sm mb-6" style={{ color: "var(--mut)" }}>{email}</p>}
         {authed === false && <p style={{ color: "var(--mut)" }}>Zaloguj się. <a href="/login" className="text-amber-400 underline">Logowanie</a>.</p>}
 
-        {authed && tab === "przeglad" && <Przeglad w={w} seller={seller} isOp={isOp} onLogout={logout} goTab={setTab} />}
+        {authed && tab === "przeglad" && <Przeglad w={w} ms={ms} seller={seller} isOp={isOp} onLogout={logout} goTab={setTab} />}
         {authed && tab === "zamowienia" && <Zamowienia />}
         {authed && tab === "portfel" && <Portfel w={w} />}
         {authed && tab === "zyczenia" && <Zyczenia />}
@@ -79,10 +81,10 @@ function Card({ children, className = "" }: { children: React.ReactNode; classNa
   return <div className={`rounded-2xl p-5 ${className}`} style={{ background: "var(--glass)", border: "1px solid var(--line)" }}>{children}</div>;
 }
 
-function Przeglad({ w, seller, isOp, onLogout, goTab }: { w: WalletLive | null; seller: any; isOp: boolean; onLogout: () => void; goTab: (t: Tab) => void }) {
+function Przeglad({ w, ms, seller, isOp, onLogout, goTab }: { w: WalletLive | null; ms: MemberStatus | null; seller: any; isOp: boolean; onLogout: () => void; goTab: (t: Tab) => void }) {
   return (
     <div className="flex flex-col gap-4">
-      <FamilyClub w={w} goTab={goTab} />
+      {ms?.ambassador ? <AmbassadorClub w={w} ms={ms} goTab={goTab} /> : <FamilyClub w={w} goTab={goTab} />}
       {w && !w.linked && <Card className="!p-4"><span className="text-sm" style={{ color: "#8fe3ef" }}>Portfel niepołączony z MySunrise. Aktywuj Sunrise Pay w aplikacji MySunrise na ten sam e‑mail, aby płacić.</span></Card>}
       <PolecajPV />
       <div className="grid gap-3 sm:grid-cols-2">
@@ -128,6 +130,37 @@ function FamilyClub({ w, goTab }: { w: WalletLive | null; goTab: (t: Tab) => voi
         <span style={{ fontSize: 12.5, fontWeight: 600, padding: "6px 12px", borderRadius: 999, background: "rgba(232,200,150,.16)", color: "#E8C896", border: "1px solid rgba(232,200,150,.3)" }}>5% za polecenia marek własnych</span>
         <span style={{ fontSize: 12.5, fontWeight: 600, padding: "6px 12px", borderRadius: 999, background: "rgba(255,255,255,.08)", color: "#cfe0fb", border: "1px solid rgba(255,255,255,.16)" }}>Nagrody tygodnia</span>
         <button onClick={() => goTab("portfel")} style={{ marginLeft: "auto", fontSize: 13, fontWeight: 700, padding: "8px 16px", borderRadius: 11, background: "linear-gradient(135deg,#E8C896,#E0B074)", color: "#0b2350", border: 0, cursor: "pointer" }}>Doładuj / historia</button>
+      </div>
+    </div>
+  );
+}
+
+function AmbassadorClub({ w, ms, goTab }: { w: WalletLive | null; ms: MemberStatus; goTab: (t: Tab) => void }) {
+  const tierLabel: Record<string, string> = { ambassador: "Ambassador", silver: "Silver", gold: "Gold", platinum: "Platinum", diamond: "Diamond" };
+  const box = { background: "rgba(232,200,150,.08)", borderRadius: 14, padding: "12px 15px", border: "1px solid rgba(232,200,150,.14)" } as const;
+  const chip = { fontSize: 12.5, fontWeight: 600, padding: "6px 12px", borderRadius: 999 } as const;
+  return (
+    <div style={{ background: "linear-gradient(140deg,#1a1206,#2a1c08 42%,#0E1729)", border: "1px solid rgba(232,200,150,.42)", borderRadius: 20, padding: 22, color: "#EDE7D6", boxShadow: "0 22px 48px -24px rgba(0,0,0,.85)" }}>
+      <div className="flex items-center justify-between gap-3 flex-wrap">
+        <div className="flex items-center gap-3">
+          <div style={{ width: 44, height: 44, borderRadius: 13, background: "linear-gradient(135deg,#E8C896,#C8965A)", display: "grid", placeItems: "center", fontSize: 22, color: "#241606" }}>★</div>
+          <div>
+            <div style={{ fontWeight: 800, letterSpacing: ".12em", fontSize: 15 }}>SUNRISE <span style={{ color: "#E8C896" }}>AMBASSADOR CLUB</span></div>
+            <div style={{ fontSize: 12.5, color: "rgba(237,231,214,.62)" }}>Twój program partnerski · poziom {tierLabel[ms.tier ?? "ambassador"] ?? ms.tier}</div>
+          </div>
+        </div>
+        <a href="https://mysunrise.com.pl" target="_blank" rel="noopener" style={{ fontSize: 13, fontWeight: 700, padding: "8px 14px", borderRadius: 10, background: "rgba(232,200,150,.14)", border: "1px solid rgba(232,200,150,.35)", color: "#E8C896" }}>Panel ambasadora →</a>
+      </div>
+      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4 mt-4">
+        <div style={box}><div style={{ fontSize: 12, color: "rgba(237,231,214,.6)" }}>Portfel Sunrise Pay</div><div style={{ fontSize: 24, fontWeight: 800, color: "#E8C896" }}>{zl(w?.balance ?? 0)}</div></div>
+        <div style={box}><div style={{ fontSize: 12, color: "rgba(237,231,214,.6)" }}>Prowizje MLM</div><div style={{ fontSize: 24, fontWeight: 800, color: "#9BC7AE" }}>{zl(ms.commissions_pln ?? 0)}</div></div>
+        <div style={box}><div style={{ fontSize: 12, color: "rgba(237,231,214,.6)" }}>Polecenia</div><div style={{ fontSize: 24, fontWeight: 800 }}>{ms.referrals ?? 0}</div></div>
+        <div style={box}><div style={{ fontSize: 12, color: "rgba(237,231,214,.6)" }}>Perły</div><div style={{ fontSize: 24, fontWeight: 800 }}>{ms.pearls ?? 0}</div></div>
+      </div>
+      <div className="flex gap-2 mt-3 flex-wrap items-center">
+        {ms.referral_code && <span style={{ ...chip, background: "rgba(232,200,150,.16)", color: "#E8C896", border: "1px solid rgba(232,200,150,.3)" }}>Kod polecający: <b>{ms.referral_code}</b></span>}
+        <span style={{ ...chip, background: "rgba(122,184,154,.16)", color: "#9BC7AE", border: "1px solid rgba(122,184,154,.3)" }}>Prowizje partnerskie zamiast cashbacku</span>
+        <button onClick={() => goTab("portfel")} style={{ marginLeft: "auto", fontSize: 13, fontWeight: 700, padding: "8px 16px", borderRadius: 11, background: "linear-gradient(135deg,#E8C896,#C8965A)", color: "#241606", border: 0, cursor: "pointer" }}>Portfel / historia</button>
       </div>
     </div>
   );

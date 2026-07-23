@@ -270,6 +270,14 @@ export async function walletBalance(): Promise<WalletLive> {
   if (error || !data) return { linked: false, balance: 0, points: 0, gold: null, currency: "PLN" };
   return data as WalletLive;
 }
+// Program lojalnościowy użytkownika: Family Club (klient) vs Ambassador Club (MLM).
+// Wykluczają się — ambassador (aktywny w MySunrise) ma Ambassador Club zamiast Family Club.
+export type MemberStatus = { club: "family" | "ambassador"; ambassador: boolean; tier?: string; status?: string | null; referral_code?: string; pearls?: number; referrals?: number; commissions_pln?: number; turnover_pln?: number };
+export async function memberStatus(): Promise<MemberStatus> {
+  const { data, error } = await supabase.functions.invoke("member-status", { body: {} });
+  if (error || !data) return { club: "family", ambassador: false };
+  return data as MemberStatus;
+}
 // ŻYWE saldo sprzedawcy z MySunrise (auto-detekcja: available=false gdy endpoint jeszcze nie wdrożony)
 export type SellerWallet = { available: boolean; sunrise_pay?: number; gold?: number | null; pending?: number; withdraw_enabled?: boolean; reason?: string };
 export async function sellerWallet(): Promise<SellerWallet> {
