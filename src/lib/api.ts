@@ -392,6 +392,14 @@ export async function askSuri(message: string, sessionId?: string, userId?: stri
   return data;
 }
 
+// Historia rozmowy Suri (pamiec po ponownym otwarciu czatu)
+export async function suriHistory(sessionId: string) {
+  const { data, error } = await supabase.functions.invoke("suri-commerce",
+    { body: { action: "history", session_id: sessionId } });
+  if (error) return [] as { role: string; content: string }[];
+  return (data?.messages ?? []) as { role: string; content: string }[];
+}
+
 // ── Sunrise Smart (abonament darmowych wysyłek) ──
 export async function smartStatus(): Promise<boolean> {
   const { data } = await supabase.from("smart_members").select("expires_at,active").maybeSingle();
