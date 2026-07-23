@@ -70,7 +70,7 @@ export default function Sprzedawca() {
         </form>
       ) : (
         <>
-          {tab === "pulpit" && <Pulpit seller={seller} />}
+          {tab === "pulpit" && <Pulpit seller={seller} goTab={setTab} />}
           {tab === "oferty" && <Oferty />}
           {tab === "zamowienia" && <Zamowienia />}
           {tab === "reklamy" && <Reklamy />}
@@ -89,7 +89,7 @@ function Kpi({ label, value, color }: { label: string; value: string; color?: st
 }
 
 // ── PULPIT ──────────────────────────────────────────────────────────
-function Pulpit({ seller }: { seller: any }) {
+function Pulpit({ seller, goTab }: { seller: any; goTab: (t: Tab) => void }) {
   const [s, setS] = useState<any>(null);
   const [sub, setSub] = useState<any>(null);
   useEffect(() => { sellerSummary().then(setS).catch(() => {}); mySubscription().then(setSub).catch(() => {}); }, []);
@@ -99,6 +99,26 @@ function Pulpit({ seller }: { seller: any }) {
         <div className="text-sm" style={{ color: "var(--mut)" }}>Sprzedaż netto ({seller.legal_name}) — 92,1% po prowizji 7,9%</div>
         <div className="font-display text-4xl font-bold" style={{ color: "var(--green)" }}>{zl(s?.sales_net ?? 0)}</div>
       </div>
+      {s && (Number(s.offers_count || 0) === 0 || Number(s.orders_total || 0) === 0) && (
+        <Card>
+          <div className="font-semibold mb-3">🚀 Pierwsze kroki</div>
+          <div className="flex flex-col gap-2 text-sm">
+            {([
+              { done: true, label: "Konto sprzedawcy aktywne", tab: null as Tab | null },
+              { done: Number(s.offers_count || 0) > 0, label: "Wystaw pierwszą ofertę", tab: "oferty" as Tab | null },
+              { done: Number(s.orders_total || 0) > 0, label: "Zdobądź pierwszą sprzedaż", tab: null as Tab | null },
+              { done: false, label: "Uruchom reklamę (opcjonalnie)", tab: "reklamy" as Tab | null },
+            ]).map((st, i) => (
+              <div key={i} className="flex items-center gap-2">
+                <span style={{ color: st.done ? "var(--green)" : "var(--mut)" }}>{st.done ? "✅" : "⬜"}</span>
+                {st.tab && !st.done
+                  ? <button onClick={() => goTab(st.tab as Tab)} className="underline" style={{ color: "var(--gold)" }}>{st.label} →</button>
+                  : <span style={{ color: st.done ? "var(--mut)" : "var(--ink)" }}>{st.label}</span>}
+              </div>
+            ))}
+          </div>
+        </Card>
+      )}
       <div className="grid gap-4 sm:grid-cols-4">
         <Kpi label="Zamówienia (łącznie)" value={String(s?.orders_total ?? 0)} />
         <Kpi label="Do wysłania" value={String(s?.orders_to_ship ?? 0)} color={s?.orders_to_ship ? "var(--gold)" : undefined} />
