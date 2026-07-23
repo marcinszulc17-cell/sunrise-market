@@ -174,6 +174,12 @@ export default function Product() {
                 return <div className="text-xs" style={{ color: "var(--mut)" }}>{txt}</div>;
               })()}
 
+              <div className="flex flex-wrap gap-2 pt-1">
+                {["Ochrona kupującego", "Zwrot 14 dni", "Płatność Sunrise Pay", "Cashback na portfel"].map((t) => (
+                  <span key={t} className="text-xs px-2.5 py-1 rounded-lg" style={{ background: "var(--glass)", border: "1px solid var(--line)", color: "var(--mut)" }}>✓ {t}</span>
+                ))}
+              </div>
+
               {colors.length > 0 && (
                 <div>
                   <div className="text-sm mb-2" style={{ color: "var(--mut)" }}>Kolor{color ? `: ${color}` : ""}</div>
