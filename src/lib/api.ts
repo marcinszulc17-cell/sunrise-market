@@ -332,6 +332,12 @@ export async function eproloProbe(page = 1) {
   if (error) throw error;
   return data;
 }
+// Przekazanie zamowienia do Eprolo (add_order.html). dryRun = tylko ustala variantsid, nic nie wysyla.
+export async function eproloForwardOrder(orderId: string, dryRun = false) {
+  const { data, error } = await supabase.functions.invoke("eprolo-forward-order", { body: { order_id: orderId, dryRun } });
+  if (error) throw error;
+  return data;
+}
 export type CjDraft = { id: string; title: string; price_gross: number; image_url: string | null; status: string; created_at: string };
 export async function cjDrafts(provider: "cj" | "eprolo" | "teemdrop" | "mysunrise" = "cj"): Promise<CjDraft[]> {
   const { data, error } = await supabase.functions.invoke("cj-admin", { body: { action: "list", provider } });

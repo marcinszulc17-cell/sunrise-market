@@ -5,7 +5,7 @@ import {
   adminCustomers, adminSellers, adminSetSellerStatus,
   listReturns, resolveReturn, listPendingSellers, reviewSeller, listOffersAdmin, moderateOffer,
   bridgeQueue, retryBridgeOrder, getAutoForward, setAutoForward, approveBridgeForward, rejectBridgeForward,
-  cjImport, eproloImport, eproloProbe, cjDrafts, cjSetStatus, cjActivateAll, cjStats, catalogStats, type CjDraft, type CjStat, type CatalogStat,
+  cjImport, eproloImport, eproloProbe, eproloForwardOrder, cjDrafts, cjSetStatus, cjActivateAll, cjStats, catalogStats, type CjDraft, type CjStat, type CatalogStat,
 } from "../lib/api";
 
 const zl = (v: number) => Math.round(Number(v || 0)).toLocaleString("pl-PL") + " zł";
@@ -163,6 +163,8 @@ function Zamowienia() {
   const [open, setOpen] = useState<string | null>(null);
   const [items, setItems] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [fwdBusy, setFwdBusy] = useState(false);
+  const [fwdMsg, setFwdMsg] = useState<string | null>(null);
 
   async function load() { setLoading(true); try { setRows(await adminOrders(status || undefined, q || undefined)); } finally { setLoading(false); } }
   useEffect(() => { load(); /* eslint-disable-next-line */ }, [status]);
@@ -171,6 +173,16 @@ function Zamowienia() {
     setOpen(id); setItems(await adminOrderItems(id));
   }
   async function setStat(id: string, s: string) { await adminSetOrderStatus(id, s); await load(); }
+  async function eproloForward(orderId: string, dry: boolean) {
+    setFwdBusy(true); setFwdMsg(null);
+    try {
+      const r: any = await eproloForwardOrder(orderId, dry);
+      if (r?.available === false) setFwdMsg(r.error ?? "Brak kluczy Eprolo (Secrets).");
+      else if (dry) setFwdMsg(`Dry-run OK: ${r?.resolved?.length ?? 0} poz. gotowych${r?.skipped?.length ? `, pominięto ${r.skipped.length}` : ""}. Nic nie wysłano.`);
+      else if (r?.ok) setFwdMsg(`Przekazano do Eprolo ✅ Nr Eprolo: ${r?.eprolo_order ?? "?"}.`);
+      else setFwdMsg(`Nie udało się: ${r?.msg ?? r?.error ?? "błąd"} (kod ${r?.code ?? "?"}).`);
+    } catch (e) { setFwdMsg((e as Error).message); } finally { setFwdBusy(false); }
+  }
 
   return (
     <>
@@ -205,6 +217,11 @@ function Zamowienia() {
                   </div>
                 ))}
                 {items.length === 0 && <span className="text-sm" style={{ color: "var(--mut)" }}>Brak pozycji.</span>}
+                <div className="flex items-center gap-2 mt-2 flex-wrap">
+                  <button onClick={() => eproloForward(r.order_id, true)} disabled={fwdBusy} className="text-xs px-3 py-1.5 rounded-lg disabled:opacity-50" style={{ background: "var(--glass)", border: "1px solid var(--line)", color: "var(--ink)" }}>Eprolo: test (dry-run)</button>
+                  <button onClick={() => eproloForward(r.order_id, false)} disabled={fwdBusy} className="text-xs px-3 py-1.5 rounded-lg font-semibold text-black disabled:opacity-50" style={{ background: "linear-gradient(135deg,#7AB89A,#38E0F0)" }}>Przekaż do Eprolo →</button>
+                  {fwdMsg && <span className="text-xs" style={{ color: "var(--mut)" }}>{fwdMsg}</span>}
+                </div>
               </div>
             )}
           </Card>
