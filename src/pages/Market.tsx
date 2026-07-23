@@ -264,7 +264,7 @@ export default function Market() {
   const heading = activeSub2
     ? (subs2.find((s) => s.slug === activeSub2)?.name ?? "Oferty")
     : activeSub ? activeSub.name
-    : activeDept ? activeDept.name : "🔥 Okazje tygodnia";
+    : activeDept ? activeDept.name : q ? `Wyniki: ${q}` : "🔥 Okazje tygodnia";
 
   function toggleFav(id: string) {
     if (!authed) { window.location.href = "/login"; return; }
@@ -419,7 +419,7 @@ export default function Market() {
       </section>
 
       {/* ── STREFA ENERGII SUNRISE (kafle kategorii 640x360) ── */}
-      {!activeDept && tiles.length > 0 && (
+      {!activeDept && !q && tiles.length > 0 && (
         <section className="mx-auto max-w-6xl px-4 pb-6 pt-2">
           <h2 className="font-display text-2xl font-semibold mb-5">⚡ Strefa Energii Sunrise</h2>
           <div className="flex gap-4 overflow-x-auto pb-2 px-1 -mx-1" style={{ scrollSnapType: "x mandatory" }}>
@@ -434,7 +434,7 @@ export default function Market() {
       )}
 
       {/* ── DLA CIEBIE (rekomendacje wg preferencji) ── */}
-      {!activeDept && authed && recs.length > 0 && (
+      {!activeDept && !q && authed && recs.length > 0 && (
         <section className="mx-auto max-w-6xl px-4 pb-4 pt-2">
           <h2 className="font-display text-2xl font-semibold mb-5">💛 Dla Ciebie</h2>
           <div className="grid gap-5" style={{ gridTemplateColumns: "repeat(auto-fill,minmax(240px,1fr))" }}>
@@ -446,7 +446,7 @@ export default function Market() {
       )}
 
       {/* ── WYRÓŻNIONE / PROMOWANE ── */}
-      {!activeDept && promoted.length > 0 && (
+      {!activeDept && !q && promoted.length > 0 && (
         <section className="mx-auto max-w-6xl px-4 pb-4">
           <h2 className="font-display text-2xl font-semibold mb-5">✨ Wyróżnione</h2>
           <div className="grid gap-5" style={{ gridTemplateColumns: "repeat(auto-fill,minmax(240px,1fr))" }}>
@@ -458,7 +458,7 @@ export default function Market() {
       )}
 
       {/* ── PASEK PROMOCYJNY (strip 1300x220, rotacja) ── */}
-      {!activeDept && strips.length > 0 && (() => {
+      {!activeDept && !q && strips.length > 0 && (() => {
         const sB = strips[bi % strips.length];
         return (
           <div className="mx-auto max-w-6xl px-4 pb-8">
@@ -470,7 +470,7 @@ export default function Market() {
       })()}
 
       {/* ── OSTATNIO OGLĄDANE ── */}
-      {!activeDept && recent.length > 0 && (
+      {!activeDept && !q && recent.length > 0 && (
         <section className="mx-auto max-w-6xl px-4 pb-4">
           <h2 className="font-display text-2xl font-semibold mb-5">🕘 Ostatnio oglądane</h2>
           <div className="flex gap-4 overflow-x-auto pb-2">
