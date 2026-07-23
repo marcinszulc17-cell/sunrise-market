@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { supabase } from "../lib/supabase";
 import {
-  amiOperator, adminOverview, adminOrders, adminOrderItems, adminSetOrderStatus,
+  amiOperator, adminOverview, adminBreakdown, adminOrders, adminOrderItems, adminSetOrderStatus,
   adminCustomers, adminSellers, adminSetSellerStatus,
   listReturns, resolveReturn, listPendingSellers, reviewSeller, listOffersAdmin, moderateOffer,
   bridgeQueue, retryBridgeOrder, getAutoForward, setAutoForward, approveBridgeForward, rejectBridgeForward,
@@ -106,8 +106,9 @@ const inpStyle = { background: "var(--glass)", border: "1px solid var(--line)", 
 // ── PULPIT ──────────────────────────────────────────────────────────
 function Pulpit() {
   const [o, setO] = useState<any>(null);
+  const [b, setB] = useState<any>(null);
   const [err, setErr] = useState<string | null>(null);
-  useEffect(() => { adminOverview().then(setO).catch((e) => setErr(e.message)); }, []);
+  useEffect(() => { adminOverview().then(setO).catch((e) => setErr(e.message)); adminBreakdown().then(setB).catch(() => {}); }, []);
   if (err) return <p className="text-rose-400">Błąd: {err}</p>;
   if (!o) return <p style={{ color: "var(--mut)" }}>Ładowanie…</p>;
   return (
@@ -128,6 +129,28 @@ function Pulpit() {
         <Kpi label="Oferty aktywne" value={n(o.offers_active)} />
         <Kpi label="Zwroty otwarte" value={n(o.returns_open)} color={o.returns_open ? "#F25CB0" : undefined} />
       </div>
+      {b && (
+        <div className="grid gap-4 lg:grid-cols-2 mt-6">
+          <Card>
+            <div className="font-semibold mb-3">Top kategorie (GMV)</div>
+            {(() => { const max = Math.max(1, ...((b.top_categories || []) as any[]).map((x) => Number(x.gmv || 0))); return ((b.top_categories || []) as any[]).map((c, i) => (
+              <div key={i} className="mb-2">
+                <div className="flex justify-between text-sm mb-1"><span>{c.name}</span><span style={{ color: "var(--mut)" }}>{zl(c.gmv)}</span></div>
+                <div className="h-2 rounded-full overflow-hidden" style={{ background: "var(--line)" }}><div className="h-full" style={{ width: `${Math.round(Number(c.gmv || 0) / max * 100)}%`, background: "linear-gradient(90deg,#C8965A,#E8C896)" }} /></div>
+              </div>
+            )); })()}
+            {(!b.top_categories || b.top_categories.length === 0) && <div className="text-sm" style={{ color: "var(--mut)" }}>Brak danych sprzedażowych.</div>}
+          </Card>
+          <Card>
+            <div className="font-semibold mb-3">Sprzedaż wg dostawcy</div>
+            {((b.providers || []) as any[]).map((p, i) => {
+              const lbl: Record<string, string> = { sunrise: "Sunrise (własne)", cj: "CJ Dropshipping", teemdrop: "TeemDrop", mysunrise: "Sunrise Energy", eprolo: "Eprolo" };
+              return <div key={i} className="flex justify-between text-sm mb-2"><span>{lbl[p.provider] || p.provider}</span><span><b>{zl(p.gmv)}</b> <span style={{ color: "var(--mut)" }}>· {p.orders} zam.</span></span></div>;
+            })}
+            {(!b.providers || b.providers.length === 0) && <div className="text-sm" style={{ color: "var(--mut)" }}>Brak danych.</div>}
+          </Card>
+        </div>
+      )}
     </>
   );
 }

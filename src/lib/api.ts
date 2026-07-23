@@ -115,6 +115,9 @@ export async function sellerSummary() {
 export async function adminOverview() {
   const { data, error } = await supabase.rpc("admin_overview"); if (error) throw error; return data ?? {};
 }
+export async function adminBreakdown() {
+  const { data, error } = await supabase.rpc("admin_breakdown"); if (error) throw error; return data ?? {};
+}
 export async function adminOrders(status?: string, search?: string) {
   const { data, error } = await supabase.rpc("admin_orders", { p_status: status ?? null, p_search: search ?? null, p_limit: 200 }); if (error) throw error; return data ?? [];
 }
