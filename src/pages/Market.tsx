@@ -213,7 +213,8 @@ export default function Market() {
     return (data as Dept[]) ?? [];
   }
   useEffect(() => {
-    load(null);
+    const urlQ0 = new URLSearchParams(window.location.search).get("q");
+    if (!urlQ0) load(null);
     supabase.from("categories").select("id,slug,name").is("parent_id", null).order("sort_order")
       .then(({ data }) => setDepts((data as Dept[]) ?? []));
     categoryCounts().then(({ byId, total }) => { setCounts(byId); setTotal(total); }).catch(() => {});
