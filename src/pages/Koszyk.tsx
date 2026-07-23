@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { supabase } from "../lib/supabase";
-import { checkout, walletBalance, listShippingLanes, cartLanes, recommendedOffers, similarOffers, smartStatus, smartSubscribe, type ShipMethod, type CartLane, type ShipAddress } from "../lib/api";
+import { checkout, validateCoupon, walletBalance, listShippingLanes, cartLanes, recommendedOffers, similarOffers, smartStatus, smartSubscribe, type ShipMethod, type CartLane, type ShipAddress, type CouponCheck } from "../lib/api";
 import { useCart, setQty, removeItem, clearCart, cartTotal, addToCart } from "../lib/cart";
 import { topupWallet, redeemPoints } from "../lib/payments";
 import { saveIntent, loadIntent, clearIntent } from "../lib/checkoutIntent";
@@ -31,6 +31,8 @@ export default function Koszyk() {
   const [recs, setRecs] = useState<any[]>([]); // cross-sell „Może Cię zainteresować"
   const [resuming, setResuming] = useState(false); // wznawianie płatności po powrocie ze Stripe
   const [topupAmount, setTopupAmount] = useState<string>(""); // kwota w polu inline doładowania
+  const [coupon, setCoupon] = useState("");
+  const [couponRes, setCouponRes] = useState<CouponCheck | null>(null);
 
   const ids = cart.map((i) => i.offer_id);
   const idsKey = ids.join(",");
@@ -93,7 +95,8 @@ export default function Koszyk() {
   const selectedCodes = presentLanes.map((l) => selected[l]).filter(Boolean) as string[];
   const rawShip = selectedCodes.reduce((a, c) => a + Number(methods.find((m) => m.code === c)?.price_gross ?? 0), 0);
   const shipCost = freeShip ? 0 : rawShip;
-  const grand = total + shipCost;
+  const discount = couponRes?.valid ? Math.min(Number(couponRes.discount || 0), total) : 0;
+  const grand = Math.max(0, total + shipCost - discount);
   const cashback = Math.round(total * 0.03 * 100) / 100;
   const shortfall = balance != null ? Math.max(0, grand - balance) : 0;
   const enoughFunds = balance != null && balance >= grand;
@@ -113,10 +116,17 @@ export default function Koszyk() {
   }, [cart, lanes]);
 
   // Wspólna realizacja zakupu — używana przez „Zapłać" i przez auto-wznowienie po doładowaniu.
-  async function runCheckout(useAddr: ShipAddress, useCodes: string[]) {
+  async function applyCoupon() {
+    const code = coupon.trim();
+    if (!code) { setCouponRes(null); return; }
+    setCouponRes(await validateCoupon(code, total));
+  }
+
+  async function runCheckout(useAddr: ShipAddress, useCodes: string[], useCoupon?: string) {
     setBusy(true); setMsg(null);
     try {
-      const res = await checkout(cart.map((i) => ({ offer_id: i.offer_id, qty: i.qty })), useCodes, useAddr);
+      const cCode = useCoupon ?? (couponRes?.valid ? couponRes.code : undefined);
+      const res = await checkout(cart.map((i) => ({ offer_id: i.offer_id, qty: i.qty })), useCodes, useAddr, cCode);
       clearIntent();
       clearCart();
       setDone({ order: res.order_id, paid: res.paid, cashback: res.cashback, balance: res.balance });
@@ -146,7 +156,7 @@ export default function Koszyk() {
     if (!addrOk) { setMsg("Uzupełnij adres dostawy przed doładowaniem."); return; }
     const amount = Math.max(shortfall, Math.ceil(amt) || 0);
     if (amount <= 0) { setMsg("Podaj kwotę doładowania."); return; }
-    saveIntent({ addr, shippingCodes: selectedCodes, grand, topup: amount });
+    saveIntent({ addr, shippingCodes: selectedCodes, grand, topup: amount, coupon: couponRes?.valid ? couponRes.code : undefined });
     setBusy(true);
     try {
       await topupWallet(amount, "/koszyk?topup=success"); // redirect na Stripe następuje w środku
@@ -206,7 +216,7 @@ export default function Koszyk() {
         if (w) { setBalance(w.balance); setLinked(w.linked); setPoints(w.points); }
         const need = intent?.grand ?? grand;
         if (w && intent && w.balance >= need) {
-          await runCheckout(intent.addr, intent.shippingCodes);
+          await runCheckout(intent.addr, intent.shippingCodes, intent.coupon);
         } else {
           setResuming(false);
           setMsg("Doładowanie w toku — środki zaksięgują się w portfelu za chwilę. Kliknij „Zapłać saldem”, gdy saldo wystarczy.");
@@ -334,6 +344,17 @@ export default function Koszyk() {
               ) : (
                 <div className="text-xs mb-2" style={{ color: "var(--green)" }}>🎉 Masz darmową dostawę!</div>
               )}
+              {discount > 0 && (
+                <div className="flex justify-between text-sm mb-1" style={{ color: "var(--green)" }}>
+                  <span>Rabat ({couponRes?.code})</span><span>−{zl(discount)}</span>
+                </div>
+              )}
+              <div className="flex gap-2 my-2">
+                <input value={coupon} onChange={(e) => setCoupon(e.target.value)} onKeyDown={(e) => e.key === "Enter" && applyCoupon()} placeholder="Kod rabatowy"
+                       className="flex-1 rounded-lg px-3 py-2 text-sm outline-none" style={{ background: "var(--glass)", border: "1px solid var(--line)", color: "var(--ink)" }} />
+                <button onClick={applyCoupon} className="px-3 py-2 rounded-lg text-sm font-semibold" style={{ background: "var(--glass)", border: "1px solid var(--line)", color: "var(--ink)" }}>Zastosuj</button>
+              </div>
+              {couponRes && !couponRes.valid && <div className="text-xs mb-2" style={{ color: "#F25CB0" }}>{couponRes.message}</div>}
               <div className="flex justify-between mb-2 mt-1"><span style={{ color: "var(--mut)" }}>Razem</span><span className="font-display text-2xl font-semibold">{zl(grand)}</span></div>
               <div className="flex justify-between text-sm mb-2"><span style={{ color: "var(--mut)" }}>Cashback 3% (punkty)</span><span style={{ color: "var(--green)" }}>+{pkt(cashback)} pkt</span></div>
               <SmartCard />

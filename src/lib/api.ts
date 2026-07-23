@@ -57,10 +57,16 @@ export async function offerImages(id: string): Promise<string[]> {
 }
 // Checkout przez edge function (kupujący z JWT; płaci z portfela, nalicza cashback, dostawa)
 export type ShipAddress = { name: string; phone: string; street: string; city: string; postal: string; country?: string };
-export async function checkout(items: { offer_id: string; qty: number }[], shippingCodes?: string[], shipping?: ShipAddress) {
-  const { data, error } = await supabase.functions.invoke("checkout", { body: { items, shipping_codes: shippingCodes ?? [], shipping: shipping ?? null } });
+export async function checkout(items: { offer_id: string; qty: number }[], shippingCodes?: string[], shipping?: ShipAddress, coupon?: string) {
+  const { data, error } = await supabase.functions.invoke("checkout", { body: { items, shipping_codes: shippingCodes ?? [], shipping: shipping ?? null, coupon: coupon ?? null } });
   if (error) throw error;
   return data;
+}
+export type CouponCheck = { valid: boolean; discount: number; code?: string; message: string };
+export async function validateCoupon(code: string, subtotal: number): Promise<CouponCheck> {
+  const { data, error } = await supabase.rpc("validate_coupon", { p_code: code, p_subtotal: subtotal });
+  if (error || !data) return { valid: false, discount: 0, message: "Błąd walidacji kodu" };
+  return data as CouponCheck;
 }
 
 // ── Dostawa / cykl zamówienia ─────────────────────────────────────
