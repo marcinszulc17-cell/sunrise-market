@@ -381,10 +381,10 @@ export default function Market() {
       {!activeDept && tiles.length > 0 && (
         <section className="mx-auto max-w-6xl px-4 pb-6 pt-2">
           <h2 className="font-display text-2xl font-semibold mb-5">⚡ Strefa Energii Sunrise</h2>
-          <div className="grid gap-5" style={{ gridTemplateColumns: "repeat(auto-fill,minmax(300px,1fr))" }}>
+          <div className="flex gap-4 overflow-x-auto pb-2 px-1 -mx-1" style={{ scrollSnapType: "x mandatory" }}>
             {tiles.map((t, i) => (
-              <a key={i} href={t.link_url || "/"} className="block rounded-2xl overflow-hidden transition-transform hover:-translate-y-0.5"
-                 style={{ border: "1px solid var(--line)", boxShadow: "0 10px 30px -18px rgba(0,0,0,.6)" }}>
+              <a key={i} href={t.link_url || "/"} className="shrink-0 w-[300px] sm:w-[340px] rounded-2xl overflow-hidden transition-transform hover:-translate-y-0.5"
+                 style={{ border: "1px solid var(--line)", boxShadow: "0 10px 30px -18px rgba(0,0,0,.6)", scrollSnapAlign: "start" }}>
                 <img src={t.image_url!} alt={t.headline} loading="lazy" width={640} height={360} className="block w-full h-auto" />
               </a>
             ))}

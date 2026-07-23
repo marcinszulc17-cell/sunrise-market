@@ -264,8 +264,8 @@ function Shell({ children, tabs }: { children: React.ReactNode; tabs?: { tab: Ta
             <span className="font-display text-xl font-semibold">Sunrise Market</span>
           </a>
           <div className="flex-1" />
-          <button onClick={() => { setMode("buyer"); window.location.href = "/"; }} className="text-sm font-semibold px-3 py-1.5 rounded-lg text-black" style={{ background: "linear-gradient(135deg,#C8965A,#A97B42)" }}>🛍️ Konto klienta</button>
-          <a href="/konto" className="text-sm navlink">Konto</a>
+          <a href="/konto" onClick={() => setMode("buyer")} className="text-sm font-semibold px-3 py-1.5 rounded-lg" style={{ background: "linear-gradient(135deg,#E8C896,#C8965A)", color: "#241606" }}>👤 Moje konto</a>
+          <a href="/" onClick={() => setMode("buyer")} className="text-sm navlink">🛍️ Sklep</a>
         </div>
         {tabs && (
           <div className="mx-auto max-w-5xl px-4 pb-2 flex gap-2 overflow-x-auto">
