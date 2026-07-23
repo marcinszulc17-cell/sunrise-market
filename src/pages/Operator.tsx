@@ -5,7 +5,7 @@ import {
   adminCustomers, adminSellers, adminSetSellerStatus,
   listReturns, resolveReturn, listPendingSellers, reviewSeller, listOffersAdmin, moderateOffer,
   bridgeQueue, retryBridgeOrder, getAutoForward, setAutoForward, approveBridgeForward, rejectBridgeForward,
-  cjImport, cjDrafts, cjSetStatus, cjActivateAll, cjStats, catalogStats, type CjDraft, type CjStat, type CatalogStat,
+  cjImport, eproloImport, eproloProbe, cjDrafts, cjSetStatus, cjActivateAll, cjStats, catalogStats, type CjDraft, type CjStat, type CatalogStat,
 } from "../lib/api";
 
 const zl = (v: number) => Math.round(Number(v || 0)).toLocaleString("pl-PL") + " zł";
@@ -350,7 +350,7 @@ function CjDrop() {
   const [view, setView] = useState<"drafty" | "statystyki">("drafty");
   const [drafts, setDrafts] = useState<CjDraft[]>([]);
   const [stats, setStats] = useState<CatalogStat[]>([]);
-  const [provider, setProvider] = useState<"" | "cj" | "teemdrop" | "mysunrise">("");
+  const [provider, setProvider] = useState<"" | "cj" | "eprolo" | "teemdrop" | "mysunrise">("");
   const [statSearch, setStatSearch] = useState("");
   const [sort, setSort] = useState<"sold" | "views" | "margin" | "marginPct" | "price">("sold");
   const [loading, setLoading] = useState(true);
@@ -358,10 +358,14 @@ function CjDrop() {
   const [msg, setMsg] = useState<string | null>(null);
   const [pageSize, setPageSize] = useState("20");
   const [keyword, setKeyword] = useState("");
+  const [draftProvider, setDraftProvider] = useState<"cj" | "eprolo">("cj");
+  const [ePages, setEPages] = useState("1");
+  const [eBusy, setEBusy] = useState(false);
+  const [eMsg, setEMsg] = useState<string | null>(null);
 
-  async function load() { setLoading(true); try { setDrafts(await cjDrafts()); } catch (e) { setMsg((e as Error).message); } finally { setLoading(false); } }
+  async function load() { setLoading(true); try { setDrafts(await cjDrafts(draftProvider)); } catch (e) { setMsg((e as Error).message); } finally { setLoading(false); } }
   async function loadStats() { setLoading(true); try { setStats(await catalogStats({ provider: provider || null, search: statSearch || null, sort, limit: 200 })); } catch (e) { setMsg((e as Error).message); } finally { setLoading(false); } }
-  useEffect(() => { load(); }, []);
+  useEffect(() => { load(); }, [draftProvider]);
   useEffect(() => { if (view === "statystyki") loadStats(); }, [view, provider, sort]);
 
   const sortedStats = [...stats].sort((a, b) => {
@@ -381,11 +385,30 @@ function CjDrop() {
       await load();
     } catch (e) { setMsg((e as Error).message); } finally { setBusy(false); }
   }
+  async function onEproloImport() {
+    setEBusy(true); setEMsg(null);
+    try {
+      const r: any = await eproloImport({ pages: Math.min(Math.max(Number(ePages) || 1, 1), 10) });
+      if (r?.available === false) setEMsg(r.error ?? "Brak kluczy Eprolo (ustaw sekrety EPROLO_API_KEY / EPROLO_API_SECRET).");
+      else setEMsg(`Zaimportowano ${r?.imported ?? 0} nowych, zaktualizowano ${r?.updated ?? 0} (do str. ${r?.nextPage ?? "?"}). Wszystko jako draft.`);
+      if (draftProvider === "eprolo") await load();
+    } catch (e) { setEMsg((e as Error).message); } finally { setEBusy(false); }
+  }
+  async function onEproloProbe() {
+    setEBusy(true); setEMsg(null);
+    try {
+      const r: any = await eproloProbe(1);
+      if (r?.available === false) setEMsg(r.error ?? "Brak kluczy Eprolo.");
+      else if (r?.sample) setEMsg(`Połączenie OK (kod ${r.code}). Przykład: „${String(r.sample.title).slice(0, 60)}…” · koszt ${r.sample.minCost} USD · ${r.count} szt. na stronie.`);
+      else setEMsg(`Odpowiedź Eprolo: kod ${r?.code ?? "?"}, ${r?.msg ?? "brak danych"} (HTTP ${r?.httpStatus ?? "?"}).`);
+    } catch (e) { setEMsg((e as Error).message); } finally { setEBusy(false); }
+  }
   async function onSet(id: string, status: "active" | "blocked") { try { await cjSetStatus(id, status); setDrafts((d) => d.filter((x) => x.id !== id)); } catch (e) { alert((e as Error).message); } }
   async function onActivateAll() {
-    if (!window.confirm(`Aktywować wszystkie ${drafts.length} draftów CJ? Trafią do sklepu jako aktywne oferty.`)) return;
+    const lbl = draftProvider === "eprolo" ? "Eprolo" : "CJ";
+    if (!window.confirm(`Aktywować wszystkie ${drafts.length} draftów ${lbl}? Trafią do sklepu jako aktywne oferty.`)) return;
     setBusy(true);
-    try { const cnt = await cjActivateAll(); setMsg(`Aktywowano ${cnt} ofert.`); await load(); } catch (e) { setMsg((e as Error).message); } finally { setBusy(false); }
+    try { const cnt = await cjActivateAll(draftProvider); setMsg(`Aktywowano ${cnt} ofert.`); await load(); } catch (e) { setMsg((e as Error).message); } finally { setBusy(false); }
   }
 
   return (
@@ -402,6 +425,18 @@ function CjDrop() {
         {msg && <div className="mt-3 text-sm rounded-lg px-3 py-2" style={{ background: "rgba(200,150,90,.12)", color: "var(--gold)" }}>{msg}</div>}
       </Card>
 
+      <Card className="mb-4">
+        <div className="font-semibold mb-1">Import z Eprolo</div>
+        <p className="text-xs mb-3" style={{ color: "var(--mut)" }}>Pobiera katalog Eprolo (openapi.eprolo.com) jako <b>drafty</b> (cashback-only). Cena = koszt Eprolo × kurs × marża (konfiguracja eprolo_* w platform_config). Klucze w Supabase Secrets.</p>
+        <div className="flex flex-wrap items-center gap-2">
+          <input value={ePages} onChange={(e) => setEPages(e.target.value)} type="number" min={1} max={10} className={inp} style={{ ...inpStyle, width: 90 }} />
+          <span className="text-xs" style={{ color: "var(--mut)" }}>stron/import (max 10)</span>
+          <button onClick={onEproloProbe} disabled={eBusy} className="px-4 py-2 rounded-lg text-sm font-semibold disabled:opacity-50" style={{ background: "var(--glass)", border: "1px solid var(--line)", color: "var(--ink)" }}>Test połączenia</button>
+          <button onClick={onEproloImport} disabled={eBusy} className="px-4 py-2 rounded-lg text-sm font-semibold text-black disabled:opacity-50" style={{ background: "linear-gradient(135deg,#7AB89A,#38E0F0)" }}>{eBusy ? "Pracuję…" : "Importuj z Eprolo →"}</button>
+        </div>
+        {eMsg && <div className="mt-3 text-sm rounded-lg px-3 py-2" style={{ background: "rgba(122,184,154,.12)", color: "var(--green)" }}>{eMsg}</div>}
+      </Card>
+
       <div className="flex items-center gap-2 mb-4">
         <button onClick={() => setView("drafty")} className="text-sm px-4 py-2 rounded-xl font-semibold" style={view === "drafty" ? { background: "linear-gradient(135deg,#C8965A,#A97B42)", color: "#000" } : { background: "var(--glass)", border: "1px solid var(--line)", color: "var(--ink)" }}>Drafty ({drafts.length})</button>
         <button onClick={() => setView("statystyki")} className="text-sm px-4 py-2 rounded-xl font-semibold" style={view === "statystyki" ? { background: "linear-gradient(135deg,#C8965A,#A97B42)", color: "#000" } : { background: "var(--glass)", border: "1px solid var(--line)", color: "var(--ink)" }}>📊 Statystyki</button>
@@ -409,6 +444,11 @@ function CjDrop() {
 
       {view === "drafty" && (
         <>
+          <div className="flex items-center gap-2 mb-3">
+            {(([["cj", "CJ"], ["eprolo", "Eprolo"]]) as ["cj" | "eprolo", string][]).map(([k, l]) => (
+              <button key={k} onClick={() => setDraftProvider(k)} className="text-xs px-3 py-1.5 rounded-full" style={draftProvider === k ? { background: "rgba(122,184,154,.16)", border: "1px solid rgba(122,184,154,.5)", color: "var(--green)" } : { background: "var(--glass)", border: "1px solid var(--line)", color: "var(--mut)" }}>{l}</button>
+            ))}
+          </div>
           <div className="flex items-center justify-between mb-3 flex-wrap gap-2">
             <div className="font-semibold">Drafty do akceptacji <span style={{ color: "var(--mut)" }}>({drafts.length})</span></div>
             {drafts.length > 0 && <button onClick={onActivateAll} disabled={busy} className="text-sm px-4 py-2 rounded-xl font-semibold text-black disabled:opacity-50" style={{ background: "linear-gradient(135deg,#7AB89A,#38E0F0)" }}>Aktywuj wszystkie</button>}
@@ -430,7 +470,7 @@ function CjDrop() {
                 </div>
               </Card>
             ))}
-            {!loading && drafts.length === 0 && <p style={{ color: "var(--mut)" }}>Brak draftów. Zaimportuj z CJ powyżej.</p>}
+            {!loading && drafts.length === 0 && <p style={{ color: "var(--mut)" }}>Brak draftów. Zaimportuj powyżej.</p>}
           </div>
         </>
       )}
@@ -439,7 +479,7 @@ function CjDrop() {
         <>
           <div className="flex items-center gap-2 mb-2 flex-wrap">
             <span className="font-semibold">Statystyki produktów</span>
-            {(([["", "Wszyscy"], ["cj", "CJ"], ["teemdrop", "TeemDrop"], ["mysunrise", "Sunrise (własne)"]]) as ["" | "cj" | "teemdrop" | "mysunrise", string][]).map(([k, l]) => (
+            {(([["", "Wszyscy"], ["cj", "CJ"], ["eprolo", "Eprolo"], ["teemdrop", "TeemDrop"], ["mysunrise", "Sunrise (własne)"]]) as ["" | "cj" | "eprolo" | "teemdrop" | "mysunrise", string][]).map(([k, l]) => (
               <button key={k || "all"} onClick={() => setProvider(k)} className="text-xs px-3 py-1.5 rounded-full" style={provider === k ? { background: "rgba(122,184,154,.16)", border: "1px solid rgba(122,184,154,.5)", color: "var(--green)" } : { background: "var(--glass)", border: "1px solid var(--line)", color: "var(--mut)" }}>{l}</button>
             ))}
             <input value={statSearch} onChange={(e) => setStatSearch(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") loadStats(); }} placeholder="Szukaj po nazwie… (Enter)" className="text-xs px-3 py-1.5 rounded-full outline-none" style={{ background: "var(--glass)", border: "1px solid var(--line)", color: "var(--ink)", minWidth: 170 }} />

@@ -320,9 +320,21 @@ export async function cjImport(opts: { page?: number; pageSize?: number; categor
   if (error) throw error;
   return data;
 }
+// Import katalogu Eprolo (eprolo_product_list.html). Oferty jako draft, cashback-only.
+export async function eproloImport(opts: { page?: number; pages?: number } = {}) {
+  const { data, error } = await supabase.functions.invoke("eprolo-import", { body: opts });
+  if (error) throw error;
+  return data;
+}
+// Test polaczenia: surowa probka z Eprolo bez zapisu do bazy.
+export async function eproloProbe(page = 1) {
+  const { data, error } = await supabase.functions.invoke("eprolo-import", { body: { probe: true, page } });
+  if (error) throw error;
+  return data;
+}
 export type CjDraft = { id: string; title: string; price_gross: number; image_url: string | null; status: string; created_at: string };
-export async function cjDrafts(): Promise<CjDraft[]> {
-  const { data, error } = await supabase.functions.invoke("cj-admin", { body: { action: "list" } });
+export async function cjDrafts(provider: "cj" | "eprolo" | "teemdrop" | "mysunrise" = "cj"): Promise<CjDraft[]> {
+  const { data, error } = await supabase.functions.invoke("cj-admin", { body: { action: "list", provider } });
   if (error) throw error;
   return (data?.items ?? []) as CjDraft[];
 }
@@ -330,8 +342,8 @@ export async function cjSetStatus(offerId: string, status: "active" | "draft" | 
   const { error } = await supabase.functions.invoke("cj-admin", { body: { action: "set", offer_id: offerId, status } });
   if (error) throw error;
 }
-export async function cjActivateAll(): Promise<number> {
-  const { data, error } = await supabase.functions.invoke("cj-admin", { body: { action: "activateAll" } });
+export async function cjActivateAll(provider: "cj" | "eprolo" | "teemdrop" | "mysunrise" = "cj"): Promise<number> {
+  const { data, error } = await supabase.functions.invoke("cj-admin", { body: { action: "activateAll", provider } });
   if (error) throw error;
   return Number(data?.activated ?? 0);
 }
