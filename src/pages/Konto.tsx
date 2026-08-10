@@ -165,9 +165,14 @@ function AmbLink({ code, tier }: { code: string; tier?: string }) {
 
 function PolecajPV() {
   const [r, setR] = useState<EnergyReferral | null>(null);
+  const [ms, setMs] = useState<MemberStatus | null>(null);
   const [copied, setCopied] = useState(false);
   useEffect(() => { energyReferral().then(setR).catch(() => setR({ available: false })); }, []);
-  const rewardPct = r?.reward_pct ?? 5;
+  useEffect(() => { memberStatus().then(setMs).catch(() => {}); }, []);
+  // Prowizja wg realnego statusu z MySunrise (Family Club 5% ... Diamond 22%), nie sztywne 5%.
+  const TIER_RATE: Record<string, number> = { ambassador: 5, basic: 5, silver: 10, gold: 15, platinum: 20, diamond: 22 };
+  const tierRate = TIER_RATE[String(ms?.tier || "").toLowerCase()] ?? null;
+  const rewardPct = tierRate ?? r?.reward_pct ?? 5;
   const link = r?.link ?? "";
   async function copy() {
     try { await navigator.clipboard.writeText(link); setCopied(true); setTimeout(() => setCopied(false), 2000); } catch { /* ignore */ }
