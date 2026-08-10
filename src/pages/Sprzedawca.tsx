@@ -61,7 +61,18 @@ export default function Sprzedawca() {
         <form onSubmit={onBecome} className="max-w-md rounded-2xl p-5 flex flex-col gap-3" style={{ background: "var(--glass)", border: "1px solid var(--line)" }}>
           <h2 className="font-semibold text-lg">Zostań sprzedawcą</h2>
           <input className={inp} style={inpStyle} placeholder="Nazwa firmy" value={legalName} onChange={(e) => setLegalName(e.target.value)} required />
-          <input className={inp} style={inpStyle} placeholder="NIP (opcjonalnie)" value={nip} onChange={(e) => setNip(e.target.value)} />
+          <input className={inp} style={inpStyle} placeholder="NIP firmy (wymagany — tylko firmy mogą sprzedawać)" value={nip}
+            onChange={(e) => setNip(e.target.value)}
+            onBlur={async () => {
+              const clean = nip.replace(/[^0-9]/g, "");
+              if (clean.length !== 10) return;
+              try {
+                const r = await fetch(`https://ihehncaaokbwbdqdztna.supabase.co/functions/v1/nip-lookup?nip=${clean}`);
+                const j = await r.json();
+                if (j?.ok && j.name) { setLegalName(j.name); setMsg(`Firma z rejestru VAT: ${j.name}${j.address ? " · " + j.address : ""}`); }
+                else if (j?.error) setMsg(`NIP: ${j.error}`);
+              } catch { /* ignoruj — reczne wpisanie nadal mozliwe */ }
+            }} />
           <label className="flex items-start gap-2 text-sm" style={{ color: "var(--mut)" }}>
             <input type="checkbox" checked={accept} onChange={(e) => setAccept(e.target.checked)} className="mt-1" />
             <span>Akceptuję <a href="/legal/regulamin-sprzedawcy.html" target="_blank" className="text-amber-400 underline">Regulamin sprzedawcy</a> oraz <a href="/legal/regulamin.html" target="_blank" className="text-amber-400 underline">Regulamin Sunrise Pay</a> (prowizja 7,9%, wypłata na portfel Sunrise Pay).</span>
