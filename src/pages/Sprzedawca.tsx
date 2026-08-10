@@ -394,12 +394,35 @@ function LabelDialog({ orderId, onClose }: { orderId: string; onClose: () => voi
     setBusy(true); setErr(null);
     try {
       localStorage.setItem(LS, JSON.stringify(snd));
-      const { data } = await supabase.functions.invoke("globkurier", { body: { action: "buy-label", order_id: orderId, product_id: sel, parcel: par, sender: snd } });
-      if (!data?.ok) throw new Error(data?.error || "Błąd zakupu etykiety");
+      const { data, error } = await supabase.functions.invoke("globkurier", { body: { action: "buy-label", order_id: orderId, product_id: sel, parcel: par, sender: snd } });
+      if (error) {
+        let msg = error.message;
+        try { const j = await (error as any).context?.json?.(); if (j?.message || j?.error) msg = j.message || j.error; } catch { /* zostaw */ }
+        throw new Error(msg);
+      }
+      if (!data?.ok) throw new Error(data?.message || data?.error || "Błąd zakupu etykiety");
       setDone(data);
     } catch (e) { setErr((e as Error).message); } finally { setBusy(false); }
   }
   const set = (k: string, v: string) => setSnd((s: any) => ({ ...s, [k]: v }));
+  const [pdfBusy, setPdfBusy] = useState(false);
+  async function downloadLabel() {
+    if (!done?.number) return;
+    setPdfBusy(true); setErr(null);
+    try {
+      const { data } = await supabase.functions.invoke("globkurier", { body: { action: "label", number: done.number } });
+      if (data?.pdf_base64) {
+        const bytes = Uint8Array.from(atob(data.pdf_base64), (c) => c.charCodeAt(0));
+        const url = URL.createObjectURL(new Blob([bytes], { type: "application/pdf" }));
+        const a = document.createElement("a"); a.href = url; a.download = `etykieta-${done.number}.pdf`; a.click();
+        setTimeout(() => URL.revokeObjectURL(url), 5000);
+      } else if (data?.urls?.length) {
+        window.open(data.urls[0], "_blank");
+      } else {
+        setErr(data?.note || "Etykieta jeszcze niedostępna — spróbuj za chwilę.");
+      }
+    } catch (e) { setErr((e as Error).message); } finally { setPdfBusy(false); }
+  }
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: "rgba(0,0,0,.7)" }} onClick={() => !busy && onClose()}>
@@ -413,8 +436,10 @@ function LabelDialog({ orderId, onClose }: { orderId: string; onClose: () => voi
             <div className="rounded-xl p-4" style={{ background: "rgba(122,184,154,.14)", border: "1px solid rgba(122,184,154,.4)" }}>
               <div className="font-semibold" style={{ color: "var(--green)" }}>✅ Przesyłka utworzona</div>
               <div className="text-sm mt-1">Numer: <b>{done.number || "—"}</b> · koszt: <b>{done.price_for_seller} zł</b></div>
-              <div className="text-xs mt-1" style={{ color: "var(--mut)" }}>Numer śledzenia zapisany przy zamówieniu — kupujący już go widzi. Etykietę PDF pobierzesz z panelu GlobKurier (wkrótce także tutaj).</div>
+              <div className="text-xs mt-1" style={{ color: "var(--mut)" }}>{done.paid_from_wallet ? <>Opłacono z Twojego portfela Sunrise Pay{typeof done.balance === "number" ? <> · saldo: <b>{done.balance.toFixed(2)} zł</b></> : null}.</> : null} Numer śledzenia zapisany przy zamówieniu — kupujący już go widzi.</div>
             </div>
+            <button onClick={downloadLabel} disabled={pdfBusy} className="rounded-xl py-2 font-semibold disabled:opacity-50" style={{ background: "var(--glass)", border: "1px solid var(--line)", color: "var(--ink)" }}>{pdfBusy ? "Pobieram…" : "🖨️ Pobierz etykietę (PDF)"}</button>
+            {err && <div className="text-sm" style={{ color: "#ff7b7b" }}>{err}</div>}
             <button onClick={onClose} className="rounded-xl py-2 font-semibold text-black" style={{ background: "linear-gradient(135deg,#C8965A,#E8C896)" }}>Zamknij</button>
           </div>
         ) : (
@@ -451,7 +476,8 @@ function LabelDialog({ orderId, onClose }: { orderId: string; onClose: () => voi
                   <input className={inp} style={inpStyle} placeholder="Telefon" value={snd.phone || ""} onChange={(e) => set("phone", e.target.value)} />
                   <input className={inp} style={inpStyle} placeholder="E-mail" value={snd.email || ""} onChange={(e) => set("email", e.target.value)} />
                 </div>
-                <button onClick={buy} disabled={busy} className="rounded-xl py-2.5 font-semibold text-black disabled:opacity-50" style={{ background: "linear-gradient(135deg,#C8965A,#E8C896)" }}>{busy ? "Kupuję…" : "Kup etykietę"}</button>
+                <button onClick={buy} disabled={busy} className="rounded-xl py-2.5 font-semibold text-black disabled:opacity-50" style={{ background: "linear-gradient(135deg,#C8965A,#E8C896)" }}>{busy ? "Kupuję…" : "Kup etykietę (płatność z portfela Sunrise Pay)"}</button>
+                <div className="text-xs" style={{ color: "var(--mut)" }}>Koszt etykiety zostanie pobrany z Twojego portfela Sunrise Pay — tego samego, na który trafiają wpływy ze sprzedaży.</div>
               </>
             )}
             {err && <div className="text-sm" style={{ color: "#ff7b7b" }}>{err}</div>}
