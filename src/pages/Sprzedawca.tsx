@@ -228,6 +228,7 @@ function Zamowienia() {
   async function load() { setLoading(true); try { setSorders((await sellerOrders().catch(() => [])) as any[]); } finally { setLoading(false); } }
   useEffect(() => { load(); }, []);
   async function onShip(id: string) { setMsg(null); try { const t = await markShipped(id); setMsg("Oznaczono wysłane. Nr przesyłki: " + t); await load(); } catch (e) { setMsg((e as Error).message); } }
+  const [labelFor, setLabelFor] = useState<string | null>(null);
   if (loading) return <p style={{ color: "var(--mut)" }}>Ładowanie…</p>;
   return (
     <div className="flex flex-col gap-3">
@@ -236,7 +237,12 @@ function Zamowienia() {
         <Card key={o.order_id}>
           <div className="flex items-center justify-between mb-2">
             <span className="text-sm" style={{ color: "var(--mut)" }}>{dt(o.created_at)} · {({ paid: "Opłacone", shipped: "Wysłane", delivered: "Dostarczone", completed: "Zakończone" } as any)[o.status] ?? o.status}{o.tracking_no ? ` · ${o.tracking_no}` : ""}</span>
-            {o.status === "paid" ? <button onClick={() => onShip(o.order_id)} className="text-xs font-semibold px-3 py-1.5 rounded-lg text-black" style={{ background: "linear-gradient(135deg,#C8965A,#E8C896)" }}>Oznacz wysłane</button> : <span className="text-xs" style={{ color: "var(--green)" }}>✓</span>}
+            {o.status === "paid" ? (
+              <span className="flex items-center gap-2">
+                <button onClick={() => setLabelFor(o.order_id)} className="text-xs font-semibold px-3 py-1.5 rounded-lg text-black" style={{ background: "linear-gradient(135deg,#7AB89A,#38E0F0)" }}>📦 Kup etykietę</button>
+                <button onClick={() => onShip(o.order_id)} className="text-xs font-semibold px-3 py-1.5 rounded-lg text-black" style={{ background: "linear-gradient(135deg,#C8965A,#E8C896)" }}>Oznacz wysłane</button>
+              </span>
+            ) : <span className="text-xs" style={{ color: "var(--green)" }}>✓</span>}
           </div>
           <div className="flex flex-col gap-0.5">
             {(o.items ?? []).map((it: any, i: number) => <div key={i} className="flex justify-between text-sm"><span>{it.title} × {it.qty}</span><span style={{ color: "var(--mut)" }}>{zl(it.payout)}</span></div>)}
@@ -245,7 +251,8 @@ function Zamowienia() {
         </Card>
       ))}
       {sorders.length === 0 && <p style={{ color: "var(--mut)" }}>Brak zamówień.</p>}
-    </div>
+    {labelFor && <LabelDialog orderId={labelFor} onClose={() => { setLabelFor(null); load(); }} />}
+      </div>
   );
 }
 
@@ -358,6 +365,103 @@ function Wysylka() {
   );
 }
 
+
+
+// ── KUP ETYKIETĘ (GlobKurier) ───────────────────────────────────────
+function LabelDialog({ orderId, onClose }: { orderId: string; onClose: () => void }) {
+  const LS = "gk_sender";
+  const [par, setPar] = useState({ length: "30", width: "20", height: "10", weight: "1" });
+  const [snd, setSnd] = useState<any>(() => { try { return JSON.parse(localStorage.getItem(LS) || "{}"); } catch { return {}; } });
+  const [opts, setOpts] = useState<any[] | null>(null);
+  const [recv, setRecv] = useState<any>(null);
+  const [sel, setSel] = useState<number | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState<string | null>(null);
+  const [done, setDone] = useState<any>(null);
+  const inp = "w-full rounded-lg px-3 py-2 outline-none text-sm";
+  const inpStyle = { background: "var(--glass)", border: "1px solid var(--line)", color: "var(--ink)" } as React.CSSProperties;
+
+  async function loadOptions() {
+    setBusy(true); setErr(null); setOpts(null);
+    try {
+      const { data } = await supabase.functions.invoke("globkurier", { body: { action: "label-options", order_id: orderId, parcel: par, sender_postcode: snd.postCode || "" } });
+      if (!data?.ok) throw new Error(data?.error || "Błąd wyceny");
+      setOpts(data.options || []); setRecv(data.receiver || null);
+    } catch (e) { setErr((e as Error).message); } finally { setBusy(false); }
+  }
+  async function buy() {
+    if (!sel) { setErr("Wybierz przewoźnika."); return; }
+    for (const k of ["name", "street", "city", "postCode", "phone", "email"]) if (!snd[k]) { setErr("Uzupełnij dane nadawcy (wszystkie pola)."); return; }
+    setBusy(true); setErr(null);
+    try {
+      localStorage.setItem(LS, JSON.stringify(snd));
+      const { data } = await supabase.functions.invoke("globkurier", { body: { action: "buy-label", order_id: orderId, product_id: sel, parcel: par, sender: snd } });
+      if (!data?.ok) throw new Error(data?.error || "Błąd zakupu etykiety");
+      setDone(data);
+    } catch (e) { setErr((e as Error).message); } finally { setBusy(false); }
+  }
+  const set = (k: string, v: string) => setSnd((s: any) => ({ ...s, [k]: v }));
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: "rgba(0,0,0,.7)" }} onClick={() => !busy && onClose()}>
+      <div className="w-full max-w-lg rounded-2xl p-5 max-h-[90vh] overflow-auto" style={{ background: "var(--bg, #0E1729)", border: "1px solid var(--line)" }} onClick={(e) => e.stopPropagation()}>
+        <div className="flex items-center justify-between mb-3">
+          <div className="font-semibold text-lg">📦 Kup etykietę — GlobKurier</div>
+          <button onClick={onClose} className="text-xl" style={{ color: "var(--mut)" }}>✕</button>
+        </div>
+        {done ? (
+          <div className="flex flex-col gap-3">
+            <div className="rounded-xl p-4" style={{ background: "rgba(122,184,154,.14)", border: "1px solid rgba(122,184,154,.4)" }}>
+              <div className="font-semibold" style={{ color: "var(--green)" }}>✅ Przesyłka utworzona</div>
+              <div className="text-sm mt-1">Numer: <b>{done.number || "—"}</b> · koszt: <b>{done.price_for_seller} zł</b></div>
+              <div className="text-xs mt-1" style={{ color: "var(--mut)" }}>Numer śledzenia zapisany przy zamówieniu — kupujący już go widzi. Etykietę PDF pobierzesz z panelu GlobKurier (wkrótce także tutaj).</div>
+            </div>
+            <button onClick={onClose} className="rounded-xl py-2 font-semibold text-black" style={{ background: "linear-gradient(135deg,#C8965A,#E8C896)" }}>Zamknij</button>
+          </div>
+        ) : (
+          <div className="flex flex-col gap-3">
+            <div className="text-xs font-semibold" style={{ color: "var(--mut)" }}>WYMIARY PACZKI (cm) I WAGA (kg)</div>
+            <div className="grid grid-cols-4 gap-2">
+              {(["length", "width", "height", "weight"] as const).map((k, i) => (
+                <input key={k} className={inp} style={inpStyle} placeholder={["Dł.", "Szer.", "Wys.", "Waga"][i]} value={(par as any)[k]} onChange={(e) => setPar((p) => ({ ...p, [k]: e.target.value }))} />
+              ))}
+            </div>
+            <button onClick={loadOptions} disabled={busy} className="rounded-xl py-2 font-semibold text-black disabled:opacity-50" style={{ background: "linear-gradient(135deg,#7AB89A,#38E0F0)" }}>{busy && !opts ? "Wyceniam…" : "Pokaż przewoźników i ceny"}</button>
+            {recv && <div className="text-xs" style={{ color: "var(--mut)" }}>Odbiorca: {recv.name} · {recv.street}, {recv.postal} {recv.city}</div>}
+            {opts && (
+              <div className="flex flex-col gap-1 max-h-52 overflow-auto">
+                {opts.length === 0 && <div className="text-sm" style={{ color: "var(--mut)" }}>Brak ofert dla tych wymiarów.</div>}
+                {opts.map((o) => (
+                  <label key={o.id} className="flex items-center gap-3 rounded-lg px-3 py-2 cursor-pointer" style={{ background: sel === o.id ? "rgba(122,184,154,.15)" : "var(--glass)", border: `1px solid ${sel === o.id ? "rgba(122,184,154,.5)" : "var(--line)"}` }}>
+                    <input type="radio" name="gkopt" checked={sel === o.id} onChange={() => setSel(o.id)} />
+                    <span className="flex-1 text-sm">{o.name}</span>
+                    <span className="text-xs" style={{ color: "var(--mut)" }}>{o.delivery_days ? `~${o.delivery_days} dn.` : ""}</span>
+                    <span className="font-semibold" style={{ color: "var(--gold)" }}>{o.price_for_seller} zł</span>
+                  </label>
+                ))}
+              </div>
+            )}
+            {opts && opts.length > 0 && (
+              <>
+                <div className="text-xs font-semibold mt-1" style={{ color: "var(--mut)" }}>DANE NADAWCY (zapamiętamy)</div>
+                <div className="grid grid-cols-2 gap-2">
+                  <input className={inp} style={inpStyle} placeholder="Nazwa / imię i nazwisko" value={snd.name || ""} onChange={(e) => set("name", e.target.value)} />
+                  <input className={inp} style={inpStyle} placeholder="Ulica i numer" value={snd.street || ""} onChange={(e) => set("street", e.target.value)} />
+                  <input className={inp} style={inpStyle} placeholder="Miasto" value={snd.city || ""} onChange={(e) => set("city", e.target.value)} />
+                  <input className={inp} style={inpStyle} placeholder="Kod pocztowy" value={snd.postCode || ""} onChange={(e) => set("postCode", e.target.value)} />
+                  <input className={inp} style={inpStyle} placeholder="Telefon" value={snd.phone || ""} onChange={(e) => set("phone", e.target.value)} />
+                  <input className={inp} style={inpStyle} placeholder="E-mail" value={snd.email || ""} onChange={(e) => set("email", e.target.value)} />
+                </div>
+                <button onClick={buy} disabled={busy} className="rounded-xl py-2.5 font-semibold text-black disabled:opacity-50" style={{ background: "linear-gradient(135deg,#C8965A,#E8C896)" }}>{busy ? "Kupuję…" : "Kup etykietę"}</button>
+              </>
+            )}
+            {err && <div className="text-sm" style={{ color: "#ff7b7b" }}>{err}</div>}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
 
 function GlobKurierCard() {
   const [st, setSt] = useState<{ configured?: boolean; env?: string } | null>(null);
