@@ -353,15 +353,28 @@ function Wysylka() {
         )}
         <p className="text-xs mt-3" style={{ color: "var(--mut)" }}>Kupujący wybiera metodę i płaci za dostawę w koszyku — kwota dostawy trafia do Ciebie razem z wypłatą.</p>
       </Card>
-      <Card>
-        <div className="font-semibold mb-1">📦 Etykiety kurierskie — wkrótce</div>
-        <p className="text-sm" style={{ color: "var(--mut)" }}>
-          Podpinamy brokera kurierskiego (InPost Paczkomaty, DPD, DHL, Orlen Paczka). Po starcie kupisz etykietę
-          jednym klikiem prosto z zamówienia — płatność z portfela sprzedawcy, stawki hurtowe Sunrise, tracking
-          automatycznie widoczny dla kupującego. Zero własnych umów z kurierami.
-        </p>
-      </Card>
+      <GlobKurierCard />
     </div>
+  );
+}
+
+
+function GlobKurierCard() {
+  const [st, setSt] = useState<{ configured?: boolean; env?: string } | null>(null);
+  useEffect(() => {
+    supabase.functions.invoke("globkurier", { body: { action: "status" } })
+      .then(({ data }) => setSt(data || {})).catch(() => setSt({}));
+  }, []);
+  return (
+    <Card>
+      <div className="font-semibold mb-1">📦 Etykiety kurierskie — GlobKurier {st?.configured ? (st?.env === "prod" ? "✅ aktywne" : "🧪 tryb testowy") : "⏳ w przygotowaniu"}</div>
+      <p className="text-sm" style={{ color: "var(--mut)" }}>
+        Integracja z GlobKurier (InPost, DPD, DHL, GLS, UPS — krajowe i międzynarodowe): kupisz etykietę jednym
+        klikiem prosto z zamówienia, w stawkach hurtowych Sunrise, a tracking automatycznie zobaczy kupujący.
+        Zero własnych umów z kurierami.
+      </p>
+      {!st?.configured && <p className="text-xs mt-2" style={{ color: "var(--gold)" }}>Start po podpięciu konta GlobKurier przez operatora platformy.</p>}
+    </Card>
   );
 }
 
