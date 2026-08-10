@@ -13,12 +13,14 @@ const dt = (s: string) => new Date(s).toLocaleString("pl-PL");
 const opLabel: Record<string, string> = { topup: "Doładowanie", payment: "Zakup", cashback: "Cashback", refund: "Zwrot", payout: "Wpływ ze sprzedaży" };
 type Cat = { id: string; slug: string; name: string };
 type Off = { offer_id: string; title: string; price_gross: number; stock: number; status: string; category: string };
-type Tab = "pulpit" | "oferty" | "zamowienia" | "reklamy" | "portfel";
+type Tab = "pulpit" | "oferty" | "zamowienia" | "reklamy" | "portfel" | "statystyki" | "wysylka";
 const TABS: { id: Tab; label: string }[] = [
   { id: "pulpit", label: "📊 Pulpit" },
   { id: "oferty", label: "📦 Oferty" },
   { id: "zamowienia", label: "🧾 Zamówienia" },
-  { id: "reklamy", label: "📣 Reklamy" },
+  { id: "reklamy", label: "📣 Promowanie" },
+  { id: "statystyki", label: "📈 Statystyki" },
+  { id: "wysylka", label: "🚚 Wysyłka" },
   { id: "portfel", label: "💳 Portfel" },
 ];
 
@@ -85,6 +87,8 @@ export default function Sprzedawca() {
           {tab === "oferty" && <Oferty />}
           {tab === "zamowienia" && <Zamowienia />}
           {tab === "reklamy" && <Reklamy />}
+          {tab === "statystyki" && <Statystyki />}
+          {tab === "wysylka" && <Wysylka />}
           {tab === "portfel" && <Portfel seller={seller} />}
         </>
       )}
@@ -285,13 +289,89 @@ function Portfel({ seller }: { seller: any }) {
   );
 }
 
+
+// ── STATYSTYKI ──────────────────────────────────────────────────────
+function Statystyki() {
+  const [s, setS] = useState<any>(null);
+  const [top, setTop] = useState<any[]>([]);
+  useEffect(() => {
+    sellerSummary().then(setS).catch(() => {});
+    import("../lib/api").then((a) => a.catalogStats({ provider: "mysunrise", sort: "views", limit: 10 }).then(setTop).catch(() => {}));
+  }, []);
+  return (
+    <div className="flex flex-col gap-4">
+      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        <Kpi label="Sprzedaż netto (92,1%)" value={zl(s?.sales_net ?? 0)} color="var(--green)" />
+        <Kpi label="Zamówienia łącznie" value={String(s?.orders_total ?? 0)} />
+        <Kpi label="Aktywne oferty" value={String(s?.offers_count ?? 0)} />
+        <Kpi label="Do wysłania" value={String(s?.orders_to_ship ?? 0)} color="var(--gold)" />
+      </div>
+      <Card>
+        <div className="font-semibold mb-3">🔥 Najczęściej oglądane oferty</div>
+        {top.length === 0 ? <p className="text-sm" style={{ color: "var(--mut)" }}>Statystyki wyświetleń pojawią się, gdy klienci zaczną oglądać Twoje oferty.</p> : (
+          <div className="flex flex-col">
+            {top.map((o: any, i: number) => (
+              <div key={o.offer_id || i} className="flex items-center gap-3 py-2 text-sm" style={{ borderBottom: "1px solid var(--line)" }}>
+                <span className="w-6 font-bold" style={{ color: "var(--mut)" }}>{i + 1}.</span>
+                <span className="flex-1 truncate">{o.title}</span>
+                <span style={{ color: "var(--mut)" }}>{o.views ?? 0} 👁</span>
+                <span className="font-semibold" style={{ color: "var(--gold)" }}>{o.orders ?? 0} zam.</span>
+              </div>
+            ))}
+          </div>
+        )}
+      </Card>
+      <Card>
+        <div className="font-semibold mb-2">💡 Jak sprzedawać więcej</div>
+        <ul className="text-sm flex flex-col gap-1.5" style={{ color: "var(--mut)" }}>
+          <li>• Wyróżnij ofertę w zakładce <b style={{ color: "var(--ink)" }}>Promowanie</b> — trafi na stronę główną i wyżej w wynikach.</li>
+          <li>• Dodaj zdjęcie dobrej jakości i opis wygenerowany przez AI (przycisk w formularzu oferty).</li>
+          <li>• Utrzymuj stan magazynowy — oferty „0 szt." znikają z wyników.</li>
+        </ul>
+      </Card>
+    </div>
+  );
+}
+
+// ── WYSYŁKA ─────────────────────────────────────────────────────────
+function Wysylka() {
+  const [lanes, setLanes] = useState<any[]>([]);
+  useEffect(() => { import("../lib/api").then((a) => a.listShippingLanes().then((x: any) => setLanes(x || [])).catch(() => {})); }, []);
+  return (
+    <div className="flex flex-col gap-4">
+      <Card>
+        <div className="font-semibold mb-2">🚚 Metody dostawy na Twoich ofertach</div>
+        {lanes.length === 0 ? <p className="text-sm" style={{ color: "var(--mut)" }}>Ładowanie metod dostawy…</p> : (
+          <div className="flex flex-col">
+            {lanes.map((l: any) => (
+              <div key={l.code || l.id} className="flex items-center gap-3 py-2 text-sm" style={{ borderBottom: "1px solid var(--line)" }}>
+                <span className="flex-1">{l.name || l.label || l.code}</span>
+                <span className="font-semibold" style={{ color: "var(--gold)" }}>{zl(l.price ?? l.price_gross ?? 0)}</span>
+              </div>
+            ))}
+          </div>
+        )}
+        <p className="text-xs mt-3" style={{ color: "var(--mut)" }}>Kupujący wybiera metodę i płaci za dostawę w koszyku — kwota dostawy trafia do Ciebie razem z wypłatą.</p>
+      </Card>
+      <Card>
+        <div className="font-semibold mb-1">📦 Etykiety kurierskie — wkrótce</div>
+        <p className="text-sm" style={{ color: "var(--mut)" }}>
+          Podpinamy brokera kurierskiego (InPost Paczkomaty, DPD, DHL, Orlen Paczka). Po starcie kupisz etykietę
+          jednym klikiem prosto z zamówienia — płatność z portfela sprzedawcy, stawki hurtowe Sunrise, tracking
+          automatycznie widoczny dla kupującego. Zero własnych umów z kurierami.
+        </p>
+      </Card>
+    </div>
+  );
+}
+
 function Shell({ children, tabs }: { children: React.ReactNode; tabs?: { tab: Tab; setTab: (t: Tab) => void } }) {
   return (
     <div className="min-h-screen">
       <header className="sticky top-0 z-20 backdrop-blur" style={{ background: "var(--header)", borderBottom: "1px solid var(--line)" }}>
-        <div className="mx-auto max-w-5xl px-4 py-3 flex items-center gap-3">
+        <div className="mx-auto max-w-7xl px-4 py-3 flex items-center gap-3">
           <a href="/" className="flex items-center gap-2">
-            <div className="w-9 h-9 rounded-xl grid place-items-center text-lg" style={{ background: "linear-gradient(135deg,#C8965A,#E8C896)" }}>☀</div>
+            <img src="/logo-sunrise-market.png" alt="Sunrise Market" className="h-9 w-auto rounded-xl" onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = "none"; }} />
             <span className="font-display text-xl font-semibold">Sunrise Market</span>
           </a>
           <div className="flex-1" />
@@ -299,7 +379,7 @@ function Shell({ children, tabs }: { children: React.ReactNode; tabs?: { tab: Ta
           <a href="/" onClick={() => setMode("buyer")} className="text-sm navlink">🛍️ Sklep</a>
         </div>
         {tabs && (
-          <div className="mx-auto max-w-5xl px-4 pb-2 flex gap-2 overflow-x-auto">
+          <div className="mx-auto max-w-7xl px-4 pb-2 flex gap-2 overflow-x-auto">
             {TABS.map((t) => (
               <button key={t.id} onClick={() => tabs.setTab(t.id)} className="shrink-0 text-sm px-3 py-1.5 rounded-full whitespace-nowrap"
                       style={tabs.tab === t.id ? { background: "linear-gradient(135deg,#7AB89A,#38E0F0)", color: "#000", fontWeight: 600 } : { background: "var(--glass)", border: "1px solid var(--line)", color: "var(--ink)" }}>{t.label}</button>
@@ -307,7 +387,7 @@ function Shell({ children, tabs }: { children: React.ReactNode; tabs?: { tab: Ta
           </div>
         )}
       </header>
-      <main className="mx-auto max-w-5xl px-4 py-8">{children}</main>
+      <main className="mx-auto max-w-7xl px-4 py-8">{children}</main>
     </div>
   );
 }
