@@ -5,7 +5,7 @@ import {
   adminCustomers, adminSellers, adminSetSellerStatus,
   listReturns, resolveReturn, listPendingSellers, reviewSeller, listOffersAdmin, moderateOffer,
   bridgeQueue, retryBridgeOrder, getAutoForward, setAutoForward, approveBridgeForward, rejectBridgeForward,
-  cjImport, eproloImport, eproloProbe, eproloForwardOrder, cjDrafts, cjSetStatus, cjActivateAll, cjStats, catalogStats, type CjDraft, type CjStat, type CatalogStat,
+  cjImport, eproloImport, eproloProbe, eproloForwardOrder, cjDrafts, cjSetStatus, cjActivateAll, cjStats, catalogStats, type CjDraft, type CjStat, type CatalogStat, adminShipments,
 } from "../lib/api";
 
 import { zl } from "../lib/money";
@@ -76,7 +76,7 @@ export default function Operator() {
             <p className="text-sm" style={{ color: "var(--mut)" }}>To konto nie ma roli operatora. <a href="/" className="text-amber-400 underline">Wróć do sklepu</a>.</p>
           </div>
         )}
-        {isOp && tab === "pulpit" && <Pulpit />}
+        {isOp && tab === "pulpit" && <Pulpit go={setTab} />}
         {isOp && tab === "zamowienia" && <Zamowienia />}
         {isOp && tab === "klienci" && <Klienci />}
         {isOp && tab === "sprzedawcy" && <Sprzedawcy />}
@@ -92,11 +92,12 @@ export default function Operator() {
 function Card({ children, className = "" }: { children: React.ReactNode; className?: string }) {
   return <div className={`rounded-2xl p-4 ${className}`} style={{ background: "var(--glass)", border: "1px solid var(--line)" }}>{children}</div>;
 }
-function Kpi({ label, value, color }: { label: string; value: string; color?: string }) {
+function Kpi({ label, value, color, onClick }: { label: string; value: string; color?: string; onClick?: () => void }) {
   return (
-    <div className="rounded-2xl p-5" style={{ background: "var(--glass)", border: "1px solid var(--line)" }}>
+    <div onClick={onClick} className="rounded-2xl p-5" style={{ background: "var(--glass)", border: "1px solid var(--line)", cursor: onClick ? "pointer" : undefined }}>
       <div className="text-xs mb-1" style={{ color: "var(--mut)" }}>{label}</div>
       <div className="font-display text-2xl font-semibold" style={{ color: color ?? "var(--ink)" }}>{value}</div>
+      {onClick && <div className="text-[11px] mt-1" style={{ color: "var(--gold)" }}>Przejdź →</div>}
     </div>
   );
 }
@@ -104,7 +105,7 @@ const inp = "rounded-lg px-3 py-2 text-sm outline-none";
 const inpStyle = { background: "var(--glass)", border: "1px solid var(--line)", color: "var(--ink)" } as React.CSSProperties;
 
 // ── PULPIT ──────────────────────────────────────────────────────────
-function Pulpit() {
+function Pulpit({ go }: { go: (t: Tab) => void }) {
   const [o, setO] = useState<any>(null);
   const [b, setB] = useState<any>(null);
   const [err, setErr] = useState<string | null>(null);
@@ -114,20 +115,30 @@ function Pulpit() {
   return (
     <>
       <div className="rounded-2xl p-6 mb-6" style={{ background: "linear-gradient(135deg, rgba(200,150,90,.14), rgba(90,138,229,.12))", border: "1px solid rgba(200,150,90,.3)" }}>
-        <div className="text-sm" style={{ color: "var(--mut)" }}>Zysk firmy (prowizja 4,9% po cashbacku)</div>
+        <div className="text-sm" style={{ color: "var(--mut)" }}>Zysk firmy — cały przychód platformy (po cashbacku i prowizji Stripe)</div>
         <div className="font-display text-4xl font-bold" style={{ color: "var(--gold)" }}>{zl(o.company)}</div>
+        <div className="flex flex-wrap gap-x-5 gap-y-1 mt-3 text-sm" style={{ color: "var(--mut)" }}>
+          <span>Prowizje ze sprzedaży (po cashbacku): <b style={{ color: "var(--ink)" }}>{zl(o.company_sales ?? 0)}</b></span>
+          <span>Wysyłki: <b style={{ color: "var(--ink)" }}>{zl(o.shipping_income ?? 0)}</b></span>
+          <span>Promowanie ofert: <b style={{ color: "var(--ink)" }}>{zl(o.ads_income ?? 0)}</b></span>
+          <span>− Stripe (szac. 1,4% + 1 zł/transakcja): <b style={{ color: "#F8A8D2" }}>{zl(o.stripe_fee_est ?? 0)}</b></span>
+        </div>
       </div>
       <div className="grid gap-4 sm:grid-cols-3">
-        <Kpi label="GMV (obrót opłacony)" value={zl(o.gmv)} />
-        <Kpi label="Prowizja łączna 7,9%" value={zl(o.commission_total)} color="var(--green)" />
-        <Kpi label="Cashback 3% (do klientów)" value={zl(o.cashback)} />
-        <Kpi label="Wypłaty sprzedawców 92,1%" value={zl(o.seller_payouts)} />
-        <Kpi label="Zamówienia (opłacone/łącznie)" value={`${n(o.orders_paid)} / ${n(o.orders)}`} />
-        <Kpi label="Klienci" value={n(o.buyers)} />
-        <Kpi label="Sprzedawcy aktywni" value={n(o.sellers_active)} />
-        <Kpi label="Sprzedawcy do KYC" value={n(o.sellers_pending)} color={o.sellers_pending ? "var(--gold)" : undefined} />
-        <Kpi label="Oferty aktywne" value={n(o.offers_active)} />
-        <Kpi label="Zwroty otwarte" value={n(o.returns_open)} color={o.returns_open ? "#F25CB0" : undefined} />
+        <Kpi label="GMV (obrót opłacony)" value={zl(o.gmv)} onClick={() => go("zamowienia")} />
+        <Kpi label="Prowizja łączna 7,9%" value={zl(o.commission_total)} color="var(--green)" onClick={() => go("zamowienia")} />
+        <Kpi label="Cashback 3% (do klientów)" value={zl(o.cashback)} onClick={() => go("klienci")} />
+        <Kpi label="Zarobek na wysyłkach (GlobKurier)" value={zl(o.shipping_income ?? 0)} color="var(--green)" onClick={() => go("fulfillment")} />
+        <Kpi label="Promowanie ofert (przychód)" value={zl(o.ads_income ?? 0)} onClick={() => go("oferty")} />
+        <Kpi label="Prowizja Stripe (szacunkowo)" value={zl(o.stripe_fee_est ?? 0)} color="#F8A8D2" onClick={() => go("zamowienia")} />
+        <Kpi label="Wypłaty sprzedawców 92,1%" value={zl(o.seller_payouts)} onClick={() => go("sprzedawcy")} />
+        <Kpi label="Zamówienia (opłacone/łącznie)" value={`${n(o.orders_paid)} / ${n(o.orders)}`} onClick={() => go("zamowienia")} />
+        <Kpi label="Klienci" value={n(o.buyers)} onClick={() => go("klienci")} />
+        <Kpi label="Sprzedawcy zarejestrowani" value={n(o.sellers_total ?? 0)} onClick={() => go("sprzedawcy")} />
+        <Kpi label="Sprzedawcy aktywni" value={n(o.sellers_active)} onClick={() => go("sprzedawcy")} />
+        <Kpi label="Sprzedawcy do KYC" value={n(o.sellers_pending)} color={o.sellers_pending ? "var(--gold)" : undefined} onClick={() => go("sprzedawcy")} />
+        <Kpi label="Oferty aktywne" value={n(o.offers_active)} onClick={() => go("oferty")} />
+        <Kpi label="Zwroty otwarte" value={n(o.returns_open)} color={o.returns_open ? "#F25CB0" : undefined} onClick={() => go("zwroty")} />
       </div>
       {b && (
         <div className="grid gap-4 lg:grid-cols-2 mt-6">
@@ -560,9 +571,10 @@ function CjDrop() {
 // ── FULFILLMENT (dropship + auto-przekaz) ───────────────────────────
 function Fulfillment() {
   const [bridge, setBridge] = useState<any[]>([]);
+  const [ships, setShips] = useState<any[]>([]);
   const [autoFwd, setAutoFwd] = useState(false);
   const [fwdBusy, setFwdBusy] = useState(false);
-  async function load() { setBridge(await bridgeQueue().catch(() => [])); setAutoFwd(await getAutoForward().catch(() => false)); }
+  async function load() { setBridge(await bridgeQueue().catch(() => [])); setAutoFwd(await getAutoForward().catch(() => false)); setShips(await adminShipments().catch(() => [])); }
   useEffect(() => { load(); }, []);
   async function onToggle() {
     const next = !autoFwd;
@@ -606,6 +618,25 @@ function Fulfillment() {
           </Card>
         ))}
         {bridge.length === 0 && <p style={{ color: "var(--mut)" }}>Brak zamówień dropship.</p>}
+      </div>
+
+      <div className="font-semibold mt-8 mb-2">Etykiety GlobKurier{ships.length > 0 && <span className="text-sm font-normal" style={{ color: "var(--mut)" }}> · zarobek platformy: <b style={{ color: "var(--green)" }}>{zl(ships.reduce((a: number, s2: any) => a + Number(s2.margin || 0), 0))}</b></span>}</div>
+      <div className="flex flex-col gap-2">
+        {ships.map((s2: any) => (
+          <Card key={s2.id}>
+            <div className="flex items-center justify-between gap-3 flex-wrap">
+              <div className="min-w-0 text-sm">
+                <b>{s2.carrier ?? "—"}</b> · {s2.gk_number}{s2.tracking_no ? ` · 📦 ${s2.tracking_no}` : ""}
+                <div className="text-xs" style={{ color: "var(--mut)" }}>{s2.seller ?? "—"}{s2.receiver ? ` → ${s2.receiver}` : ""}{s2.city ? ` (${s2.city})` : ""} · {dt(s2.created_at)}</div>
+              </div>
+              <div className="text-sm shrink-0 text-right">
+                <div>sprzedawca zapłacił: <b>{zl(s2.price_charged)}</b></div>
+                <div className="text-xs" style={{ color: "var(--mut)" }}>koszt GK: {zl(s2.cost_net)} · marża: <b style={{ color: "var(--green)" }}>{zl(s2.margin)}</b></div>
+              </div>
+            </div>
+          </Card>
+        ))}
+        {ships.length === 0 && <p style={{ color: "var(--mut)" }}>Brak zakupionych etykiet.</p>}
       </div>
     </>
   );

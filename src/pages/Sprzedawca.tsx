@@ -77,7 +77,7 @@ export default function Sprzedawca() {
             }} />
           <label className="flex items-start gap-2 text-sm" style={{ color: "var(--mut)" }}>
             <input type="checkbox" checked={accept} onChange={(e) => setAccept(e.target.checked)} className="mt-1" />
-            <span>Akceptuję <a href="/legal/regulamin-sprzedawcy.html" target="_blank" className="text-amber-400 underline">Regulamin sprzedawcy</a> oraz <a href="/legal/regulamin.html" target="_blank" className="text-amber-400 underline">Regulamin Sunrise Pay</a> (prowizja 7,9%, wypłata na portfel Sunrise Pay).</span>
+            <span>Akceptuję <a href="/legal/regulamin-sprzedawcy.html" target="_blank" className="text-amber-400 underline">Regulamin sprzedawcy</a> oraz <a href="/legal/regulamin.html" target="_blank" className="text-amber-400 underline">Regulamin Sunrise Pay</a> (prowizja 7,9% liczona od ceny brutto, wypłata na portfel Sunrise Pay).</span>
           </label>
           <button disabled={busy || !accept} className="rounded-xl py-2 font-semibold text-black disabled:opacity-50" style={{ background: "linear-gradient(135deg,#C8965A,#E8C896)" }}>{busy ? "…" : "Aktywuj konto sprzedawcy"}</button>
         </form>
@@ -111,7 +111,7 @@ function Pulpit({ seller, goTab }: { seller: any; goTab: (t: Tab) => void }) {
   return (
     <div className="flex flex-col gap-4">
       <div className="rounded-2xl p-6" style={{ background: "linear-gradient(135deg, rgba(122,184,154,.14), rgba(56,224,240,.10))", border: "1px solid rgba(122,184,154,.3)" }}>
-        <div className="text-sm" style={{ color: "var(--mut)" }}>Sprzedaż netto ({seller.legal_name}) — 92,1% po prowizji 7,9%</div>
+        <div className="text-sm" style={{ color: "var(--mut)" }}>Twoje wpływy ze sprzedaży ({seller.legal_name}) — 92,1% ceny brutto (prowizja 7,9% od brutto)</div>
         <div className="font-display text-4xl font-bold" style={{ color: "var(--green)" }}>{zl(s?.sales_net ?? 0)}</div>
       </div>
       {s && (Number(s.offers_count || 0) === 0 || Number(s.orders_total || 0) === 0) && (
@@ -188,7 +188,7 @@ function Oferty() {
         <textarea className={inp} style={inpStyle} placeholder="Opis" value={desc} onChange={(e) => setDesc(e.target.value)} rows={3} />
         <button type="button" disabled={busy} onClick={async () => { if (!title) { setMsg("Najpierw wpisz nazwę produktu."); return; } setBusy(true); try { setDesc(await genDescription(title, chosen?.name)); } catch (e) { setMsg((e as Error).message); } finally { setBusy(false); } }} className="text-xs px-3 py-1.5 rounded-lg self-start disabled:opacity-50" style={{ background: "var(--glass)", border: "1px solid rgba(200,150,90,.5)", color: "var(--gold)" }}>✨ Generuj opis AI</button>
         <div className="flex gap-3">
-          <input className={inp} style={inpStyle} type="number" min={0} step="0.01" placeholder="Cena zł" value={price || ""} onChange={(e) => setPrice(Number(e.target.value))} required />
+          <input className={inp} style={inpStyle} type="number" min={0} step="0.01" placeholder="Cena brutto (zł)" value={price || ""} onChange={(e) => setPrice(Number(e.target.value))} required />
           <input className={inp} style={inpStyle} type="number" min={0} placeholder="Sztuk" value={stock} onChange={(e) => setStock(Number(e.target.value))} />
         </div>
         <select className={inp} style={inpStyle} value={s1?.slug ?? ""} onChange={(e) => pick1(e.target.value)} required>
@@ -200,7 +200,7 @@ function Oferty() {
           <label className="text-sm cursor-pointer rounded-lg px-3 py-2" style={inpStyle}>{uploading ? "Wgrywam…" : imageUrl ? "Zmień zdjęcie" : "📷 Dodaj zdjęcie"}<input type="file" accept="image/*" onChange={onPickImage} className="hidden" /></label>
           {imageUrl && <img src={imageUrl} alt="podgląd" className="w-12 h-12 rounded-lg object-cover" />}
         </div>
-        <p className="text-xs" style={{ color: "var(--mut)" }}>Kategoria: {chosen?.name ?? "—"}. Prowizja 7,9%, wypłata netto (92,1%) na portfel Sunrise Pay.</p>
+        <p className="text-xs" style={{ color: "var(--mut)" }}>Kategoria: {chosen?.name ?? "—"}. Prowizja 7,9% liczona od ceny brutto — na portfel Sunrise Pay trafia 92,1% ceny brutto.{price > 0 && <> Przy cenie {zl(price)} otrzymasz <b>{zl(price * 0.921)}</b>.</>}</p>
         <button disabled={busy || uploading} className="rounded-xl py-2 font-semibold text-black disabled:opacity-50" style={{ background: "linear-gradient(135deg,#C8965A,#A97B42)" }}>{busy ? "…" : "Wystaw"}</button>
       </form>
       <div>
@@ -247,7 +247,7 @@ function Zamowienia() {
           <div className="flex flex-col gap-0.5">
             {(o.items ?? []).map((it: any, i: number) => <div key={i} className="flex justify-between text-sm"><span>{it.title} × {it.qty}</span><span style={{ color: "var(--mut)" }}>{zl(it.payout)}</span></div>)}
           </div>
-          <div className="text-right text-sm mt-2 pt-2" style={{ borderTop: "1px solid var(--line)" }}>Twoje netto: <b style={{ color: "var(--green)" }}>{zl(o.my_total)}</b></div>
+          <div className="text-right text-sm mt-2 pt-2" style={{ borderTop: "1px solid var(--line)" }}>Twoja wypłata (92,1% brutto): <b style={{ color: "var(--green)" }}>{zl(o.my_total)}</b></div>
         </Card>
       ))}
       {sorders.length === 0 && <p style={{ color: "var(--mut)" }}>Brak zamówień.</p>}
@@ -277,7 +277,7 @@ function Portfel({ seller }: { seller: any }) {
               className="text-sm rounded-lg px-4 py-2 font-semibold text-black w-full text-center" style={{ background: "linear-gradient(135deg,#7AB89A,#38E0F0)" }}>Wypłać na konto →</a>
           </div>
         </div>
-        <div className="text-xs mt-3" style={{ color: "var(--mut)" }}>{w.available ? "Wpływy ze sprzedaży trafiają tu w walucie zapłaty kupującego (Sunrise Pay lub Gold). Wypłatę na konto realizuje MySunrise." : "Po sprzedaży dostajesz zapłatę netto (92,1%) na portfel. Wypłatę na konto zlecasz w MySunrise — minimum 50 zł, standardowo bez opłat, przelew do 1 dnia roboczego."}</div>
+        <div className="text-xs mt-3" style={{ color: "var(--mut)" }}>{w.available ? "Wpływy ze sprzedaży trafiają tu w walucie zapłaty kupującego (Sunrise Pay lub Gold). Wypłatę na konto realizuje MySunrise." : "Po sprzedaży dostajesz 92,1% ceny brutto na portfel (prowizja 7,9% liczona od brutto). Wypłatę na konto zlecasz w MySunrise — minimum 50 zł, standardowo bez opłat, przelew do 1 dnia roboczego."}</div>
       </Card>
       <div>
         <h2 className="font-semibold mb-2">Historia portfela</h2>
@@ -307,7 +307,7 @@ function Statystyki() {
   return (
     <div className="flex flex-col gap-4">
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-        <Kpi label="Sprzedaż netto (92,1%)" value={zl(s?.sales_net ?? 0)} color="var(--green)" />
+        <Kpi label="Wpływy ze sprzedaży (92,1% brutto)" value={zl(s?.sales_net ?? 0)} color="var(--green)" />
         <Kpi label="Zamówienia łącznie" value={String(s?.orders_total ?? 0)} />
         <Kpi label="Aktywne oferty" value={String(s?.offers_count ?? 0)} />
         <Kpi label="Do wysłania" value={String(s?.orders_to_ship ?? 0)} color="var(--gold)" />
