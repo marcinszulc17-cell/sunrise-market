@@ -8,7 +8,7 @@ import {
   cjImport, eproloImport, eproloProbe, eproloForwardOrder, cjDrafts, cjSetStatus, cjActivateAll, cjStats, catalogStats, type CjDraft, type CjStat, type CatalogStat,
 } from "../lib/api";
 
-const zl = (v: number) => Math.round(Number(v || 0)).toLocaleString("pl-PL") + " zł";
+import { zl } from "../lib/money";
 const n = (v: number) => Number(v || 0).toLocaleString("pl-PL");
 const dt = (s: string) => new Date(s).toLocaleString("pl-PL");
 

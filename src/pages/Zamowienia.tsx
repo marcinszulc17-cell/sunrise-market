@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { supabase } from "../lib/supabase";
 import { myOrders, confirmDelivery, openReturn, myReturns } from "../lib/api";
 
-const zl = (v: number) => Math.round(v).toLocaleString("pl-PL") + " zł";
+import { zl } from "../lib/money";
 type Item = { offer_id: string; title: string; qty: number; price: number };
 type Order = { order_id: string; status: string; total: number; cashback: number; created_at: string; shipping_method: string | null; tracking_no: string | null; items: Item[] };
 

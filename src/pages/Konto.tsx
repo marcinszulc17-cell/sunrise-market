@@ -5,7 +5,7 @@ import { walletBalance, myOrders, myReturns, confirmDelivery, openReturn, myWatc
 import { setMode } from "../lib/mode";
 import { useSeo } from "../lib/seo";
 
-const zl = (v: number) => Math.round(Number(v || 0)).toLocaleString("pl-PL") + " zł";
+import { zl } from "../lib/money";
 const dt = (s: string) => new Date(s).toLocaleString("pl-PL");
 
 type Tab = "przeglad" | "zamowienia" | "portfel" | "zyczenia" | "ustawienia";

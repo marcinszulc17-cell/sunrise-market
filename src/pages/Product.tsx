@@ -17,7 +17,7 @@ type Offer = {
 };
 type Review = { rating: number; comment: string | null; author: string; created_at: string };
 
-const zl = (v: number) => Math.round(v).toLocaleString("pl-PL") + " zł";
+import { zl } from "../lib/money";
 function stars(n: number) { const f = Math.round(n); return "★".repeat(f) + "☆".repeat(5 - f); }
 
 function visual(t: string): { emoji: string; from: string; to: string } {

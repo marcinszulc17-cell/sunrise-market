@@ -8,7 +8,7 @@ import {
 } from "../lib/api";
 import { setMode } from "../lib/mode";
 
-const zl = (v: number) => Math.round(Number(v || 0)).toLocaleString("pl-PL") + " zł";
+import { zl } from "../lib/money";
 const dt = (s: string) => new Date(s).toLocaleString("pl-PL");
 const opLabel: Record<string, string> = { topup: "Doładowanie", payment: "Zakup", cashback: "Cashback", refund: "Zwrot", payout: "Wpływ ze sprzedaży" };
 type Cat = { id: string; slug: string; name: string };
