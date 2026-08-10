@@ -273,12 +273,11 @@ function Portfel({ seller }: { seller: any }) {
           {w.available && w.gold != null && <div><div className="text-xs" style={{ color: "var(--mut)" }}>Gold Pay</div><div className="font-display text-2xl font-semibold" style={{ color: "#E8C896" }}>{w.gold.toLocaleString("pl-PL")} <span className="text-base">g</span></div></div>}
           {w.available && <div><div className="text-xs" style={{ color: "var(--mut)" }}>W rozliczeniu</div><div className="font-display text-2xl font-semibold" style={{ color: "var(--gold)" }}>{zl(w.pending ?? 0)}</div></div>}
           <div className="flex items-end">
-            {w.available && w.withdraw_enabled
-              ? <button onClick={() => alert("Wypłata inicjowana po stronie MySunrise (KYC, limity).")} className="text-sm rounded-lg px-4 py-2 font-semibold text-black w-full" style={{ background: "linear-gradient(135deg,#7AB89A,#38E0F0)" }}>Przelej / wypłać</button>
-              : <button disabled title="Dostępne po uruchomieniu modułu wypłat w MySunrise" className="text-sm rounded-lg px-4 py-2 w-full opacity-60 cursor-not-allowed" style={{ background: "var(--glass)", border: "1px solid var(--line)" }}>Wypłać — wkrótce</button>}
+            <a href="https://mysunrise.pl/wallet/wyplata" target="_blank" rel="noreferrer"
+              className="text-sm rounded-lg px-4 py-2 font-semibold text-black w-full text-center" style={{ background: "linear-gradient(135deg,#7AB89A,#38E0F0)" }}>Wypłać na konto →</a>
           </div>
         </div>
-        <div className="text-xs mt-3" style={{ color: "var(--mut)" }}>{w.available ? "Wpływy ze sprzedaży trafiają tu w walucie zapłaty kupującego (Sunrise Pay lub Gold). Wypłatę na konto realizuje MySunrise." : "Po sprzedaży dostajesz zapłatę netto (92,1%) na portfel. Wypłata na konto i saldo Gold ruszą, gdy MySunrise wystawi moduł wypłat."}</div>
+        <div className="text-xs mt-3" style={{ color: "var(--mut)" }}>{w.available ? "Wpływy ze sprzedaży trafiają tu w walucie zapłaty kupującego (Sunrise Pay lub Gold). Wypłatę na konto realizuje MySunrise." : "Po sprzedaży dostajesz zapłatę netto (92,1%) na portfel. Wypłatę na konto zlecasz w MySunrise — minimum 50 zł, standardowo bez opłat, przelew do 1 dnia roboczego."}</div>
       </Card>
       <div>
         <h2 className="font-semibold mb-2">Historia portfela</h2>
