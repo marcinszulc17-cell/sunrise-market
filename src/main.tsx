@@ -1,6 +1,7 @@
 import React from "react";
 import ReactDOM from "react-dom/client";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import Sso from "./pages/Sso";
 import Market from "./pages/Market";
 import Portfel from "./pages/Portfel";
 import Rozliczenia from "./pages/Rozliczenia";
@@ -25,6 +26,7 @@ ReactDOM.createRoot(document.getElementById("root")!).render(
       <Routes>
         <Route path="/" element={<Market />} />
         <Route path="/login" element={<Login />} />
+        <Route path="/sso" element={<Sso />} />
         <Route path="/produkt/:id" element={<Product />} />
         <Route path="/koszyk" element={<Koszyk />} />
         <Route path="/zamowienia" element={<Zamowienia />} />
