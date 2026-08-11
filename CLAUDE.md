@@ -3,17 +3,17 @@
 Te zasady obowiązują we WSZYSTKICH projektach ekosystemu Sunrise i mają
 pierwszeństwo przy każdej zmianie kodu. Nie wolno ich naruszać ani obchodzić.
 
-## 1. Płatność wyłącznie przez portfel Sunrise Pay (INWARIANT)
+## 1. Płatności: portfel promowany + karta do wyboru (decyzja właściciela 2026-08-11)
 
-- Za towar/usługę klient płaci **wyłącznie z salda portfela Sunrise Pay**.
-- **Nie ma** żadnej alternatywnej metody płatności za produkt (karta, BLIK,
-  przelew, COD itd. — zabronione na etapie zakupu).
-- Klient **musi najpierw doładować portfel**. Jeśli saldo < kwota zamówienia,
-  zakup jest zablokowany, a UI kieruje do doładowania brakującej kwoty.
-- **Stripe (i każdy inny zewnętrzny gateway) służy WYŁĄCZNIE do doładowania
-  portfela**, nigdy do bezpośredniej zapłaty za produkt.
-- Realizacja techniczna: checkout woła `pay_from_wallet`; brak środków → błąd
-  `need_topup`. Koszyk pokazuje saldo i blokuje przycisk zapłaty, gdy za mało.
+- **Zakupy jednorazowe**: portfel Sunrise Pay jest metodą **promowaną**
+  (główny przycisk, **jedyna metoda z cashbackiem 3%**) + do wyboru
+  **karta/P24/BLIK przez Stripe** (drugi przycisk, bez cashbacku).
+- **Subskrypcje**: rozliczane **wyłącznie przez Stripe**.
+- Płatność kartą: edge `checkout` z `payment_method='card'` tworzy sesję
+  Stripe Checkout; `stripe-webhook` po opłacie ustawia `paid`, nalicza wypłaty
+  sprzedawcom (te same stawki) i prowizję MLM marki własnej — **bez cashbacku**.
+- Portfel: checkout woła `pay-charge`; brak środków → `need_topup`, UI proponuje
+  punkty/doładowanie w koszyku, a poniżej alternatywę kartą.
 - Integracje fulfillmentu (np. most TeemDrop → WooCommerce) **nie pobierają
   płatności od klienta** — zamówienie w systemie zewnętrznym jest tylko
   sygnałem realizacji (`set_paid: true`), koszt towaru pokrywa operator ze

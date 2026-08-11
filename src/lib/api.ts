@@ -57,8 +57,8 @@ export async function offerImages(id: string): Promise<string[]> {
 }
 // Checkout przez edge function (kupujący z JWT; płaci z portfela, nalicza cashback, dostawa)
 export type ShipAddress = { name: string; phone: string; street: string; city: string; postal: string; country?: string };
-export async function checkout(items: { offer_id: string; qty: number }[], shippingCodes?: string[], shipping?: ShipAddress, coupon?: string) {
-  const { data, error } = await supabase.functions.invoke("checkout", { body: { items, shipping_codes: shippingCodes ?? [], shipping: shipping ?? null, coupon: coupon ?? null } });
+export async function checkout(items: { offer_id: string; qty: number }[], shippingCodes?: string[], shipping?: ShipAddress, coupon?: string, paymentMethod?: "wallet" | "card") {
+  const { data, error } = await supabase.functions.invoke("checkout", { body: { items, shipping_codes: shippingCodes ?? [], shipping: shipping ?? null, coupon: coupon ?? null, payment_method: paymentMethod ?? "wallet" } });
   if (error) throw error;
   return data;
 }
