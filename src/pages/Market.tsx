@@ -2,7 +2,7 @@ import { useEffect, useRef, useState, type MouseEvent } from "react";
 import ThemeToggle from "../components/ThemeToggle";
 import { zl, pkt } from "../lib/money";
 import { getRecent } from "../lib/recent";
-import { searchOffers, homePromoted, activeHomeBanners, activeBanners, categoryCounts, recommendedOffers, toggleWatch, watchedIds, myWatchlist } from "../lib/api";
+import { searchOffers, homePromoted, activeHomeBanners, activeBanners, categoryCounts, recommendedOffers, sponsoredOffers, toggleWatch, watchedIds, myWatchlist } from "../lib/api";
 import { supabase } from "../lib/supabase";
 import { useCart, addToCart, isTestProduct, cleanTitle } from "../lib/cart";
 import SuriChat from "../components/SuriChat";
@@ -182,6 +182,8 @@ export default function Market() {
   const [counts, setCounts] = useState<Record<string, number>>({});
   const [total, setTotal] = useState(0);
   const [recs, setRecs] = useState<Offer[]>([]);
+  // Kampanie reklamowe kupione przez sprzedawcow (ad_campaigns) — platne miejsca w sklepie.
+  const [sponsored, setSponsored] = useState<any[]>([]);
   const [sort, setSort] = useState("trafnosc");
   const [pMin, setPMin] = useState("");
   const [pMax, setPMax] = useState("");
@@ -231,6 +233,7 @@ export default function Market() {
       .then(({ data }) => setDepts((data as Dept[]) ?? []));
     categoryCounts().then(({ byId, total }) => { setCounts(byId); setTotal(total); }).catch(() => {});
     homePromoted().then((d) => setPromoted((d as any[]).map((o) => ({ ...o, score: 1 })) as Offer[])).catch(() => {});
+    sponsoredOffers("search", null, 6).then((d) => setSponsored((d as any[]) ?? [])).catch(() => {});
     activeHomeBanners().then((b) => setBanners((b as Banner[]) ?? [])).catch(() => {});
     activeBanners("category_tile").then((b) => setTiles((b as Banner[]) ?? [])).catch(() => {});
     activeBanners("home_strip").then((b) => setStrips((b as Banner[]) ?? [])).catch(() => {});
@@ -453,6 +456,28 @@ export default function Market() {
           <div className="grid gap-5" style={{ gridTemplateColumns: "repeat(auto-fill,minmax(240px,1fr))" }}>
             {recs.map((o) => (
               <OfferCard key={"r" + o.offer_id} o={o} fav={favs.has(o.offer_id)} onToggleFav={toggleFav} badge="Dla Ciebie" />
+            ))}
+          </div>
+        </section>
+      )}
+
+      {/* ── SPONSOROWANE (kampanie kupione przez sprzedawcow) ── */}
+      {sponsored.length > 0 && (
+        <section className="mx-auto max-w-6xl px-4 pb-4 pt-2">
+          <div className="flex items-baseline justify-between mb-5">
+            <h2 className="font-display text-2xl font-semibold">📣 Sponsorowane</h2>
+            <span className="text-[11px]" style={{ color: "var(--mut)" }}>materiał promocyjny</span>
+          </div>
+          <div className="grid gap-5" style={{ gridTemplateColumns: "repeat(auto-fill,minmax(240px,1fr))" }}>
+            {sponsored.map((o: any) => (
+              <OfferCard
+                key={"s" + o.offer_id}
+                o={{ offer_id: o.offer_id, title: o.title, price_gross: o.price_gross, image_url: o.image_url,
+                     category: "", seller: "", score: 1, rating: 0, reviews: 0 } as any}
+                fav={favs.has(o.offer_id)}
+                onToggleFav={toggleFav}
+                badge={o.own_brand ? "Marka własna" : "Sponsorowane"}
+              />
             ))}
           </div>
         </section>
