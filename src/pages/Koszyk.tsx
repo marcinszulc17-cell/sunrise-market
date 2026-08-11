@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { supabase } from "../lib/supabase";
 import { checkout, validateCoupon, walletBalance, listShippingLanes, cartLanes, recommendedOffers, similarOffers, smartStatus, smartSubscribe, type ShipMethod, type CartLane, type ShipAddress, type CouponCheck } from "../lib/api";
-import { useCart, setQty, removeItem, clearCart, cartTotal, addToCart } from "../lib/cart";
+import { useCart, setQty, removeItem, clearCart, cartTotal, addToCart, cleanTitle } from "../lib/cart";
 import { topupWallet, redeemPoints } from "../lib/payments";
 import { saveIntent, loadIntent, clearIntent } from "../lib/checkoutIntent";
 
@@ -324,7 +324,7 @@ export default function Koszyk() {
                       {(groups[lane] ?? []).map((i) => (
                         <div key={i.offer_id} className="flex items-center gap-3">
                           <div className="flex-1">
-                            <a href={`/produkt/${i.offer_id}`} className="font-medium hover:text-amber-300">{i.title}</a>
+                            <a href={`/produkt/${i.offer_id}`} className="font-medium hover:text-amber-300">{cleanTitle(i.title)}</a>
                             {i.variant && <div className="text-xs" style={{ color: "var(--gold)" }}>{i.variant}</div>}
                             <div className="text-xs" style={{ color: "var(--mut)" }}>{zl(i.price)} / szt.</div>
                           </div>

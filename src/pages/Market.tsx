@@ -4,7 +4,7 @@ import { zl, pkt } from "../lib/money";
 import { getRecent } from "../lib/recent";
 import { searchOffers, homePromoted, activeHomeBanners, activeBanners, categoryCounts, recommendedOffers, toggleWatch, watchedIds, myWatchlist } from "../lib/api";
 import { supabase } from "../lib/supabase";
-import { useCart, addToCart } from "../lib/cart";
+import { useCart, addToCart, isTestProduct, cleanTitle } from "../lib/cart";
 import SuriChat from "../components/SuriChat";
 import NotificationsBell from "../components/NotificationsBell";
 import { useSeo } from "../lib/seo";
@@ -78,6 +78,8 @@ function OfferCard({ o, fav, onToggleFav, badge }: { o: Offer; fav: boolean; onT
   const cashback = Math.round(o.price_gross * 0.03 * 100) / 100;
   const freeShip = o.price_gross >= FREE_SHIP;
   const [added, setAdded] = useState(false);
+  const isTest = isTestProduct(o.title);      // katalog testowy — bez mozliwosci zakupu
+  const shownTitle = cleanTitle(o.title);
 
   // Dodanie do koszyka bez opuszczania katalogu — wcześniej każda karta wypychała
   // użytkownika na stronę produktu, nawet gdy już wiedział, czego chce.
@@ -107,16 +109,23 @@ function OfferCard({ o, fav, onToggleFav, badge }: { o: Offer; fav: boolean; onT
       <div className="p-4 flex flex-col gap-2 flex-1">
         <div className="text-xs" style={{ color: "var(--mut)" }}>{o.seller} · {o.category}</div>
         <Stars rating={o.rating} reviews={o.reviews} />
-        <a href={`/produkt/${o.offer_id}`} className="font-semibold leading-snug flex-1 hover:text-amber-300">{o.title}</a>
+        <a href={`/produkt/${o.offer_id}`} className="font-semibold leading-snug flex-1 hover:text-amber-300">{shownTitle}</a>
 
         <div className="font-display text-2xl font-semibold">{zl(o.price_gross)}</div>
 
         {/* Sygnały zaufania — to, po czym klient decyduje, zanim kliknie */}
         <div className="flex flex-wrap gap-1.5">
+          {isTest ? (
+            <span className="text-[11px] font-semibold px-2 py-1 rounded-full" title="Produkt z katalogu testowego — jeszcze nie w sprzedaży"
+                  style={{ background: "rgba(242,92,176,.14)", color: "#F8A8D2" }}>
+              Produkt testowy — nie do kupienia
+            </span>
+          ) : (
           <span className="text-[11px] font-semibold px-2 py-1 rounded-full" title="1 pkt = 1 zł do wykorzystania w Sunrise Pay"
                 style={{ background: "rgba(122,184,154,.12)", color: "var(--green)" }}>
             Cashback +{pkt(cashback)} pkt
           </span>
+          )}
           {freeShip && (
             <span className="text-[11px] font-semibold px-2 py-1 rounded-full" style={{ background: "rgba(200,150,90,.12)", color: "var(--gold)" }}>
               Darmowa dostawa
@@ -125,10 +134,13 @@ function OfferCard({ o, fav, onToggleFav, badge }: { o: Offer; fav: boolean; onT
         </div>
 
         <div className="flex gap-2 mt-1">
-          <button onClick={add}
-                  className="flex-1 text-center text-sm font-semibold py-2 rounded-xl text-black transition-transform active:scale-95"
-                  style={{ background: added ? "linear-gradient(135deg,#7AB89A,#1DB47A)" : "linear-gradient(135deg,#C8965A,#E8C896)" }}>
-            {added ? "Dodano do koszyka" : "Do koszyka"}
+          <button onClick={add} disabled={isTest}
+                  title={isTest ? "Produkt testowy — chwilowo niedostępny do zakupu" : undefined}
+                  className="flex-1 text-center text-sm font-semibold py-2 rounded-xl transition-transform active:scale-95 disabled:cursor-not-allowed"
+                  style={isTest
+                    ? { background: "var(--glass)", border: "1px solid var(--line)", color: "var(--mut)" }
+                    : { background: added ? "linear-gradient(135deg,#7AB89A,#1DB47A)" : "linear-gradient(135deg,#C8965A,#E8C896)", color: "#000" }}>
+            {isTest ? "Niedostępny" : added ? "Dodano do koszyka" : "Do koszyka"}
           </button>
           <a href={`/produkt/${o.offer_id}`}
              className="px-3 grid place-items-center text-sm rounded-xl"

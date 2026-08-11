@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
 import { getOffer, offerReviews, addReview, offerImages, trackView, similarOffers } from "../lib/api";
 import { pushRecent } from "../lib/recent";
-import { addToCart } from "../lib/cart";
+import { addToCart, isTestProduct, cleanTitle } from "../lib/cart";
 import { supabase } from "../lib/supabase";
 import { useSeo, useProductJsonLd } from "../lib/seo";
 
@@ -52,7 +52,9 @@ export default function Product() {
   const [myComment, setMyComment] = useState("");
   const [revMsg, setRevMsg] = useState<string | null>(null);
 
-  useSeo(o ? o.title : "Produkt", o ? `${o.title} — ${zl(o.price_gross)}. ${(o.description ?? "").slice(0, 140)}` : "Produkt w Sunrise Market.", id ? `/produkt/${id}` : "");
+  const isTest = isTestProduct(o?.title);          // katalog testowy — bez mozliwosci zakupu
+  const shownTitle = cleanTitle(o?.title);
+  useSeo(o ? shownTitle : "Produkt", o ? `${shownTitle} — ${zl(o.price_gross)}. ${(o.description ?? "").slice(0, 140)}` : "Produkt w Sunrise Market.", id ? `/produkt/${id}` : "");
   useProductJsonLd(o ? { id: o.offer_id, name: o.title, price: o.price_gross, image: o.image_url, rating: o.avg_rating, reviews: o.review_count } : null);
 
   const [imgs, setImgs] = useState<string[]>([]);
@@ -147,7 +149,12 @@ export default function Product() {
               <a href={`/?dzial=${o.category_slug}`} className="text-sm" style={{ color: "var(--mut)" }}>
                 {o.seller} · {o.category}
               </a>
-              <h1 className="font-display text-3xl font-semibold leading-tight">{o.title}</h1>
+              <h1 className="font-display text-3xl font-semibold leading-tight">{shownTitle}</h1>
+              {isTest && (
+                <div className="rounded-xl px-3 py-2 text-sm" style={{ background: "rgba(242,92,176,.12)", color: "#F8A8D2", border: "1px solid rgba(242,92,176,.3)" }}>
+                  <b>Produkt testowy.</b> Pozycja z katalogu w przygotowaniu — jeszcze nie można jej kupić.
+                </div>
+              )}
               <div className="text-sm">
                 {o.review_count > 0
                   ? <span style={{ color: "var(--gold)" }}>{stars(o.avg_rating)} <span style={{ color: "var(--mut)" }}>{o.avg_rating.toFixed(1)} · {o.review_count} opinii</span></span>
@@ -216,11 +223,14 @@ export default function Product() {
               )}
               <div className="flex gap-3 mt-2">
                 <button
-                  disabled={needColor || needSize}
-                  onClick={() => { addToCart({ offer_id: o.offer_id, title: o.title, price: o.price_gross, variant: variantLabel || undefined }); window.location.href = "/koszyk"; }}
-                  className="flex-1 text-center font-semibold py-3 rounded-2xl text-black disabled:opacity-50"
-                  style={{ background: "linear-gradient(135deg,#C8965A,#E8C896)" }}>
-                  Do koszyka
+                  disabled={isTest || needColor || needSize}
+                  title={isTest ? "Produkt testowy — chwilowo niedostępny do zakupu" : undefined}
+                  onClick={() => { if (isTest) return; addToCart({ offer_id: o.offer_id, title: o.title, price: o.price_gross, variant: variantLabel || undefined }); window.location.href = "/koszyk"; }}
+                  className="flex-1 text-center font-semibold py-3 rounded-2xl disabled:opacity-50 disabled:cursor-not-allowed"
+                  style={isTest
+                    ? { background: "var(--glass)", border: "1px solid var(--line)", color: "var(--mut)" }
+                    : { background: "linear-gradient(135deg,#C8965A,#E8C896)", color: "#000" }}>
+                  {isTest ? "Niedostępny do zakupu" : "Do koszyka"}
                 </button>
                 <a href="/koszyk" className="px-5 py-3 rounded-2xl text-sm font-medium"
                    style={{ background: "var(--glass)", border: "1px solid var(--line)" }}>
