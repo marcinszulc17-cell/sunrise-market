@@ -17,7 +17,7 @@ export default function Koszyk() {
   const cart = useCart();
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
-  const [done, setDone] = useState<{ order: string; paid: number; cashback: number; balance: number | null } | null>(null);
+  const [done, setDone] = useState<{ order: string; paid: number; cashback: number; balance: number | null; method?: "wallet" | "card" } | null>(null);
 
   const [methods, setMethods] = useState<ShipMethod[]>([]);
   const [lanes, setLanes] = useState<Record<string, CartLane>>({}); // offer_id -> lane info
@@ -119,7 +119,7 @@ export default function Koszyk() {
       const res = await checkout(cart.map((i) => ({ offer_id: i.offer_id, qty: i.qty })), useCodes, useAddr);
       clearIntent();
       clearCart();
-      setDone({ order: res.order_id, paid: res.paid, cashback: res.cashback, balance: res.balance });
+      setDone({ order: res.order_id, paid: res.paid, cashback: res.cashback, balance: res.balance, method: "wallet" });
     } catch (e: any) {
       let m = e?.message ?? String(e);
       try { const b = await e.context.json(); if (b?.error) m = b.error; } catch { /* ignore */ }
@@ -135,6 +135,26 @@ export default function Koszyk() {
     if (!addrOk) { setMsg("Uzupełnij adres dostawy (imię i nazwisko, ulica, miasto, kod)."); return; }
     if (balance != null && balance < grand) { setMsg("Za mało środków w portfelu — doładuj brakującą kwotę poniżej."); return; }
     await runCheckout(addr, selectedCodes);
+  }
+
+  // Płatność kartą (Stripe Checkout) — bez cashbacku; portfel pozostaje promowany.
+  async function payByCard() {
+    setMsg(null);
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) { window.location.href = "/login"; return; }
+    if (!addrOk) { setMsg("Uzupełnij adres dostawy (imię i nazwisko, ulica, miasto, kod)."); return; }
+    setBusy(true);
+    try {
+      const res = await checkout(cart.map((i) => ({ offer_id: i.offer_id, qty: i.qty })), selectedCodes, addr, "card");
+      if (res?.url) { window.location.href = res.url as string; return; }
+      setMsg(res?.error ?? "Nie udało się rozpocząć płatności kartą.");
+      setBusy(false);
+    } catch (e: any) {
+      let m = e?.message ?? String(e);
+      try { const b = await e.context.json(); if (b?.error) m = b.error; } catch { /* ignore */ }
+      setMsg(m);
+      setBusy(false);
+    }
   }
 
   // Auto-doładowanie w checkoutcie: dopłać brakującą kwotę przez Stripe, wróć do koszyka
@@ -187,6 +207,26 @@ export default function Koszyk() {
     }
   }
 
+  // Powrót ze Stripe po płatności kartą za zamówienie (?card=success|cancel).
+  useEffect(() => {
+    const q = new URLSearchParams(window.location.search);
+    const card = q.get("card");
+    if (!card) return;
+    const orderId = q.get("order") ?? "";
+    const paidAmt = Number(q.get("paid") ?? 0);
+    try { window.history.replaceState({}, "", "/koszyk"); } catch { /* ignore */ }
+    if (card === "cancel") {
+      setMsg("Płatność kartą anulowana — koszyk czeka, możesz też zapłacić portfelem.");
+      return;
+    }
+    if (card === "success" && orderId) {
+      clearIntent();
+      clearCart();
+      setDone({ order: orderId, paid: paidAmt, cashback: 0, balance: null, method: "card" });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   // Powrót ze Stripe (?topup=success): odśwież saldo i — jeśli środki wystarczą — dokończ płatność.
   useEffect(() => {
     const p = new URLSearchParams(window.location.search).get("topup");
@@ -237,8 +277,12 @@ export default function Koszyk() {
           <div className="rounded-2xl p-6" style={{ background: "var(--glass)", border: "1px solid rgba(52,227,160,.4)" }}>
             <div className="text-2xl font-display font-semibold mb-2" style={{ color: "var(--green)" }}>Zamówienie opłacone ✅</div>
             <p className="text-sm" style={{ color: "var(--ink)" }}>
-              Zapłacono <b>{zl(done.paid)}</b> z portfela Sunrise Pay. Cashback <b style={{ color: "var(--green)" }}>+{pkt(done.cashback)} pkt</b> trafił na portfel
-              {done.balance != null && <> — nowe saldo: <b>{zl(done.balance)}</b></>}.
+              {done.method === "card" ? (
+                <>Zapłacono {done.paid > 0 ? <b>{zl(done.paid)}</b> : null} kartą (Stripe). Cashback 3% przysługuje przy płatności portfelem Sunrise Pay — następnym razem doładuj portfel i zgarnij punkty.</>
+              ) : (
+                <>Zapłacono <b>{zl(done.paid)}</b> z portfela Sunrise Pay. Cashback <b style={{ color: "var(--green)" }}>+{pkt(done.cashback)} pkt</b> trafił na portfel
+                {done.balance != null && <> — nowe saldo: <b>{zl(done.balance)}</b></>}.</>
+              )}
             </p>
             <p className="text-xs mt-2" style={{ color: "var(--mut)" }}>Nr zamówienia: {done.order}</p>
             <div className="flex gap-3 mt-4">
@@ -396,16 +440,29 @@ export default function Koszyk() {
                   </button>
                   {!addrOk && <div className="text-xs" style={{ color: "var(--gold)" }}>Najpierw uzupełnij adres dostawy powyżej.</div>}
                   <a href="/portfel" className="text-center text-xs underline" style={{ color: "var(--mut)" }}>albo doładuj w aplikacji MySunrise</a>
+                  <div className="text-center text-xs pt-1" style={{ color: "var(--mut)" }}>— albo bez portfela —</div>
+                  <button onClick={payByCard} disabled={busy || resuming || !addrOk}
+                          className="w-full rounded-xl py-3 font-semibold disabled:opacity-50"
+                          style={{ background: "var(--glass)", border: "1px solid var(--line)", color: "var(--ink)" }}>
+                    💳 Zapłać kartą (Stripe) — bez cashbacku
+                  </button>
                 </div>
               ) : (
-                <button onClick={pay} disabled={busy || resuming || !addrOk || (balance != null && !enoughFunds)}
-                        className="w-full rounded-xl py-3 font-semibold text-black disabled:opacity-50"
-                        style={{ background: "linear-gradient(135deg,#F2731D,#D9560C)" }}>
-                  {resuming ? "Dokańczam zamówienie…" : busy ? "Płacę…" : "Zapłać saldem (Sunrise Pay)"}
-                </button>
+                <div className="flex flex-col gap-2">
+                  <button onClick={pay} disabled={busy || resuming || !addrOk || (balance != null && !enoughFunds)}
+                          className="w-full rounded-xl py-3 font-semibold text-black disabled:opacity-50"
+                          style={{ background: "linear-gradient(135deg,#F2731D,#D9560C)" }}>
+                    {resuming ? "Dokańczam zamówienie…" : busy ? "Płacę…" : "Zapłać saldem (Sunrise Pay) · +3% cashback"}
+                  </button>
+                  <button onClick={payByCard} disabled={busy || resuming || !addrOk}
+                          className="w-full rounded-xl py-2.5 text-sm font-semibold disabled:opacity-50"
+                          style={{ background: "var(--glass)", border: "1px solid var(--line)", color: "var(--ink)" }}>
+                    💳 Zapłać kartą (Stripe) — bez cashbacku
+                  </button>
+                </div>
               )}
               <p className="text-xs mt-3" style={{ color: "var(--mut)" }}>
-                Płatność wyłącznie z portfela Sunrise Pay. Doładowanie kartą (Stripe) zasila portfel; po zakupie 3% wraca jako punkty.
+                Portfel Sunrise Pay = 3% cashbacku po zakupie. Karta (Stripe) — szybka płatność bez cashbacku. Subskrypcje rozliczane wyłącznie przez Stripe.
               </p>
             </div>
           </div>
