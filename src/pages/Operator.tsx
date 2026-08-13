@@ -121,7 +121,7 @@ function Pulpit({ go }: { go: (t: Tab) => void }) {
           <span>Prowizje ze sprzedaży (po cashbacku): <b style={{ color: "var(--ink)" }}>{zl(o.company_sales ?? 0)}</b></span>
           <span>Wysyłki: <b style={{ color: "var(--ink)" }}>{zl(o.shipping_income ?? 0)}</b></span>
           <span>Promowanie ofert: <b style={{ color: "var(--ink)" }}>{zl(o.ads_income ?? 0)}</b></span>
-          <span>− Stripe (szac. 1,4% + 1 zł/transakcja): <b style={{ color: "#F8A8D2" }}>{zl(o.stripe_fee_est ?? 0)}</b></span>
+          <span>− Stripe (realne opłaty): <b style={{ color: "#F8A8D2" }}>{zl(o.stripe_fee_real ?? 0)}</b></span>
         </div>
       </div>
       <div className="grid gap-4 sm:grid-cols-3">
@@ -130,7 +130,7 @@ function Pulpit({ go }: { go: (t: Tab) => void }) {
         <Kpi label="Cashback 3% (do klientów)" value={zl(o.cashback)} onClick={() => go("klienci")} />
         <Kpi label="Zarobek na wysyłkach (GlobKurier)" value={zl(o.shipping_income ?? 0)} color="var(--green)" onClick={() => go("fulfillment")} />
         <Kpi label="Promowanie ofert (przychód)" value={zl(o.ads_income ?? 0)} onClick={() => go("oferty")} />
-        <Kpi label="Prowizja Stripe (szacunkowo)" value={zl(o.stripe_fee_est ?? 0)} color="#F8A8D2" onClick={() => go("zamowienia")} />
+        <Kpi label="Opłaty Stripe (realne)" value={zl(o.stripe_fee_real ?? 0)} color="#F8A8D2" onClick={() => go("zamowienia")} />
         <Kpi label="Wypłaty sprzedawców 92,1%" value={zl(o.seller_payouts)} onClick={() => go("sprzedawcy")} />
         <Kpi label="Zamówienia (opłacone/łącznie)" value={`${n(o.orders_paid)} / ${n(o.orders)}`} onClick={() => go("zamowienia")} />
         <Kpi label="Klienci" value={n(o.buyers)} onClick={() => go("klienci")} />
