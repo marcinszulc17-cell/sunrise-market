@@ -13,8 +13,7 @@ export default function Cennik() {
       <header className="sticky top-0 z-20 backdrop-blur" style={{ background: "var(--header)", borderBottom: "1px solid var(--line)" }}>
         <div className="mx-auto max-w-4xl px-4 py-3 flex items-center gap-3">
           <a href="/" className="flex items-center gap-2">
-            <div className="w-9 h-9 rounded-xl grid place-items-center text-lg" style={{ background: "linear-gradient(135deg,#C8965A,#E8C896)" }}>☀</div>
-            <span className="font-display text-xl font-semibold">Sunrise Market</span>
+            <img src="/logo-sunrise-market.png" alt="Sunrise Market" className="h-8 w-auto rounded-lg bg-white p-1" onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = "none"; }} />
           </a>
           <div className="flex-1" />
           <a href="/sprzedawca" className="text-sm navlink">Zostań sprzedawcą →</a>

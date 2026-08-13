@@ -302,9 +302,7 @@ export default function Market() {
               style={{ background: "var(--header)", borderBottom: "1px solid var(--line)" }}>
         <div className="mx-auto max-w-6xl px-4 py-3 flex items-center gap-3">
           <a href="/" className="flex items-center gap-2 shrink-0">
-            <div className="w-9 h-9 rounded-xl grid place-items-center text-lg shadow-lg"
-                 style={{ background: "linear-gradient(135deg,#C8965A,#E8C896)", boxShadow: "0 6px 20px -6px rgba(200,150,90,.6)" }}>☀</div>
-            <span className="font-display text-xl font-semibold tracking-tight">Sunrise Market</span>
+            <img src="/logo-sunrise-market.png" alt="Sunrise Market" className="h-8 w-auto rounded-lg bg-white p-1 shadow-lg" onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = "none"; }} />
           </a>
           <div className="flex-1 relative">
             <div className="flex items-center rounded-xl overflow-hidden"
