@@ -1,0 +1,56 @@
+@import url('https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&display=swap');
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --bg: #0E1729;
+  --ink: #EDE7D6;
+  --mut: #A39E8C;
+  --line: rgba(237,231,214,.12);
+  --glass: rgba(20,32,54,.55);
+  --primary: #C8965A;
+  --primaryd: #A97B42;
+  --gold: #E8C896;
+  --green: #7AB89A;
+  --header: rgba(10,18,36,.72);
+}
+
+/* Motyw jasny */
+html[data-theme="light"] {
+  --bg: #F5F6FB;
+  --ink: #16161F;
+  --mut: #5C5C70;
+  --line: rgba(0,0,0,.10);
+  --glass: rgba(255,255,255,.78);
+  --header: rgba(255,255,255,.85);
+}
+
+html, body, #root { min-height: 100%; }
+body {
+  margin: 0;
+  font-family: 'Manrope', system-ui, sans-serif;
+  color: var(--ink);
+  background:
+    radial-gradient(1200px 600px at 80% -10%, rgba(200,150,90,.18), transparent 60%),
+    radial-gradient(900px 500px at -10% 10%, rgba(90,138,229,.16), transparent 55%),
+    var(--bg);
+  background-attachment: fixed;
+}
+html[data-theme="light"] body {
+  background:
+    radial-gradient(1100px 560px at 82% -12%, rgba(200,150,90,.12), transparent 60%),
+    radial-gradient(820px 460px at -8% 8%, rgba(90,138,229,.10), transparent 55%),
+    var(--bg);
+}
+.font-display { font-family: 'Fraunces', serif; }
+
+.card-glow { transition: transform .18s ease, box-shadow .18s ease, border-color .18s ease; }
+.card-glow:hover {
+  transform: translateY(-3px);
+  border-color: rgba(200,150,90,.45);
+  box-shadow: 0 12px 40px -12px rgba(200,150,90,.35);
+}
+
+.navlink{color:var(--mut);transition:color .15s}
+.navlink:hover{color:var(--ink)}
