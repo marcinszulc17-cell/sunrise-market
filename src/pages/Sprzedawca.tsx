@@ -4,6 +4,7 @@ import { getMySeller } from "../lib/payments";
 import {
   becomeSeller, myOffers, createOffer, topCategories, childCategories, uploadProductImage,
   mySubscription, promoteOffer, sellerOrders, markShipped, sellerWallet, sellerSummary, walletHistory, adRates, adBuy, genDescription,
+  myBannerStats,
   type SellerWallet,
 } from "../lib/api";
 import { setMode } from "../lib/mode";
@@ -569,6 +570,59 @@ function Reklamy() {
         <button onClick={buy} disabled={busy} className="text-sm font-semibold px-4 py-2 rounded-xl text-black disabled:opacity-50" style={{ background: "linear-gradient(135deg,#C8965A,#E8C896)" }}>{busy ? "Uruchamiam…" : "Uruchom reklamę"}</button>
         {msg && <div className="mt-2 text-sm" style={{ color: "var(--gold)" }}>{msg}</div>}
       </Card>
+      <StatystykiBanerow />
     </div>
+  );
+}
+
+// Wyniki kampanii banerowych sprzedawcy: co kupil, ile go to kosztowalo i co dostal w zamian.
+function StatystykiBanerow() {
+  const [rows, setRows] = useState<any[]>([]);
+  const [loaded, setLoaded] = useState(false);
+  useEffect(() => { myBannerStats().then((d) => setRows(d ?? [])).catch(() => {}).finally(() => setLoaded(true)); }, []);
+  if (!loaded) return null;
+  return (
+    <Card>
+      <div className="font-semibold mb-1">📊 Twoje bannery — wyniki</div>
+      {rows.length === 0 ? (
+        <p className="text-xs" style={{ color: "var(--mut)" }}>
+          Nie masz jeszcze wykupionych banerów. Odsłony i kliknięcia liczymy od momentu startu kampanii —
+          baner rozliczany jest ryczałtem za dzień, więc statystyki niczego nie kosztują.
+        </p>
+      ) : (
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead>
+              <tr style={{ color: "var(--mut)" }} className="text-left text-xs">
+                <th className="py-2 pr-3">Miejsce</th>
+                <th className="py-2 pr-3">Termin</th>
+                <th className="py-2 pr-3 text-right">Zapłacono</th>
+                <th className="py-2 pr-3 text-right">Odsłony</th>
+                <th className="py-2 pr-3 text-right">Kliknięcia</th>
+                <th className="py-2 text-right">CTR</th>
+              </tr>
+            </thead>
+            <tbody>
+              {rows.map((r) => (
+                <tr key={r.id} style={{ borderTop: "1px solid var(--line)" }}>
+                  <td className="py-2 pr-3">
+                    {r.slot_name}
+                    {r.trwa
+                      ? <span className="ml-2 text-[10px] px-1.5 py-0.5 rounded-full" style={{ background: "rgba(80,200,120,.15)", color: "#6ee7a0" }}>trwa</span>
+                      : <span className="ml-2 text-[10px]" style={{ color: "var(--mut)" }}>zakończona</span>}
+                    {r.headline ? <div className="text-[11px]" style={{ color: "var(--mut)" }}>{r.headline}</div> : null}
+                  </td>
+                  <td className="py-2 pr-3 text-xs" style={{ color: "var(--mut)" }}>{r.starts_on} → {r.ends_on}</td>
+                  <td className="py-2 pr-3 text-right">{zl(r.amount_paid)}</td>
+                  <td className="py-2 pr-3 text-right">{Number(r.impressions).toLocaleString("pl-PL")}</td>
+                  <td className="py-2 pr-3 text-right">{Number(r.clicks).toLocaleString("pl-PL")}</td>
+                  <td className="py-2 text-right" style={{ color: "var(--gold)" }}>{Number(r.ctr).toFixed(2)}%</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </Card>
   );
 }

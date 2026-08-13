@@ -2,7 +2,7 @@ import { useEffect, useRef, useState, type MouseEvent } from "react";
 import ThemeToggle from "../components/ThemeToggle";
 import { zl, pkt } from "../lib/money";
 import { getRecent } from "../lib/recent";
-import { searchOffers, homePromoted, activeHomeBanners, activeBanners, categoryCounts, recommendedOffers, sponsoredOffers, toggleWatch, watchedIds, myWatchlist } from "../lib/api";
+import { searchOffers, homePromoted, categoryCounts, recommendedOffers, sponsoredOffers, toggleWatch, watchedIds, myWatchlist, bannersFor, bannerView, bannerClick } from "../lib/api";
 import { supabase } from "../lib/supabase";
 import { useCart, addToCart, isTestProduct, cleanTitle } from "../lib/cart";
 import SuriChat from "../components/SuriChat";
@@ -13,6 +13,39 @@ const FREE_SHIP = 149;   // musi być spójne z Koszyk.tsx
 
 type Offer = { offer_id: string; title: string; price_gross: number; category: string; seller: string; score: number; rating: number; reviews: number; image_url: string | null };
 type Dept = { id?: string; slug: string; name: string };
+type Ad = { id: string; headline: string; link_url: string; image_url: string | null; seller: string };
+
+/**
+ * Pojedyncze miejsce reklamowe. Zlicza odslone (raz na sesje) przy wejsciu w kadr
+ * oraz kliknięcie — dzieki temu sprzedawca widzi w panelu, co dostal za swoje pieniadze.
+ * Reklamy sa rozliczane ryczaltem za dzien, wiec licznik nie wplywa na zadna kwote.
+ */
+function AdSlot({ ad, width, height, label, className = "" }: {
+  ad: Ad; width: number; height: number; label?: string; className?: string;
+}) {
+  const ref = useRef<HTMLAnchorElement | null>(null);
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    if (typeof IntersectionObserver === "undefined") { bannerView(ad.id); return; }
+    const io = new IntersectionObserver((entries) => {
+      for (const e of entries) if (e.isIntersecting) { bannerView(ad.id); io.disconnect(); }
+    }, { threshold: 0.4 });
+    io.observe(el);
+    return () => io.disconnect();
+  }, [ad.id]);
+  return (
+    <a ref={ref} href={ad.link_url || "/"} onClick={() => bannerClick(ad.id)}
+       className={`block rounded-2xl overflow-hidden relative ${className}`}
+       style={{ border: "1px solid var(--line)" }}>
+      <img src={ad.image_url!} alt={ad.headline} loading="lazy" width={width} height={height} className="block w-full h-auto" />
+      <span className="absolute top-2 right-2 text-[10px] px-2 py-0.5 rounded-full"
+            style={{ background: "rgba(0,0,0,.55)", color: "rgba(255,255,255,.8)" }}>
+        {label ?? "reklama"}
+      </span>
+    </a>
+  );
+}
 
 function Stars({ rating, reviews }: { rating: number; reviews: number }) {
   if (!reviews) return <span className="text-xs" style={{ color: "var(--mut)" }}>Nowość</span>;
@@ -168,7 +201,7 @@ export default function Market() {
   const cart = useCart();
   const cartN = cart.reduce((n, x) => n + x.qty, 0);
   const [promoted, setPromoted] = useState<Offer[]>([]);
-  type Banner = { headline: string; link_url: string; image_url: string | null; seller: string };
+  type Banner = Ad;
   const [banners, setBanners] = useState<Banner[]>([]);
   const [bi, setBi] = useState(0); // aktywny baner (rotacja)
   const [sugg, setSugg] = useState<Offer[]>([]);        // podpowiedzi wyszukiwarki
@@ -184,6 +217,9 @@ export default function Market() {
   const [recs, setRecs] = useState<Offer[]>([]);
   // Kampanie reklamowe kupione przez sprzedawcow (ad_campaigns) — platne miejsca w sklepie.
   const [sponsored, setSponsored] = useState<any[]>([]);
+  const [deptAd, setDeptAd] = useState<Banner | null>(null);   // baner w dziale (dept_banner)
+  const [searchAd, setSearchAd] = useState<Banner | null>(null); // baner przy frazie (search_slot)
+  const [promoAds, setPromoAds] = useState<Banner[]>([]);      // strefa promocji (newsletter)
   const [sort, setSort] = useState("trafnosc");
   const [pMin, setPMin] = useState("");
   const [pMax, setPMax] = useState("");
@@ -207,6 +243,12 @@ export default function Market() {
   async function load(query: string | null, slug: string | null = null, sortOverride?: string, lim = 24) {
     if (lim > 24) setMore(true); else setLoading(true);
     setErr(null); setCurSlug(slug); setLimit(lim);
+    // Reklamy kontekstowe: baner dzialu i baner przy frazie. Doładowujemy razem z wynikami,
+    // zeby nie strzelac do bazy przy kazdym wcisnieciu klawisza w wyszukiwarce.
+    if (slug) bannersFor("dept_banner", slug, null).then((b) => setDeptAd((b as Banner[])[0] ?? null)).catch(() => setDeptAd(null));
+    else setDeptAd(null);
+    if (query && query.trim()) bannersFor("search_slot", null, query.trim()).then((b) => setSearchAd((b as Banner[])[0] ?? null)).catch(() => setSearchAd(null));
+    else setSearchAd(null);
     try {
       setOffers(await searchOffers(query, slug, {
         sort: sortOverride ?? sort,
@@ -234,11 +276,12 @@ export default function Market() {
     categoryCounts().then(({ byId, total }) => { setCounts(byId); setTotal(total); }).catch(() => {});
     homePromoted().then((d) => setPromoted((d as any[]).map((o) => ({ ...o, score: 1 })) as Offer[])).catch(() => {});
     sponsoredOffers("search", null, 6).then((d) => setSponsored((d as any[]) ?? [])).catch(() => {});
-    activeHomeBanners().then((b) => setBanners((b as Banner[]) ?? [])).catch(() => {});
-    activeBanners("category_tile").then((b) => setTiles((b as Banner[]) ?? [])).catch(() => {});
-    activeBanners("home_strip").then((b) => setStrips((b as Banner[]) ?? [])).catch(() => {});
+    bannersFor("home_hero").then((b) => setBanners((b as Banner[]) ?? [])).catch(() => {});
+    bannersFor("category_tile").then((b) => setTiles((b as Banner[]) ?? [])).catch(() => {});
+    bannersFor("home_strip").then((b) => setStrips((b as Banner[]) ?? [])).catch(() => {});
+    bannersFor("newsletter").then((b) => setPromoAds((b as Banner[]) ?? [])).catch(() => {});
     setRecent(getRecent());
-    activeBanners("sidebar_rail").then((b) => setRail((b as Banner[]) ?? [])).catch(() => {});
+    bannersFor("sidebar_rail").then((b) => setRail((b as Banner[]) ?? [])).catch(() => {});
     supabase.auth.getUser().then(({ data }) => {
       setAuthed(!!data.user);
       if (data.user) {
@@ -256,6 +299,14 @@ export default function Market() {
     const t = setInterval(() => setBi((i) => (i + 1) % banners.length), 6000);
     return () => clearInterval(t);
   }, [banners.length]);
+
+  // odslony banerow rotacyjnych (hero / pasek / rail) — kazdy liczony raz na sesje
+  useEffect(() => {
+    for (const list of [banners, strips, rail]) {
+      const b = list[bi % (list.length || 1)];
+      if (b) bannerView(b.id);
+    }
+  }, [banners, strips, rail, bi]);
 
   // poziom 1: dział
   async function pickDept(d: Dept | null) {
@@ -388,7 +439,7 @@ export default function Market() {
         const b = banners[bi] ?? banners[0];
         return (
           <div className="mx-auto max-w-6xl px-4 pt-5">
-            <a href={b.link_url || "/"} className="block rounded-2xl overflow-hidden relative"
+            <a href={b.link_url || "/"} onClick={() => bannerClick(b.id)} className="block rounded-2xl overflow-hidden relative"
                style={{ border: "1px solid rgba(200,150,90,.28)", boxShadow: "0 18px 50px -22px rgba(200,150,90,.4)" }}>
               {b.image_url ? (
                 <picture>
@@ -440,10 +491,9 @@ export default function Market() {
           <h2 className="font-display text-2xl font-semibold mb-5">⚡ Strefa Energii Sunrise</h2>
           <div className="flex gap-4 overflow-x-auto pb-2 px-1 -mx-1" style={{ scrollSnapType: "x mandatory" }}>
             {tiles.map((t, i) => (
-              <a key={i} href={t.link_url || "/"} className="shrink-0 w-[300px] sm:w-[340px] rounded-2xl overflow-hidden transition-transform hover:-translate-y-0.5"
-                 style={{ border: "1px solid var(--line)", boxShadow: "0 10px 30px -18px rgba(0,0,0,.6)", scrollSnapAlign: "start" }}>
-                <img src={t.image_url!} alt={t.headline} loading="lazy" width={640} height={360} className="block w-full h-auto" />
-              </a>
+              <div key={t.id ?? i} className="shrink-0 w-[300px] sm:w-[340px]" style={{ scrollSnapAlign: "start" }}>
+                <AdSlot ad={t} width={640} height={360} className="transition-transform hover:-translate-y-0.5" />
+              </div>
             ))}
           </div>
         </section>
@@ -496,16 +546,26 @@ export default function Market() {
       )}
 
       {/* ── PASEK PROMOCYJNY (strip 1300x220, rotacja) ── */}
-      {!activeDept && !q && strips.length > 0 && (() => {
-        const sB = strips[bi % strips.length];
-        return (
-          <div className="mx-auto max-w-6xl px-4 pb-8">
-            <a href={sB.link_url || "/"} className="block rounded-2xl overflow-hidden" style={{ border: "1px solid var(--line)" }}>
-              <img src={sB.image_url!} alt={sB.headline} loading="lazy" width={1300} height={220} className="block w-full h-auto" />
-            </a>
+      {!activeDept && !q && strips.length > 0 && (
+        <div className="mx-auto max-w-6xl px-4 pb-8">
+          <AdSlot ad={strips[bi % strips.length]} width={1300} height={220} />
+        </div>
+      )}
+
+      {/* ── STREFA PROMOCJI (slot newsletter — dotad sprzedawalny, ale bez miejsca w sklepie) ── */}
+      {!activeDept && !q && promoAds.length > 0 && (
+        <section className="mx-auto max-w-6xl px-4 pb-8">
+          <div className="flex items-baseline justify-between mb-5">
+            <h2 className="font-display text-2xl font-semibold">🎁 Strefa promocji</h2>
+            <span className="text-[11px]" style={{ color: "var(--mut)" }}>materiał promocyjny</span>
           </div>
-        );
-      })()}
+          <div className="grid gap-4" style={{ gridTemplateColumns: "repeat(auto-fill,minmax(320px,1fr))" }}>
+            {promoAds.map((p) => (
+              <AdSlot key={p.id} ad={p} width={640} height={360} label="promocja" />
+            ))}
+          </div>
+        </section>
+      )}
 
       {/* ── OSTATNIO OGLĄDANE ── */}
       {!activeDept && !q && recent.length > 0 && (
@@ -532,6 +592,13 @@ export default function Market() {
 
       {/* ── OFERTY ── */}
       <section className="mx-auto max-w-6xl px-4 pb-20">
+        {/* baner dzialu (dept_banner) i baner przy frazie (search_slot) — reklamy kontekstowe */}
+        {!wishMode && deptAd && (
+          <div className="mb-6"><AdSlot ad={deptAd} width={1300} height={220} /></div>
+        )}
+        {!wishMode && searchAd && (
+          <div className="mb-6"><AdSlot ad={searchAd} width={1300} height={220} label="reklama · dopasowana do wyszukiwania" /></div>
+        )}
         <div className="flex gap-6 items-start">
           <div className="flex-1 min-w-0">
         <div className="flex items-center justify-between mb-4 flex-wrap gap-3">
@@ -620,9 +687,7 @@ export default function Market() {
           </div>
           {rail.length > 0 && (
             <aside className="hidden lg:block w-[300px] shrink-0 sticky top-24">
-              <a href={rail[bi % rail.length].link_url || "/"} className="block rounded-2xl overflow-hidden" style={{ border: "1px solid var(--line)" }}>
-                <img src={rail[bi % rail.length].image_url!} alt={rail[bi % rail.length].headline} loading="lazy" width={300} height={600} className="block w-full h-auto" />
-              </a>
+              <AdSlot ad={rail[bi % rail.length]} width={300} height={600} />
             </aside>
           )}
         </div>

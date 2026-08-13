@@ -213,6 +213,33 @@ export async function activeHomeBanners() {
 export async function activeBanners(slot: string) {
   const { data, error } = await supabase.rpc("active_banners", { p_slot: slot }); if (error) throw error; return (data as any[]) ?? [];
 }
+
+// ── Bannery reklamowe ─────────────────────────────────────────────
+// banners_for zwraca dodatkowo id kampanii (potrzebne do liczenia odslon/klikniec)
+// oraz pozwala zawezic wyniki do dzialu (p_dept) albo frazy wyszukiwania (p_query).
+export async function bannersFor(slot: string, dept: string | null = null, query: string | null = null) {
+  const { data, error } = await supabase.rpc("banners_for", { p_slot: slot, p_dept: dept, p_query: query });
+  if (error) throw error; return (data as any[]) ?? [];
+}
+// Odslona liczona raz na sesje na baner — inaczej samo przewijanie strony zawyzaloby statystyki.
+export function bannerView(id: string) {
+  if (!id) return;
+  try {
+    const key = "sunrise_banner_seen";
+    const seen: string[] = JSON.parse(sessionStorage.getItem(key) || "[]");
+    if (seen.includes(id)) return;
+    seen.push(id);
+    sessionStorage.setItem(key, JSON.stringify(seen.slice(-100)));
+  } catch { /* brak sessionStorage — liczymy mimo to */ }
+  supabase.rpc("banner_view", { p_banner: id }).then(() => {}, () => {});
+}
+export function bannerClick(id: string) {
+  if (!id) return;
+  supabase.rpc("banner_click", { p_banner: id }).then(() => {}, () => {});
+}
+export async function myBannerStats() {
+  const { data, error } = await supabase.rpc("my_banner_stats"); if (error) throw error; return (data as any[]) ?? [];
+}
 export async function promoteOffer(offerId: string, days: number) {
   const { data, error } = await supabase.rpc("my_promote_offer", { p_offer: offerId, p_days: days });
   if (error) throw error; return Number(data);
