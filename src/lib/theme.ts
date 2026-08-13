@@ -9,7 +9,7 @@ export function applyTheme(t: Theme) {
   if (t === "light") document.documentElement.setAttribute("data-theme", "light");
   else document.documentElement.removeAttribute("data-theme");
   const meta = document.querySelector('meta[name="theme-color"]');
-  if (meta) meta.setAttribute("content", t === "light" ? "#F5F6FB" : "#07070F");
+  if (meta) meta.setAttribute("content", t === "light" ? "#F5F6FB" : "#0E1729");
 }
 export function setTheme(t: Theme) { try { localStorage.setItem(KEY, t); } catch { /* ignore */ } applyTheme(t); }
 export function initTheme() { applyTheme(getTheme()); }

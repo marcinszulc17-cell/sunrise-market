@@ -12,6 +12,7 @@ export type CheckoutIntent = {
   shippingCodes: string[];
   grand: number; // kwota do zapłaty w chwili doładowania (kontrola spójności)
   topup: number; // kwota doładowania zainicjowana
+  coupon?: string; // opcjonalny kod rabatowy
   ts: number;    // znacznik czasu utworzenia
 };
 

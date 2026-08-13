@@ -13,6 +13,10 @@ Thumbs.db
 .idea/
 .vscode/
 
-# smietnik na zawieszone blokady gita (nie trafia do repo)
+# tymczasowe pliki Cowork
 _git_lock_trash/
 _to_delete/
+
+# smietnik na zawieszone blokady gita (nie trafia do repo)
+_git_lock_trash/
+_git_trash/

@@ -33,7 +33,7 @@ export default function NotificationsBell() {
       </button>
       {open && (
         <div className="absolute right-0 mt-2 w-80 max-w-[90vw] rounded-2xl overflow-hidden z-40"
-             style={{ background: "rgba(12,12,24,.98)", border: "1px solid var(--line)" }}>
+             style={{ background: "rgba(20,32,54,.98)", border: "1px solid var(--line)" }}>
           <div className="px-4 py-3 text-sm font-semibold" style={{ borderBottom: "1px solid var(--line)" }}>Powiadomienia</div>
           <div className="max-h-96 overflow-y-auto">
             {items.length === 0 && <div className="px-4 py-6 text-sm" style={{ color: "var(--mut)" }}>Brak powiadomień.</div>}

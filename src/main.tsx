@@ -1,6 +1,7 @@
 import React from "react";
 import ReactDOM from "react-dom/client";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import Sso from "./pages/Sso";
 import Market from "./pages/Market";
 import Portfel from "./pages/Portfel";
 import Rozliczenia from "./pages/Rozliczenia";
@@ -16,6 +17,8 @@ import { initTheme } from "./lib/theme";
 import "./index.css";
 
 initTheme();
+// Link polecajacy ambasadora: zapamietaj kod z ?ref= do czasu logowania.
+try { const _r = new URLSearchParams(window.location.search).get("ref"); if (_r && _r.trim()) localStorage.setItem("sunrise_ref", _r.trim().slice(0, 64)); } catch { /* ignore */ }
 
 ReactDOM.createRoot(document.getElementById("root")!).render(
   <React.StrictMode>
@@ -23,6 +26,7 @@ ReactDOM.createRoot(document.getElementById("root")!).render(
       <Routes>
         <Route path="/" element={<Market />} />
         <Route path="/login" element={<Login />} />
+        <Route path="/sso" element={<Sso />} />
         <Route path="/produkt/:id" element={<Product />} />
         <Route path="/koszyk" element={<Koszyk />} />
         <Route path="/zamowienia" element={<Zamowienia />} />
@@ -33,6 +37,7 @@ ReactDOM.createRoot(document.getElementById("root")!).render(
         <Route path="/sprzedawca" element={<Sprzedawca />} />
         <Route path="/sprzedawca/rozliczenia" element={<Rozliczenia />} />
         {/* Daniel dodaje kolejne trasy: /produkt/:id, /sprzedawca, /operator */}
+        <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </BrowserRouter>
   </React.StrictMode>,
