@@ -66,7 +66,7 @@ export default function Portfel() {
   return (
     <div className="mx-auto max-w-2xl px-4 py-8">
       <div className="flex items-center gap-2 mb-6">
-        <a href="/" className="flex items-center gap-2"><div className="w-8 h-8 rounded-lg grid place-items-center" style={{ background: "linear-gradient(135deg,#C8965A,#E8C896)", color: "#241606" }}>☀</div><span className="font-display text-lg font-semibold">Sunrise Market</span></a>
+        <a href="/" className="flex items-center gap-2"><img src="/logo-sunrise-market.png" alt="Sunrise Market" className="h-7 w-auto rounded-lg bg-white p-1" onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = "none"; }} /></a>
         <div className="flex-1" />
         <a href="/koszyk" className="navlink text-sm">🛒 Koszyk</a>
         <a href="/zamowienia" className="navlink text-sm">Zamówienia</a>
