@@ -353,7 +353,7 @@ export default function Market() {
               style={{ background: "var(--header)", borderBottom: "1px solid var(--line)" }}>
         <div className="mx-auto max-w-6xl px-4 py-3 flex items-center gap-3">
           <a href="/" className="flex items-center gap-2 shrink-0">
-            <img src="/logo-sunrise-market.png" alt="Sunrise Market" className="h-8 w-auto rounded-lg bg-white p-1 shadow-lg" onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = "none"; }} />
+            <img src="/logo-sunrise-market.png" alt="Sunrise Market" className="h-12 sm:h-14 w-auto rounded-xl bg-white p-1.5 shadow-lg" onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = "none"; }} />
           </a>
           <div className="flex-1 relative">
             <div className="flex items-center rounded-xl overflow-hidden"
@@ -510,7 +510,7 @@ export default function Market() {
       )}
 
       {/* ── SPONSOROWANE (kampanie kupione przez sprzedawcow) ── */}
-      {sponsored.length > 0 && (
+      {!q && !activeDept && sponsored.length > 0 && (
         <section className="mx-auto max-w-6xl px-4 pb-4 pt-2">
           <div className="flex items-baseline justify-between mb-5">
             <h2 className="font-display text-2xl font-semibold">📣 Sponsorowane</h2>
