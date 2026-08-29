@@ -108,6 +108,8 @@ Deno.serve(async (req) => {
       return json({ ok: false, error: pay?.error ?? "payment_failed", message: pay?.message }, payResp.status === 402 ? 402 : 400);
     }
 
+    const startsAt = new Date();
+    const endsAt = new Date(startsAt.getTime() + days * 24 * 60 * 60 * 1000);
     const { error: promoErr } = await admin.from("promoted_offers").upsert({
       offer_id: offerId,
       seller_id: seller.id,
@@ -116,6 +118,8 @@ Deno.serve(async (req) => {
       pricing_code: "highlight_day",
       status: "active",
       source_purchase_id: requestId,
+      starts_at: startsAt.toISOString(),
+      ends_at: endsAt.toISOString(),
     }, { onConflict: "source_purchase_id" });
     if (promoErr) {
       await admin.from("promotion_purchases").update({
@@ -135,7 +139,7 @@ Deno.serve(async (req) => {
       updated_at: new Date().toISOString(),
     }).eq("id", requestId);
 
-    return json({ ok: true, amount });
+    return json({ ok: true, amount, ends_at: endsAt.toISOString() });
   } catch (err) {
     return json({ ok: false, error: "internal", message: (err as Error).message }, 500);
   }
