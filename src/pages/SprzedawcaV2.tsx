@@ -3,7 +3,6 @@ import { Link } from "react-router-dom";
 import { supabase } from "../lib/supabase";
 import {
   childCategories,
-  createOffer,
   genDescription,
   myOffers,
   mySeller,
@@ -128,16 +127,17 @@ export default function SprzedawcaV2() {
       const desc = fullVatInvoice && !description.includes("pełna faktura VAT")
         ? `${description.trim()}\n\n✅ Na produkt wystawiana jest pełna faktura VAT.`.trim()
         : description.trim();
-      const id = await createOffer({ title: title.trim(), description: desc, price, stock, categorySlug: chosen.slug, imageUrl: images[0] });
-      const { error: updateError } = await supabase.from("offers").update({
-        commission_model: commissionModel,
-        attributes: { ...attrs, full_vat_invoice: fullVatInvoice },
-      }).eq("id", id);
-      if (updateError) throw updateError;
-      if (images.length > 1) {
-        const { error } = await supabase.from("offer_images").insert(images.slice(1).map((url, i) => ({ offer_id: id, url, sort: i + 1 })));
-        if (error) throw error;
-      }
+      const { error } = await supabase.rpc("create_offer_v2", {
+        p_title: title.trim(),
+        p_description: desc,
+        p_price: price,
+        p_stock: stock,
+        p_category_slug: chosen.slug,
+        p_image_urls: images,
+        p_commission_model: commissionModel,
+        p_attributes: { ...attrs, full_vat_invoice: fullVatInvoice },
+      });
+      if (error) throw error;
       localStorage.removeItem(DRAFT_KEY);
       setTitle(""); setDescription(""); setPrice(0); setStock(1); setImages([]); setAttrs({}); setFullVatInvoice(false); setCommissionModel("cashback_only"); setStep(1);
       setOffers((await myOffers()) as Offer[]);
