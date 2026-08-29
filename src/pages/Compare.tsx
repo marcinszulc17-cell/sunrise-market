@@ -32,7 +32,7 @@ export default function Compare() {
       {items.length > 0 && <div className="mt-6 overflow-x-auto"><table className="min-w-[800px] w-full border-collapse text-sm"><thead><tr><th className="p-3 text-left">Parametr</th>{items.map(o => <th key={o.offer_id} className="p-3 text-left align-top"><div className="w-48"><a href={`/produkt/${o.offer_id}`} className="font-semibold">{o.title}</a><div className="mt-2 text-xl font-bold">{zl(o.price_gross)}</div><div className="mt-1 text-xs" style={{ color: "var(--mut)" }}>{o.seller}</div><button onClick={() => remove(o.offer_id)} className="mt-2 text-xs underline">Usuń</button></div></th>)}</tr></thead><tbody>
         <tr style={{ borderTop: "1px solid var(--line)" }}><td className="p-3 font-semibold">Kategoria</td>{items.map(o => <td key={o.offer_id} className="p-3">{o.category}</td>)}</tr>
         <tr style={{ borderTop: "1px solid var(--line)" }}><td className="p-3 font-semibold">Cena</td>{items.map(o => <td key={o.offer_id} className="p-3 font-semibold">{zl(o.price_gross)}</td>)}</tr>
-        {keys.map(k => <tr key={k} style={{ borderTop: "1px solid var(--line)" }}><td className="p-3 font-semibold capitalize">{k.replaceAll("_"," ")}</td>{items.map(o => <td key={o.offer_id} className="p-3">{formatValue((o.attributes || {})[k])}</td>)}</tr>)}
+        {keys.map(k => <tr key={k} style={{ borderTop: "1px solid var(--line)" }}><td className="p-3 font-semibold capitalize">{k.split("_").join(" ")}</td>{items.map(o => <td key={o.offer_id} className="p-3">{formatValue((o.attributes || {})[k])}</td>)}</tr>)}
       </tbody></table></div>}
     </main>
   </div>;
