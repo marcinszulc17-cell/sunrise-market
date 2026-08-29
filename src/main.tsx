@@ -9,7 +9,7 @@ import Sprzedawca from "./pages/Sprzedawca";
 import SprzedawcaStart from "./pages/SprzedawcaStart";
 import SprzedawcaWystaw from "./pages/SprzedawcaWystaw";
 import Login from "./pages/Login";
-import Product from "./pages/Product";
+import ProductRouter from "./pages/ProductRouter";
 import Koszyk from "./pages/Koszyk";
 import Zamowienia from "./pages/Zamowienia";
 import Cennik from "./pages/Cennik";
@@ -28,7 +28,7 @@ ReactDOM.createRoot(document.getElementById("root")!).render(
         <Route path="/" element={<Market />} />
         <Route path="/login" element={<Login />} />
         <Route path="/sso" element={<Sso />} />
-        <Route path="/produkt/:id" element={<Product />} />
+        <Route path="/produkt/:id" element={<ProductRouter />} />
         <Route path="/koszyk" element={<Koszyk />} />
         <Route path="/zamowienia" element={<Zamowienia />} />
         <Route path="/cennik" element={<Cennik />} />
