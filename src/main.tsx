@@ -4,6 +4,7 @@ import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import Sso from "./pages/Sso";
 import MarketEnhanced from "./pages/MarketEnhanced";
 import MarketSmartFilterDock from "./components/MarketSmartFilterDock";
+import CategoryPortal from "./pages/CategoryPortal";
 import Portfel from "./pages/Portfel";
 import Rozliczenia from "./pages/Rozliczenia";
 import Sprzedawca from "./pages/Sprzedawca";
@@ -28,6 +29,8 @@ ReactDOM.createRoot(document.getElementById("root")!).render(
     <BrowserRouter>
       <Routes>
         <Route path="/" element={<><MarketEnhanced /><MarketSmartFilterDock /></>} />
+        <Route path="/motoryzacja" element={<CategoryPortal mode="car" />} />
+        <Route path="/nieruchomosci" element={<CategoryPortal mode="property" />} />
         <Route path="/szukaj" element={<AdvancedSearch />} />
         <Route path="/login" element={<Login />} />
         <Route path="/sso" element={<Sso />} />
