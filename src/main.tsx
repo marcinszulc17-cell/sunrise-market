@@ -10,6 +10,7 @@ import SprzedawcaStart from "./pages/SprzedawcaStart";
 import SprzedawcaWystaw from "./pages/SprzedawcaWystaw";
 import Login from "./pages/Login";
 import ProductRouter from "./pages/ProductRouter";
+import AdvancedSearch from "./pages/AdvancedSearch";
 import Koszyk from "./pages/Koszyk";
 import Zamowienia from "./pages/Zamowienia";
 import Cennik from "./pages/Cennik";
@@ -26,6 +27,7 @@ ReactDOM.createRoot(document.getElementById("root")!).render(
     <BrowserRouter>
       <Routes>
         <Route path="/" element={<Market />} />
+        <Route path="/szukaj" element={<AdvancedSearch />} />
         <Route path="/login" element={<Login />} />
         <Route path="/sso" element={<Sso />} />
         <Route path="/produkt/:id" element={<ProductRouter />} />
