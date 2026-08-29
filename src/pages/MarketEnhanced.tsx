@@ -1,6 +1,7 @@
 import { useEffect } from "react";
 import Market from "./Market";
 import { getOffer } from "../lib/api";
+import { supabase } from "../lib/supabase";
 
 function isSpecial(slug: string) {
   return slug.includes("motoryzacja-samochody-osobowe") || slug.startsWith("nieruchomosci-");
@@ -24,14 +25,29 @@ function metaFor(o: any) {
   return [];
 }
 
-function decorate(article: HTMLElement, offer: any) {
-  const slug = String(offer?.category_slug || "");
-  if (!isSpecial(slug) || article.dataset.smartDecorated === "1") return;
+function cashbackText(price: number, rate: number) {
+  const amount = Math.round(price * rate * 100) / 100;
+  const percent = (rate * 100).toLocaleString("pl-PL", { maximumFractionDigits: 1 });
+  return `Cashback ${percent}% · +${amount.toLocaleString("pl-PL", { maximumFractionDigits: 2 })} pkt`;
+}
+
+function decorate(article: HTMLElement, offer: any, cashbackRate: number) {
+  if (article.dataset.smartDecorated === "1") return;
   article.dataset.smartDecorated = "1";
 
   const body = article.querySelector(".p-4.flex.flex-col") as HTMLElement | null;
   if (!body) return;
   const price = Array.from(body.children).find((el) => (el as HTMLElement).className.includes("text-2xl")) as HTMLElement | undefined;
+
+  // Jedno źródło prawdy: platform_config.cashback_rate. Zastępujemy stare, lokalne 3% na każdej karcie.
+  const existingCashback = Array.from(article.querySelectorAll("span")).find((el) => (el.textContent || "").includes("Cashback")) as HTMLElement | undefined;
+  if (existingCashback && Number(offer?.price_gross) > 0) {
+    existingCashback.textContent = cashbackText(Number(offer.price_gross), cashbackRate);
+    existingCashback.title = "Cashback naliczany zgodnie z aktualną konfiguracją Sunrise Market";
+  }
+
+  const slug = String(offer?.category_slug || "");
+  if (!isSpecial(slug)) return;
   const meta = metaFor(offer);
   if (price && meta.length) {
     const row = document.createElement("div");
@@ -72,8 +88,18 @@ function decorate(article: HTMLElement, offer: any) {
 export default function MarketEnhanced() {
   useEffect(() => {
     let stopped = false;
+    let cashbackRate = 0.03;
     const cache = new Map<string, any>();
     const inflight = new Set<string>();
+
+    supabase.rpc("public_market_config").then(({ data }) => {
+      const r = Number((data as any)?.cashback_rate);
+      if (Number.isFinite(r) && r >= 0 && r <= 1) cashbackRate = r;
+      document.querySelectorAll("article[data-smart-decorated='1']").forEach((el) => {
+        (el as HTMLElement).dataset.smartDecorated = "0";
+      });
+      scan();
+    }, () => {});
 
     async function scan() {
       if (stopped) return;
@@ -84,12 +110,12 @@ export default function MarketEnhanced() {
         if (!link) continue;
         const id = link.getAttribute("href")?.split("/").pop();
         if (!id) continue;
-        if (cache.has(id)) { decorate(article, cache.get(id)); continue; }
+        if (cache.has(id)) { decorate(article, cache.get(id), cashbackRate); continue; }
         if (inflight.has(id)) continue;
         inflight.add(id);
         getOffer(id).then((o) => {
           cache.set(id, o);
-          if (o) decorate(article, o);
+          if (o) decorate(article, o, cashbackRate);
         }).catch(() => {}).finally(() => inflight.delete(id));
       }
     }
