@@ -35,7 +35,7 @@ export default function BuyerOfferActions({ offerId, categorySlug="", priceGross
     watchedIds().then(ids => setWatched(ids.includes(offerId))).catch(() => {});
     try { setCompare(JSON.parse(localStorage.getItem(COMPARE_KEY) || "[]").includes(offerId)); } catch { /* ignore */ }
     supabase.auth.getUser().then(({ data }) => setEmail(data.user?.email || ""));
-    supabase.rpc("public_market_config").then(({data})=>{const r=Number((data as any)?.cashback_rate);if(Number.isFinite(r)&&r>=0)setCashbackRate(r);}).catch(()=>{});
+    supabase.rpc("public_market_config").then(({data})=>{const r=Number((data as any)?.cashback_rate);if(Number.isFinite(r)&&r>=0)setCashbackRate(r);},()=>{});
   }, [offerId]);
 
   async function watch() {
