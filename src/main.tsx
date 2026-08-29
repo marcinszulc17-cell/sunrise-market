@@ -7,6 +7,7 @@ import Portfel from "./pages/Portfel";
 import Rozliczenia from "./pages/Rozliczenia";
 import Sprzedawca from "./pages/Sprzedawca";
 import SprzedawcaV2 from "./pages/SprzedawcaV2";
+import SprzedawcaStart from "./pages/SprzedawcaStart";
 import Login from "./pages/Login";
 import Product from "./pages/Product";
 import Koszyk from "./pages/Koszyk";
@@ -34,7 +35,8 @@ ReactDOM.createRoot(document.getElementById("root")!).render(
         <Route path="/operator" element={<Operator />} />
         <Route path="/portfel" element={<Portfel />} />
         <Route path="/konto" element={<Konto />} />
-        <Route path="/sprzedawca" element={<SprzedawcaV2 />} />
+        <Route path="/sprzedawca" element={<SprzedawcaStart />} />
+        <Route path="/sprzedawca/wystaw" element={<SprzedawcaV2 />} />
         <Route path="/sprzedawca-klasyczny" element={<Sprzedawca />} />
         <Route path="/sprzedawca/rozliczenia" element={<Rozliczenia />} />
         <Route path="*" element={<Navigate to="/" replace />} />
