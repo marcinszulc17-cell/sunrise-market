@@ -1,0 +1,129 @@
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import Stripe from "https://esm.sh/stripe@16.12.0?target=deno";
+const cors = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+};
+const SERVICE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? Deno.env.get("SUPABASE_SERVICE_KEY");
+const PAY_BASE = (Deno.env.get("MYSUNRISE_PAY_BASE_URL") ?? "https://lvmrhgpxhqvfuoftblky.supabase.co/functions/v1").replace(/\/$/, "");
+const PAY_TOKEN = Deno.env.get("SUNRISE_MARKET_SERVICE_TOKEN");
+const FREE_SHIPPING_THRESHOLD = 149;
+function json(b: unknown, s = 200) { return new Response(JSON.stringify(b), { status: s, headers: { ...cors, "Content-Type": "application/json" } }); }
+
+async function uuidv5(name: string): Promise<string> {
+  const NS = "6ba7b810-9dad-11d1-80b4-00c04fd430c8";
+  const nsBytes = (NS.replace(/-/g, "").match(/.{2}/g) as string[]).map((h) => parseInt(h, 16));
+  const nameBytes = Array.from(new TextEncoder().encode(name));
+  const data = new Uint8Array([...nsBytes, ...nameBytes]);
+  const hash = new Uint8Array(await crypto.subtle.digest("SHA-1", data));
+  hash[6] = (hash[6] & 0x0f) | 0x50;
+  hash[8] = (hash[8] & 0x3f) | 0x80;
+  const hex = Array.from(hash.slice(0, 16)).map((b) => b.toString(16).padStart(2, "0")).join("");
+  return `${hex.slice(0,8)}-${hex.slice(8,12)}-${hex.slice(12,16)}-${hex.slice(16,20)}-${hex.slice(20,32)}`;
+}
+async function pay(path: string, body: unknown): Promise<{ status: number; data: any }> {
+  if (!PAY_TOKEN) throw new Error("Brak konfiguracji Sunrise Pay");
+  const r = await fetch(`${PAY_BASE}/${path}`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", "X-Sunrise-Service-Token": PAY_TOKEN },
+    body: JSON.stringify(body),
+  });
+  let data: any = null; try { data = await r.json(); } catch {}
+  return { status: r.status, data };
+}
+
+Deno.serve(async (req) => {
+  if (req.method === "OPTIONS") return new Response("ok", { headers: cors });
+  try {
+    const auth = req.headers.get("Authorization") ?? "";
+    const userClient = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_ANON_KEY")!, { global: { headers: { Authorization: auth } } });
+    const { data: { user }, error: uErr } = await userClient.auth.getUser();
+    if (uErr || !user) return json({ error: "Brak autoryzacji" }, 401);
+    const email = user.email;
+    if (!email) return json({ error: "Konto bez e-maila" }, 400);
+    const { items, shipping_code, shipping_codes, shipping, coupon, payment_method } = await req.json();
+    if (!Array.isArray(items) || items.length === 0) return json({ error: "Pusty koszyk" }, 400);
+    const payMethod = payment_method === "card" ? "card" : "wallet";
+    const sb = createClient(Deno.env.get("SUPABASE_URL")!, SERVICE_KEY!, { db: { schema: "market" } });
+    const { data: orderId, error: e1 } = await sb.rpc("checkout", { p_buyer_id: user.id, p_items: items });
+    if (e1) throw e1;
+
+    const codes: string[] = Array.isArray(shipping_codes) && shipping_codes.length ? shipping_codes.filter((c: unknown) => typeof c === "string") : (shipping_code ? [shipping_code] : []);
+    let shipCost = 0; let shipLabel: string | null = null;
+    if (codes.length) {
+      const { data: sm } = await sb.from("shipping_methods").select("code,name,price_gross").in("code", codes);
+      const rows = (sm ?? []) as { code: string; name: string; price_gross: number }[];
+      shipCost = rows.reduce((a, r) => a + Number(r.price_gross ?? 0), 0);
+      shipLabel = rows.map((r) => r.name).join(" + ") || null;
+    }
+    const { data: ord0 } = await sb.from("orders").select("total_gross, cashback_amount").eq("id", orderId).single();
+    if (Number(ord0!.total_gross) >= FREE_SHIPPING_THRESHOLD) shipCost = 0;
+    try {
+      const { data: isSmart } = await sb.rpc("is_smart_member", { p_user: user.id });
+      if (isSmart === true) {
+        const { data: minCfg } = await sb.from("platform_config").select("value").eq("key", "smart_min_order_pln").maybeSingle();
+        if (Number(ord0!.total_gross) >= Number(minCfg?.value ?? "49")) shipCost = 0;
+      }
+    } catch {}
+    const total = Number(ord0!.total_gross) + shipCost;
+
+    let discount = 0; let couponCode: string | null = null;
+    try {
+      const couponRaw = (typeof coupon === "string" ? coupon : "").trim();
+      if (couponRaw) {
+        const { data: cv } = await sb.rpc("validate_coupon", { p_code: couponRaw, p_subtotal: Number(ord0!.total_gross) });
+        if (cv && cv.valid === true) {
+          discount = Math.min(Math.max(0, Number(cv.discount) || 0), Number(ord0!.total_gross));
+          couponCode = (cv.code as string) || couponRaw.toUpperCase();
+        }
+      }
+    } catch { discount = 0; couponCode = null; }
+    const finalTotal = Math.max(0, total - discount);
+
+    await sb.from("orders").update({ shipping_method: shipLabel, shipping_cost: shipCost, total_gross: finalTotal, coupon_code: couponCode, discount_amount: discount, ship_name: shipping?.name ?? null, ship_phone: shipping?.phone ?? null, ship_street: shipping?.street ?? null, ship_city: shipping?.city ?? null, ship_postal: shipping?.postal ?? null, ship_country: shipping?.country ?? "PL" }).eq("id", orderId);
+    const amountGrosz = Math.round(finalTotal * 100);
+
+    if (payMethod === "card") {
+      const stripe = new Stripe(Deno.env.get("STRIPE_SECRET_KEY")!, { apiVersion: "2024-06-20", httpClient: Stripe.createFetchHttpClient() });
+      const origin = Deno.env.get("PUBLIC_WEB_URL") ?? req.headers.get("origin") ?? "";
+      const session = await stripe.checkout.sessions.create({ mode: "payment", payment_method_types: ["card", "p24", "blik"], currency: "pln", line_items: [{ price_data: { currency: "pln", product_data: { name: "Zamówienie Sunrise Market" }, unit_amount: amountGrosz }, quantity: 1 }], metadata: { market_order_id: String(orderId), user_id: user.id, user_email: email }, customer_email: email, success_url: `${origin}/koszyk?card=success&order=${orderId}&paid=${finalTotal}`, cancel_url: `${origin}/koszyk?card=cancel&order=${orderId}` });
+      await sb.from("orders").update({ payment_provider: "stripe", stripe_session_id: session.id }).eq("id", orderId);
+      return json({ order_id: orderId, url: session.url, payment: "card", total: finalTotal });
+    }
+
+    const chargeKey = await uuidv5(`market:charge:${orderId}`);
+    const charge = await pay("pay-charge", { user_ref: email, amount_grosz: amountGrosz, order_ref: orderId, idempotency_key: chargeKey });
+    if (charge.status === 402 || (charge.data && charge.data.ok === false && charge.data.error === "insufficient_funds")) {
+      const balGr = Number(charge.data?.balance_grosz ?? 0);
+      const shortGr = Number(charge.data?.shortfall_grosz ?? Math.max(0, amountGrosz - balGr));
+      return json({ error: "Za malo srodkow w portfelu Sunrise Pay", need_topup: true, balance: balGr / 100, shortfall: shortGr / 100, required: finalTotal }, 402);
+    }
+    if (charge.status !== 200 || !charge.data?.ok) return json({ error: `Platnosc portfelem nieudana: ${charge.data?.message ?? charge.data?.error ?? charge.status}` }, 402);
+    const newBalanceGr = Number(charge.data.balance_grosz ?? 0);
+
+    const { error: feeError } = await sb.rpc("apply_sunrise_pay_fee", { p_order_id: orderId });
+    if (feeError) throw feeError;
+    await sb.from("orders").update({ status: "paid", payment_provider: "sunrise_pay" }).eq("id", orderId);
+    if (couponCode && discount > 0) { try { await sb.rpc("coupon_consume", { p_code: couponCode }); } catch {} }
+
+    const points = Math.round(Number(ord0!.cashback_amount ?? 0));
+    if (points > 0) {
+      const pointsKey = await uuidv5(`market:points:${orderId}`);
+      await pay("pay-credit-points", { user_ref: email, points, reason: "cashback", order_ref: orderId, idempotency_key: pointsKey });
+    }
+
+    await sb.rpc("credit_seller_payouts", { p_order_id: orderId });
+    await sb.rpc("notify_order", { p_order: orderId });
+    try { await sb.from("wallet_mirror").upsert({ user_id: user.id, balance: newBalanceGr / 100 }, { onConflict: "user_id" }); } catch {}
+
+    try {
+      const { data: ownItems } = await sb.from("order_items").select("qty, unit_price_gross, offers!inner(fulfillment_provider)").eq("order_id", orderId).eq("offers.fulfillment_provider", "mysunrise");
+      const ownNet = (ownItems ?? []).reduce((a: number, r: any) => a + Number(r.unit_price_gross ?? 0) * Number(r.qty ?? 0), 0);
+      if (ownNet > 0) await pay("mkt-referral", { action: "sale", email, order_id: orderId, amount_net: ownNet, description: "Zakup marki własnej w Sunrise Market" });
+    } catch {}
+
+    return json({ order_id: orderId, paid: finalTotal, discount, coupon: couponCode, cashback: points, balance: newBalanceGr / 100 });
+  } catch (err) {
+    return json({ error: String((err as Error).message ?? err) }, 400);
+  }
+});
