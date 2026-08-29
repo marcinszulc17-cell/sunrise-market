@@ -33,6 +33,57 @@ async function pay(path: string, body: unknown): Promise<{ status: number; data:
   return { status: r.status, data };
 }
 
+async function settleSellerPayouts(sb: any, orderId: string) {
+  const { data: rows, error } = await sb
+    .from("order_items")
+    .select("seller_id,seller_payout,sellers!inner(email)")
+    .eq("order_id", orderId);
+  if (error) throw error;
+
+  const grouped = new Map<string, { email: string; amount: number }>();
+  for (const row of rows ?? []) {
+    const sellerId = String(row.seller_id ?? "");
+    const email = String(row.sellers?.email ?? "").trim();
+    if (!sellerId || !email) continue;
+    const prev = grouped.get(sellerId) ?? { email, amount: 0 };
+    prev.amount = money(prev.amount + Number(row.seller_payout ?? 0));
+    grouped.set(sellerId, prev);
+  }
+
+  for (const [sellerId, entry] of grouped.entries()) {
+    const amount = money(entry.amount);
+    if (amount <= 0) continue;
+
+    await sb.from("seller_settlements").upsert({
+      order_id: orderId,
+      seller_id: sellerId,
+      seller_email: entry.email,
+      amount,
+      status: "pending",
+      updated_at: new Date().toISOString(),
+    }, { onConflict: "order_id,seller_id", ignoreDuplicates: true });
+
+    const idem = await uuidv5(`market:seller:${orderId}:${sellerId}`);
+    const credited = await pay("pay-credit", {
+      user_ref: entry.email,
+      amount_grosz: Math.round(amount * 100),
+      reason: "Sprzedaż Sunrise Market",
+      order_ref: orderId,
+      idempotency_key: idem,
+    });
+
+    const ok = credited.status === 200 && credited.data?.ok === true;
+    await sb.from("seller_settlements").update({
+      status: ok ? "settled" : "failed",
+      attempts: 1,
+      mysunrise_tx_id: ok && credited.data?.tx_id ? String(credited.data.tx_id) : null,
+      last_error: ok ? null : String(credited.data?.message ?? credited.data?.error ?? credited.status),
+      settled_at: ok ? new Date().toISOString() : null,
+      updated_at: new Date().toISOString(),
+    }).eq("order_id", orderId).eq("seller_id", sellerId);
+  }
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: cors });
   try {
@@ -123,7 +174,9 @@ Deno.serve(async (req) => {
       await pay("pay-credit-points", { user_ref: email, points: cashback, reason: "cashback", order_ref: orderId, idempotency_key: pointsKey });
     }
 
-    await sb.rpc("credit_seller_payouts", { p_order_id: orderId });
+    try { await settleSellerPayouts(sb, String(orderId)); } catch (e) {
+      console.error("seller settlement failed", (e as Error).message);
+    }
     await sb.rpc("notify_order", { p_order: orderId });
     try { await sb.from("wallet_mirror").upsert({ user_id: user.id, balance: newBalanceGr / 100 }, { onConflict: "user_id" }); } catch {}
 
