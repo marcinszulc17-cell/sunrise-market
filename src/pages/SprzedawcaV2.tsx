@@ -95,7 +95,9 @@ export default function SprzedawcaV2() {
     const picked = Array.from(files).slice(0, Math.max(0, 12 - images.length));
     setUploading(true); setMsg(null);
     try {
-      for (const file of picked) setImages(prev => [...prev, await uploadProductImage(file)]);
+      const uploaded: string[] = [];
+      for (const file of picked) uploaded.push(await uploadProductImage(file));
+      setImages(prev => [...prev, ...uploaded].slice(0, 12));
     } catch (e) { setMsg("Błąd zdjęcia: " + (e as Error).message); }
     finally { setUploading(false); }
   }
@@ -133,7 +135,7 @@ export default function SprzedawcaV2() {
       }).eq("id", id);
       if (updateError) throw updateError;
       if (images.length > 1) {
-        const { error } = await supabase.from("offer_images").insert(images.map((url, i) => ({ offer_id: id, url, sort: i })));
+        const { error } = await supabase.from("offer_images").insert(images.slice(1).map((url, i) => ({ offer_id: id, url, sort: i + 1 })));
         if (error) throw error;
       }
       localStorage.removeItem(DRAFT_KEY);
