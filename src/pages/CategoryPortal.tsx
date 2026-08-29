@@ -27,7 +27,13 @@ export default function CategoryPortal({mode}:{mode:Mode}){
   async function query(sort:string,limit=8, customFilters:Record<string,string>={}){
     const {data}=await supabase.rpc("search_offers_v2",{p_query:null,p_category_slug:searchSlug,p_price_min:null,p_price_max:null,p_sort:sort,p_limit:limit,p_filters:customFilters}); return (data||[]) as Offer[];
   }
-  useEffect(()=>{ query("najnowsze",8).then(setLatest); query("cena_rosnaco",8).then(setCheap); supabase.from("categories").select("id,slug,name").eq("parent_id",supabase.from("categories").select("id").eq("slug",rootSlug) as any).then(()=>{}).catch(()=>{}); supabase.from("categories").select("id,slug,name,parent_id").eq("slug",rootSlug).maybeSingle().then(({data})=>{if(data?.id)supabase.from("categories").select("id,slug,name").eq("parent_id",data.id).order("sort_order").then(({data:ch})=>setCats((ch||[]) as Cat[]));}); },[mode]);
+  useEffect(()=>{
+    query("najnowsze",8).then(setLatest);
+    query("cena_rosnaco",8).then(setCheap);
+    supabase.from("categories").select("id,slug,name,parent_id").eq("slug",rootSlug).maybeSingle().then(({data})=>{
+      if(data?.id) supabase.from("categories").select("id,slug,name").eq("parent_id",data.id).order("sort_order").then(({data:ch})=>setCats((ch||[]) as Cat[]));
+    });
+  },[mode]);
 
   async function run(e?:FormEvent){e?.preventDefault();setBusy(true);setSearched(true); const {data,error}=await supabase.rpc("search_offers_v2",{p_query:q.trim()||null,p_category_slug:searchSlug,p_price_min:priceMin?Number(priceMin):null,p_price_max:priceMax?Number(priceMax):null,p_sort:"trafnosc",p_limit:100,p_filters:filters}); setBusy(false); setResults(error?[]:(data||[]) as Offer[]);}
 
