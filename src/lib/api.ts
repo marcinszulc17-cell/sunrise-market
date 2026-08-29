@@ -241,8 +241,13 @@ export async function myBannerStats() {
   const { data, error } = await supabase.rpc("my_banner_stats"); if (error) throw error; return (data as any[]) ?? [];
 }
 export async function promoteOffer(offerId: string, days: number) {
-  const { data, error } = await supabase.rpc("my_promote_offer", { p_offer: offerId, p_days: days });
-  if (error) throw error; return Number(data);
+  const requestId = crypto.randomUUID();
+  const { data, error } = await supabase.functions.invoke("promote-offer", {
+    body: { offer_id: offerId, days, request_id: requestId },
+  });
+  if (error) throw error;
+  if (!data?.ok) throw new Error(data?.message || data?.error || "Nie udało się opłacić promocji");
+  return Number(data.amount);
 }
 export async function myNotifications() {
   const { data, error } = await supabase.rpc("my_notifications"); if (error) throw error; return data ?? [];
@@ -336,12 +341,12 @@ export async function sellerWallet(): Promise<SellerWallet> {
 // energii/MySunrise nie gotowy → available:false, UI degraduje się (jak sellerWallet).
 export type EnergyReferral = {
   available: boolean;
-  code?: string;        // osobisty kod polecenia
-  link?: string;        // gotowy link do udostępnienia
-  reward_pct?: number;  // % wartości transakcji trafiający na portfel (produkty własne, np. foto)
-  pending?: number;     // polecenia w toku
-  converted?: number;   // polecenia zamienione w umowę
-  credited?: number;    // suma zł już skredytowana do portfela
+  code?: string;
+  link?: string;
+  reward_pct?: number;
+  pending?: number;
+  converted?: number;
+  credited?: number;
 };
 export async function energyReferral(): Promise<EnergyReferral> {
   const { data, error } = await supabase.functions.invoke("energy-referral", { body: {} });
@@ -350,25 +355,21 @@ export async function energyReferral(): Promise<EnergyReferral> {
 }
 
 // ── Dropshipping CJ (operator) ────────────────────────────────────
-// Import katalogu CJ (oferty lądują jako draft), przegląd i aktywacja.
 export async function cjImport(opts: { page?: number; pageSize?: number; categoryKeyword?: string } = {}) {
   const { data, error } = await supabase.functions.invoke("cj-import-feed", { body: opts });
   if (error) throw error;
   return data;
 }
-// Import katalogu Eprolo (eprolo_product_list.html). Oferty jako draft, cashback-only.
 export async function eproloImport(opts: { page?: number; pages?: number } = {}) {
   const { data, error } = await supabase.functions.invoke("eprolo-import", { body: opts });
   if (error) throw error;
   return data;
 }
-// Test polaczenia: surowa probka z Eprolo bez zapisu do bazy.
 export async function eproloProbe(page = 1) {
   const { data, error } = await supabase.functions.invoke("eprolo-import", { body: { probe: true, page } });
   if (error) throw error;
   return data;
 }
-// Przekazanie zamowienia do Eprolo (add_order.html). dryRun = tylko ustala variantsid, nic nie wysyla.
 export async function eproloForwardOrder(orderId: string, dryRun = false) {
   const { data, error } = await supabase.functions.invoke("eprolo-forward-order", { body: { order_id: orderId, dryRun } });
   if (error) throw error;
@@ -389,7 +390,6 @@ export async function cjActivateAll(provider: "cj" | "eprolo" | "teemdrop" | "my
   if (error) throw error;
   return Number(data?.activated ?? 0);
 }
-// Statystyki per produkt CJ: koszt, marża brutto (bez wysyłki), wyświetlenia, sprzedane, przychód.
 export type CjStat = { id: string; title: string; price_gross: number; image_url: string | null; status: string; cost_zl: number; margin_zl: number; margin_pct: number; market_price: number | null; competitor_margin_zl: number | null; edge_zl: number | null; views: number; sold: number; revenue: number };
 export async function cjStats(): Promise<CjStat[]> {
   const { data, error } = await supabase.functions.invoke("cj-admin", { body: { action: "stats" } });
@@ -402,7 +402,6 @@ export async function catalogStats(opts: { provider?: string | null; search?: st
   if (error) throw error;
   return (data?.items ?? []) as CatalogStat[];
 }
-// Kategorie (drzewo) — do formularza oferty
 export async function topCategories() {
   const { data, error } = await supabase.from("categories").select("id,slug,name").is("parent_id", null).order("sort_order");
   if (error) throw error;
@@ -414,23 +413,16 @@ export async function childCategories(parentId: string) {
   return data ?? [];
 }
 
-// Zapytanie do Suri (edge function: fakty z bazy + Claude)
 export async function askSuri(message: string, sessionId?: string, userId?: string) {
-  const { data, error } = await supabase.functions.invoke("suri-commerce",
-    { body: { message, session_id: sessionId, user_id: userId } });
+  const { data, error } = await supabase.functions.invoke("suri-commerce", { body: { message, session_id: sessionId, user_id: userId } });
   if (error) throw error;
   return data;
 }
-
-// Historia rozmowy Suri (pamiec po ponownym otwarciu czatu)
 export async function suriHistory(sessionId: string) {
-  const { data, error } = await supabase.functions.invoke("suri-commerce",
-    { body: { action: "history", session_id: sessionId } });
+  const { data, error } = await supabase.functions.invoke("suri-commerce", { body: { action: "history", session_id: sessionId } });
   if (error) return [] as { role: string; content: string }[];
   return (data?.messages ?? []) as { role: string; content: string }[];
 }
-
-// ── Sunrise Smart (abonament darmowych wysyłek) ──
 export async function smartStatus(): Promise<boolean> {
   const { data } = await supabase.from("smart_members").select("expires_at,active").maybeSingle();
   if (!data || !(data as any).active) return false;
@@ -441,7 +433,6 @@ export async function smartSubscribe() {
   const { data, error } = await supabase.functions.invoke("smart-subscribe", { body: {} });
   if (error) throw error; return data;
 }
-// ── Reklamy ──
 export async function adRates() {
   const { data, error } = await supabase.rpc("ad_rates_list");
   if (error) return []; return data ?? [];
@@ -454,7 +445,6 @@ export async function sponsoredOffers(placement = "search", category: string | n
   const { data, error } = await supabase.rpc("sponsored_offers", { p_placement: placement, p_category: category, p_limit: limit });
   if (error) return []; return data ?? [];
 }
-
 export async function genDescription(title: string, category?: string, mode?: string): Promise<string> {
   const { data, error } = await supabase.functions.invoke("gen-description", { body: { title, category, mode } });
   if (error) throw error; return (data as any)?.description ?? "";
