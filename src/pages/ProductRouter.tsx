@@ -4,6 +4,7 @@ import { getOffer } from "../lib/api";
 import Product from "./Product";
 import SpecializedProduct from "./SpecializedProduct";
 import VerifyOfferButton from "../components/VerifyOfferButton";
+import BuyerOfferActions from "../components/BuyerOfferActions";
 
 export default function ProductRouter() {
   const { id } = useParams();
@@ -21,5 +22,9 @@ export default function ProductRouter() {
   }, [id]);
 
   if (kind === null) return <main className="min-h-screen px-4 py-10" style={{ background: "var(--bg)", color: "var(--mut)" }}>Ładowanie…</main>;
-  return <>{kind === "special" ? <SpecializedProduct /> : <Product />}{id&&verifyKind&&<VerifyOfferButton offerId={id} kind={verifyKind}/>}</>;
+  return <>
+    {kind === "special" ? <SpecializedProduct /> : <Product />}
+    {id && <BuyerOfferActions offerId={id} allowViewing={!!verifyKind} />}
+    {id&&verifyKind&&<VerifyOfferButton offerId={id} kind={verifyKind}/>} 
+  </>;
 }
