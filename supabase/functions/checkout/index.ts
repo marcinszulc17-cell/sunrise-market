@@ -9,6 +9,7 @@ const PAY_BASE = (Deno.env.get("MYSUNRISE_PAY_BASE_URL") ?? "https://lvmrhgpxhqv
 const PAY_TOKEN = Deno.env.get("SUNRISE_MARKET_SERVICE_TOKEN");
 const FREE_SHIPPING_THRESHOLD = 149;
 function json(b: unknown, s = 200) { return new Response(JSON.stringify(b), { status: s, headers: { ...cors, "Content-Type": "application/json" } }); }
+function money(v: number) { return Math.round(Math.max(0, Number(v) || 0) * 100) / 100; }
 
 async function uuidv5(name: string): Promise<string> {
   const NS = "6ba7b810-9dad-11d1-80b4-00c04fd430c8";
@@ -56,31 +57,42 @@ Deno.serve(async (req) => {
       shipCost = rows.reduce((a, r) => a + Number(r.price_gross ?? 0), 0);
       shipLabel = rows.map((r) => r.name).join(" + ") || null;
     }
-    const { data: ord0 } = await sb.from("orders").select("total_gross, cashback_amount").eq("id", orderId).single();
-    if (Number(ord0!.total_gross) >= FREE_SHIPPING_THRESHOLD) shipCost = 0;
+    const { data: ord0 } = await sb.from("orders").select("total_gross").eq("id", orderId).single();
+    const productSubtotal = Number(ord0!.total_gross);
+    if (productSubtotal >= FREE_SHIPPING_THRESHOLD) shipCost = 0;
     try {
       const { data: isSmart } = await sb.rpc("is_smart_member", { p_user: user.id });
       if (isSmart === true) {
         const { data: minCfg } = await sb.from("platform_config").select("value").eq("key", "smart_min_order_pln").maybeSingle();
-        if (Number(ord0!.total_gross) >= Number(minCfg?.value ?? "49")) shipCost = 0;
+        if (productSubtotal >= Number(minCfg?.value ?? "49")) shipCost = 0;
       }
     } catch {}
-    const total = Number(ord0!.total_gross) + shipCost;
 
     let discount = 0; let couponCode: string | null = null;
     try {
       const couponRaw = (typeof coupon === "string" ? coupon : "").trim();
       if (couponRaw) {
-        const { data: cv } = await sb.rpc("validate_coupon", { p_code: couponRaw, p_subtotal: Number(ord0!.total_gross) });
+        const { data: cv } = await sb.rpc("validate_coupon", { p_code: couponRaw, p_subtotal: productSubtotal });
         if (cv && cv.valid === true) {
-          discount = Math.min(Math.max(0, Number(cv.discount) || 0), Number(ord0!.total_gross));
+          discount = Math.min(Math.max(0, Number(cv.discount) || 0), productSubtotal);
           couponCode = (cv.code as string) || couponRaw.toUpperCase();
         }
       }
     } catch { discount = 0; couponCode = null; }
-    const finalTotal = Math.max(0, total - discount);
 
-    await sb.from("orders").update({ shipping_method: shipLabel, shipping_cost: shipCost, total_gross: finalTotal, coupon_code: couponCode, discount_amount: discount, ship_name: shipping?.name ?? null, ship_phone: shipping?.phone ?? null, ship_street: shipping?.street ?? null, ship_city: shipping?.city ?? null, ship_postal: shipping?.postal ?? null, ship_country: shipping?.country ?? "PL" }).eq("id", orderId);
+    const discountedProducts = money(productSubtotal - discount);
+    const finalTotal = money(discountedProducts + shipCost);
+    const { data: cashbackCfg } = await sb.from("platform_config").select("value").eq("key", "cashback_rate").maybeSingle();
+    const cashbackRate = Math.max(0, Number(cashbackCfg?.value ?? 0.03));
+    const cashback = payMethod === "wallet" ? money(discountedProducts * cashbackRate) : 0;
+
+    await sb.from("orders").update({
+      shipping_method: shipLabel, shipping_cost: shipCost, total_gross: finalTotal,
+      coupon_code: couponCode, discount_amount: discount, cashback_amount: cashback,
+      ship_name: shipping?.name ?? null, ship_phone: shipping?.phone ?? null,
+      ship_street: shipping?.street ?? null, ship_city: shipping?.city ?? null,
+      ship_postal: shipping?.postal ?? null, ship_country: shipping?.country ?? "PL"
+    }).eq("id", orderId);
     const amountGrosz = Math.round(finalTotal * 100);
 
     if (payMethod === "card") {
@@ -88,7 +100,7 @@ Deno.serve(async (req) => {
       const origin = Deno.env.get("PUBLIC_WEB_URL") ?? req.headers.get("origin") ?? "";
       const session = await stripe.checkout.sessions.create({ mode: "payment", payment_method_types: ["card", "p24", "blik"], currency: "pln", line_items: [{ price_data: { currency: "pln", product_data: { name: "Zamówienie Sunrise Market" }, unit_amount: amountGrosz }, quantity: 1 }], metadata: { market_order_id: String(orderId), user_id: user.id, user_email: email }, customer_email: email, success_url: `${origin}/koszyk?card=success&order=${orderId}&paid=${finalTotal}`, cancel_url: `${origin}/koszyk?card=cancel&order=${orderId}` });
       await sb.from("orders").update({ payment_provider: "stripe", stripe_session_id: session.id }).eq("id", orderId);
-      return json({ order_id: orderId, url: session.url, payment: "card", total: finalTotal });
+      return json({ order_id: orderId, url: session.url, payment: "card", total: finalTotal, cashback: 0 });
     }
 
     const chargeKey = await uuidv5(`market:charge:${orderId}`);
@@ -106,10 +118,9 @@ Deno.serve(async (req) => {
     await sb.from("orders").update({ status: "paid", payment_provider: "sunrise_pay" }).eq("id", orderId);
     if (couponCode && discount > 0) { try { await sb.rpc("coupon_consume", { p_code: couponCode }); } catch {} }
 
-    const points = Math.round(Number(ord0!.cashback_amount ?? 0));
-    if (points > 0) {
+    if (cashback > 0) {
       const pointsKey = await uuidv5(`market:points:${orderId}`);
-      await pay("pay-credit-points", { user_ref: email, points, reason: "cashback", order_ref: orderId, idempotency_key: pointsKey });
+      await pay("pay-credit-points", { user_ref: email, points: cashback, reason: "cashback", order_ref: orderId, idempotency_key: pointsKey });
     }
 
     await sb.rpc("credit_seller_payouts", { p_order_id: orderId });
@@ -122,7 +133,7 @@ Deno.serve(async (req) => {
       if (ownNet > 0) await pay("mkt-referral", { action: "sale", email, order_id: orderId, amount_net: ownNet, description: "Zakup marki własnej w Sunrise Market" });
     } catch {}
 
-    return json({ order_id: orderId, paid: finalTotal, discount, coupon: couponCode, cashback: points, balance: newBalanceGr / 100 });
+    return json({ order_id: orderId, paid: finalTotal, discount, coupon: couponCode, cashback, balance: newBalanceGr / 100 });
   } catch (err) {
     return json({ error: String((err as Error).message ?? err) }, 400);
   }
