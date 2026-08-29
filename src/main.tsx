@@ -11,6 +11,7 @@ import Sprzedawca from "./pages/Sprzedawca";
 import SprzedawcaStart from "./pages/SprzedawcaStart";
 import SprzedawcaWystaw from "./pages/SprzedawcaWystaw";
 import SellerLeads from "./pages/SellerLeads";
+import SaleConfirmation from "./pages/SaleConfirmation";
 import Login from "./pages/Login";
 import ProductRouter from "./pages/ProductRouter";
 import AdvancedSearch from "./pages/AdvancedSearch";
@@ -45,6 +46,7 @@ ReactDOM.createRoot(document.getElementById("root")!).render(
         <Route path="/sprzedawca" element={<SprzedawcaStart />} />
         <Route path="/sprzedawca/wystaw" element={<SprzedawcaWystaw />} />
         <Route path="/sprzedawca/zapytania" element={<SellerLeads />} />
+        <Route path="/potwierdz-zakup/:token" element={<SaleConfirmation />} />
         <Route path="/sprzedawca-klasyczny" element={<Sprzedawca />} />
         <Route path="/sprzedawca/rozliczenia" element={<Rozliczenia />} />
         <Route path="*" element={<Navigate to="/" replace />} />
