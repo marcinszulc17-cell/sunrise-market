@@ -16,14 +16,13 @@ revoke all on table market.offer_leads from anon, authenticated;
 -- Prevent sellers from bypassing buyer confirmation and marking a lead as
 -- sold_confirmed through the generic status RPC.
 create or replace function market.set_offer_lead_status(p_lead uuid, p_status text)
-returns boolean
+returns void
 language plpgsql
 security definer
 set search_path to 'market','public'
 as $$
 declare
   v_email text := lower(coalesce(auth.jwt()->>'email',''));
-  v_updated integer;
 begin
   if auth.uid() is null then raise exception 'Brak autoryzacji'; end if;
   if p_status not in ('new','contacted','offer','reserved','sold_declared','closed') then
@@ -37,8 +36,7 @@ begin
        select 1 from market.sellers s
        where s.id=l.seller_id and lower(s.email)=v_email
      );
-  get diagnostics v_updated = row_count;
-  return v_updated > 0;
+  if not found then raise exception 'Brak dostepu'; end if;
 end;
 $$;
 
