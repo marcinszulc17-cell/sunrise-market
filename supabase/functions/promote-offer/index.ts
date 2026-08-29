@@ -2,7 +2,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const CORS = {
   "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+  "Access-Control-Allow-Headers": "content-type, x-promotion-token",
   "Access-Control-Allow-Methods": "POST, OPTIONS",
 };
 const json = (body: unknown, status = 200) => new Response(JSON.stringify(body), {
@@ -15,83 +15,36 @@ Deno.serve(async (req) => {
   if (req.method !== "POST") return json({ ok: false, error: "method_not_allowed" }, 405);
 
   try {
-    const auth = req.headers.get("Authorization") ?? "";
-    const userClient = createClient(
-      Deno.env.get("SUPABASE_URL")!,
-      Deno.env.get("SUPABASE_ANON_KEY")!,
-      { global: { headers: { Authorization: auth } } },
-    );
-    const { data: { user } } = await userClient.auth.getUser();
-    if (!user?.email) return json({ ok: false, error: "unauthorized" }, 401);
-
-    const body = await req.json().catch(() => ({}));
-    const offerId = String(body.offer_id ?? "").trim();
-    const days = Number(body.days);
-    const requestId = String(body.request_id ?? "").trim();
-    if (!offerId || !requestId || !Number.isInteger(days) || days < 1 || days > 365) {
-      return json({ ok: false, error: "invalid_request" }, 400);
-    }
-
     const admin = createClient(
       Deno.env.get("SUPABASE_URL")!,
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
       { db: { schema: "market" } },
     );
 
-    const { data: seller } = await admin
-      .from("sellers")
-      .select("id,email")
-      .ilike("email", user.email)
-      .maybeSingle();
-    if (!seller?.id || !seller.email) return json({ ok: false, error: "seller_not_found" }, 403);
+    const token = req.headers.get("x-promotion-token") ?? "";
+    const { data: secret } = await admin.from("internal_secrets").select("value").eq("key", "promotion_charge_token").maybeSingle();
+    if (!secret?.value || token !== secret.value) return json({ ok: false, error: "unauthorized" }, 401);
 
-    const { data: offer } = await admin
-      .from("offers")
-      .select("id,seller_id")
-      .eq("id", offerId)
-      .maybeSingle();
-    if (!offer?.id || offer.seller_id !== seller.id) return json({ ok: false, error: "forbidden" }, 403);
+    const body = await req.json().catch(() => ({}));
+    const purchaseId = String(body.purchase_id ?? "").trim();
+    if (!purchaseId) return json({ ok: false, error: "invalid_request" }, 400);
 
-    const { data: rate } = await admin
-      .from("ad_rates")
-      .select("price")
-      .eq("code", "highlight_day")
-      .eq("active", true)
-      .maybeSingle();
-    const unit = Number(rate?.price ?? 0);
-    if (!(unit > 0)) return json({ ok: false, error: "pricing_unavailable" }, 503);
-    const amount = Math.round(unit * days * 100) / 100;
-
-    const { data: existing } = await admin
+    const { data: purchase } = await admin
       .from("promotion_purchases")
-      .select("id,status,amount,mysunrise_tx_id")
-      .eq("id", requestId)
+      .select("id,seller_id,offer_id,days,amount,status,mysunrise_tx_id,sellers(email)")
+      .eq("id", purchaseId)
       .maybeSingle();
+    if (!purchase) return json({ ok: false, error: "not_found" }, 404);
+    if (purchase.status === "paid") return json({ ok: true, reused: true, amount: Number(purchase.amount) });
 
-    if (existing?.status === "paid") {
-      return json({ ok: true, amount: Number(existing.amount), reused: true });
-    }
-    if (existing && Number(existing.amount) !== amount) {
-      return json({ ok: false, error: "request_conflict" }, 409);
-    }
+    const sellerEmail = String((purchase as any).sellers?.email ?? "").trim();
+    if (!sellerEmail) return json({ ok: false, error: "seller_email_missing" }, 400);
 
-    if (!existing) {
-      const { error: createErr } = await admin.from("promotion_purchases").insert({
-        id: requestId,
-        seller_id: seller.id,
-        offer_id: offerId,
-        days,
-        amount,
-        pricing_code: "highlight_day",
-        status: "pending",
-      });
-      if (createErr) return json({ ok: false, error: "purchase_create_failed", message: createErr.message }, 500);
-    }
-
-    const payBase = (Deno.env.get("MYSUNRISE_PAY_BASE_URL") ?? "https://lvmrhgpxhqvfuoftblky.supabase.co/functions/v1").replace(/\/$/, "");
     const serviceToken = Deno.env.get("SUNRISE_MARKET_SERVICE_TOKEN");
     if (!serviceToken) return json({ ok: false, error: "service_not_configured" }, 503);
+    const payBase = (Deno.env.get("MYSUNRISE_PAY_BASE_URL") ?? "https://lvmrhgpxhqvfuoftblky.supabase.co/functions/v1").replace(/\/$/, "");
 
+    const amount = Number(purchase.amount);
     const payResp = await fetch(`${payBase}/pay-charge`, {
       method: "POST",
       headers: {
@@ -99,10 +52,10 @@ Deno.serve(async (req) => {
         "X-Sunrise-Service-Token": serviceToken,
       },
       body: JSON.stringify({
-        user_ref: seller.email,
+        user_ref: sellerEmail,
         amount_grosz: Math.round(amount * 100),
-        order_ref: `market-promotion:${offerId}`,
-        idempotency_key: requestId,
+        order_ref: `market-promotion:${purchase.offer_id}`,
+        idempotency_key: purchase.id,
         currency: "SUNRISE_PAY",
       }),
     });
@@ -112,19 +65,28 @@ Deno.serve(async (req) => {
         status: "failed",
         last_error: String(pay?.error ?? `pay_charge_${payResp.status}`),
         updated_at: new Date().toISOString(),
-      }).eq("id", requestId);
-      return json({ ok: false, error: pay?.error ?? "payment_failed", message: pay?.message }, payResp.status === 402 ? 402 : 400);
+      }).eq("id", purchase.id);
+      return json({ ok: false, error: pay?.error ?? "payment_failed" }, payResp.status === 402 ? 402 : 400);
     }
 
-    const { error: promoErr } = await admin.from("promoted_offers").insert({
-      offer_id: offerId,
-      seller_id: seller.id,
+    const { error: promoErr } = await admin.from("promoted_offers").upsert({
+      offer_id: purchase.offer_id,
+      seller_id: purchase.seller_id,
       budget: amount,
       spent: amount,
       pricing_code: "highlight_day",
       status: "active",
-    });
-    if (promoErr) return json({ ok: false, error: "promotion_create_failed", message: promoErr.message }, 500);
+      source_purchase_id: purchase.id,
+    }, { onConflict: "source_purchase_id" });
+    if (promoErr) {
+      await admin.from("promotion_purchases").update({
+        status: "failed",
+        mysunrise_tx_id: pay?.tx_id ? String(pay.tx_id) : null,
+        last_error: `promotion_create_failed:${promoErr.message}`,
+        updated_at: new Date().toISOString(),
+      }).eq("id", purchase.id);
+      return json({ ok: false, error: "promotion_create_failed" }, 500);
+    }
 
     await admin.from("promotion_purchases").update({
       status: "paid",
@@ -132,7 +94,7 @@ Deno.serve(async (req) => {
       last_error: null,
       paid_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
-    }).eq("id", requestId);
+    }).eq("id", purchase.id);
 
     return json({ ok: true, amount });
   } catch (err) {
