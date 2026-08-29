@@ -21,14 +21,29 @@ export default function SprzedawcaStart() {
   return (
     <main className="min-h-screen px-4 py-8 sm:px-6" style={{ background: "var(--bg)", color: "var(--ink)" }}>
       <div className="mx-auto max-w-6xl">
-        <div className="mb-8">
-          <div className="text-sm font-semibold" style={{ color: "var(--gold)" }}>SUNRISE MARKET</div>
-          <h1 className="mt-1 font-display text-3xl font-semibold sm:text-4xl">Co chcesz wystawić?</h1>
-          <p className="mt-2 max-w-2xl text-sm sm:text-base" style={{ color: "var(--mut)" }}>
-            Wybierz typ oferty. Formularz dopasuje pola i podpowiedzi do tego, co sprzedajesz.
-          </p>
+        <div className="mb-6 flex flex-wrap items-start justify-between gap-4">
+          <div>
+            <div className="text-sm font-semibold" style={{ color: "var(--gold)" }}>SUNRISE MARKET</div>
+            <h1 className="mt-1 font-display text-3xl font-semibold sm:text-4xl">Centrum sprzedawcy</h1>
+            <p className="mt-2 max-w-2xl text-sm sm:text-base" style={{ color: "var(--mut)" }}>
+              Wystaw ofertę albo przejdź do zapytań klientów i prowadź sprzedaż do końca.
+            </p>
+          </div>
+          <Link to="/sprzedawca/zapytania" className="rounded-2xl px-5 py-3 font-semibold text-black" style={{ background: "linear-gradient(135deg,#C8965A,#E8C896)" }}>
+            💬 Zapytania klientów
+          </Link>
         </div>
 
+        <div className="mb-8 grid gap-3 sm:grid-cols-2">
+          <Link to="/sprzedawca/zapytania" className="rounded-2xl p-5" style={{ background: "rgba(122,184,154,.08)", border: "1px solid rgba(122,184,154,.24)" }}>
+            <div className="text-2xl">📈</div><div className="mt-2 text-lg font-semibold">Leady i sprzedaż</div><div className="mt-1 text-sm" style={{ color: "var(--mut)" }}>Nowe → kontakt → oferta → rezerwacja → sprzedaż deklarowana lub potwierdzona.</div>
+          </Link>
+          <Link to="/sprzedawca-klasyczny" className="rounded-2xl p-5" style={{ background: "var(--glass)", border: "1px solid var(--line)" }}>
+            <div className="text-2xl">📣</div><div className="mt-2 text-lg font-semibold">Promowanie i zarządzanie</div><div className="mt-1 text-sm" style={{ color: "var(--mut)" }}>Oferty, zamówienia, reklamy, statystyki, wysyłka i portfel.</div>
+          </Link>
+        </div>
+
+        <h2 className="mb-4 text-xl font-semibold">Co chcesz wystawić?</h2>
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {TYPES.map((type) => (
             <Link
