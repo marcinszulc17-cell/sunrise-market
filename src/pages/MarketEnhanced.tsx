@@ -1,0 +1,105 @@
+import { useEffect } from "react";
+import Market from "./Market";
+import { getOffer } from "../lib/api";
+
+function isSpecial(slug: string) {
+  return slug.includes("motoryzacja-samochody-osobowe") || slug.startsWith("nieruchomosci-");
+}
+
+function fmt(v: any) {
+  return v === null || v === undefined || v === "" ? "" : String(v);
+}
+
+function metaFor(o: any) {
+  const a = o?.attributes || {};
+  const slug = String(o?.category_slug || "");
+  if (slug.includes("motoryzacja-samochody-osobowe")) {
+    const mileage = a.mileage_km ? `${Number(a.mileage_km).toLocaleString("pl-PL")} km` : "";
+    return [fmt(a.year), mileage, fmt(a.fuel), a.power_hp ? `${a.power_hp} KM` : ""].filter(Boolean);
+  }
+  if (slug.startsWith("nieruchomosci-")) {
+    const ppm = a.area_m2 && o?.price_gross ? `${Math.round(Number(o.price_gross) / Number(a.area_m2)).toLocaleString("pl-PL")} zł/m²` : "";
+    return [a.area_m2 ? `${a.area_m2} m²` : "", a.rooms ? `${a.rooms} pok.` : "", fmt(a.location), ppm].filter(Boolean);
+  }
+  return [];
+}
+
+function decorate(article: HTMLElement, offer: any) {
+  const slug = String(offer?.category_slug || "");
+  if (!isSpecial(slug) || article.dataset.smartDecorated === "1") return;
+  article.dataset.smartDecorated = "1";
+
+  const body = article.querySelector(".p-4.flex.flex-col") as HTMLElement | null;
+  if (!body) return;
+  const price = Array.from(body.children).find((el) => (el as HTMLElement).className.includes("text-2xl")) as HTMLElement | undefined;
+  const meta = metaFor(offer);
+  if (price && meta.length) {
+    const row = document.createElement("div");
+    row.dataset.smartMeta = "1";
+    row.className = "flex flex-wrap gap-x-3 gap-y-1 text-xs";
+    row.style.color = "var(--mut)";
+    row.textContent = meta.join(" · ");
+    price.insertAdjacentElement("afterend", row);
+  }
+
+  if (offer?.attributes?.full_vat_invoice) {
+    const badge = document.createElement("span");
+    badge.className = "text-[11px] font-semibold px-2 py-1 rounded-full self-start";
+    badge.style.background = "rgba(56,224,240,.10)";
+    badge.style.border = "1px solid rgba(56,224,240,.25)";
+    badge.textContent = "Pełna faktura VAT";
+    const priceEl = price || body;
+    priceEl.insertAdjacentElement("afterend", badge);
+  }
+
+  const buttons = Array.from(article.querySelectorAll("button"));
+  for (const b of buttons) {
+    if ((b.textContent || "").includes("Do koszyka") || (b.textContent || "").includes("Dodano do koszyka")) {
+      (b as HTMLElement).style.display = "none";
+    }
+  }
+  const detail = Array.from(article.querySelectorAll("a")).find((a) => (a.textContent || "").trim() === "Szczegóły") as HTMLAnchorElement | undefined;
+  if (detail) {
+    detail.textContent = "Zobacz ofertę";
+    detail.classList.add("flex-1", "justify-center", "font-semibold");
+  }
+
+  for (const badge of Array.from(article.querySelectorAll("span"))) {
+    if ((badge.textContent || "").includes("Darmowa dostawa")) (badge as HTMLElement).style.display = "none";
+  }
+}
+
+export default function MarketEnhanced() {
+  useEffect(() => {
+    let stopped = false;
+    const cache = new Map<string, any>();
+    const inflight = new Set<string>();
+
+    async function scan() {
+      if (stopped) return;
+      const cards = Array.from(document.querySelectorAll("article")) as HTMLElement[];
+      for (const article of cards) {
+        if (article.dataset.smartDecorated === "1") continue;
+        const link = article.querySelector('a[href^="/produkt/"]') as HTMLAnchorElement | null;
+        if (!link) continue;
+        const id = link.getAttribute("href")?.split("/").pop();
+        if (!id) continue;
+        if (cache.has(id)) { decorate(article, cache.get(id)); continue; }
+        if (inflight.has(id)) continue;
+        inflight.add(id);
+        getOffer(id).then((o) => {
+          cache.set(id, o);
+          if (o) decorate(article, o);
+        }).catch(() => {}).finally(() => inflight.delete(id));
+      }
+    }
+
+    scan();
+    const obs = new MutationObserver(() => scan());
+    obs.observe(document.body, { childList: true, subtree: true });
+    const timer = window.setInterval(scan, 1200);
+    return () => { stopped = true; obs.disconnect(); window.clearInterval(timer); };
+  }, []);
+
+  return <Market />;
+}
