@@ -16,6 +16,7 @@ import VerifyRequest from "./pages/VerifyRequest";
 import Login from "./pages/Login";
 import ProductRouter from "./pages/ProductRouter";
 import AdvancedSearch from "./pages/AdvancedSearch";
+import Compare from "./pages/Compare";
 import Koszyk from "./pages/Koszyk";
 import Zamowienia from "./pages/Zamowienia";
 import Cennik from "./pages/Cennik";
@@ -35,6 +36,7 @@ ReactDOM.createRoot(document.getElementById("root")!).render(
         <Route path="/motoryzacja" element={<CategoryPortal mode="car" />} />
         <Route path="/nieruchomosci" element={<CategoryPortal mode="property" />} />
         <Route path="/szukaj" element={<AdvancedSearch />} />
+        <Route path="/porownaj" element={<Compare />} />
         <Route path="/login" element={<Login />} />
         <Route path="/sso" element={<Sso />} />
         <Route path="/produkt/:id" element={<ProductRouter />} />
