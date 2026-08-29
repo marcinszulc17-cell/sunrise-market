@@ -12,8 +12,6 @@ type Payout = {
   status: string; paid_at: string | null;
 };
 
-// Panel rozliczeń sprzedawcy. Trasa: /sprzedawca/rozliczenia
-// (return_url/refresh_url z connect-onboard wskazują tutaj).
 export default function Rozliczenia() {
   const [authed, setAuthed] = useState<boolean | null>(null);
   const [seller, setSeller] = useState<Seller | null>(null);
@@ -54,10 +52,25 @@ export default function Rozliczenia() {
   return (
     <div className="mx-auto max-w-3xl p-6 text-zinc-100">
       <h1 className="text-2xl font-bold mb-1">Rozliczenia — {seller.legal_name}</h1>
-      <p className="text-zinc-400 mb-6">Wypłaty netto (sprzedaż − prowizja 7,9%) trafiają na Twoje konto co tydzień przez Stripe.</p>
+      <p className="text-zinc-400 mb-5">Dla płatności Sunrise Pay obowiązuje stała opłata sprzedawcy 7,9% wartości sprzedaży. Pozostałe 92,1% stanowi kwotę sprzedawcy.</p>
+
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-6">
+        <div className="rounded-2xl bg-zinc-900/70 p-4 ring-1 ring-zinc-800">
+          <div className="text-xs text-zinc-500">Przykład sprzedaży</div>
+          <div className="text-xl font-bold">1 000,00 zł</div>
+        </div>
+        <div className="rounded-2xl bg-zinc-900/70 p-4 ring-1 ring-amber-500/20">
+          <div className="text-xs text-zinc-500">Opłata Sunrise Pay 7,9%</div>
+          <div className="text-xl font-bold text-amber-400">79,00 zł</div>
+        </div>
+        <div className="rounded-2xl bg-zinc-900/70 p-4 ring-1 ring-emerald-500/20">
+          <div className="text-xs text-zinc-500">Dla sprzedawcy</div>
+          <div className="text-xl font-bold text-emerald-400">921,00 zł</div>
+        </div>
+      </div>
 
       <div className="rounded-2xl bg-zinc-900/70 p-5 mb-6 ring-1 ring-amber-500/20">
-        <div className="flex items-center justify-between">
+        <div className="flex items-center justify-between gap-4 flex-wrap">
           <div>
             <div className="text-sm text-zinc-400">Status wypłat (Stripe Connect)</div>
             <div className={"text-lg font-semibold " + (active ? "text-emerald-400" : "text-amber-400")}>
@@ -73,16 +86,20 @@ export default function Rozliczenia() {
         </div>
       </div>
 
+      <div className="mb-6 rounded-xl bg-sky-500/10 px-4 py-3 text-sm text-sky-200 ring-1 ring-sky-500/20">
+        W opłacie 7,9% mieści się cashback dla kupującego oraz część należna platformie. Sprzedawca widzi jedną, stałą opłatę — bez dodatkowych prowizji zależnych od kategorii.
+      </div>
+
       {msg && <div className="mb-4 rounded-lg bg-amber-500/10 px-4 py-2 text-amber-300 text-sm">{msg}</div>}
 
       <h2 className="text-lg font-semibold mb-3">Historia wypłat</h2>
-      <div className="overflow-hidden rounded-xl ring-1 ring-zinc-800">
-        <table className="w-full text-sm">
+      <div className="overflow-x-auto rounded-xl ring-1 ring-zinc-800">
+        <table className="w-full min-w-[680px] text-sm">
           <thead className="bg-zinc-900/80 text-zinc-400">
             <tr>
               <th className="text-left px-3 py-2">Okres</th>
               <th className="text-right px-3 py-2">Sprzedaż</th>
-              <th className="text-right px-3 py-2">Prowizja</th>
+              <th className="text-right px-3 py-2">Opłata 7,9%</th>
               <th className="text-right px-3 py-2">Do wypłaty</th>
               <th className="text-left px-3 py-2">Status</th>
             </tr>
