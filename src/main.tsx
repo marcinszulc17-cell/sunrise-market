@@ -6,6 +6,7 @@ import Market from "./pages/Market";
 import Portfel from "./pages/Portfel";
 import Rozliczenia from "./pages/Rozliczenia";
 import Sprzedawca from "./pages/Sprzedawca";
+import SprzedawcaV2 from "./pages/SprzedawcaV2";
 import Login from "./pages/Login";
 import Product from "./pages/Product";
 import Koszyk from "./pages/Koszyk";
@@ -17,7 +18,6 @@ import { initTheme } from "./lib/theme";
 import "./index.css";
 
 initTheme();
-// Link polecajacy ambasadora: zapamietaj kod z ?ref= do czasu logowania.
 try { const _r = new URLSearchParams(window.location.search).get("ref"); if (_r && _r.trim()) localStorage.setItem("sunrise_ref", _r.trim().slice(0, 64)); } catch { /* ignore */ }
 
 ReactDOM.createRoot(document.getElementById("root")!).render(
@@ -34,9 +34,9 @@ ReactDOM.createRoot(document.getElementById("root")!).render(
         <Route path="/operator" element={<Operator />} />
         <Route path="/portfel" element={<Portfel />} />
         <Route path="/konto" element={<Konto />} />
-        <Route path="/sprzedawca" element={<Sprzedawca />} />
+        <Route path="/sprzedawca" element={<SprzedawcaV2 />} />
+        <Route path="/sprzedawca-klasyczny" element={<Sprzedawca />} />
         <Route path="/sprzedawca/rozliczenia" element={<Rozliczenia />} />
-        {/* Daniel dodaje kolejne trasy: /produkt/:id, /sprzedawca, /operator */}
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </BrowserRouter>
