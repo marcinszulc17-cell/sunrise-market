@@ -12,6 +12,7 @@ import SprzedawcaStart from "./pages/SprzedawcaStart";
 import SprzedawcaWystaw from "./pages/SprzedawcaWystaw";
 import SellerLeads from "./pages/SellerLeads";
 import SaleConfirmation from "./pages/SaleConfirmation";
+import VerifyRequest from "./pages/VerifyRequest";
 import Login from "./pages/Login";
 import ProductRouter from "./pages/ProductRouter";
 import AdvancedSearch from "./pages/AdvancedSearch";
@@ -37,6 +38,7 @@ ReactDOM.createRoot(document.getElementById("root")!).render(
         <Route path="/login" element={<Login />} />
         <Route path="/sso" element={<Sso />} />
         <Route path="/produkt/:id" element={<ProductRouter />} />
+        <Route path="/verify/:id" element={<VerifyRequest />} />
         <Route path="/koszyk" element={<Koszyk />} />
         <Route path="/zamowienia" element={<Zamowienia />} />
         <Route path="/cennik" element={<Cennik />} />
