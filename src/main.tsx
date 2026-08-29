@@ -3,6 +3,7 @@ import ReactDOM from "react-dom/client";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import Sso from "./pages/Sso";
 import Market from "./pages/Market";
+import MarketSmartFilterDock from "./components/MarketSmartFilterDock";
 import Portfel from "./pages/Portfel";
 import Rozliczenia from "./pages/Rozliczenia";
 import Sprzedawca from "./pages/Sprzedawca";
@@ -26,7 +27,7 @@ ReactDOM.createRoot(document.getElementById("root")!).render(
   <React.StrictMode>
     <BrowserRouter>
       <Routes>
-        <Route path="/" element={<Market />} />
+        <Route path="/" element={<><Market /><MarketSmartFilterDock /></>} />
         <Route path="/szukaj" element={<AdvancedSearch />} />
         <Route path="/login" element={<Login />} />
         <Route path="/sso" element={<Sso />} />
