@@ -1,0 +1,87 @@
+import { useEffect, useMemo, useState } from "react";
+import { Link } from "react-router-dom";
+import { supabase } from "../lib/supabase";
+
+type Lead = {
+  id:string; offer_id:string; title:string; name:string; email:string|null; phone:string|null;
+  message:string|null; status:string; source:string; created_at:string;
+};
+
+type StatusKey = "new"|"contacted"|"offer"|"reserved"|"sold_declared"|"sold_confirmed"|"closed";
+const STATUS: Array<{id:StatusKey; label:string; icon:string}> = [
+  {id:"new",label:"Nowe",icon:"🆕"},
+  {id:"contacted",label:"Kontakt",icon:"📞"},
+  {id:"offer",label:"Oferta",icon:"💬"},
+  {id:"reserved",label:"Rezerwacja",icon:"🗓️"},
+  {id:"sold_declared",label:"Sprzedane – deklarowane",icon:"🤝"},
+  {id:"sold_confirmed",label:"Sprzedane – potwierdzone",icon:"✅"},
+  {id:"closed",label:"Zamknięte",icon:"🗃️"},
+];
+
+export default function SellerLeads(){
+  const [rows,setRows]=useState<Lead[]>([]);
+  const [loading,setLoading]=useState(true);
+  const [err,setErr]=useState<string|null>(null);
+  const [filter,setFilter]=useState<StatusKey|"all">("all");
+  const [busy,setBusy]=useState<string|null>(null);
+
+  async function load(){
+    setLoading(true); setErr(null);
+    const {data,error}=await supabase.rpc("my_offer_leads");
+    setLoading(false);
+    if(error){setErr(error.message);setRows([]);return;}
+    setRows((data||[]) as Lead[]);
+  }
+  useEffect(()=>{load();},[]);
+
+  async function setStatus(id:string,status:StatusKey){
+    setBusy(id);
+    const {error}=await supabase.rpc("set_offer_lead_status",{p_lead:id,p_status:status});
+    setBusy(null);
+    if(error){setErr(error.message);return;}
+    setRows(r=>r.map(x=>x.id===id?{...x,status}:x));
+  }
+
+  const visible=useMemo(()=>filter==="all"?rows:rows.filter(r=>r.status===filter),[rows,filter]);
+  const count=(s:StatusKey)=>rows.filter(r=>r.status===s).length;
+  const confirmed=count("sold_confirmed");
+  const declared=count("sold_declared");
+
+  return <main className="min-h-screen px-4 py-8 sm:px-6" style={{background:"var(--bg)",color:"var(--ink)"}}>
+    <div className="mx-auto max-w-7xl">
+      <div className="mb-7 flex flex-wrap items-start justify-between gap-4">
+        <div><div className="text-sm font-semibold" style={{color:"var(--gold)"}}>SUNRISE MARKET · SPRZEDAWCA</div><h1 className="mt-1 text-3xl font-semibold sm:text-4xl">Zapytania i sprzedaż</h1><p className="mt-2 max-w-2xl text-sm" style={{color:"var(--mut)"}}>Prowadź klienta od pierwszego zapytania do sprzedaży. Przy transakcjach poza portalem rozróżniamy sprzedaż deklarowaną od potwierdzonej.</p></div>
+        <div className="flex gap-2"><Link to="/sprzedawca" className="rounded-xl px-4 py-2 text-sm" style={{border:"1px solid var(--line)"}}>← Panel</Link><Link to="/sprzedawca/wystaw" className="rounded-xl px-4 py-2 text-sm font-semibold text-black" style={{background:"linear-gradient(135deg,#C8965A,#E8C896)"}}>Dodaj ogłoszenie</Link></div>
+      </div>
+
+      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        <Kpi label="Wszystkie zapytania" value={rows.length}/><Kpi label="Nowe" value={count("new")}/><Kpi label="Sprzedane deklarowane" value={declared}/><Kpi label="Sprzedane potwierdzone" value={confirmed}/>
+      </div>
+
+      <div className="mt-6 flex gap-2 overflow-x-auto pb-2">
+        <button onClick={()=>setFilter("all")} className="whitespace-nowrap rounded-full px-4 py-2 text-sm" style={pill(filter==="all")}>Wszystkie ({rows.length})</button>
+        {STATUS.map(s=><button key={s.id} onClick={()=>setFilter(s.id)} className="whitespace-nowrap rounded-full px-4 py-2 text-sm" style={pill(filter===s.id)}>{s.icon} {s.label} ({count(s.id)})</button>)}
+      </div>
+
+      {err&&<div className="mt-4 rounded-xl px-4 py-3 text-sm" style={{background:"rgba(239,68,68,.08)",border:"1px solid rgba(239,68,68,.25)"}}>{err}</div>}
+      {loading?<div className="py-12" style={{color:"var(--mut)"}}>Ładowanie zapytań…</div>:visible.length===0?<div className="mt-6 rounded-2xl p-8 text-center" style={{background:"var(--glass)",border:"1px solid var(--line)",color:"var(--mut)"}}>Brak zapytań w tym statusie.</div>:<div className="mt-6 grid gap-4">{visible.map(l=><LeadCard key={l.id} lead={l} busy={busy===l.id} onStatus={setStatus}/>)}</div>}
+    </div>
+  </main>;
+}
+
+function LeadCard({lead,busy,onStatus}:{lead:Lead;busy:boolean;onStatus:(id:string,s:StatusKey)=>void}){
+  const current=STATUS.find(s=>s.id===lead.status);
+  return <article className="rounded-2xl p-5" style={{background:"var(--glass)",border:"1px solid var(--line)"}}>
+    <div className="flex flex-wrap items-start justify-between gap-4">
+      <div><a href={`/produkt/${lead.offer_id}`} className="font-semibold hover:underline">{lead.title}</a><div className="mt-1 text-sm" style={{color:"var(--mut)"}}>{new Date(lead.created_at).toLocaleString("pl-PL")}</div></div>
+      <span className="rounded-full px-3 py-1 text-xs font-semibold" style={{background:"rgba(200,150,90,.12)",color:"var(--gold)"}}>{current?.icon} {current?.label||lead.status}</span>
+    </div>
+    <div className="mt-4 grid gap-4 lg:grid-cols-[1fr_1fr]">
+      <div><div className="text-lg font-semibold">{lead.name}</div><div className="mt-2 flex flex-wrap gap-2 text-sm">{lead.phone&&<a href={`tel:${lead.phone}`} className="rounded-lg px-3 py-2" style={{border:"1px solid var(--line)"}}>📞 {lead.phone}</a>}{lead.email&&<a href={`mailto:${lead.email}`} className="rounded-lg px-3 py-2" style={{border:"1px solid var(--line)"}}>✉️ {lead.email}</a>}</div>{lead.message&&<div className="mt-3 whitespace-pre-wrap rounded-xl p-3 text-sm" style={{background:"rgba(255,255,255,.03)",border:"1px solid var(--line)"}}>{lead.message}</div>}</div>
+      <div><div className="text-xs font-semibold uppercase tracking-wide" style={{color:"var(--mut)"}}>Etap klienta</div><div className="mt-2 grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-2 xl:grid-cols-3">{STATUS.map(s=><button key={s.id} disabled={busy||lead.status===s.id} onClick={()=>onStatus(lead.id,s.id)} className="rounded-xl px-3 py-2 text-left text-xs disabled:opacity-50" style={{border:lead.status===s.id?"1px solid var(--gold)":"1px solid var(--line)",background:lead.status===s.id?"rgba(200,150,90,.10)":"transparent"}}><div className="font-semibold">{s.icon} {s.label}</div></button>)}</div>{lead.status==="sold_declared"&&<div className="mt-3 text-xs" style={{color:"var(--mut)"}}>Sprzedawca zadeklarował sprzedaż poza portalem. To nie jest jeszcze potwierdzenie kupującego.</div>}{lead.status==="sold_confirmed"&&<div className="mt-3 text-xs" style={{color:"var(--green)"}}>Sprzedaż oznaczona jako potwierdzona.</div>}</div>
+    </div>
+  </article>
+}
+
+function Kpi({label,value}:{label:string;value:number}){return <div className="rounded-2xl p-4" style={{background:"var(--glass)",border:"1px solid var(--line)"}}><div className="text-xs" style={{color:"var(--mut)"}}>{label}</div><div className="mt-1 text-2xl font-semibold">{value}</div></div>}
+function pill(active:boolean):React.CSSProperties{return {border:active?"1px solid var(--gold)":"1px solid var(--line)",background:active?"rgba(200,150,90,.12)":"var(--glass)",color:active?"var(--gold)":"var(--ink)"}}
