@@ -4,6 +4,7 @@ import { checkout, validateCoupon, walletBalance, listShippingLanes, cartLanes, 
 import { useCart, setQty, removeItem, clearCart, cartTotal, addToCart, cleanTitle } from "../lib/cart";
 import { topupWallet, redeemPoints } from "../lib/payments";
 import { saveIntent, loadIntent, clearIntent } from "../lib/checkoutIntent";
+import { getMarketConfig, cashbackFor } from "../lib/marketConfig";
 
 import { zl, pkt } from "../lib/money";
 const FREE_SHIP = 149;
@@ -20,19 +21,20 @@ export default function Koszyk() {
   const [done, setDone] = useState<{ order: string; paid: number; cashback: number; balance: number | null; method?: "wallet" | "card" } | null>(null);
 
   const [methods, setMethods] = useState<ShipMethod[]>([]);
-  const [lanes, setLanes] = useState<Record<string, CartLane>>({}); // offer_id -> lane info
-  const [selected, setSelected] = useState<Record<string, string>>({}); // lane -> shipping code
+  const [lanes, setLanes] = useState<Record<string, CartLane>>({});
+  const [selected, setSelected] = useState<Record<string, string>>({});
   const [addr, setAddr] = useState({ name: "", phone: "", street: "", city: "", postal: "" });
   const addrOk = !!(addr.name && addr.street && addr.city && addr.postal);
   const [balance, setBalance] = useState<number | null>(null);
-  const [points, setPoints] = useState<number>(0); // saldo punktów (cashback) do wymiany
+  const [points, setPoints] = useState<number>(0);
   const [linked, setLinked] = useState(true);
-  const [currency, setCurrency] = useState<"SUNRISE_PAY" | "GOLD_PAY">("SUNRISE_PAY"); // Gold Pay: wkrótce
-  const [recs, setRecs] = useState<any[]>([]); // cross-sell „Może Cię zainteresować"
-  const [resuming, setResuming] = useState(false); // wznawianie płatności po powrocie ze Stripe
-  const [topupAmount, setTopupAmount] = useState<string>(""); // kwota w polu inline doładowania
+  const [currency, setCurrency] = useState<"SUNRISE_PAY" | "GOLD_PAY">("SUNRISE_PAY");
+  const [recs, setRecs] = useState<any[]>([]);
+  const [resuming, setResuming] = useState(false);
+  const [topupAmount, setTopupAmount] = useState<string>("");
   const [coupon, setCoupon] = useState("");
   const [couponRes, setCouponRes] = useState<CouponCheck | null>(null);
+  const [cashbackRate, setCashbackRate] = useState(0.03);
 
   const ids = cart.map((i) => i.offer_id);
   const idsKey = ids.join(",");
@@ -43,8 +45,8 @@ export default function Koszyk() {
   useEffect(() => {
     listShippingLanes().then(setMethods).catch(() => {});
     supabase.auth.getUser().then(({ data }) => { if (data.user) refreshWallet(); });
+    getMarketConfig().then((c) => setCashbackRate(c.cashbackRate));
   }, []);
-  // pobierz tory dla ofert w koszyku
   useEffect(() => {
     if (!ids.length) { setLanes({}); return; }
     cartLanes(ids).then((rows) => {
@@ -52,10 +54,8 @@ export default function Koszyk() {
       for (const r of rows) map[r.offer_id] = r;
       setLanes(map);
     }).catch(() => {});
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [idsKey]);
 
-  // cross-sell: podobne do pierwszej pozycji, w razie czego „dla Ciebie"
   useEffect(() => {
     if (!ids.length) { setRecs([]); return; }
     (async () => {
@@ -65,17 +65,14 @@ export default function Koszyk() {
       const inCart = new Set(ids);
       setRecs(list.filter((r) => r && !inCart.has(r.offer_id)).slice(0, 4));
     })();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [idsKey]);
 
-  // które tory są obecne w koszyku
   const presentLanes = useMemo(() => {
     const s = new Set<string>();
     for (const i of cart) s.add(lanes[i.offer_id]?.lane ?? "seller");
     return Array.from(s);
   }, [cart, lanes]);
 
-  // domyślne metody per tor (najtańsza pasująca)
   useEffect(() => {
     setSelected((prev) => {
       const next = { ...prev };
@@ -84,7 +81,6 @@ export default function Koszyk() {
         const opt = methods.filter((m) => m.lanes.includes(lane));
         if (opt[0]) next[lane] = opt[0].code;
       }
-      // usuń tory już nieobecne
       for (const k of Object.keys(next)) if (!presentLanes.includes(k)) delete next[k];
       return next;
     });
@@ -97,25 +93,23 @@ export default function Koszyk() {
   const shipCost = freeShip ? 0 : rawShip;
   const discount = couponRes?.valid ? Math.min(Number(couponRes.discount || 0), total) : 0;
   const grand = Math.max(0, total + shipCost - discount);
-  const cashback = Math.round(total * 0.03 * 100) / 100;
+  const cashbackBase = Math.max(0, total - discount);
+  const cashback = cashbackFor(cashbackBase, cashbackRate);
+  const cashbackPct = Math.round(cashbackRate * 10000) / 100;
   const shortfall = balance != null ? Math.max(0, grand - balance) : 0;
   const enoughFunds = balance != null && balance >= grand;
-  // kwota w polu doładowania: domyślnie zaokrąglony w górę brakujący shortfall
   const topupDisplay = topupAmount !== "" ? topupAmount : (shortfall > 0 ? String(Math.ceil(shortfall)) : "");
   const effectiveTopup = Math.max(shortfall, Math.ceil(Number(topupDisplay) || 0));
-  // szybkie kwoty doładowania — zachęta do większego, rzadszego zasilenia (mniej opłat Stripe)
   const ceilShort = Math.ceil(shortfall);
   const round50 = Math.max(50, Math.ceil(shortfall / 50) * 50);
   const topupSuggestions = Array.from(new Set([ceilShort, round50, round50 + 50, round50 + 150])).filter((v) => v >= ceilShort).slice(0, 4);
 
-  // pozycje pogrupowane po torze
   const groups = useMemo(() => {
     const g: Record<string, typeof cart> = {};
     for (const i of cart) { const l = lanes[i.offer_id]?.lane ?? "seller"; (g[l] ||= []).push(i); }
     return g;
   }, [cart, lanes]);
 
-  // Wspólna realizacja zakupu — używana przez „Zapłać" i przez auto-wznowienie po doładowaniu.
   async function applyCoupon() {
     const code = coupon.trim();
     if (!code) { setCouponRes(null); return; }
@@ -147,7 +141,6 @@ export default function Koszyk() {
     await runCheckout(addr, selectedCodes);
   }
 
-  // Płatność kartą (Stripe Checkout) — do wyboru obok portfela. Bez cashbacku (perk portfela).
   async function payByCard() {
     setMsg(null);
     const { data: { user } } = await supabase.auth.getUser();
@@ -168,8 +161,6 @@ export default function Koszyk() {
     }
   }
 
-  // Auto-doładowanie w checkoutcie: dopłać brakującą kwotę przez Stripe, wróć do koszyka
-  // i dokończ płatność z portfela. Adres + wybór dostawy zapisujemy jako „zamiar".
   async function topupAndPay(amt: number) {
     setMsg(null);
     const { data: { user } } = await supabase.auth.getUser();
@@ -180,7 +171,7 @@ export default function Koszyk() {
     saveIntent({ addr, shippingCodes: selectedCodes, grand, topup: amount, coupon: couponRes?.valid ? couponRes.code : undefined });
     setBusy(true);
     try {
-      await topupWallet(amount, "/koszyk?topup=success"); // redirect na Stripe następuje w środku
+      await topupWallet(amount, "/koszyk?topup=success");
     } catch (e: any) {
       setBusy(false);
       clearIntent();
@@ -188,8 +179,6 @@ export default function Koszyk() {
     }
   }
 
-  // Synergia z punktami: zamień punkty (cashback) na saldo i od razu zapłać.
-  // Pokazujemy tylko, gdy punkty pokrywają cały brakujący shortfall.
   async function redeemAndPay() {
     setMsg(null);
     const { data: { user } } = await supabase.auth.getUser();
@@ -218,7 +207,6 @@ export default function Koszyk() {
     }
   }
 
-  // Powrót ze Stripe po płatności kartą za zamówienie (?card=success|cancel).
   useEffect(() => {
     const q = new URLSearchParams(window.location.search);
     const card = q.get("card");
@@ -235,10 +223,8 @@ export default function Koszyk() {
       clearCart();
       setDone({ order: orderId, paid: paidAmt, cashback: 0, balance: null, method: "card" });
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Powrót ze Stripe (?topup=success): odśwież saldo i — jeśli środki wystarczą — dokończ płatność.
   useEffect(() => {
     const p = new URLSearchParams(window.location.search).get("topup");
     if (!p) return;
@@ -265,7 +251,6 @@ export default function Koszyk() {
         clean();
       })();
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   return (
@@ -288,7 +273,7 @@ export default function Koszyk() {
             <div className="text-2xl font-display font-semibold mb-2" style={{ color: "var(--green)" }}>Zamówienie opłacone ✅</div>
             <p className="text-sm" style={{ color: "var(--ink)" }}>
               {done.method === "card" ? (
-                <>Zapłacono {done.paid > 0 ? <b>{zl(done.paid)}</b> : null} kartą (Stripe). Cashback 3% przysługuje przy płatności portfelem Sunrise Pay — następnym razem doładuj portfel i zgarnij punkty.</>
+                <>Zapłacono {done.paid > 0 ? <b>{zl(done.paid)}</b> : null} kartą (Stripe). Cashback przysługuje przy płatności portfelem Sunrise Pay — następnym razem doładuj portfel i zgarnij punkty.</>
               ) : (<>
               Zapłacono <b>{zl(done.paid)}</b> z portfela Sunrise Pay. Cashback <b style={{ color: "var(--green)" }}>+{pkt(done.cashback)} pkt</b> trafił na portfel
               {done.balance != null && <> — nowe saldo: <b>{zl(done.balance)}</b></>}.
@@ -306,7 +291,6 @@ export default function Koszyk() {
         ) : (
           <>
           <div className="grid gap-6 md:grid-cols-3">
-            {/* pozycje pogrupowane po torze realizacji */}
             <div className="md:col-span-2 flex flex-col gap-5">
               {presentLanes.map((lane) => {
                 const meta = laneMeta[lane] ?? laneMeta.seller;
@@ -337,7 +321,6 @@ export default function Koszyk() {
                         </div>
                       ))}
                     </div>
-                    {/* wybór dostawy dla tego toru */}
                     <div className="mt-3 pt-3" style={{ borderTop: "1px solid var(--line)" }}>
                       <div className="text-xs mb-2" style={{ color: "var(--mut)" }}>Dostawa dla tej części</div>
                       <div className="flex flex-wrap gap-2">
@@ -358,7 +341,6 @@ export default function Koszyk() {
               })}
             </div>
 
-            {/* podsumowanie */}
             <div className="rounded-2xl p-5 h-fit" style={{ background: "var(--glass)", border: "1px solid var(--line)" }}>
               <div className="mb-4">
                 <div className="text-sm mb-2" style={{ color: "var(--mut)" }}>Adres dostawy</div>
@@ -400,10 +382,21 @@ export default function Koszyk() {
               </div>
               {couponRes && !couponRes.valid && <div className="text-xs mb-2" style={{ color: "#F25CB0" }}>{couponRes.message}</div>}
               <div className="flex justify-between mb-2 mt-1"><span style={{ color: "var(--mut)" }}>Razem</span><span className="font-display text-2xl font-semibold">{zl(grand)}</span></div>
-              <div className="flex justify-between text-sm mb-2"><span style={{ color: "var(--mut)" }}>Cashback 3% (punkty)</span><span style={{ color: "var(--green)" }}>+{pkt(cashback)} pkt</span></div>
+              <div className="rounded-xl p-3 mb-3" style={{ background: "rgba(122,184,154,.10)", border: "1px solid rgba(122,184,154,.35)" }}>
+                <div className="flex justify-between gap-3 items-end">
+                  <div>
+                    <div className="text-xs" style={{ color: "var(--mut)" }}>Płacisz za produkty</div>
+                    <div className="font-display text-lg font-semibold">{zl(cashbackBase)}</div>
+                  </div>
+                  <div className="text-right">
+                    <div className="text-xs" style={{ color: "var(--mut)" }}>Wraca {cashbackPct}%</div>
+                    <div className="font-display text-xl font-semibold" style={{ color: "var(--green)" }}>+{pkt(cashback)} pkt</div>
+                  </div>
+                </div>
+                <div className="text-xs mt-1" style={{ color: "var(--green)" }}>1 pkt = 1 zł w Sunrise Pay</div>
+              </div>
               <SmartCard />
 
-              {/* wybór waluty portfela — Gold Pay „wkrótce" (czeka na kurs pay-fx w MySunrise) */}
               <div className="mt-4 pt-3" style={{ borderTop: "1px solid var(--line)" }}>
                 <div className="text-xs mb-2" style={{ color: "var(--mut)" }}>Płatność portfelem</div>
                 <div className="grid grid-cols-2 gap-2">
@@ -483,7 +476,7 @@ export default function Koszyk() {
                   <button onClick={pay} disabled={busy || resuming || !addrOk || (balance != null && !enoughFunds)}
                           className="w-full rounded-xl py-3 font-semibold text-black disabled:opacity-50"
                           style={{ background: "linear-gradient(135deg,#C8965A,#A97B42)" }}>
-                    {resuming ? "Dokańczam zamówienie…" : busy ? "Płacę…" : "Zapłać saldem (Sunrise Pay) · +3% cashback"}
+                    {resuming ? "Dokańczam zamówienie…" : busy ? "Płacę…" : `Zapłać saldem · wróci ${pkt(cashback)} pkt`}
                   </button>
                   <button onClick={payByCard} disabled={busy || resuming || !addrOk}
                           className="w-full rounded-xl py-2.5 text-sm font-semibold disabled:opacity-50"
@@ -493,7 +486,7 @@ export default function Koszyk() {
                 </div>
               )}
               <p className="text-xs mt-3" style={{ color: "var(--mut)" }}>
-                Portfel Sunrise Pay = 3% cashbacku po zakupie. Karta (Stripe) — szybka płatność bez cashbacku. Subskrypcje rozliczane wyłącznie przez Stripe.
+                Portfel Sunrise Pay = cashback {cashbackPct}% po zakupie. Karta (Stripe) — szybka płatność bez cashbacku. Subskrypcje rozliczane wyłącznie przez Stripe.
               </p>
             </div>
           </div>
