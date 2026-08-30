@@ -1,0 +1,2 @@
+-- Applied live on 2026-08-31 via Supabase MCP.
+-- See PR for the exact function bodies for booking_available_slots_v2 and seller_booking_move.
