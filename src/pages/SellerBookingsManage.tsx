@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { supabase } from "../lib/supabase";
+import SellerBookingCalendar from "../components/SellerBookingCalendar";
 
 const statusLabel: Record<string,string> = {
   held: "Termin zablokowany",
@@ -20,6 +21,10 @@ type Offer = { offer_id:string; title:string; status:string };
 
 const pln = (v:number) => Number(v||0).toLocaleString("pl-PL", { style:"currency", currency:"PLN" });
 const dt = (iso:string, time=true) => new Date(iso).toLocaleString("pl-PL", time ? { dateStyle:"medium", timeStyle:"short" } : { dateStyle:"medium" });
+const localInput = (d:Date) => {
+  const pad=(n:number)=>String(n).padStart(2,"0");
+  return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+};
 
 export default function SellerBookingsManage() {
   const [rows,setRows] = useState<Booking[]>([]);
@@ -76,10 +81,16 @@ export default function SellerBookingsManage() {
     setBusy(false);
   }
 
+  function pickCalendarDate(from:Date,to:Date) {
+    setStart(localInput(from));
+    setEnd(localInput(to));
+    document.getElementById("block-editor")?.scrollIntoView({ behavior:"smooth", block:"center" });
+  }
+
   return <main className="min-h-screen px-4 py-8 sm:px-6" style={{background:"var(--bg)",color:"var(--ink)"}}>
     <div className="mx-auto max-w-7xl">
       <div className="mb-6 flex flex-wrap items-start justify-between gap-4">
-        <div><Link to="/sprzedawca" className="text-sm underline" style={{color:"var(--mut)"}}>← Centrum sprzedawcy</Link><h1 className="mt-2 font-display text-3xl font-semibold">Rezerwacje i kalendarz</h1><p className="mt-1 text-sm" style={{color:"var(--mut)"}}>Usługi jak Booksy oraz samochody i nieruchomości jak Booking.com — w jednym kalendarzu.</p></div>
+        <div><Link to="/sprzedawca" className="text-sm underline" style={{color:"var(--mut)"}}>← Centrum sprzedawcy</Link><h1 className="mt-2 font-display text-3xl font-semibold">Rezerwacje i kalendarz</h1><p className="mt-1 text-sm" style={{color:"var(--mut)"}}>Jeden kalendarz dla usług, samochodów, nieruchomości, produktów i sprzętu.</p></div>
         <Link to="/sprzedawca/oferty" className="rounded-xl px-4 py-2 text-sm font-semibold" style={{border:"1px solid var(--line)"}}>Zarządzaj ofertami</Link>
       </div>
 
@@ -91,14 +102,17 @@ export default function SellerBookingsManage() {
         <Stat label="Wartość opłaconych" value={pln(stats.paid)} />
       </div>
 
+      <SellerBookingCalendar bookings={rows} blocks={blocks} onPickDate={pickCalendarDate}/>
+
       <div className="grid gap-6 xl:grid-cols-[1fr_360px]">
         <section>
-          <div className="mb-4 flex flex-wrap gap-2">
-            {[['active','Aktywne'],['confirmed','Potwierdzone'],['pending_payment','Do opłacenia'],['completed','Zakończone'],['cancelled','Anulowane'],['all','Wszystkie']].map(([k,l])=><button key={k} onClick={()=>setFilter(k)} className="rounded-full px-3 py-1.5 text-sm" style={{background:filter===k?"rgba(200,150,90,.18)":"var(--glass)",border:"1px solid var(--line)",color:filter===k?"var(--gold)":"var(--ink)"}}>{l}</button>)}
+          <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+            <div><h2 className="text-xl font-semibold">Lista rezerwacji</h2><p className="mt-1 text-sm" style={{color:"var(--mut)"}}>Kliknięcie zdarzenia w kalendarzu przewija do jego szczegółów tutaj.</p></div>
+            <div className="flex flex-wrap gap-2">{[['active','Aktywne'],['confirmed','Potwierdzone'],['pending_payment','Do opłacenia'],['completed','Zakończone'],['cancelled','Anulowane'],['all','Wszystkie']].map(([k,l])=><button key={k} onClick={()=>setFilter(k)} className="rounded-full px-3 py-1.5 text-sm" style={{background:filter===k?"rgba(200,150,90,.18)":"var(--glass)",border:"1px solid var(--line)",color:filter===k?"var(--gold)":"var(--ink)"}}>{l}</button>)}</div>
           </div>
           {loading && <p style={{color:"var(--mut)"}}>Ładowanie…</p>}
           {!loading && visible.length===0 && <div className="rounded-2xl p-6" style={{background:"var(--glass)",border:"1px solid var(--line)"}}>Brak rezerwacji w tym widoku.</div>}
-          <div className="space-y-3">{visible.map(r=><article key={r.id} className="rounded-2xl p-5" style={{background:"var(--glass)",border:"1px solid var(--line)"}}>
+          <div className="space-y-3">{visible.map(r=><article id={`booking-${r.id}`} key={r.id} className="scroll-mt-24 rounded-2xl p-5" style={{background:"var(--glass)",border:"1px solid var(--line)"}}>
             <div className="flex flex-wrap items-start justify-between gap-4">
               <div><Link to={`/produkt/${r.offer_id}`} className="font-semibold hover:underline">{r.title}</Link><div className="mt-1 text-sm" style={{color:"var(--mut)"}}>{r.booking_type==="daily"?`${dt(r.starts_at,false)} – ${dt(r.ends_at,false)} · ${r.units} dni`:dt(r.starts_at,true)}</div></div>
               <span className="rounded-full px-3 py-1 text-xs font-semibold" style={{background:r.status==="confirmed"?"rgba(34,197,94,.12)":"var(--header)",border:"1px solid var(--line)"}}>{statusLabel[r.status]||r.status}</span>
@@ -115,8 +129,8 @@ export default function SellerBookingsManage() {
         </section>
 
         <aside className="space-y-5">
-          <div className="rounded-2xl p-5" style={{background:"var(--glass)",border:"1px solid var(--line)"}}>
-            <h2 className="text-lg font-semibold">Oferta i booking</h2><p className="mt-1 text-sm" style={{color:"var(--mut)"}}>Wybierz ofertę, aby blokować termin albo przejść do pełnych ustawień rezerwacji.</p>
+          <div id="block-editor" className="scroll-mt-24 rounded-2xl p-5" style={{background:"var(--glass)",border:"1px solid var(--line)"}}>
+            <h2 className="text-lg font-semibold">Oferta i blokada terminu</h2><p className="mt-1 text-sm" style={{color:"var(--mut)"}}>Kliknij dzień w kalendarzu, a godziny uzupełnią się automatycznie. Potem wybierz ofertę i zapisz blokadę.</p>
             <select value={offerId} onChange={e=>setOfferId(e.target.value)} className="mt-4 w-full rounded-xl px-3 py-2.5" style={{background:"var(--bg)",border:"1px solid var(--line)"}}><option value="">Wybierz ofertę</option>{offers.map(o=><option key={o.offer_id} value={o.offer_id}>{o.title}</option>)}</select>
             {offerId&&<Link to={`/sprzedawca/rezerwacje/ustawienia/${offerId}`} className="mt-3 block w-full rounded-xl px-4 py-2.5 text-center text-sm font-semibold" style={{border:"1px solid var(--gold)",color:"var(--gold)"}}>⚙ Zaawansowane ustawienia bookingu</Link>}
             <h3 className="mt-5 font-semibold">Zablokuj termin</h3>
