@@ -2,7 +2,7 @@ import { useEffect, useRef, useState, type MouseEvent } from "react";
 import ThemeToggle from "../components/ThemeToggle";
 import { zl, pkt } from "../lib/money";
 import { getRecent } from "../lib/recent";
-import { searchOffers, homePromoted, categoryCounts, recommendedOffers, sponsoredOffers, toggleWatch, watchedIds, myWatchlist, bannersFor, bannerView, bannerClick } from "../lib/api";
+import { searchOffers, searchOffersWithAttributes, homePromoted, categoryCounts, recommendedOffers, sponsoredOffers, toggleWatch, watchedIds, myWatchlist, bannersFor, bannerView, bannerClick } from "../lib/api";
 import { supabase } from "../lib/supabase";
 import { useCart, addToCart, isTestProduct, cleanTitle } from "../lib/cart";
 import SuriChat from "../components/SuriChat";
@@ -11,9 +11,29 @@ import { useSeo } from "../lib/seo";
 
 const FREE_SHIP = 149;   // musi być spójne z Koszyk.tsx
 
-type Offer = { offer_id: string; title: string; price_gross: number; category: string; seller: string; score: number; rating: number; reviews: number; image_url: string | null };
+type Offer = { offer_id: string; title: string; price_gross: number; category: string; category_slug?: string; seller: string; score: number; rating: number; reviews: number; image_url: string | null; attributes?: Record<string, unknown> | null };
 type Dept = { id?: string; slug: string; name: string };
+type AttrDef = { key: string; label: string; data_type: "text" | "number" | "bool" | "enum"; options: unknown };
 type Ad = { id: string; headline: string; link_url: string; image_url: string | null; seller: string };
+
+const PRIVATE_FILTER_KEYS = new Set(["vin", "registration_number", "kw_number", "offer_type", "cashback_only", "purchase_mode"]);
+
+function matchesAttributeFilters(offer: Offer, filters: Record<string, string | boolean>) {
+  const attributes = offer.attributes ?? {};
+  for (const [rawKey, expected] of Object.entries(filters)) {
+    if (expected === "" || expected === false) continue;
+    const suffix = rawKey.endsWith("_min") ? "min" : rawKey.endsWith("_max") ? "max" : null;
+    const key = suffix ? rawKey.slice(0, -4) : rawKey;
+    const actual = attributes[key];
+    if (suffix) {
+      const a = Number(actual); const e = Number(expected);
+      if (!Number.isFinite(a) || !Number.isFinite(e) || (suffix === "min" ? a < e : a > e)) return false;
+    } else if (typeof expected === "boolean") {
+      if (Boolean(actual) !== expected) return false;
+    } else if (!String(actual ?? "").toLocaleLowerCase("pl-PL").includes(expected.toLocaleLowerCase("pl-PL"))) return false;
+  }
+  return true;
+}
 
 /**
  * Pojedyncze miejsce reklamowe. Zlicza odslone (raz na sesje) przy wejsciu w kadr
@@ -224,6 +244,9 @@ export default function Market() {
   const [pMin, setPMin] = useState("");
   const [pMax, setPMax] = useState("");
   const [filterOpen, setFilterOpen] = useState(false);
+  const [attrDefs, setAttrDefs] = useState<AttrDef[]>([]);
+  const [attrFilters, setAttrFilters] = useState<Record<string, string | boolean>>({});
+  const [loadingAttrs, setLoadingAttrs] = useState(false);
   const [curSlug, setCurSlug] = useState<string | null>(null);
   const [limit, setLimit] = useState(24);          // ile ofert pobrać (paginacja „pokaż więcej”)
   const [more, setMore] = useState(false);         // czy trwa doładowywanie
@@ -247,6 +270,7 @@ export default function Market() {
     sortOverride?: string,
     lim = 24,
     priceOverride?: { min: string; max: string },
+    attributeOverride?: Record<string, string | boolean>,
   ) {
     if (lim > 24) setMore(true); else setLoading(true);
     setErr(null); setCurSlug(slug); setLimit(lim);
@@ -257,12 +281,18 @@ export default function Market() {
     if (query && query.trim()) bannersFor("search_slot", null, query.trim()).then((b) => setSearchAd((b as Banner[])[0] ?? null)).catch(() => setSearchAd(null));
     else setSearchAd(null);
     try {
-      setOffers(await searchOffers(query, slug, {
+      const opts = {
         sort: sortOverride ?? sort,
         priceMin: (priceOverride?.min ?? pMin) ? Number(priceOverride?.min ?? pMin) : null,
         priceMax: (priceOverride?.max ?? pMax) ? Number(priceOverride?.max ?? pMax) : null,
         limit: lim,
-      }));
+      };
+      const effectiveAttributes = attributeOverride ?? attrFilters;
+      const hasAttributeFilters = Object.values(effectiveAttributes).some((value) => value !== "" && value !== false);
+      if (hasAttributeFilters) {
+        const candidates = await searchOffersWithAttributes(query, slug, { ...opts, limit: Math.max(100, lim) }) as Offer[];
+        setOffers(candidates.filter((offer) => matchesAttributeFilters(offer, effectiveAttributes)).slice(0, lim));
+      } else setOffers(await searchOffers(query, slug, opts) as Offer[]);
     }
     catch (e) { setErr(String((e as Error).message ?? e)); }
     finally { setLoading(false); setMore(false); }
@@ -272,7 +302,8 @@ export default function Market() {
   function clearFilters() {
     setPMin(""); setPMax(""); setSort("trafnosc"); setQ("");
     setActiveDept(null); setActiveSub(null); setActiveSub2(null); setSubs([]); setSubs2([]);
-    load(null, null, "trafnosc", 24, { min: "", max: "" });
+    setAttrFilters({});
+    load(null, null, "trafnosc", 24, { min: "", max: "" }, {});
   }
   async function children(parentId?: string): Promise<Dept[]> {
     if (!parentId) return [];
@@ -322,23 +353,41 @@ export default function Market() {
 
   // poziom 1: dział
   async function pickDept(d: Dept | null) {
-    setActiveSub(null); setActiveSub2(null); setSubs2([]); setActiveDept(d); setQ("");
-    if (!d) { setSubs([]); load(null); return; }
-    load(null, d.slug);
+    setActiveSub(null); setActiveSub2(null); setSubs2([]); setActiveDept(d); setQ(""); setAttrFilters({});
+    if (!d) { setSubs([]); load(null, null, undefined, 24, undefined, {}); return; }
+    load(null, d.slug, undefined, 24, undefined, {});
     setSubs(await children(d.id));
   }
   // poziom 2: podkategoria
   async function pickSub(s: Dept | null) {
-    setActiveSub2(null); setActiveSub(s);
-    if (!s) { setSubs2([]); load(null, activeDept?.slug ?? null); return; }
-    load(null, s.slug);
+    setActiveSub2(null); setActiveSub(s); setAttrFilters({});
+    if (!s) { setSubs2([]); load(null, activeDept?.slug ?? null, undefined, 24, undefined, {}); return; }
+    load(null, s.slug, undefined, 24, undefined, {});
     setSubs2(await children(s.id));
   }
   // poziom 3: pod-podkategoria
   function pickSub2(slug: string | null) {
-    setActiveSub2(slug);
-    load(null, slug ?? activeSub?.slug ?? activeDept?.slug ?? null);
+    setActiveSub2(slug); setAttrFilters({});
+    load(null, slug ?? activeSub?.slug ?? activeDept?.slug ?? null, undefined, 24, undefined, {});
   }
+
+  useEffect(() => {
+    const selected = activeSub2 ? subs2.find((item) => item.slug === activeSub2) : activeSub ?? activeDept;
+    if (!selected?.id) { setAttrDefs([]); setLoadingAttrs(false); return; }
+    let current = true;
+    setLoadingAttrs(true);
+    supabase.from("category_attributes").select("key,label,data_type,options").eq("category_id", selected.id).order("label")
+      .then(({ data }) => {
+        if (!current) return;
+        setAttrDefs(((data ?? []) as AttrDef[]).filter((definition) => !PRIVATE_FILTER_KEYS.has(definition.key)));
+        setLoadingAttrs(false);
+      }, () => {
+        if (!current) return;
+        setAttrDefs([]);
+        setLoadingAttrs(false);
+      });
+    return () => { current = false; };
+  }, [activeDept?.id, activeSub?.id, activeSub2, subs2]);
 
   const heading = activeSub2
     ? (subs2.find((s) => s.slug === activeSub2)?.name ?? "Oferty")
@@ -619,7 +668,7 @@ export default function Market() {
                       aria-expanded={filterOpen}
                       className="rounded-xl px-4 py-2 text-sm font-semibold"
                       style={{ background: filterOpen ? "rgba(200,150,90,.16)" : "var(--glass)", border: "1px solid var(--line)", color: filterOpen ? "var(--gold)" : "var(--ink)" }}>
-                ⚙ Filtry{(activeDept || pMin || pMax || sort !== "trafnosc") ? " · aktywne" : ""}
+                ⚙ Filtry{(activeDept || pMin || pMax || sort !== "trafnosc" || Object.values(attrFilters).some((value) => value !== "" && value !== false)) ? " · aktywne" : ""}
               </button>
             )}
             {authed && (
@@ -667,6 +716,26 @@ export default function Market() {
                        className="w-full rounded-xl px-3 py-2.5 outline-none" style={{ background: "var(--bg)", border: "1px solid var(--line)" }} />
               </label>
             </div>
+            {(loadingAttrs || attrDefs.length > 0) && <div className="mt-5 border-t pt-4" style={{ borderColor: "var(--line)" }}>
+              <div className="mb-3 text-sm font-semibold">Parametry kategorii</div>
+              {loadingAttrs ? <div className="text-sm" style={{ color: "var(--mut)" }}>Ładowanie parametrów…</div> : <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+                {attrDefs.map((definition) => definition.data_type === "bool" ? (
+                  <label key={definition.key} className="flex items-center gap-2 rounded-xl px-3 py-2.5 text-sm" style={{ background: "var(--bg)", border: "1px solid var(--line)" }}>
+                    <input type="checkbox" checked={attrFilters[definition.key] === true} onChange={(event) => setAttrFilters((current) => ({ ...current, [definition.key]: event.target.checked }))} /> {definition.label}
+                  </label>
+                ) : definition.data_type === "enum" ? (
+                  <label key={definition.key} className="text-xs"><span className="mb-1 block" style={{ color: "var(--mut)" }}>{definition.label}</span>
+                    <select value={String(attrFilters[definition.key] ?? "")} onChange={(event) => setAttrFilters((current) => ({ ...current, [definition.key]: event.target.value }))} className="w-full rounded-xl px-3 py-2.5 outline-none" style={{ background: "var(--bg)", border: "1px solid var(--line)", color: "var(--ink)" }}>
+                      <option value="">Dowolne</option>{(Array.isArray(definition.options) ? definition.options : []).map((option) => <option key={String(option)} value={String(option)}>{String(option)}</option>)}
+                    </select>
+                  </label>
+                ) : definition.data_type === "number" ? (
+                  <div key={definition.key} className="grid grid-cols-2 gap-2"><label className="text-xs"><span className="mb-1 block" style={{ color: "var(--mut)" }}>{definition.label} od</span><input inputMode="decimal" value={String(attrFilters[`${definition.key}_min`] ?? "")} onChange={(event) => setAttrFilters((current) => ({ ...current, [`${definition.key}_min`]: event.target.value.replace(/[^0-9.,]/g, "").replace(",", ".") }))} className="w-full rounded-xl px-3 py-2.5 outline-none" style={{ background: "var(--bg)", border: "1px solid var(--line)" }}/></label><label className="text-xs"><span className="mb-1 block" style={{ color: "var(--mut)" }}>do</span><input inputMode="decimal" value={String(attrFilters[`${definition.key}_max`] ?? "")} onChange={(event) => setAttrFilters((current) => ({ ...current, [`${definition.key}_max`]: event.target.value.replace(/[^0-9.,]/g, "").replace(",", ".") }))} className="w-full rounded-xl px-3 py-2.5 outline-none" style={{ background: "var(--bg)", border: "1px solid var(--line)" }}/></label></div>
+                ) : (
+                  <label key={definition.key} className="text-xs"><span className="mb-1 block" style={{ color: "var(--mut)" }}>{definition.label}</span><input value={String(attrFilters[definition.key] ?? "")} onChange={(event) => setAttrFilters((current) => ({ ...current, [definition.key]: event.target.value }))} className="w-full rounded-xl px-3 py-2.5 outline-none" style={{ background: "var(--bg)", border: "1px solid var(--line)" }}/></label>
+                ))}
+              </div>}
+            </div>}
             <div className="mt-3 flex flex-wrap items-end gap-3">
               <label className="min-w-[220px] text-xs"><span className="mb-1 block" style={{ color: "var(--mut)" }}>Sortowanie</span>
                 <select value={sort} onChange={(e) => setSort(e.target.value)} className="w-full rounded-xl px-3 py-2.5 outline-none" style={{ background: "var(--bg)", border: "1px solid var(--line)", color: "var(--ink)" }}>

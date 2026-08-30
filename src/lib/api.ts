@@ -10,6 +10,17 @@ export async function searchOffers(query: string | null, categorySlug: string | 
   if (error) throw error;
   return data ?? [];
 }
+// Wariant z publicznymi atrybutami oferty. Używany przez uniwersalne filtry
+// kategorii; prywatne identyfikatory są usuwane przez RPC po stronie bazy.
+export async function searchOffersWithAttributes(query: string | null, categorySlug: string | null = null, opts: SearchOpts = {}) {
+  const { data, error } = await supabase.rpc("search_offers_v2", {
+    p_query: query, p_category_slug: categorySlug,
+    p_price_min: opts.priceMin ?? null, p_price_max: opts.priceMax ?? null,
+    p_sort: opts.sort ?? null, p_limit: opts.limit ?? 100, p_filters: {},
+  });
+  if (error) throw error;
+  return data ?? [];
+}
 // ── Lista życzeń (watchlist) ──────────────────────────────────────
 export async function toggleWatch(offerId: string): Promise<boolean> {
   const { data, error } = await supabase.rpc("toggle_watch", { p_offer: offerId }); if (error) throw error; return data === true;
