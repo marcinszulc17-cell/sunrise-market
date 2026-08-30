@@ -20,10 +20,11 @@ test("the MySunrise service token is required from the environment", () => {
   assert.doesNotMatch(source, /SUNRISE_MARKET_SERVICE_TOKEN"\)\s*\?\?/);
 });
 
-test("card orders do not apply the Sunrise Pay fee", () => {
+test("card orders apply the fixed 12.9% Stripe seller fee", () => {
   const cardHandler = source.slice(
     source.indexOf("async function settleCardOrder"),
     source.indexOf("Deno.serve"),
   );
   assert.doesNotMatch(cardHandler, /apply_sunrise_pay_fee/);
+  assert.match(cardHandler, /apply_stripe_seller_fee/);
 });
