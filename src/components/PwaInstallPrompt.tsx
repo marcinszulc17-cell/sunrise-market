@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 
 type InstallEvent = Event & { prompt: () => Promise<void>; userChoice: Promise<{ outcome: "accepted" | "dismissed" }> };
 
-const HIDE_KEY="sunrise_pwa_install_hidden_until";
+const HIDE_KEY="sunrise_pwa_install_hidden_until_v2";
 
 function isStandalone(){
   return window.matchMedia?.('(display-mode: standalone)').matches || (window.navigator as Navigator & {standalone?:boolean}).standalone===true;
@@ -35,9 +35,8 @@ export default function PwaInstallPrompt(){
     window.addEventListener('beforeinstallprompt',onPrompt as EventListener);
     window.addEventListener('appinstalled',onInstalled);
 
-    const timer=window.setTimeout(()=>setShow(true),1200);
+    setShow(true);
     return()=>{
-      window.clearTimeout(timer);
       window.removeEventListener('beforeinstallprompt',onPrompt as EventListener);
       window.removeEventListener('appinstalled',onInstalled);
     };
@@ -54,7 +53,7 @@ export default function PwaInstallPrompt(){
   }
 
   function hideForNow(){
-    localStorage.setItem(HIDE_KEY,String(Date.now()+7*24*60*60*1000));
+    localStorage.setItem(HIDE_KEY,String(Date.now()+24*60*60*1000));
     setHidden(true);
   }
 
@@ -66,7 +65,7 @@ export default function PwaInstallPrompt(){
         ? "Na iPhone otwórz tę stronę w Safari, potem wybierz Udostępnij → „Do ekranu początkowego”."
         : "Możesz zainstalować Sunrise Market jako aplikację. Otwórz menu przeglądarki i wybierz „Zainstaluj aplikację” lub „Dodaj do ekranu głównego”.";
 
-  return <div className="fixed bottom-4 left-1/2 z-[80] w-[calc(100%-2rem)] max-w-md -translate-x-1/2 rounded-2xl p-4 shadow-2xl" style={{background:"var(--bg)",border:"1px solid rgba(200,150,90,.45)",color:"var(--ink)"}}>
+  return <div className="fixed left-1/2 top-20 z-[100] w-[calc(100%-2rem)] max-w-md -translate-x-1/2 rounded-2xl p-4 shadow-2xl" style={{background:"var(--bg)",border:"1px solid rgba(200,150,90,.55)",color:"var(--ink)"}}>
     <div className="flex items-start gap-3">
       <img src="/icon-192x192.png" alt="" className="h-12 w-12 rounded-xl"/>
       <div className="min-w-0 flex-1">
