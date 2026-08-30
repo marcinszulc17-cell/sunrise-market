@@ -27,6 +27,7 @@ import OperatorVerify from "./pages/OperatorVerify";
 import Konto from "./pages/Konto";
 import Rezerwacje from "./pages/Rezerwacje";
 import PwaInstallPrompt from "./components/PwaInstallPrompt";
+import MobileAppNav from "./components/MobileAppNav";
 import { initTheme } from "./lib/theme";
 import "./index.css";
 
@@ -74,6 +75,7 @@ ReactDOM.createRoot(document.getElementById("root")!).render(
         <Route path="/sprzedawca/rozliczenia" element={<Rozliczenia />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
+      <MobileAppNav />
       <PwaInstallPrompt />
     </BrowserRouter>
   </React.StrictMode>,
