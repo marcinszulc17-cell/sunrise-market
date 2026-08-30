@@ -81,25 +81,62 @@ async function settleSellerPayouts(sb: any, orderId: string) {
     if (!settled) throw new Error(`MySunrise seller credit failed: ${credited.data?.message ?? credited.data?.error ?? credited.status}`);
   }
 }
-// Legacy top-up flow is intentionally preserved in this PR. Moving card top-ups
-// to the authoritative MySunrise wallet is the next, separately reviewed change.
-async function creditTopup(sb: any, args: { userId: string; topupId: string; amount: number; currency: string }) {
-  const provider = (Deno.env.get("WALLET_PROVIDER") ?? "mirror").toLowerCase();
-  if (provider === "mysunrise") {
-    const base = Deno.env.get("MYSUNRISE_API_URL");
-    const key = Deno.env.get("MYSUNRISE_API_KEY");
-    if (!base || !key) throw new Error("WALLET_PROVIDER=mysunrise bez MYSUNRISE_API_URL/KEY");
-    const res = await fetch(`${base}/wallets/${args.userId}/credit`, {
-      method: "POST",
-      headers: { "Authorization": `Bearer ${key}`, "Content-Type": "application/json", "Idempotency-Key": args.topupId },
-      body: JSON.stringify({ amount: args.amount, currency: args.currency, source: "market_topup", ref: args.topupId }),
-    });
-    if (!res.ok) throw new Error(`MySunrise credit ${res.status}: ${await res.text()}`);
-    return Number((await res.json()).balance);
+async function creditTopup(sb: any, s: any) {
+  const topupId = String(s.metadata?.topup_id ?? "");
+  const userId = String(s.metadata?.user_id ?? "");
+  if (!topupId || !userId || s.payment_status !== "paid") return;
+
+  const { data: topup, error: topupError } = await sb.from("wallet_topups")
+    .select("id,user_id,amount,currency,status,stripe_session_id,credited,credit_attempts")
+    .eq("id", topupId).single();
+  if (topupError) throw topupError;
+  if (topup.credited === true) return;
+  if (String(topup.user_id) !== userId) throw new Error("Top-up user mismatch");
+  if (topup.stripe_session_id && String(topup.stripe_session_id) !== String(s.id)) throw new Error("Top-up session mismatch");
+
+  const amountGrosz = Math.round(Number(topup.amount) * 100);
+  if (Number(s.amount_total) !== amountGrosz || String(s.currency ?? "").toLowerCase() !== String(topup.currency).toLowerCase()) {
+    throw new Error("Top-up amount or currency mismatch");
   }
-  const { data, error } = await sb.rpc("credit_topup", { p_topup_id: args.topupId });
-  if (error) throw error;
-  return Number(data);
+
+  let email = String(s.metadata?.user_email ?? s.customer_details?.email ?? s.customer_email ?? "").trim();
+  if (!email) {
+    const { data: authUser, error: authError } = await sb.auth.admin.getUserById(userId);
+    if (authError) throw authError;
+    email = String(authUser.user?.email ?? "").trim();
+  }
+  if (!email) throw new Error("Brak e-maila użytkownika dla doładowania Sunrise Pay");
+
+  const attempts = Number(topup.credit_attempts ?? 0) + 1;
+  const credited = await pay("pay-credit", {
+    user_ref: email,
+    amount_grosz: amountGrosz,
+    reason: "Doładowanie Sunrise Pay",
+    order_ref: `market-topup:${topupId}`,
+    idempotency_key: topupId,
+  });
+  if (credited.status !== 200 || credited.data?.ok !== true) {
+    const message = String(credited.data?.message ?? credited.data?.error ?? credited.status).slice(0, 1000);
+    await sb.from("wallet_topups").update({
+      status: "failed",
+      credit_attempts: attempts,
+      last_error: message,
+      updated_at: new Date().toISOString(),
+      stripe_payment_intent: s.payment_intent ?? null,
+    }).eq("id", topupId);
+    throw new Error(`MySunrise top-up credit failed: ${message}`);
+  }
+
+  const { error: updateError } = await sb.from("wallet_topups").update({
+    status: "paid",
+    credited: true,
+    credit_attempts: attempts,
+    last_error: null,
+    paid_at: new Date().toISOString(),
+    updated_at: new Date().toISOString(),
+    stripe_payment_intent: s.payment_intent ?? null,
+  }).eq("id", topupId);
+  if (updateError) throw updateError;
 }
 async function settleCardOrder(sb: any, s: any, stripe: any) {
   const orderId = s.metadata?.market_order_id;
@@ -186,11 +223,8 @@ Deno.serve(async (req) => {
       case "checkout.session.completed": {
         const s = event.data.object;
         const topupId = s.metadata?.topup_id;
-        const userId = s.metadata?.user_id;
         if (topupId && s.payment_status === "paid") {
-          await sb.from("wallet_topups").update({ stripe_payment_intent: s.payment_intent ?? null }).eq("id", topupId);
-          const { data: t } = await sb.from("wallet_topups").select("amount,currency").eq("id", topupId).single();
-          await creditTopup(sb, { userId, topupId, amount: Number(t!.amount), currency: String(t!.currency) });
+          await creditTopup(sb, s);
         } else if (s.metadata?.market_order_id) {
           await settleCardOrder(sb, s, stripe);
         }
