@@ -178,7 +178,6 @@ Deno.serve(async (req) => {
       console.error("seller settlement failed", (e as Error).message);
     }
     await sb.rpc("notify_order", { p_order: orderId });
-    try { await sb.from("wallet_mirror").upsert({ user_id: user.id, balance: newBalanceGr / 100 }, { onConflict: "user_id" }); } catch {}
 
     try {
       const { data: ownItems } = await sb.from("order_items").select("qty, unit_price_gross, offers!inner(fulfillment_provider)").eq("order_id", orderId).eq("offers.fulfillment_provider", "mysunrise");
