@@ -15,6 +15,7 @@ const dayKey = (value: string | Date, timezone: string) => new Intl.DateTimeForm
 const dayLabel = (iso: string, timezone: string) => new Date(iso).toLocaleDateString("pl-PL", { timeZone: timezone, weekday: "short", day: "numeric", month: "short" });
 const hourLabel = (iso: string, timezone: string) => new Date(iso).toLocaleTimeString("pl-PL", { timeZone: timezone, hour: "2-digit", minute: "2-digit" });
 const dateAtNoonUtc = (value: string) => new Date(`${value}T12:00:00Z`);
+const shortDate = (value: string) => value ? new Date(`${value}T12:00:00`).toLocaleDateString("pl-PL", { day: "numeric", month: "short", year: "numeric" }) : "—";
 
 export default function BookingPurchaseModal({ offerId, config, open, onClose }: Props) {
   const [catalog, setCatalog] = useState<BookingCatalogV2 | null>(null);
@@ -71,6 +72,7 @@ export default function BookingPurchaseModal({ offerId, config, open, onClose }:
 
   useEffect(() => {
     if (!open || activeConfig.booking_type !== "daily" || !fromDay || !toDay) { setRentalBase(0); setRentalUnits(0); return; }
+    setError(null);
     bookingDailyQuoteV2(offerId, fromDay, toDay).then((q) => { setRentalUnits(q.days); setRentalBase(q.base); }).catch((e) => setError(e?.message || "Nie udało się policzyć ceny"));
   }, [open, offerId, activeConfig.booking_type, fromDay, toDay]);
 
@@ -83,6 +85,8 @@ export default function BookingPurchaseModal({ offerId, config, open, onClose }:
   const fees = activeConfig.booking_type === "daily" && rentalUnits > 0 ? Number(activeConfig.cleaning_fee_gross || 0) : 0;
   const deposit = activeConfig.booking_type === "daily" && rentalUnits > 0 ? Number(activeConfig.deposit_gross || 0) : 0;
   const total = activeConfig.booking_type === "appointment" ? Number(selected?.amount_gross ?? selectedService?.price_gross ?? activeConfig.price_per_unit) : rentalBase + fees;
+  const cashback = total > 0 ? total * 0.03 : 0;
+  const ready = activeConfig.booking_type === "appointment" ? Boolean(selected) : rentalUnits >= 1;
 
   async function pay() {
     setBusy(true); setError(null);
@@ -111,36 +115,101 @@ export default function BookingPurchaseModal({ offerId, config, open, onClose }:
   }
 
   if (!open) return null;
-  return <div className="fixed inset-0 z-[70] grid place-items-center bg-black/70 p-4" onMouseDown={onClose}>
-    <div className="max-h-[92vh] w-full max-w-3xl overflow-y-auto rounded-3xl p-5 sm:p-7" onMouseDown={(e) => e.stopPropagation()} style={{ background: "var(--header)", border: "1px solid var(--line)" }}>
-      <div className="mb-5 flex items-start justify-between gap-4">
-        <div><div className="text-xs font-semibold tracking-[.15em]" style={{color:"var(--gold)"}}>{activeConfig.booking_type === "appointment" ? "BOOKING USŁUGI" : "REZERWACJA ONLINE"}</div><h2 className="mt-1 font-display text-2xl font-semibold">{activeConfig.booking_type === "appointment" ? "Wybierz usługę i termin" : "Wybierz daty pobytu / wynajmu"}</h2><p className="mt-1 text-sm" style={{ color: "var(--mut)" }}>Termin blokujemy na 15 minut na czas bezpiecznej płatności.</p></div>
-        <button type="button" onClick={onClose} className="rounded-lg px-2 py-1" aria-label="Zamknij">✕</button>
+  return <div className="fixed inset-0 z-[70] bg-black/75 p-0 sm:grid sm:place-items-center sm:p-4" onMouseDown={onClose}>
+    <div className="flex h-full w-full flex-col overflow-hidden sm:h-auto sm:max-h-[92vh] sm:max-w-5xl sm:rounded-3xl" onMouseDown={(e) => e.stopPropagation()} style={{ background: "var(--header)", border: "1px solid var(--line)" }}>
+      <div className="flex items-start justify-between gap-4 border-b px-5 py-4 sm:px-7" style={{ borderColor: "var(--line)" }}>
+        <div>
+          <div className="text-[11px] font-semibold tracking-[.16em]" style={{ color: "var(--gold)" }}>{activeConfig.booking_type === "appointment" ? "REZERWACJA TERMINU" : "REZERWACJA ONLINE"}</div>
+          <h2 className="mt-1 font-display text-2xl font-semibold">{activeConfig.booking_type === "appointment" ? "Wybierz usługę i termin" : "Wybierz daty wynajmu"}</h2>
+          <p className="mt-1 text-sm" style={{ color: "var(--mut)" }}>Po wyborze blokujemy termin na 15 minut na czas płatności.</p>
+        </div>
+        <button type="button" onClick={onClose} className="rounded-xl px-3 py-2 text-lg" style={{ background: "var(--glass)", border: "1px solid var(--line)" }} aria-label="Zamknij">✕</button>
       </div>
 
-      {activeConfig.booking_type === "appointment" ? <div className="space-y-5">
-        {catalog?.services?.length ? <section><div className="mb-2 text-sm font-semibold">1. Wybierz usługę</div><div className="grid gap-2 sm:grid-cols-2">{catalog.services.map(s => <button key={s.id} type="button" onClick={() => {setServiceId(s.id);setSelected(null);}} className="rounded-2xl p-4 text-left" style={{border:serviceId===s.id?"1px solid var(--gold)":"1px solid var(--line)",background:serviceId===s.id?"rgba(200,150,90,.12)":"var(--glass)"}}><div className="flex justify-between gap-3"><b>{s.name}</b><b style={{color:"var(--gold)"}}>{zl(s.price_gross)}</b></div><div className="mt-1 text-xs" style={{color:"var(--mut)"}}>{s.duration_minutes} min{s.description?` · ${s.description}`:""}</div></button>)}</div></section> : null}
+      <div className="grid flex-1 overflow-y-auto lg:grid-cols-[1fr_330px]">
+        <div className="space-y-6 p-5 sm:p-7">
+          {activeConfig.booking_type === "appointment" ? <>
+            {catalog?.services?.length ? <section>
+              <StepTitle n={1} title="Wybierz usługę" />
+              <div className="grid gap-3 sm:grid-cols-2">{catalog.services.map(s => <button key={s.id} type="button" onClick={() => { setServiceId(s.id); setSelected(null); }} className="rounded-2xl p-4 text-left transition" style={{ border: serviceId === s.id ? "1px solid var(--gold)" : "1px solid var(--line)", background: serviceId === s.id ? "rgba(200,150,90,.12)" : "var(--glass)" }}><div className="flex items-start justify-between gap-3"><div><b>{s.name}</b><div className="mt-1 text-xs" style={{ color: "var(--mut)" }}>{s.duration_minutes} min{s.description ? ` · ${s.description}` : ""}</div></div><b className="shrink-0" style={{ color: "var(--gold)" }}>{zl(s.price_gross)}</b></div></button>)}</div>
+            </section> : null}
 
-        {catalog?.resources?.length ? <section><div className="mb-2 text-sm font-semibold">2. Wybierz pracownika / zasób</div><div className="flex flex-wrap gap-2"><button type="button" onClick={()=>{setResourceId(null);setSelected(null);}} className="rounded-xl px-3 py-2 text-sm" style={{border:!resourceId?"1px solid var(--gold)":"1px solid var(--line)"}}>Dowolny dostępny</button>{catalog.resources.map(r=><button key={r.id} type="button" onClick={()=>{setResourceId(r.id);setSelected(null);}} className="rounded-xl px-3 py-2 text-sm" style={{border:resourceId===r.id?"1px solid var(--gold)":"1px solid var(--line)"}}>{r.kind==="staff"?"👤":"◉"} {r.name}</button>)}</div></section> : null}
+            {catalog?.resources?.length ? <section>
+              <StepTitle n={catalog?.services?.length ? 2 : 1} title="Wybierz pracownika lub zasób" optional />
+              <div className="flex flex-wrap gap-2"><button type="button" onClick={() => { setResourceId(null); setSelected(null); }} className="rounded-xl px-3 py-2 text-sm font-medium" style={{ border: !resourceId ? "1px solid var(--gold)" : "1px solid var(--line)", background: !resourceId ? "rgba(200,150,90,.10)" : "var(--glass)" }}>Dowolny dostępny</button>{catalog.resources.map(r => <button key={r.id} type="button" onClick={() => { setResourceId(r.id); setSelected(null); }} className="rounded-xl px-3 py-2 text-sm font-medium" style={{ border: resourceId === r.id ? "1px solid var(--gold)" : "1px solid var(--line)", background: resourceId === r.id ? "rgba(200,150,90,.10)" : "var(--glass)" }}>{r.kind === "staff" ? "👤" : "◉"} {r.name}</button>)}</div>
+            </section> : null}
 
-        <section><div className="mb-2 text-sm font-semibold">{catalog?.services?.length || catalog?.resources?.length ? "3." : "1."} Wybierz dzień i godzinę</div>
-          {loading && <p style={{ color: "var(--mut)" }}>Pobieram dostępne terminy…</p>}
-          {!loading && days.length === 0 && <p className="rounded-xl p-4" style={{ background: "var(--glass)", color: "var(--mut)" }}>Brak wolnych terminów w wybranym zakresie.</p>}
-          {days.length > 0 && <><div className="mb-4 flex gap-2 overflow-x-auto pb-2">{days.map(([key, iso]) => <button key={key} type="button" onClick={() => { setSelectedDay(key); setSelected(null); }} className="shrink-0 rounded-xl px-3 py-2 text-sm font-semibold" style={{ background: selectedDay === key ? "var(--gold)" : "var(--glass)", color: selectedDay === key ? "#211406" : "var(--ink)", border: "1px solid var(--line)" }}>{dayLabel(iso, activeConfig.timezone)}</button>)}</div><div className="grid grid-cols-3 gap-2 sm:grid-cols-5">{visibleSlots.map((slot) => <button key={slot.starts_at} type="button" onClick={() => setSelected(slot)} className="rounded-xl py-2 text-sm font-semibold" style={{ background: selected?.starts_at === slot.starts_at ? "rgba(34,197,94,.2)" : "var(--glass)", border: selected?.starts_at === slot.starts_at ? "1px solid var(--green)" : "1px solid var(--line)" }}>{hourLabel(slot.starts_at, activeConfig.timezone)}</button>)}</div></>}
-        </section>
-        {selected && <div className="rounded-xl p-3 text-sm" style={{background:"rgba(122,184,154,.10)",border:"1px solid rgba(122,184,154,.25)"}}>✓ {selectedService?.name || "Usługa"}{selectedResource?` · ${selectedResource.name}`:""} · {dayLabel(selected.starts_at,activeConfig.timezone)} {hourLabel(selected.starts_at,activeConfig.timezone)}</div>}
-      </div> : <div className="space-y-5">
-        <div className="grid gap-4 sm:grid-cols-2"><label className="text-sm">Od<input type="date" min={today} max={latest} value={fromDay} onChange={(e) => { setFromDay(e.target.value); if (toDay && e.target.value >= toDay) setToDay(""); }} className="mt-1 w-full rounded-xl px-3 py-3" style={{ background: "var(--glass)", border: "1px solid var(--line)" }} /></label><label className="text-sm">Do<input type="date" min={fromDay || today} max={latest} value={toDay} onChange={(e) => setToDay(e.target.value)} className="mt-1 w-full rounded-xl px-3 py-3" style={{ background: "var(--glass)", border: "1px solid var(--line)" }} /></label></div>
-        {rentalUnits > 0 && <div className="rounded-2xl p-4" style={{background:"var(--glass)",border:"1px solid var(--line)"}}><div className="flex justify-between"><span>{rentalUnits} {rentalUnits===1?"dzień":"dni"}</span><b>{zl(rentalBase)}</b></div>{fees>0&&<div className="mt-2 flex justify-between text-sm"><span>Opłata dodatkowa / przygotowanie</span><span>{zl(fees)}</span></div>}{deposit>0&&<div className="mt-2 flex justify-between text-sm" style={{color:"var(--mut)"}}><span>Kaucja zabezpieczająca</span><span>{zl(deposit)}</span></div>}<div className="mt-3 border-t pt-3 text-xs" style={{borderColor:"var(--line)",color:"var(--mut)"}}>Cena może różnić się między dniami zgodnie z cennikiem sezonowym. Minimalny pobyt: {activeConfig.min_units} dni.</div></div>}
-      </div>}
+            <section>
+              <StepTitle n={(catalog?.services?.length ? 1 : 0) + (catalog?.resources?.length ? 1 : 0) + 1} title="Wybierz dzień i godzinę" />
+              {loading && <div className="rounded-2xl p-5 text-sm" style={{ background: "var(--glass)", color: "var(--mut)" }}>Pobieram dostępne terminy…</div>}
+              {!loading && days.length === 0 && <div className="rounded-2xl p-5" style={{ background: "var(--glass)", border: "1px solid var(--line)" }}><div className="font-semibold">Brak wolnych terminów</div><div className="mt-1 text-sm" style={{ color: "var(--mut)" }}>Spróbuj wybrać inną usługę albo zasób.</div></div>}
+              {days.length > 0 && <>
+                <div className="mb-4 flex gap-2 overflow-x-auto pb-2">{days.map(([key, iso]) => <button key={key} type="button" onClick={() => { setSelectedDay(key); setSelected(null); }} className="shrink-0 rounded-2xl px-4 py-3 text-left" style={{ background: selectedDay === key ? "var(--gold)" : "var(--glass)", color: selectedDay === key ? "#211406" : "var(--ink)", border: "1px solid var(--line)" }}><div className="text-xs opacity-80">{new Date(iso).toLocaleDateString("pl-PL", { timeZone: activeConfig.timezone, weekday: "short" })}</div><div className="font-semibold">{new Date(iso).toLocaleDateString("pl-PL", { timeZone: activeConfig.timezone, day: "numeric", month: "short" })}</div></button>)}</div>
+                <div className="grid grid-cols-3 gap-2 sm:grid-cols-4 md:grid-cols-5">{visibleSlots.map((slot) => <button key={slot.starts_at} type="button" onClick={() => setSelected(slot)} className="rounded-xl py-3 text-sm font-semibold" style={{ background: selected?.starts_at === slot.starts_at ? "rgba(34,197,94,.16)" : "var(--glass)", border: selected?.starts_at === slot.starts_at ? "1px solid var(--green)" : "1px solid var(--line)", color: selected?.starts_at === slot.starts_at ? "var(--green)" : "var(--ink)" }}>{hourLabel(slot.starts_at, activeConfig.timezone)}</button>)}</div>
+              </>}
+            </section>
+          </> : <>
+            <section>
+              <StepTitle n={1} title="Wybierz okres" />
+              <div className="grid gap-4 sm:grid-cols-2"><label className="text-sm"><span className="mb-2 block font-medium">Od</span><input type="date" min={today} max={latest} value={fromDay} onChange={(e) => { setFromDay(e.target.value); if (toDay && e.target.value >= toDay) setToDay(""); }} className="w-full rounded-2xl px-4 py-3" style={{ background: "var(--glass)", border: "1px solid var(--line)" }} /></label><label className="text-sm"><span className="mb-2 block font-medium">Do</span><input type="date" min={fromDay || today} max={latest} value={toDay} onChange={(e) => setToDay(e.target.value)} className="w-full rounded-2xl px-4 py-3" style={{ background: "var(--glass)", border: "1px solid var(--line)" }} /></label></div>
+              <div className="mt-3 text-xs" style={{ color: "var(--mut)" }}>Minimalnie {activeConfig.min_units} dni · maksymalnie {activeConfig.max_units} dni · rezerwacja do {shortDate(latest)}</div>
+            </section>
 
-      <div className="mt-6 rounded-2xl p-4" style={{ background: "var(--glass)", border: "1px solid var(--line)" }}>
-        <div className="mb-1 flex items-center justify-between"><span>Do zapłaty teraz</span><strong className="text-xl" style={{ color: "var(--gold)" }}>{zl(total)}</strong></div>{deposit>0&&<div className="mb-3 text-xs" style={{color:"var(--mut)"}}>Kaucja {zl(deposit)} jest zapisana przy rezerwacji jako zabezpieczenie i nie jest wliczana do prowizji/cashbacku.</div>}
-        <div className="grid gap-2 sm:grid-cols-2"><button type="button" onClick={() => setPayment("wallet")} className="rounded-xl p-3 text-left" style={{ border: payment === "wallet" ? "1px solid var(--gold)" : "1px solid var(--line)", background: payment === "wallet" ? "rgba(200,150,90,.12)" : "transparent" }}><b>Sunrise Pay</b><div className="text-xs" style={{ color: "var(--mut)" }}>Portfel MySunrise</div></button><button type="button" onClick={() => setPayment("card")} className="rounded-xl p-3 text-left" style={{ border: payment === "card" ? "1px solid var(--gold)" : "1px solid var(--line)", background: payment === "card" ? "rgba(200,150,90,.12)" : "transparent" }}><b>Karta / BLIK / P24</b><div className="text-xs" style={{ color: "var(--mut)" }}>Bezpieczna płatność Stripe</div></button></div>
+            {rentalUnits > 0 && <section>
+              <StepTitle n={2} title="Sprawdź wycenę" />
+              <div className="rounded-2xl p-4" style={{ background: "var(--glass)", border: "1px solid var(--line)" }}>
+                <PriceRow label={`${rentalUnits} ${rentalUnits === 1 ? "dzień" : "dni"}`} value={rentalBase} strong />
+                {fees > 0 && <PriceRow label="Przygotowanie / opłata dodatkowa" value={fees} />}
+                {deposit > 0 && <PriceRow label="Kaucja zabezpieczająca" value={deposit} muted />}
+                <div className="mt-3 border-t pt-3 text-xs" style={{ borderColor: "var(--line)", color: "var(--mut)" }}>Cena może różnić się między dniami zgodnie z cennikiem sezonowym.</div>
+              </div>
+            </section>}
+          </>}
+
+          <section>
+            <StepTitle n={activeConfig.booking_type === "appointment" ? 4 : 3} title="Wybierz płatność" />
+            <div className="grid gap-3 sm:grid-cols-2"><button type="button" onClick={() => setPayment("wallet")} className="rounded-2xl p-4 text-left" style={{ border: payment === "wallet" ? "1px solid var(--gold)" : "1px solid var(--line)", background: payment === "wallet" ? "rgba(200,150,90,.12)" : "var(--glass)" }}><b>Sunrise Pay</b><div className="mt-1 text-xs" style={{ color: "var(--mut)" }}>Płatność z portfela MySunrise</div></button><button type="button" onClick={() => setPayment("card")} className="rounded-2xl p-4 text-left" style={{ border: payment === "card" ? "1px solid var(--gold)" : "1px solid var(--line)", background: payment === "card" ? "rgba(200,150,90,.12)" : "var(--glass)" }}><b>Karta / BLIK / P24</b><div className="mt-1 text-xs" style={{ color: "var(--mut)" }}>Bezpieczna płatność online</div></button></div>
+          </section>
+
+          {error && <div className="rounded-2xl px-4 py-3 text-sm" style={{ background: "rgba(239,68,68,.12)", border: "1px solid rgba(239,68,68,.25)", color: "#fca5a5" }}>{error}</div>}
+        </div>
+
+        <aside className="border-t p-5 lg:border-l lg:border-t-0 lg:p-6" style={{ borderColor: "var(--line)", background: "color-mix(in srgb, var(--glass) 55%, transparent)" }}>
+          <div className="lg:sticky lg:top-0">
+            <h3 className="text-lg font-semibold">Podsumowanie</h3>
+            <div className="mt-4 space-y-3 text-sm">
+              {activeConfig.booking_type === "appointment" ? <>
+                <SummaryRow label="Usługa" value={selectedService?.name || "Oferta"} />
+                {selectedResource && <SummaryRow label="Zasób" value={selectedResource.name} />}
+                <SummaryRow label="Termin" value={selected ? `${dayLabel(selected.starts_at, activeConfig.timezone)}, ${hourLabel(selected.starts_at, activeConfig.timezone)}` : "Wybierz termin"} muted={!selected} />
+              </> : <>
+                <SummaryRow label="Od" value={shortDate(fromDay)} muted={!fromDay} />
+                <SummaryRow label="Do" value={shortDate(toDay)} muted={!toDay} />
+                <SummaryRow label="Okres" value={rentalUnits > 0 ? `${rentalUnits} ${rentalUnits === 1 ? "dzień" : "dni"}` : "Wybierz daty"} muted={rentalUnits < 1} />
+              </>}
+            </div>
+
+            <div className="my-5 border-t" style={{ borderColor: "var(--line)" }} />
+            <div className="flex items-end justify-between gap-3"><span className="text-sm">Do zapłaty</span><strong className="font-display text-3xl" style={{ color: "var(--gold)" }}>{zl(total)}</strong></div>
+            {cashback > 0 && <div className="mt-3 rounded-xl px-3 py-2 text-sm" style={{ background: "rgba(122,184,154,.12)", color: "var(--green)" }}>+ {zl(cashback)} cashbacku na portfel</div>}
+            {deposit > 0 && <div className="mt-3 text-xs" style={{ color: "var(--mut)" }}>Kaucja {zl(deposit)} stanowi zabezpieczenie i nie jest naliczana do cashbacku.</div>}
+
+            <div className="mt-5 space-y-2 text-xs" style={{ color: "var(--mut)" }}><div>✓ Bezpieczna płatność</div><div>✓ Termin blokowany na 15 minut</div><div>✓ {activeConfig.instant_booking ? "Potwierdzenie automatycznie po płatności" : "Potwierdzenie po akceptacji sprzedawcy"}</div></div>
+
+            <button type="button" disabled={busy || total <= 0 || !ready} onClick={pay} className="mt-5 w-full rounded-2xl py-3.5 font-bold text-black disabled:opacity-45" style={{ background: "linear-gradient(135deg,#C8965A,#E8C896)" }}>{busy ? "Rezerwuję i przekierowuję…" : ready ? `Rezerwuję i płacę ${zl(total)}` : activeConfig.booking_type === "appointment" ? "Najpierw wybierz termin" : "Najpierw wybierz daty"}</button>
+          </div>
+        </aside>
       </div>
-      {error && <p className="mt-3 rounded-xl px-3 py-2 text-sm" style={{ background: "rgba(239,68,68,.12)", color: "#fca5a5" }}>{error}</p>}
-      <button type="button" disabled={busy || total <= 0 || (activeConfig.booking_type === "appointment" && !selected) || (activeConfig.booking_type === "daily" && rentalUnits < 1)} onClick={pay} className="mt-4 w-full rounded-xl py-3 font-semibold text-black disabled:opacity-50" style={{ background: "linear-gradient(135deg,#C8965A,#E8C896)" }}>{busy ? "Rezerwuję i przekierowuję…" : `Rezerwuję i płacę ${zl(total)}`}</button>
-      <p className="mt-3 text-center text-xs" style={{ color: "var(--mut)" }}>{activeConfig.instant_booking ? "Po płatności rezerwacja zostanie potwierdzona automatycznie." : "Po płatności rezerwacja będzie oczekiwać na potwierdzenie sprzedawcy."}</p>
     </div>
   </div>;
+}
+
+function StepTitle({ n, title, optional }: { n: number; title: string; optional?: boolean }) {
+  return <div className="mb-3 flex items-center gap-3"><span className="grid h-7 w-7 place-items-center rounded-full text-xs font-bold text-black" style={{ background: "var(--gold)" }}>{n}</span><div className="font-semibold">{title}{optional && <span className="ml-2 text-xs font-normal" style={{ color: "var(--mut)" }}>(opcjonalnie)</span>}</div></div>;
+}
+function PriceRow({ label, value, strong, muted }: { label: string; value: number; strong?: boolean; muted?: boolean }) {
+  return <div className={`flex justify-between gap-3 ${strong ? "font-semibold" : ""}`} style={{ color: muted ? "var(--mut)" : "var(--ink)" }}><span>{label}</span><span>{zl(value)}</span></div>;
+}
+function SummaryRow({ label, value, muted }: { label: string; value: string; muted?: boolean }) {
+  return <div className="flex items-start justify-between gap-4"><span style={{ color: "var(--mut)" }}>{label}</span><span className="text-right font-medium" style={{ color: muted ? "var(--mut)" : "var(--ink)" }}>{value}</span></div>;
 }
