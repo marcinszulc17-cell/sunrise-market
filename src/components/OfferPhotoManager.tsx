@@ -70,6 +70,21 @@ async function normalizePhotoFiles(files: FileList): Promise<FileList> {
   return output.files;
 }
 
+async function detailedFunctionError(error: unknown): Promise<string> {
+  try {
+    const context = (error as { context?: Response })?.context;
+    if (context && typeof context.clone === "function") {
+      const response = context.clone();
+      const payload = await response.json().catch(() => null) as { stage?: string; message?: string; error?: string } | null;
+      if (payload) {
+        const stage = payload.stage ? ` [${payload.stage}]` : "";
+        return `${payload.message || payload.error || "Błąd funkcji"}${stage}`;
+      }
+    }
+  } catch { /* fallback below */ }
+  return error instanceof Error ? error.message : String(error ?? "nieznany błąd");
+}
+
 export default function OfferPhotoManager({ images, onChange, onAddFiles, uploading, maxImages=12, baseLimit=12, onBuyMore, onEnhanceAi, aiBusyIndex }: Props) {
   const [dragIndex,setDragIndex]=useState<number|null>(null);
   const [overIndex,setOverIndex]=useState<number|null>(null);
@@ -113,8 +128,11 @@ export default function OfferPhotoManager({ images, onChange, onAddFiles, upload
     setPhotoInfo(`Naprawiam ${legacyCount} zdjęć HEIC na serwerze…`);
     try {
       const { data, error } = await supabase.functions.invoke("repair-offer-images", { body: { image_urls: images } });
-      if (error) throw error;
-      if (!data?.ok) throw new Error(data?.message || data?.error || "Nieznany błąd backendu");
+      if (error) throw new Error(await detailedFunctionError(error));
+      if (!data?.ok) {
+        const stage = data?.stage ? ` [${data.stage}]` : "";
+        throw new Error(`${data?.message || data?.error || "Nieznany błąd backendu"}${stage}`);
+      }
       const repairedUrls = Array.isArray(data.image_urls) ? data.image_urls.filter((x: unknown) => typeof x === "string") as string[] : [];
       if (!repairedUrls.length) throw new Error("Backend nie zwrócił poprawionej galerii");
       onChange(repairedUrls);
