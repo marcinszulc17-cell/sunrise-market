@@ -1,5 +1,5 @@
 import { useRef, useState } from "react";
-import { uploadProductImage } from "../lib/api";
+import { supabase } from "../lib/supabase";
 
 type Props = {
   images: string[];
@@ -106,30 +106,21 @@ export default function OfferPhotoManager({ images, onChange, onAddFiles, upload
   }
 
   async function repairLegacyHeic() {
-    const legacyIndexes = images.map((url, index) => isHeicUrl(url) ? index : -1).filter(index => index >= 0);
-    if (!legacyIndexes.length || repairing || uploading || processing) return;
+    const legacyCount = images.filter(isHeicUrl).length;
+    if (!legacyCount || repairing || uploading || processing) return;
     setRepairing(true);
     setPhotoError(null);
-    setPhotoInfo(`Naprawiam ${legacyIndexes.length} zdjęć HEIC…`);
+    setPhotoInfo(`Naprawiam ${legacyCount} zdjęć HEIC na serwerze…`);
     try {
-      const repaired = [...images];
-      for (let n = 0; n < legacyIndexes.length; n++) {
-        const i = legacyIndexes[n];
-        const url = repaired[i];
-        const response = await fetch(url, { mode: "cors", cache: "no-store" });
-        if (!response.ok) throw new Error(`Nie można pobrać zdjęcia (${response.status})`);
-        const blob = await response.blob();
-        if (!blob.size) throw new Error("Pusty plik HEIC");
-        const rawName = decodeURIComponent(url.split("/").pop()?.split("?")[0] || `photo-${i}.heic`);
-        const source = new File([blob], rawName, { type: blob.type || "image/heic" });
-        const jpg = await convertHeicFile(source);
-        repaired[i] = await uploadProductImage(jpg);
-        setPhotoInfo(`Naprawiam zdjęcia HEIC… ${n + 1}/${legacyIndexes.length}`);
-      }
-      onChange(repaired);
-      setPhotoInfo("Zdjęcia naprawione ✅ Kliknij „Zapisz ofertę”, aby zachować podmianę.");
+      const { data, error } = await supabase.functions.invoke("repair-offer-images", { body: { image_urls: images } });
+      if (error) throw error;
+      if (!data?.ok) throw new Error(data?.message || data?.error || "Nieznany błąd backendu");
+      const repairedUrls = Array.isArray(data.image_urls) ? data.image_urls.filter((x: unknown) => typeof x === "string") as string[] : [];
+      if (!repairedUrls.length) throw new Error("Backend nie zwrócił poprawionej galerii");
+      onChange(repairedUrls);
+      setPhotoInfo(`Naprawiono ${Number(data.repaired_count ?? 0)} zdjęć HEIC ✅`);
     } catch (error) {
-      console.error("Legacy HEIC repair failed", error);
+      console.error("Backend HEIC repair failed", error);
       const message = error instanceof Error ? error.message : "nieznany błąd";
       setPhotoError(`Nie udało się naprawić zdjęć HEIC: ${message}`);
       setPhotoInfo(null);
@@ -148,8 +139,8 @@ export default function OfferPhotoManager({ images, onChange, onAddFiles, upload
     </div>
     {legacyCount>0&&<div className="mb-3 rounded-xl p-3" style={{border:"1px solid rgba(200,150,90,.35)",background:"rgba(200,150,90,.08)"}}>
       <div className="text-sm font-semibold">Wykryto {legacyCount} starych zdjęć HEIC</div>
-      <div className="mt-1 text-xs" style={{color:"var(--mut)"}}>Mogą być niewidoczne w części przeglądarek. Naprawimy je bez ponownego wybierania plików.</div>
-      <button type="button" disabled={busy} onClick={repairLegacyHeic} className="mt-2 rounded-lg px-3 py-2 text-xs font-bold disabled:opacity-50" style={{border:"1px solid var(--gold)",color:"var(--gold)"}}>{repairing?"Naprawiam…":"Napraw stare zdjęcia HEIC"}</button>
+      <div className="mt-1 text-xs" style={{color:"var(--mut)"}}>Naprawa odbywa się teraz po stronie serwera, więc nie zależy od przeglądarki telefonu.</div>
+      <button type="button" disabled={busy} onClick={repairLegacyHeic} className="mt-2 rounded-lg px-3 py-2 text-xs font-bold disabled:opacity-50" style={{border:"1px solid var(--gold)",color:"var(--gold)"}}>{repairing?"Naprawiam na serwerze…":"Napraw stare zdjęcia HEIC"}</button>
     </div>}
     {onAddFiles && <label
       className="flex cursor-pointer flex-col items-center justify-center rounded-xl border border-dashed p-5 text-center text-sm transition"
