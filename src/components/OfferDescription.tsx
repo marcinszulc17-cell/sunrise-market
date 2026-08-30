@@ -20,8 +20,11 @@ function inline(text:string): React.ReactNode[] {
   return out;
 }
 
-export default function OfferDescription({text}:{text:string}) {
-  const lines=text.replace(/\r/g,"").split("\n");
+type Props = { text?: string; value?: string };
+
+export default function OfferDescription({text,value}:Props) {
+  const source=text ?? value ?? "";
+  const lines=source.replace(/\r/g,"").split("\n");
   const nodes:React.ReactNode[]=[]; let bullets:string[]=[];
   const flush=()=>{ if(bullets.length){ nodes.push(<ul key={`u${nodes.length}`} className="ml-5 list-disc space-y-1">{bullets.map((b,i)=><li key={i}>{inline(b)}</li>)}</ul>); bullets=[]; } };
   lines.forEach((raw,i)=>{
