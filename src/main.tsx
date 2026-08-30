@@ -22,6 +22,7 @@ import Koszyk from "./pages/Koszyk";
 import Zamowienia from "./pages/Zamowienia";
 import Cennik from "./pages/Cennik";
 import Operator from "./pages/Operator";
+import OperatorVerify from "./pages/OperatorVerify";
 import Konto from "./pages/Konto";
 import Rezerwacje from "./pages/Rezerwacje";
 import { initTheme } from "./lib/theme";
@@ -48,6 +49,7 @@ ReactDOM.createRoot(document.getElementById("root")!).render(
         <Route path="/rezerwacje" element={<Rezerwacje />} />
         <Route path="/cennik" element={<Cennik />} />
         <Route path="/operator" element={<Operator />} />
+        <Route path="/operator/verify" element={<OperatorVerify />} />
         <Route path="/portfel" element={<Portfel />} />
         <Route path="/konto" element={<Konto />} />
         <Route path="/sprzedawca" element={<SprzedawcaStart />} />
