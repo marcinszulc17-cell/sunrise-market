@@ -10,6 +10,7 @@ import Sprzedawca from "./pages/Sprzedawca";
 import SprzedawcaStart from "./pages/SprzedawcaStart";
 import SprzedawcaWystaw from "./pages/SprzedawcaWystaw";
 import SellerOffersManage from "./pages/SellerOffersManage";
+import SellerOfferEdit from "./pages/SellerOfferEdit";
 import SellerBookingsManage from "./pages/SellerBookingsManage";
 import SellerBookingSetup from "./pages/SellerBookingSetup";
 import SellerLeads from "./pages/SellerLeads";
@@ -66,6 +67,7 @@ ReactDOM.createRoot(document.getElementById("root")!).render(
         <Route path="/konto" element={<Konto />} />
         <Route path="/sprzedawca" element={<SprzedawcaStart />} />
         <Route path="/sprzedawca/oferty" element={<SellerOffersManage />} />
+        <Route path="/sprzedawca/oferty/:offerId/edytuj" element={<SellerOfferEdit />} />
         <Route path="/sprzedawca/rezerwacje" element={<SellerBookingsManage />} />
         <Route path="/sprzedawca/rezerwacje/ustawienia/:offerId" element={<SellerBookingSetup />} />
         <Route path="/sprzedawca/wystaw" element={<SprzedawcaWystaw />} />
