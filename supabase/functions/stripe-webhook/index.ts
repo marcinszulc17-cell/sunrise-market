@@ -78,6 +78,7 @@ async function settleSellerPayouts(sb: any, orderId: string) {
       updated_at: new Date().toISOString(),
     }).eq("order_id", orderId).eq("seller_id", sellerId);
     if (updateError) throw updateError;
+    if (!settled) throw new Error(`MySunrise seller credit failed: ${credited.data?.message ?? credited.data?.error ?? credited.status}`);
   }
 }
 // Legacy top-up flow is intentionally preserved in this PR. Moving card top-ups
@@ -103,24 +104,51 @@ async function creditTopup(sb: any, args: { userId: string; topupId: string; amo
 async function settleCardOrder(sb: any, s: any, stripe: any) {
   const orderId = s.metadata?.market_order_id;
   if (!orderId || s.payment_status !== "paid") return;
-  const { data: ord } = await sb.from("orders").select("id,status,coupon_code,discount_amount,buyer_id").eq("id", orderId).maybeSingle();
-  if (!ord || ord.status === "paid") return;
+  const { data: ord, error: orderError } = await sb.from("orders")
+    .select("id,status,coupon_code,discount_amount,buyer_id,card_settlement_status")
+    .eq("id", orderId).maybeSingle();
+  if (orderError) throw orderError;
+  if (!ord || ord.card_settlement_status === "settled") return;
 
-  await sb.from("orders").update({ status: "paid", payment_provider: "stripe", stripe_session_id: s.id }).eq("id", orderId);
+  const { data: claimed, error: claimError } = await sb.rpc("claim_stripe_order_settlement", {
+    p_order_id: orderId,
+    p_stripe_session_id: s.id,
+  });
+  if (claimError) throw claimError;
+  if (claimed !== true) throw new Error("Stripe settlement is already processing");
+
   try {
-    if (s.payment_intent) {
-      const pi = await stripe.paymentIntents.retrieve(String(s.payment_intent), { expand: ["latest_charge.balance_transaction"] });
-      const fee = pi?.latest_charge?.balance_transaction?.fee;
-      if (typeof fee === "number" && fee >= 0) await sb.from("orders").update({ stripe_fee: Math.round(fee) / 100 }).eq("id", orderId);
+    try {
+      if (s.payment_intent) {
+        const pi = await stripe.paymentIntents.retrieve(String(s.payment_intent), { expand: ["latest_charge.balance_transaction"] });
+        const fee = pi?.latest_charge?.balance_transaction?.fee;
+        if (typeof fee === "number" && fee >= 0) await sb.from("orders").update({ stripe_fee: Math.round(fee) / 100 }).eq("id", orderId);
+      }
+    } catch {}
+    if (ord.coupon_code && Number(ord.discount_amount) > 0) {
+      try { await sb.rpc("coupon_consume", { p_code: ord.coupon_code }); } catch {}
     }
-  } catch {}
-  if (ord.coupon_code && Number(ord.discount_amount) > 0) {
-    try { await sb.rpc("coupon_consume", { p_code: ord.coupon_code }); } catch {}
+    const { error: feeError } = await sb.rpc("apply_stripe_seller_fee", { p_order_id: orderId });
+    if (feeError) throw feeError;
+    await settleSellerPayouts(sb, String(orderId));
+    const now = new Date().toISOString();
+    const { error: completedError } = await sb.from("orders").update({
+      card_settlement_status: "settled",
+      card_settlement_last_error: null,
+      card_settlement_updated_at: now,
+      card_settled_at: now,
+    }).eq("id", orderId).eq("card_settlement_status", "processing");
+    if (completedError) throw completedError;
+    try { await sb.rpc("notify_order", { p_order: orderId }); } catch {}
+  } catch (error) {
+    const message = String((error as Error).message ?? error).slice(0, 1000);
+    await sb.from("orders").update({
+      card_settlement_status: "failed",
+      card_settlement_last_error: message,
+      card_settlement_updated_at: new Date().toISOString(),
+    }).eq("id", orderId).eq("card_settlement_status", "processing");
+    throw error;
   }
-  const { error: feeError } = await sb.rpc("apply_stripe_seller_fee", { p_order_id: orderId });
-  if (feeError) throw feeError;
-  try { await settleSellerPayouts(sb, String(orderId)); } catch (e) { console.error("seller settlement failed", (e as Error).message); }
-  try { await sb.rpc("notify_order", { p_order: orderId }); } catch {}
 
   try {
     const email = s.metadata?.user_email ?? s.customer_details?.email ?? null;
@@ -147,9 +175,10 @@ Deno.serve(async (req) => {
 
   const sb = sbClient();
   const { error: dupErr } = await sb.from("stripe_events").insert({ event_id: event.id, type: event.type });
+  const eventInserted = !dupErr;
   if (dupErr) {
-    if ((dupErr as any).code === "23505") return ok();
-    return new Response("DB error", { status: 500 });
+    if ((dupErr as any).code === "23505" && event.type !== "checkout.session.completed") return ok();
+    if ((dupErr as any).code !== "23505") return new Response("DB error", { status: 500 });
   }
 
   try {
@@ -187,7 +216,7 @@ Deno.serve(async (req) => {
     }
     return ok();
   } catch (err) {
-    await sb.from("stripe_events").delete().eq("event_id", event.id);
+    if (eventInserted) await sb.from("stripe_events").delete().eq("event_id", event.id);
     return new Response(`Handler error: ${(err as Error).message}`, { status: 500 });
   }
 });
