@@ -25,6 +25,8 @@ const localInput = (d:Date) => {
   const pad=(n:number)=>String(n).padStart(2,"0");
   return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
 };
+const localDate = (d:Date) => localInput(d).slice(0,10);
+const addDays = (d:Date,n:number) => { const x=new Date(d); x.setDate(x.getDate()+n); return x; };
 
 export default function SellerBookingsManage() {
   const [rows,setRows] = useState<Booking[]>([]);
@@ -38,6 +40,9 @@ export default function SellerBookingsManage() {
   const [end,setEnd] = useState("");
   const [reason,setReason] = useState("");
   const [busy,setBusy] = useState(false);
+  const [rescheduleId,setRescheduleId] = useState<string|null>(null);
+  const [rescheduleValue,setRescheduleValue] = useState("");
+  const [rescheduleBusy,setRescheduleBusy] = useState(false);
 
   async function load() {
     setLoading(true);
@@ -65,6 +70,29 @@ export default function SellerBookingsManage() {
     const { error } = await supabase.rpc("seller_booking_set_status", { p_booking:id, p_status:status });
     if (error) setMsg(error.message); else { setMsg("Status rezerwacji zaktualizowany. Powiadomienie e-mail zostało dodane do wysyłki."); await load(); }
     setBusy(false);
+  }
+
+  function openReschedule(r:Booking) {
+    setRescheduleId(r.id);
+    setRescheduleValue(r.booking_type === "daily" ? localDate(new Date(r.starts_at)) : localInput(new Date(r.starts_at)));
+    setMsg("");
+  }
+
+  async function reschedule(r:Booking) {
+    if (!rescheduleValue) { setMsg("Wybierz nowy termin rezerwacji."); return; }
+    setRescheduleBusy(true); setMsg("");
+    try {
+      const startValue = r.booking_type === "daily"
+        ? new Date(`${rescheduleValue}T12:00:00`).toISOString()
+        : new Date(rescheduleValue).toISOString();
+      const { error } = await supabase.rpc("seller_booking_reschedule", { p_booking:r.id, p_starts_at:startValue });
+      if (error) throw error;
+      setRescheduleId(null); setRescheduleValue("");
+      setMsg("Termin zmieniony ✅ System sprawdził kolizje, a klient otrzyma powiadomienie w aplikacji/push.");
+      await load();
+    } catch (e) {
+      setMsg("Nie udało się zmienić terminu: " + (e as Error).message);
+    } finally { setRescheduleBusy(false); }
   }
 
   async function addBlock() {
@@ -112,7 +140,10 @@ export default function SellerBookingsManage() {
           </div>
           {loading && <p style={{color:"var(--mut)"}}>Ładowanie…</p>}
           {!loading && visible.length===0 && <div className="rounded-2xl p-6" style={{background:"var(--glass)",border:"1px solid var(--line)"}}>Brak rezerwacji w tym widoku.</div>}
-          <div className="space-y-3">{visible.map(r=><article id={`booking-${r.id}`} key={r.id} className="scroll-mt-24 rounded-2xl p-5" style={{background:"var(--glass)",border:"1px solid var(--line)"}}>
+          <div className="space-y-3">{visible.map(r=>{
+            const durationMinutes=Math.max(1,Math.round((new Date(r.ends_at).getTime()-new Date(r.starts_at).getTime())/60000));
+            const previewEnd=r.booking_type==="daily"&&rescheduleId===r.id&&rescheduleValue?addDays(new Date(`${rescheduleValue}T12:00:00`),r.units):null;
+            return <article id={`booking-${r.id}`} key={r.id} className="scroll-mt-24 rounded-2xl p-5" style={{background:"var(--glass)",border:"1px solid var(--line)"}}>
             <div className="flex flex-wrap items-start justify-between gap-4">
               <div><Link to={`/produkt/${r.offer_id}`} className="font-semibold hover:underline">{r.title}</Link><div className="mt-1 text-sm" style={{color:"var(--mut)"}}>{r.booking_type==="daily"?`${dt(r.starts_at,false)} – ${dt(r.ends_at,false)} · ${r.units} dni`:dt(r.starts_at,true)}</div></div>
               <span className="rounded-full px-3 py-1 text-xs font-semibold" style={{background:r.status==="confirmed"?"rgba(34,197,94,.12)":"var(--header)",border:"1px solid var(--line)"}}>{statusLabel[r.status]||r.status}</span>
@@ -120,12 +151,20 @@ export default function SellerBookingsManage() {
             <div className="mt-4 grid gap-2 text-sm sm:grid-cols-3"><div><span style={{color:"var(--mut)"}}>Klient</span><div>{r.buyer_name || r.buyer_email || "—"}</div></div><div><span style={{color:"var(--mut)"}}>Płatność</span><div>{r.paid_at?`Opłacono · ${r.payment_provider||""}`:"Nieopłacona"}</div></div><div><span style={{color:"var(--mut)"}}>Kwota</span><div className="font-semibold">{pln(r.amount_gross)}</div></div></div>
             <div className="mt-4 flex flex-wrap gap-2">
               <Link to={`/sprzedawca/rezerwacje/ustawienia/${r.offer_id}`} className="rounded-xl px-3 py-2 text-sm font-semibold" style={{border:"1px solid var(--line)"}}>⚙ Ustawienia bookingu</Link>
-              {r.status==="confirmed" && <button disabled={busy} onClick={()=>setStatus(r.id,"completed")} className="rounded-xl px-3 py-2 text-sm font-semibold" style={{border:"1px solid var(--line)"}}>✓ Zakończ</button>}
-              {["held","pending_payment"].includes(r.status) && r.paid_at && <button disabled={busy} onClick={()=>setStatus(r.id,"confirmed")} className="rounded-xl px-3 py-2 text-sm font-semibold text-black" style={{background:"linear-gradient(135deg,#C8965A,#E8C896)"}}>Potwierdź</button>}
-              {["held","pending_payment","confirmed"].includes(r.status) && <button disabled={busy} onClick={()=>setStatus(r.id,"cancelled")} className="rounded-xl px-3 py-2 text-sm" style={{border:"1px solid rgba(239,68,68,.35)"}}>Anuluj</button>}
+              {r.status==="confirmed" && <button disabled={busy||rescheduleBusy} onClick={()=>openReschedule(r)} className="rounded-xl px-3 py-2 text-sm font-semibold" style={{border:"1px solid var(--gold)",color:"var(--gold)"}}>↔ Zmień termin</button>}
+              {r.status==="confirmed" && <button disabled={busy||rescheduleBusy} onClick={()=>setStatus(r.id,"completed")} className="rounded-xl px-3 py-2 text-sm font-semibold" style={{border:"1px solid var(--line)"}}>✓ Zakończ</button>}
+              {["held","pending_payment"].includes(r.status) && r.paid_at && <button disabled={busy||rescheduleBusy} onClick={()=>setStatus(r.id,"confirmed")} className="rounded-xl px-3 py-2 text-sm font-semibold text-black" style={{background:"linear-gradient(135deg,#C8965A,#E8C896)"}}>Potwierdź</button>}
+              {["held","pending_payment","confirmed"].includes(r.status) && <button disabled={busy||rescheduleBusy} onClick={()=>setStatus(r.id,"cancelled")} className="rounded-xl px-3 py-2 text-sm" style={{border:"1px solid rgba(239,68,68,.35)"}}>Anuluj</button>}
               {r.buyer_email && <a href={`mailto:${r.buyer_email}`} className="rounded-xl px-3 py-2 text-sm" style={{border:"1px solid var(--line)"}}>✉️ Napisz do klienta</a>}
             </div>
-          </article>)}</div>
+            {r.status==="confirmed"&&rescheduleId===r.id&&<div className="mt-4 rounded-2xl p-4" style={{background:"rgba(200,150,90,.07)",border:"1px solid rgba(200,150,90,.25)"}}>
+              <div className="flex items-start justify-between gap-3"><div><div className="font-semibold">Zmień termin rezerwacji</div><div className="mt-1 text-xs" style={{color:"var(--mut)"}}>{r.booking_type==="daily"?`Okres pozostaje bez zmian: ${r.units} dni.`:`Czas usługi pozostaje bez zmian: ${durationMinutes} min.`} Cena {pln(r.amount_gross)} również się nie zmienia.</div></div><button type="button" onClick={()=>{setRescheduleId(null);setRescheduleValue("")}} aria-label="Zamknij">✕</button></div>
+              <label className="mt-4 block text-sm"><span className="mb-1 block">{r.booking_type==="daily"?"Nowa data rozpoczęcia":"Nowy dzień i godzina"}</span><input type={r.booking_type==="daily"?"date":"datetime-local"} value={rescheduleValue} onChange={e=>setRescheduleValue(e.target.value)} className="w-full rounded-xl px-3 py-2.5" style={{background:"var(--bg)",border:"1px solid var(--line)",color:"var(--ink)"}}/></label>
+              {previewEnd&&<div className="mt-2 text-xs" style={{color:"var(--mut)"}}>Nowy okres: {new Date(`${rescheduleValue}T12:00:00`).toLocaleDateString("pl-PL")} – {previewEnd.toLocaleDateString("pl-PL")}</div>}
+              <div className="mt-3 rounded-xl p-3 text-xs" style={{background:"var(--header)",color:"var(--mut)"}}>Przed zapisem system sprawdzi dostępność oferty, zasobu, inne rezerwacje i ręczne blokady. Po zmianie klient otrzyma powiadomienie w aplikacji/push.</div>
+              <button disabled={rescheduleBusy||!rescheduleValue} onClick={()=>reschedule(r)} className="mt-3 w-full rounded-xl py-2.5 font-semibold text-black disabled:opacity-50" style={{background:"linear-gradient(135deg,#C8965A,#E8C896)"}}>{rescheduleBusy?"Sprawdzam termin…":"Sprawdź i zmień termin"}</button>
+            </div>}
+          </article>})}</div>
         </section>
 
         <aside className="space-y-5">
@@ -140,7 +179,7 @@ export default function SellerBookingsManage() {
             <button disabled={busy} onClick={addBlock} className="mt-3 w-full rounded-xl px-4 py-2.5 font-semibold text-black" style={{background:"linear-gradient(135deg,#C8965A,#E8C896)"}}>Zablokuj termin</button>
           </div>
           <div className="rounded-2xl p-5" style={{background:"var(--glass)",border:"1px solid var(--line)"}}><h2 className="text-lg font-semibold">Najbliższe blokady</h2><div className="mt-3 space-y-2">{blocks.slice(0,8).map(b=><div key={b.id} className="rounded-xl p-3 text-sm" style={{border:"1px solid var(--line)"}}><div className="font-semibold">{b.title}</div><div className="mt-1" style={{color:"var(--mut)"}}>{dt(b.starts_at)} – {dt(b.ends_at)}</div>{b.reason&&<div className="mt-1">{b.reason}</div>}<button onClick={()=>deleteBlock(b.id)} className="mt-2 text-xs underline" style={{color:"var(--mut)"}}>Usuń blokadę</button></div>)}{blocks.length===0&&<p className="text-sm" style={{color:"var(--mut)"}}>Brak ręcznych blokad.</p>}</div></div>
-          <div className="rounded-2xl p-5 text-sm" style={{background:"rgba(122,184,154,.08)",border:"1px solid rgba(122,184,154,.22)"}}><b>Automatyczny mailing</b><p className="mt-1" style={{color:"var(--mut)"}}>System dodaje wiadomości do kolejki przy utworzeniu, potwierdzeniu, anulowaniu i zakończeniu rezerwacji oraz przed terminem.</p></div>
+          <div className="rounded-2xl p-5 text-sm" style={{background:"rgba(122,184,154,.08)",border:"1px solid rgba(122,184,154,.22)"}}><b>Powiadomienia</b><p className="mt-1" style={{color:"var(--mut)"}}>System wysyła wiadomości dla standardowych zmian statusów i przypomnienia. Przy zmianie terminu klient dostaje powiadomienie w aplikacji/push.</p></div>
         </aside>
       </div>
     </div>
