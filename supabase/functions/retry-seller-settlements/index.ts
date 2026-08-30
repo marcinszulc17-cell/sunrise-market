@@ -42,10 +42,12 @@ Deno.serve(async (req) => {
   if (secretError || !secretRow?.value || provided !== secretRow.value) return json({ ok: false, error: "unauthorized" }, 401);
 
   const cutoff = new Date(Date.now() - 5 * 60 * 1000).toISOString();
+  const now = new Date().toISOString();
   const { data: rows, error } = await sb
     .from("seller_settlements")
-    .select("id,order_id,seller_id,seller_email,amount,status,attempts,updated_at")
-    .in("status", ["pending", "failed"])
+    .select("id,order_id,seller_id,seller_email,amount,status,attempts,updated_at,available_at")
+    .in("status", ["scheduled", "pending", "failed"])
+    .or(`status.neq.scheduled,available_at.lte.${now}`)
     .lt("updated_at", cutoff)
     .lt("attempts", 8)
     .order("updated_at", { ascending: true })
@@ -74,6 +76,10 @@ Deno.serve(async (req) => {
         settled_at: ok ? new Date().toISOString() : null,
         updated_at: new Date().toISOString(),
       }).eq("id", row.id);
+      if (ok && row.status === "scheduled") {
+        await sb.from("bookings").update({ status: "completed", updated_at: new Date().toISOString() })
+          .eq("order_id", row.order_id).eq("status", "confirmed");
+      }
       if (ok) settled++; else failed++;
     } catch (e) {
       await sb.from("seller_settlements").update({

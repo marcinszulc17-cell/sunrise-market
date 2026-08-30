@@ -41,6 +41,6 @@ test("paid card orders resume until settlement is complete", () => {
 });
 
 test("duplicate checkout events may resume an incomplete settlement", () => {
-  assert.match(source, /event\.type !== "checkout\.session\.completed"/);
+  assert.match(source, /checkout\.session\.completed.*checkout\.session\.async_payment_succeeded/);
   assert.match(source, /if \(eventInserted\) await sb\.from\("stripe_events"\)\.delete/);
 });
