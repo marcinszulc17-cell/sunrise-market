@@ -7,8 +7,8 @@ export function isHeicUrl(url: string | null | undefined): boolean {
 /**
  * Keep the original Storage URL in the database, but render HEIC/HEIF files
  * through Supabase Image Transformations so browsers receive a web-friendly image.
- * Use a square contain box by default. This avoids crop and avoids imposing a 4:3
- * presentation box on portrait/panorama images such as cockpit photos.
+ * A square contain box preserves the whole frame. We also cap render dimensions
+ * so fullscreen zoom does not ask mobile browsers to decode unnecessarily huge HEIC variants.
  */
 export function displayImageUrl(url: string | null | undefined, width = 1600, height?: number): string {
   if (!url) return "";
@@ -19,8 +19,9 @@ export function displayImageUrl(url: string | null | undefined, width = 1600, he
     "/storage/v1/object/public/",
     "/storage/v1/render/image/public/",
   );
-  const w = Math.max(64, Math.round(width));
-  const h = Math.max(64, Math.round(height ?? width));
+  const maxRender = 1800;
+  const w = Math.min(maxRender, Math.max(64, Math.round(width)));
+  const h = Math.min(maxRender, Math.max(64, Math.round(height ?? width)));
   const separator = rendered.includes("?") ? "&" : "?";
-  return `${rendered}${separator}width=${w}&height=${h}&resize=contain&quality=85`;
+  return `${rendered}${separator}width=${w}&height=${h}&resize=contain&quality=84`;
 }
