@@ -10,6 +10,7 @@ import MarketFooter from "../components/MarketFooter";
 import { useProductJsonLd, useSeo } from "../lib/seo";
 
 type SeoOffer={offer_id:string;title:string;description?:string|null;price_gross:number;image_url?:string|null;rating?:number;reviews?:number;category?:string};
+type PurchaseMode="purchase"|"appointment"|"daily";
 
 export default function ProductRouter() {
   const { id } = useParams();
@@ -17,6 +18,7 @@ export default function ProductRouter() {
   const [verifyKind,setVerifyKind]=useState<"vehicle"|"property"|null>(null);
   const [categorySlug,setCategorySlug]=useState("");
   const [priceGross,setPriceGross]=useState<number|null>(null);
+  const [purchaseMode,setPurchaseMode]=useState<PurchaseMode>("purchase");
   const [seoOffer,setSeoOffer]=useState<SeoOffer|null>(null);
 
   useEffect(() => {
@@ -24,6 +26,8 @@ export default function ProductRouter() {
     getOffer(id).then((o: any) => {
       const slug = String(o?.category_slug || "");
       const special = slug.includes("motoryzacja-samochody-osobowe") || slug.startsWith("nieruchomosci-") || slug.startsWith("uslugi-") || slug.startsWith("ogloszenia-lokalne-");
+      const rawMode=String(o?.attributes?.purchase_mode||"purchase");
+      setPurchaseMode(rawMode==="appointment"||rawMode==="daily"?rawMode:"purchase");
       setCategorySlug(slug);
       const p=Number(o?.price_gross ?? o?.price ?? 0); setPriceGross(Number.isFinite(p)&&p>0?p:null);
       setSeoOffer(o as SeoOffer);
@@ -41,7 +45,7 @@ export default function ProductRouter() {
     {kind === "special" ? <SpecializedProduct /> : <Product />}
     {id && <ProductPageExtras offerId={id} verifyKind={verifyKind} />}
     <MarketFooter />
-    {id && <BuyerOfferActions offerId={id} categorySlug={categorySlug} priceGross={priceGross} />}
+    {id && <BuyerOfferActions offerId={id} categorySlug={categorySlug} priceGross={priceGross} purchaseMode={purchaseMode} />}
     {id&&verifyKind&&<VerifyOfferButton offerId={id} kind={verifyKind}/>} 
   </>;
 }
