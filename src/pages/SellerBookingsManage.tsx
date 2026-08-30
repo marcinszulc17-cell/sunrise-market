@@ -16,7 +16,6 @@ type Booking = {
   starts_at:string; ends_at:string; units:number; amount_gross:number; status:string; payment_provider:string|null; paid_at:string|null;
 };
 type Block = { id:string; offer_id:string; title:string; starts_at:string; ends_at:string; reason:string|null };
-
 type Offer = { offer_id:string; title:string; status:string };
 
 const pln = (v:number) => Number(v||0).toLocaleString("pl-PL", { style:"currency", currency:"PLN" });
@@ -80,7 +79,7 @@ export default function SellerBookingsManage() {
   return <main className="min-h-screen px-4 py-8 sm:px-6" style={{background:"var(--bg)",color:"var(--ink)"}}>
     <div className="mx-auto max-w-7xl">
       <div className="mb-6 flex flex-wrap items-start justify-between gap-4">
-        <div><Link to="/sprzedawca" className="text-sm underline" style={{color:"var(--mut)"}}>← Centrum sprzedawcy</Link><h1 className="mt-2 font-display text-3xl font-semibold">Rezerwacje i kalendarz</h1><p className="mt-1 text-sm" style={{color:"var(--mut)"}}>Usługi, samochody i nieruchomości w jednym miejscu.</p></div>
+        <div><Link to="/sprzedawca" className="text-sm underline" style={{color:"var(--mut)"}}>← Centrum sprzedawcy</Link><h1 className="mt-2 font-display text-3xl font-semibold">Rezerwacje i kalendarz</h1><p className="mt-1 text-sm" style={{color:"var(--mut)"}}>Usługi jak Booksy oraz samochody i nieruchomości jak Booking.com — w jednym kalendarzu.</p></div>
         <Link to="/sprzedawca/oferty" className="rounded-xl px-4 py-2 text-sm font-semibold" style={{border:"1px solid var(--line)"}}>Zarządzaj ofertami</Link>
       </div>
 
@@ -106,6 +105,7 @@ export default function SellerBookingsManage() {
             </div>
             <div className="mt-4 grid gap-2 text-sm sm:grid-cols-3"><div><span style={{color:"var(--mut)"}}>Klient</span><div>{r.buyer_name || r.buyer_email || "—"}</div></div><div><span style={{color:"var(--mut)"}}>Płatność</span><div>{r.paid_at?`Opłacono · ${r.payment_provider||""}`:"Nieopłacona"}</div></div><div><span style={{color:"var(--mut)"}}>Kwota</span><div className="font-semibold">{pln(r.amount_gross)}</div></div></div>
             <div className="mt-4 flex flex-wrap gap-2">
+              <Link to={`/sprzedawca/rezerwacje/ustawienia/${r.offer_id}`} className="rounded-xl px-3 py-2 text-sm font-semibold" style={{border:"1px solid var(--line)"}}>⚙ Ustawienia bookingu</Link>
               {r.status==="confirmed" && <button disabled={busy} onClick={()=>setStatus(r.id,"completed")} className="rounded-xl px-3 py-2 text-sm font-semibold" style={{border:"1px solid var(--line)"}}>✓ Zakończ</button>}
               {["held","pending_payment"].includes(r.status) && r.paid_at && <button disabled={busy} onClick={()=>setStatus(r.id,"confirmed")} className="rounded-xl px-3 py-2 text-sm font-semibold text-black" style={{background:"linear-gradient(135deg,#C8965A,#E8C896)"}}>Potwierdź</button>}
               {["held","pending_payment","confirmed"].includes(r.status) && <button disabled={busy} onClick={()=>setStatus(r.id,"cancelled")} className="rounded-xl px-3 py-2 text-sm" style={{border:"1px solid rgba(239,68,68,.35)"}}>Anuluj</button>}
@@ -116,15 +116,17 @@ export default function SellerBookingsManage() {
 
         <aside className="space-y-5">
           <div className="rounded-2xl p-5" style={{background:"var(--glass)",border:"1px solid var(--line)"}}>
-            <h2 className="text-lg font-semibold">Zablokuj termin</h2><p className="mt-1 text-sm" style={{color:"var(--mut)"}}>Urlop, serwis auta, zajęty apartament lub inny brak dostępności.</p>
+            <h2 className="text-lg font-semibold">Oferta i booking</h2><p className="mt-1 text-sm" style={{color:"var(--mut)"}}>Wybierz ofertę, aby blokować termin albo przejść do pełnych ustawień rezerwacji.</p>
             <select value={offerId} onChange={e=>setOfferId(e.target.value)} className="mt-4 w-full rounded-xl px-3 py-2.5" style={{background:"var(--bg)",border:"1px solid var(--line)"}}><option value="">Wybierz ofertę</option>{offers.map(o=><option key={o.offer_id} value={o.offer_id}>{o.title}</option>)}</select>
+            {offerId&&<Link to={`/sprzedawca/rezerwacje/ustawienia/${offerId}`} className="mt-3 block w-full rounded-xl px-4 py-2.5 text-center text-sm font-semibold" style={{border:"1px solid var(--gold)",color:"var(--gold)"}}>⚙ Zaawansowane ustawienia bookingu</Link>}
+            <h3 className="mt-5 font-semibold">Zablokuj termin</h3>
             <label className="mt-3 block text-xs" style={{color:"var(--mut)"}}>Od<input type="datetime-local" value={start} onChange={e=>setStart(e.target.value)} className="mt-1 w-full rounded-xl px-3 py-2.5" style={{background:"var(--bg)",border:"1px solid var(--line)",color:"var(--ink)"}}/></label>
             <label className="mt-3 block text-xs" style={{color:"var(--mut)"}}>Do<input type="datetime-local" value={end} onChange={e=>setEnd(e.target.value)} className="mt-1 w-full rounded-xl px-3 py-2.5" style={{background:"var(--bg)",border:"1px solid var(--line)",color:"var(--ink)"}}/></label>
             <input value={reason} onChange={e=>setReason(e.target.value)} placeholder="Powód (opcjonalnie)" className="mt-3 w-full rounded-xl px-3 py-2.5" style={{background:"var(--bg)",border:"1px solid var(--line)"}} />
             <button disabled={busy} onClick={addBlock} className="mt-3 w-full rounded-xl px-4 py-2.5 font-semibold text-black" style={{background:"linear-gradient(135deg,#C8965A,#E8C896)"}}>Zablokuj termin</button>
           </div>
           <div className="rounded-2xl p-5" style={{background:"var(--glass)",border:"1px solid var(--line)"}}><h2 className="text-lg font-semibold">Najbliższe blokady</h2><div className="mt-3 space-y-2">{blocks.slice(0,8).map(b=><div key={b.id} className="rounded-xl p-3 text-sm" style={{border:"1px solid var(--line)"}}><div className="font-semibold">{b.title}</div><div className="mt-1" style={{color:"var(--mut)"}}>{dt(b.starts_at)} – {dt(b.ends_at)}</div>{b.reason&&<div className="mt-1">{b.reason}</div>}<button onClick={()=>deleteBlock(b.id)} className="mt-2 text-xs underline" style={{color:"var(--mut)"}}>Usuń blokadę</button></div>)}{blocks.length===0&&<p className="text-sm" style={{color:"var(--mut)"}}>Brak ręcznych blokad.</p>}</div></div>
-          <div className="rounded-2xl p-5 text-sm" style={{background:"rgba(122,184,154,.08)",border:"1px solid rgba(122,184,154,.22)"}}><b>Automatyczny mailing</b><p className="mt-1" style={{color:"var(--mut)"}}>Klient i sprzedawca dostają wiadomości przy utworzeniu, potwierdzeniu, anulowaniu i zakończeniu rezerwacji. System wysyła też przypomnienie przed terminem.</p></div>
+          <div className="rounded-2xl p-5 text-sm" style={{background:"rgba(122,184,154,.08)",border:"1px solid rgba(122,184,154,.22)"}}><b>Automatyczny mailing</b><p className="mt-1" style={{color:"var(--mut)"}}>System dodaje wiadomości do kolejki przy utworzeniu, potwierdzeniu, anulowaniu i zakończeniu rezerwacji oraz przed terminem.</p></div>
         </aside>
       </div>
     </div>
