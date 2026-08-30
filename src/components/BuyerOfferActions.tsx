@@ -66,6 +66,11 @@ export default function BuyerOfferActions({ offerId, categorySlug="" }: Props) {
     setStatus(ids.includes(offerId) ? `Dodano do porównania (${ids.length}/4).` : "Usunięto z porównania.");
   }
 
+  function goBack() {
+    if (window.history.length > 1) window.history.back();
+    else window.location.href = "/";
+  }
+
   async function submitInteraction(e: FormEvent) {
     e.preventDefault(); setBusy(true); setStatus(null);
     let iso:string|null=null;
@@ -81,13 +86,15 @@ export default function BuyerOfferActions({ offerId, categorySlug="" }: Props) {
   }
 
   return <>
-    <div className="fixed right-4 top-[72px] z-40 flex max-w-[calc(100vw-32px)] flex-wrap justify-end gap-2 rounded-2xl p-2 shadow-xl backdrop-blur-md" style={{ background: "color-mix(in srgb, var(--header) 92%, transparent)", border: "1px solid var(--line)" }}>
-      <button disabled={busy} onClick={watch} className="rounded-xl px-3 py-2 text-sm font-semibold" style={{ border: "1px solid var(--line)", background: watched ? "rgba(200,150,90,.18)" : "var(--glass)" }}>{watched ? "♥ Obserwujesz" : "♡ Obserwuj cenę"}</button>
-      <button onClick={toggleCompare} className="rounded-xl px-3 py-2 text-sm font-semibold" style={{ border: "1px solid var(--line)", background: compare ? "rgba(56,224,240,.12)" : "var(--glass)" }}>{compare ? "✓ W porównaniu" : "⇄ Porównaj"}</button>
-      <a href="/porownaj" className="rounded-xl px-3 py-2 text-sm font-semibold" style={{ border: "1px solid var(--line)", background:"var(--glass)" }}>Porównanie</a>
-      <button onClick={() => bookingConfig ? setBookingOpen(true) : setOpen(true)} className="rounded-xl px-3 py-2 text-sm font-semibold text-black" style={{ background: "linear-gradient(135deg,#C8965A,#E8C896)" }}>{bookingConfig ? "📅 Wybierz termin i zapłać" : `${action.icon} ${action.label}`}</button>
+    <button onClick={goBack} className="fixed left-3 top-[calc(env(safe-area-inset-top)+10px)] z-50 rounded-full px-3 py-2 text-sm font-semibold shadow-lg backdrop-blur-md sm:left-4 sm:top-4" style={{ background: "color-mix(in srgb, var(--header) 94%, transparent)", border: "1px solid var(--line)" }} aria-label="Wróć do poprzedniej strony">← Wróć</button>
+
+    <div className="fixed bottom-0 left-0 right-0 z-40 flex gap-2 overflow-x-auto p-2 pb-[max(.5rem,env(safe-area-inset-bottom))] shadow-2xl backdrop-blur-md sm:bottom-auto sm:left-auto sm:right-4 sm:top-[72px] sm:max-w-[calc(100vw-32px)] sm:flex-wrap sm:justify-end sm:rounded-2xl sm:p-2 sm:shadow-xl" style={{ background: "color-mix(in srgb, var(--header) 96%, transparent)", borderTop: "1px solid var(--line)", border: "1px solid var(--line)" }}>
+      <button disabled={busy} onClick={watch} className="shrink-0 rounded-xl px-3 py-2 text-xs font-semibold sm:text-sm" style={{ border: "1px solid var(--line)", background: watched ? "rgba(200,150,90,.18)" : "var(--glass)" }}>{watched ? "♥ Obserwujesz" : "♡ Obserwuj"}</button>
+      <button onClick={toggleCompare} className="shrink-0 rounded-xl px-3 py-2 text-xs font-semibold sm:text-sm" style={{ border: "1px solid var(--line)", background: compare ? "rgba(56,224,240,.12)" : "var(--glass)" }}>{compare ? "✓ Porównanie" : "⇄ Porównaj"}</button>
+      <a href="/porownaj" className="hidden shrink-0 rounded-xl px-3 py-2 text-sm font-semibold sm:block" style={{ border: "1px solid var(--line)", background:"var(--glass)" }}>Porównanie</a>
+      <button onClick={() => bookingConfig ? setBookingOpen(true) : setOpen(true)} className="min-w-[150px] flex-1 shrink-0 rounded-xl px-3 py-2 text-xs font-semibold text-black sm:flex-none sm:text-sm" style={{ background: "linear-gradient(135deg,#C8965A,#E8C896)" }}>{bookingConfig ? "📅 Termin i płatność" : `${action.icon} ${action.label}`}</button>
     </div>
-    {status && <div className="fixed right-4 top-[132px] z-50 max-w-sm rounded-xl px-4 py-3 text-sm shadow-xl" style={{ background: "var(--header)", border: "1px solid var(--line)" }}>{status}</div>}
+    {status && <div className="fixed bottom-[calc(68px+env(safe-area-inset-bottom))] left-3 right-3 z-50 rounded-xl px-4 py-3 text-sm shadow-xl sm:bottom-auto sm:left-auto sm:right-4 sm:top-[132px] sm:max-w-sm" style={{ background: "var(--header)", border: "1px solid var(--line)" }}>{status}</div>}
     {open && <div className="fixed inset-0 z-50 grid place-items-center bg-black/60 p-4" onMouseDown={() => setOpen(false)}>
       <form onSubmit={submitInteraction} onMouseDown={e => e.stopPropagation()} className="w-full max-w-lg rounded-3xl p-6" style={{ background: "var(--header)", border: "1px solid var(--line)" }}>
         <div className="mb-4 flex items-center justify-between"><h2 className="text-xl font-semibold">{action.title}</h2><button type="button" onClick={() => setOpen(false)}>✕</button></div>
