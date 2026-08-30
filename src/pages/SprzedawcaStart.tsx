@@ -26,20 +26,23 @@ export default function SprzedawcaStart() {
             <div className="text-sm font-semibold" style={{ color: "var(--gold)" }}>SUNRISE MARKET</div>
             <h1 className="mt-1 font-display text-3xl font-semibold sm:text-4xl">Centrum sprzedawcy</h1>
             <p className="mt-2 max-w-2xl text-sm sm:text-base" style={{ color: "var(--mut)" }}>
-              Wystaw ofertę albo przejdź do zapytań klientów i prowadź sprzedaż do końca.
+              Wystaw ofertę, edytuj istniejące ogłoszenia, dodawaj zdjęcia i uruchamiaj booking usług, aut i nieruchomości.
             </p>
           </div>
-          <Link to="/sprzedawca/zapytania" className="rounded-2xl px-5 py-3 font-semibold text-black" style={{ background: "linear-gradient(135deg,#C8965A,#E8C896)" }}>
-            💬 Zapytania klientów
+          <Link to="/sprzedawca/oferty" className="rounded-2xl px-5 py-3 font-semibold text-black" style={{ background: "linear-gradient(135deg,#C8965A,#E8C896)" }}>
+            🧾 Moje oferty
           </Link>
         </div>
 
-        <div className="mb-8 grid gap-3 sm:grid-cols-2">
+        <div className="mb-8 grid gap-3 sm:grid-cols-3">
+          <Link to="/sprzedawca/oferty" className="rounded-2xl p-5" style={{ background: "rgba(200,150,90,.09)", border: "1px solid rgba(200,150,90,.28)" }}>
+            <div className="text-2xl">🧾</div><div className="mt-2 text-lg font-semibold">Oferty i booking</div><div className="mt-1 text-sm" style={{ color: "var(--mut)" }}>Edycja ofert, zdjęcia, cashback/prowizje, faktura VAT i kalendarz rezerwacji.</div>
+          </Link>
           <Link to="/sprzedawca/zapytania" className="rounded-2xl p-5" style={{ background: "rgba(122,184,154,.08)", border: "1px solid rgba(122,184,154,.24)" }}>
             <div className="text-2xl">📈</div><div className="mt-2 text-lg font-semibold">Leady i sprzedaż</div><div className="mt-1 text-sm" style={{ color: "var(--mut)" }}>Nowe → kontakt → oferta → rezerwacja → sprzedaż deklarowana lub potwierdzona.</div>
           </Link>
           <Link to="/sprzedawca-klasyczny" className="rounded-2xl p-5" style={{ background: "var(--glass)", border: "1px solid var(--line)" }}>
-            <div className="text-2xl">📣</div><div className="mt-2 text-lg font-semibold">Promowanie i zarządzanie</div><div className="mt-1 text-sm" style={{ color: "var(--mut)" }}>Oferty, zamówienia, reklamy, statystyki, wysyłka i portfel.</div>
+            <div className="text-2xl">📣</div><div className="mt-2 text-lg font-semibold">Panel zaawansowany</div><div className="mt-1 text-sm" style={{ color: "var(--mut)" }}>Zamówienia, reklamy, statystyki, wysyłka, promocje i rozliczenia.</div>
           </Link>
         </div>
 
@@ -64,6 +67,8 @@ export default function SprzedawcaStart() {
         </div>
 
         <div className="mt-6 flex flex-wrap items-center gap-3 text-sm">
+          <Link to="/sprzedawca/oferty" className="underline" style={{ color: "var(--mut)" }}>Zarządzaj ofertami</Link>
+          <span style={{ color: "var(--mut)" }}>•</span>
           <Link to="/sprzedawca-klasyczny" className="underline" style={{ color: "var(--mut)" }}>Panel zaawansowany</Link>
           <span style={{ color: "var(--mut)" }}>•</span>
           <Link to="/" className="underline" style={{ color: "var(--mut)" }}>Wróć do Marketu</Link>
