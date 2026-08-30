@@ -26,11 +26,18 @@ import Operator from "./pages/Operator";
 import OperatorVerify from "./pages/OperatorVerify";
 import Konto from "./pages/Konto";
 import Rezerwacje from "./pages/Rezerwacje";
+import PwaInstallPrompt from "./components/PwaInstallPrompt";
 import { initTheme } from "./lib/theme";
 import "./index.css";
 
 initTheme();
 try { const _r = new URLSearchParams(window.location.search).get("ref"); if (_r && _r.trim()) localStorage.setItem("sunrise_ref", _r.trim().slice(0, 64)); } catch { /* ignore */ }
+
+if ("serviceWorker" in navigator) {
+  window.addEventListener("load", () => {
+    navigator.serviceWorker.register("/sw.js").catch(() => {});
+  });
+}
 
 ReactDOM.createRoot(document.getElementById("root")!).render(
   <React.StrictMode>
@@ -64,6 +71,7 @@ ReactDOM.createRoot(document.getElementById("root")!).render(
         <Route path="/sprzedawca/rozliczenia" element={<Rozliczenia />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
+      <PwaInstallPrompt />
     </BrowserRouter>
   </React.StrictMode>,
 );
