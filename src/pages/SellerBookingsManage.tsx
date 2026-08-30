@@ -78,21 +78,40 @@ export default function SellerBookingsManage() {
     setMsg("");
   }
 
-  async function reschedule(r:Booking) {
-    if (!rescheduleValue) { setMsg("Wybierz nowy termin rezerwacji."); return; }
+  async function runReschedule(r:Booking,startValue:string) {
     setRescheduleBusy(true); setMsg("");
     try {
-      const startValue = r.booking_type === "daily"
-        ? new Date(`${rescheduleValue}T12:00:00`).toISOString()
-        : new Date(rescheduleValue).toISOString();
       const { error } = await supabase.rpc("seller_booking_reschedule", { p_booking:r.id, p_starts_at:startValue });
       if (error) throw error;
       setRescheduleId(null); setRescheduleValue("");
       setMsg("Termin zmieniony ✅ System sprawdził kolizje, a klient otrzyma powiadomienie w aplikacji/push.");
       await load();
+      return true;
     } catch (e) {
       setMsg("Nie udało się zmienić terminu: " + (e as Error).message);
+      return false;
     } finally { setRescheduleBusy(false); }
+  }
+
+  async function reschedule(r:Booking) {
+    if (!rescheduleValue) { setMsg("Wybierz nowy termin rezerwacji."); return; }
+    const startValue = r.booking_type === "daily"
+      ? new Date(`${rescheduleValue}T12:00:00`).toISOString()
+      : new Date(rescheduleValue).toISOString();
+    await runReschedule(r,startValue);
+  }
+
+  async function rescheduleFromCalendar(bookingId:string,targetDay:Date) {
+    const r=rows.find(x=>x.id===bookingId);
+    if (!r || r.status!=="confirmed") { setMsg("Przeciągać można tylko potwierdzone rezerwacje."); return false; }
+    const current=new Date(r.starts_at);
+    const target=new Date(targetDay);
+    if (r.booking_type==="daily") {
+      const startValue=new Date(target.getFullYear(),target.getMonth(),target.getDate(),12,0,0,0).toISOString();
+      return runReschedule(r,startValue);
+    }
+    target.setHours(current.getHours(),current.getMinutes(),current.getSeconds(),0);
+    return runReschedule(r,target.toISOString());
   }
 
   async function addBlock() {
@@ -130,12 +149,12 @@ export default function SellerBookingsManage() {
         <Stat label="Wartość opłaconych" value={pln(stats.paid)} />
       </div>
 
-      <SellerBookingCalendar bookings={rows} blocks={blocks} onPickDate={pickCalendarDate}/>
+      <SellerBookingCalendar bookings={rows} blocks={blocks} onPickDate={pickCalendarDate} onRescheduleDrop={rescheduleFromCalendar} rescheduleBusy={rescheduleBusy}/>
 
       <div className="grid gap-6 xl:grid-cols-[1fr_360px]">
         <section>
           <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-            <div><h2 className="text-xl font-semibold">Lista rezerwacji</h2><p className="mt-1 text-sm" style={{color:"var(--mut)"}}>Kliknięcie zdarzenia w kalendarzu przewija do jego szczegółów tutaj.</p></div>
+            <div><h2 className="text-xl font-semibold">Lista rezerwacji</h2><p className="mt-1 text-sm" style={{color:"var(--mut)"}}>Kliknięcie zdarzenia w kalendarzu przewija do jego szczegółów tutaj. Potwierdzone rezerwacje możesz też przeciągnąć na inny dzień.</p></div>
             <div className="flex flex-wrap gap-2">{[['active','Aktywne'],['confirmed','Potwierdzone'],['pending_payment','Do opłacenia'],['completed','Zakończone'],['cancelled','Anulowane'],['all','Wszystkie']].map(([k,l])=><button key={k} onClick={()=>setFilter(k)} className="rounded-full px-3 py-1.5 text-sm" style={{background:filter===k?"rgba(200,150,90,.18)":"var(--glass)",border:"1px solid var(--line)",color:filter===k?"var(--gold)":"var(--ink)"}}>{l}</button>)}</div>
           </div>
           {loading && <p style={{color:"var(--mut)"}}>Ładowanie…</p>}
