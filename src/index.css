@@ -61,3 +61,9 @@ img[style*="translate("] {
   will-change: transform;
   backface-visibility: hidden;
 }
+
+/* Supabase-rendered HEIC/HEIF thumbnails must never be cropped by legacy card classes. */
+img[src*="/storage/v1/render/image/public/"][src*="resize=contain"] {
+  object-fit: contain !important;
+  background: rgba(0,0,0,.08);
+}
