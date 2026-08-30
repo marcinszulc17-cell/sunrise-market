@@ -301,12 +301,6 @@ export async function uploadProductImage(file: File): Promise<string> {
   if (error) throw error;
   return supabase.storage.from("product-images").getPublicUrl(path).data.publicUrl;
 }
-// Saldo portfela zalogowanego (kupujący/sprzedawca) — lokalny mirror (fallback)
-export async function myBalance(): Promise<number> {
-  const { data, error } = await supabase.rpc("my_balance");
-  if (error) throw error;
-  return Number(data ?? 0);
-}
 // ŻYWE saldo Sunrise Pay z MySunrise (server-to-server, źródło prawdy)
 export type WalletLive = { linked: boolean; balance: number; points: number; gold: number | null; currency: string };
 export async function walletBalance(): Promise<WalletLive> {

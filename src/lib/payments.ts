@@ -28,15 +28,8 @@ export async function redeemPoints(amountPln: number): Promise<RedeemResult> {
   return data as RedeemResult;
 }
 
-// Saldo portfela (lustro lub MySunrise – zależnie od backendu).
-export async function getWalletBalance(userId: string): Promise<number> {
-  const { data, error } = await supabase
-    .from("wallet_mirror").select("balance").eq("user_id", userId).maybeSingle();
-  if (error) throw error;
-  return Number(data?.balance ?? 0);
-}
-
-// Historia operacji portfela.
+// Historia operacji powstałych w Sunrise Market. Nie jest źródłem salda ani
+// pełną historią portfela — te dane należą do MySunrise.
 export async function getWalletOps(userId: string, limit = 20) {
   const { data, error } = await supabase
     .from("wallet_ops").select("type, amount, balance_after, created_at")
