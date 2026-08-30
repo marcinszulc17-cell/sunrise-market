@@ -11,6 +11,7 @@ import SprzedawcaStart from "./pages/SprzedawcaStart";
 import SprzedawcaWystaw from "./pages/SprzedawcaWystaw";
 import SellerOffersManage from "./pages/SellerOffersManage";
 import SellerBookingsManage from "./pages/SellerBookingsManage";
+import SellerBookingSetup from "./pages/SellerBookingSetup";
 import SellerLeads from "./pages/SellerLeads";
 import SaleConfirmation from "./pages/SaleConfirmation";
 import VerifyRequest from "./pages/VerifyRequest";
@@ -55,6 +56,7 @@ ReactDOM.createRoot(document.getElementById("root")!).render(
         <Route path="/sprzedawca" element={<SprzedawcaStart />} />
         <Route path="/sprzedawca/oferty" element={<SellerOffersManage />} />
         <Route path="/sprzedawca/rezerwacje" element={<SellerBookingsManage />} />
+        <Route path="/sprzedawca/rezerwacje/ustawienia/:offerId" element={<SellerBookingSetup />} />
         <Route path="/sprzedawca/wystaw" element={<SprzedawcaWystaw />} />
         <Route path="/sprzedawca/zapytania" element={<SellerLeads />} />
         <Route path="/potwierdz-zakup/:token" element={<SaleConfirmation />} />
