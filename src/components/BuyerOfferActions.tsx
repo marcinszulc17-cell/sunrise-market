@@ -3,7 +3,8 @@ import { bookingPublicConfig, toggleWatch, watchedIds, type BookingConfig } from
 import { supabase } from "../lib/supabase";
 import BookingPurchaseModal from "./BookingPurchaseModal";
 
-type Props = { offerId: string; categorySlug?: string; priceGross?: number | null };
+type PurchaseMode="purchase"|"appointment"|"daily";
+type Props = { offerId: string; categorySlug?: string; priceGross?: number | null; purchaseMode?: PurchaseMode };
 type Interaction = { type:"viewing"|"consultation"|"installation"|"quote"|"demo"|"reservation"|"contact"; label:string; title:string; needsDate:boolean; icon:string };
 const COMPARE_KEY = "sunrise_compare_ids";
 
@@ -18,8 +19,10 @@ function interactionFor(slug:string):Interaction {
   return {type:"contact",label:"Zapytaj sprzedawcę",title:"Skontaktuj się ze sprzedawcą",needsDate:false,icon:"✉️"};
 }
 
-export default function BuyerOfferActions({ offerId, categorySlug="" }: Props) {
+export default function BuyerOfferActions({ offerId, categorySlug="", purchaseMode="purchase" }: Props) {
   const action=useMemo(()=>interactionFor(categorySlug),[categorySlug]);
+  const isBooking=purchaseMode==="appointment"||purchaseMode==="daily";
+  const bookingLabel=purchaseMode==="daily"?"🗓️ Wybierz daty":"📅 Wybierz termin";
   const [watched, setWatched] = useState(false);
   const [compare, setCompare] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -39,6 +42,16 @@ export default function BuyerOfferActions({ offerId, categorySlug="" }: Props) {
     supabase.auth.getUser().then(({ data }) => setEmail(data.user?.email || ""));
     bookingPublicConfig(offerId).then(setBookingConfig).catch(()=>setBookingConfig(null));
   }, [offerId]);
+
+  useEffect(()=>{
+    const openBooking=()=>{
+      if(!isBooking) return;
+      if(bookingConfig) setBookingOpen(true);
+      else setStatus("Kalendarz tej oferty nie jest jeszcze dostępny. Spróbuj ponownie za chwilę.");
+    };
+    window.addEventListener("sunrise-open-booking",openBooking);
+    return()=>window.removeEventListener("sunrise-open-booking",openBooking);
+  },[isBooking,bookingConfig]);
 
   async function watch() {
     setBusy(true); setStatus(null);
@@ -71,6 +84,15 @@ export default function BuyerOfferActions({ offerId, categorySlug="" }: Props) {
     else window.location.href = "/";
   }
 
+  function primaryAction(){
+    if(isBooking){
+      if(bookingConfig) setBookingOpen(true);
+      else setStatus("Kalendarz tej oferty nie jest jeszcze dostępny. Spróbuj ponownie za chwilę.");
+      return;
+    }
+    setOpen(true);
+  }
+
   async function submitInteraction(e: FormEvent) {
     e.preventDefault(); setBusy(true); setStatus(null);
     let iso:string|null=null;
@@ -92,10 +114,10 @@ export default function BuyerOfferActions({ offerId, categorySlug="" }: Props) {
       <button disabled={busy} onClick={watch} className="shrink-0 rounded-xl px-3 py-2 text-xs font-semibold sm:text-sm" style={{ border: "1px solid var(--line)", background: watched ? "rgba(200,150,90,.18)" : "var(--glass)" }}>{watched ? "♥ Obserwujesz" : "♡ Obserwuj"}</button>
       <button onClick={toggleCompare} className="shrink-0 rounded-xl px-3 py-2 text-xs font-semibold sm:text-sm" style={{ border: "1px solid var(--line)", background: compare ? "rgba(56,224,240,.12)" : "var(--glass)" }}>{compare ? "✓ Porównanie" : "⇄ Porównaj"}</button>
       <a href="/porownaj" className="hidden shrink-0 rounded-xl px-3 py-2 text-sm font-semibold sm:block" style={{ border: "1px solid var(--line)", background:"var(--glass)" }}>Porównanie</a>
-      <button onClick={() => bookingConfig ? setBookingOpen(true) : setOpen(true)} className="min-w-[150px] flex-1 shrink-0 rounded-xl px-3 py-2 text-xs font-semibold text-black sm:flex-none sm:text-sm" style={{ background: "linear-gradient(135deg,#C8965A,#E8C896)" }}>{bookingConfig ? "📅 Termin i płatność" : `${action.icon} ${action.label}`}</button>
+      <button onClick={primaryAction} className="min-w-[150px] flex-1 shrink-0 rounded-xl px-3 py-2 text-xs font-semibold text-black sm:flex-none sm:text-sm" style={{ background: "linear-gradient(135deg,#C8965A,#E8C896)" }}>{isBooking?bookingLabel:`${action.icon} ${action.label}`}</button>
     </div>
     {status && <div className="fixed bottom-[calc(68px+env(safe-area-inset-bottom))] left-3 right-3 z-50 rounded-xl px-4 py-3 text-sm shadow-xl sm:bottom-auto sm:left-auto sm:right-4 sm:top-[132px] sm:max-w-sm" style={{ background: "var(--header)", border: "1px solid var(--line)" }}>{status}</div>}
-    {open && <div className="fixed inset-0 z-50 grid place-items-center bg-black/60 p-4" onMouseDown={() => setOpen(false)}>
+    {open && !isBooking && <div className="fixed inset-0 z-50 grid place-items-center bg-black/60 p-4" onMouseDown={() => setOpen(false)}>
       <form onSubmit={submitInteraction} onMouseDown={e => e.stopPropagation()} className="w-full max-w-lg rounded-3xl p-6" style={{ background: "var(--header)", border: "1px solid var(--line)" }}>
         <div className="mb-4 flex items-center justify-between"><h2 className="text-xl font-semibold">{action.title}</h2><button type="button" onClick={() => setOpen(false)}>✕</button></div>
         <div className="grid gap-3">
