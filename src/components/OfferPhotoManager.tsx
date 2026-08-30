@@ -70,21 +70,6 @@ async function normalizePhotoFiles(files: FileList): Promise<FileList> {
   return output.files;
 }
 
-async function detailedFunctionError(error: unknown): Promise<string> {
-  try {
-    const context = (error as { context?: Response })?.context;
-    if (context && typeof context.clone === "function") {
-      const response = context.clone();
-      const payload = await response.json().catch(() => null) as { stage?: string; message?: string; error?: string } | null;
-      if (payload) {
-        const stage = payload.stage ? ` [${payload.stage}]` : "";
-        return `${payload.message || payload.error || "Błąd funkcji"}${stage}`;
-      }
-    }
-  } catch { /* fallback below */ }
-  return error instanceof Error ? error.message : String(error ?? "nieznany błąd");
-}
-
 export default function OfferPhotoManager({ images, onChange, onAddFiles, uploading, maxImages=12, baseLimit=12, onBuyMore, onEnhanceAi, aiBusyIndex }: Props) {
   const [dragIndex,setDragIndex]=useState<number|null>(null);
   const [overIndex,setOverIndex]=useState<number|null>(null);
@@ -125,18 +110,43 @@ export default function OfferPhotoManager({ images, onChange, onAddFiles, upload
     if (!legacyCount || repairing || uploading || processing) return;
     setRepairing(true);
     setPhotoError(null);
-    setPhotoInfo(`Naprawiam ${legacyCount} zdjęć HEIC na serwerze…`);
+    setPhotoInfo(`Łączę z serwerem naprawy · ${legacyCount} zdjęć HEIC…`);
     try {
-      const { data, error } = await supabase.functions.invoke("repair-offer-images", { body: { image_urls: images } });
-      if (error) throw new Error(await detailedFunctionError(error));
-      if (!data?.ok) {
-        const stage = data?.stage ? ` [${data.stage}]` : "";
-        throw new Error(`${data?.message || data?.error || "Nieznany błąd backendu"}${stage}`);
+      const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
+      if (sessionError) throw new Error(`Sesja: ${sessionError.message}`);
+      const accessToken = sessionData.session?.access_token;
+      if (!accessToken) throw new Error("Brak aktywnej sesji. Zaloguj się ponownie.");
+
+      const baseUrl = String(import.meta.env.VITE_SUPABASE_URL || "").replace(/\/$/, "");
+      const anonKey = String(import.meta.env.VITE_SUPABASE_ANON_KEY || "");
+      if (!baseUrl || !anonKey) throw new Error("Brak konfiguracji Supabase w aplikacji");
+
+      const response = await fetch(`${baseUrl}/functions/v1/repair-offer-images`, {
+        method: "POST",
+        headers: {
+          "Authorization": `Bearer ${accessToken}`,
+          "apikey": anonKey,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ image_urls: images }),
+      });
+
+      const raw = await response.text();
+      let payload: { ok?: boolean; message?: string; error?: string; stage?: string; repaired_count?: number; image_urls?: unknown[] } = {};
+      try { payload = raw ? JSON.parse(raw) : {}; }
+      catch { throw new Error(`HTTP ${response.status}: ${raw.slice(0, 240) || "pusta odpowiedź"}`); }
+
+      const stage = payload.stage ? ` [${payload.stage}]` : "";
+      if (!response.ok || !payload.ok) {
+        throw new Error(`HTTP ${response.status}: ${payload.message || payload.error || "błąd funkcji"}${stage}`);
       }
-      const repairedUrls = Array.isArray(data.image_urls) ? data.image_urls.filter((x: unknown) => typeof x === "string") as string[] : [];
+
+      const repairedUrls = Array.isArray(payload.image_urls)
+        ? payload.image_urls.filter((x): x is string => typeof x === "string")
+        : [];
       if (!repairedUrls.length) throw new Error("Backend nie zwrócił poprawionej galerii");
       onChange(repairedUrls);
-      setPhotoInfo(`Naprawiono ${Number(data.repaired_count ?? 0)} zdjęć HEIC ✅`);
+      setPhotoInfo(`Naprawiono ${Number(payload.repaired_count ?? 0)} zdjęć HEIC ✅`);
     } catch (error) {
       console.error("Backend HEIC repair failed", error);
       const message = error instanceof Error ? error.message : "nieznany błąd";
@@ -157,7 +167,7 @@ export default function OfferPhotoManager({ images, onChange, onAddFiles, upload
     </div>
     {legacyCount>0&&<div className="mb-3 rounded-xl p-3" style={{border:"1px solid rgba(200,150,90,.35)",background:"rgba(200,150,90,.08)"}}>
       <div className="text-sm font-semibold">Wykryto {legacyCount} starych zdjęć HEIC</div>
-      <div className="mt-1 text-xs" style={{color:"var(--mut)"}}>Naprawa odbywa się teraz po stronie serwera, więc nie zależy od przeglądarki telefonu.</div>
+      <div className="mt-1 text-xs" style={{color:"var(--mut)"}}>Naprawa odbywa się po stronie serwera. W razie błędu pokażemy teraz kod HTTP i dokładny etap.</div>
       <button type="button" disabled={busy} onClick={repairLegacyHeic} className="mt-2 rounded-lg px-3 py-2 text-xs font-bold disabled:opacity-50" style={{border:"1px solid var(--gold)",color:"var(--gold)"}}>{repairing?"Naprawiam na serwerze…":"Napraw stare zdjęcia HEIC"}</button>
     </div>}
     {onAddFiles && <label
