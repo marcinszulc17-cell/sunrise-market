@@ -13,6 +13,14 @@ type Props = {
   aiBusyIndex?: number | null;
 };
 
+declare global {
+  interface Window {
+    heic2any?: (opts: { blob: Blob; toType: string; quality?: number }) => Promise<Blob | Blob[]>;
+  }
+}
+
+let heicLoader: Promise<typeof window.heic2any> | null = null;
+
 function isHeic(file: File) {
   const name = file.name.toLowerCase();
   return file.type === "image/heic" || file.type === "image/heif" || name.endsWith(".heic") || name.endsWith(".heif");
@@ -22,10 +30,28 @@ function isHeicUrl(url: string) {
   return /\.(heic|heif)(?:\?|$)/i.test(url);
 }
 
-async function getHeicConverter() {
-  const moduleUrl = "https://cdn.jsdelivr.net/npm/heic2any@0.0.4/+esm";
-  const mod: any = await import(/* @vite-ignore */ moduleUrl);
-  return mod.default ?? mod;
+function getHeicConverter(): Promise<NonNullable<typeof window.heic2any>> {
+  if (window.heic2any) return Promise.resolve(window.heic2any);
+  if (heicLoader) return heicLoader as Promise<NonNullable<typeof window.heic2any>>;
+
+  heicLoader = new Promise((resolve, reject) => {
+    const existing = document.querySelector<HTMLScriptElement>('script[data-heic2any="1"]');
+    if (existing) {
+      existing.addEventListener("load", () => window.heic2any ? resolve(window.heic2any) : reject(new Error("HEIC converter unavailable")), { once: true });
+      existing.addEventListener("error", () => reject(new Error("HEIC converter load failed")), { once: true });
+      return;
+    }
+
+    const script = document.createElement("script");
+    script.src = "https://cdn.jsdelivr.net/npm/heic2any@0.0.4/dist/heic2any.min.js";
+    script.async = true;
+    script.dataset.heic2any = "1";
+    script.onload = () => window.heic2any ? resolve(window.heic2any) : reject(new Error("HEIC converter unavailable"));
+    script.onerror = () => reject(new Error("HEIC converter load failed"));
+    document.head.appendChild(script);
+  });
+
+  return heicLoader as Promise<NonNullable<typeof window.heic2any>>;
 }
 
 async function convertHeicFile(file: File): Promise<File> {
@@ -73,37 +99,39 @@ export default function OfferPhotoManager({ images, onChange, onAddFiles, upload
       onAddFiles(normalized);
     } catch (error) {
       console.error("Photo conversion failed", error);
-      setPhotoError("Nie udało się odczytać zdjęcia HEIC. Spróbuj ponownie lub wybierz JPG/PNG.");
+      setPhotoError("Nie udało się przetworzyć zdjęcia HEIC. Spróbuj ponownie za chwilę lub wybierz JPG/PNG.");
     } finally {
       setProcessing(false);
     }
   }
 
   async function repairLegacyHeic() {
-    const legacy = images.filter(isHeicUrl);
-    if (!legacy.length || repairing || uploading || processing) return;
+    const legacyIndexes = images.map((url, index) => isHeicUrl(url) ? index : -1).filter(index => index >= 0);
+    if (!legacyIndexes.length || repairing || uploading || processing) return;
     setRepairing(true);
     setPhotoError(null);
-    setPhotoInfo(`Naprawiam ${legacy.length} zdjęć HEIC…`);
+    setPhotoInfo(`Naprawiam ${legacyIndexes.length} zdjęć HEIC…`);
     try {
       const repaired = [...images];
-      for (let i = 0; i < repaired.length; i++) {
+      for (let n = 0; n < legacyIndexes.length; n++) {
+        const i = legacyIndexes[n];
         const url = repaired[i];
-        if (!isHeicUrl(url)) continue;
-        const response = await fetch(url);
+        const response = await fetch(url, { mode: "cors", cache: "no-store" });
         if (!response.ok) throw new Error(`Nie można pobrać zdjęcia (${response.status})`);
         const blob = await response.blob();
+        if (!blob.size) throw new Error("Pusty plik HEIC");
         const rawName = decodeURIComponent(url.split("/").pop()?.split("?")[0] || `photo-${i}.heic`);
         const source = new File([blob], rawName, { type: blob.type || "image/heic" });
         const jpg = await convertHeicFile(source);
         repaired[i] = await uploadProductImage(jpg);
-        setPhotoInfo(`Naprawiam zdjęcia HEIC… ${legacy.filter((_, idx)=>idx <= legacy.findIndex(x=>x===url)).length}/${legacy.length}`);
+        setPhotoInfo(`Naprawiam zdjęcia HEIC… ${n + 1}/${legacyIndexes.length}`);
       }
       onChange(repaired);
       setPhotoInfo("Zdjęcia naprawione ✅ Kliknij „Zapisz ofertę”, aby zachować podmianę.");
     } catch (error) {
       console.error("Legacy HEIC repair failed", error);
-      setPhotoError("Nie udało się naprawić wszystkich starych zdjęć HEIC. Spróbuj ponownie.");
+      const message = error instanceof Error ? error.message : "nieznany błąd";
+      setPhotoError(`Nie udało się naprawić zdjęć HEIC: ${message}`);
       setPhotoInfo(null);
     } finally {
       setRepairing(false);
