@@ -28,3 +28,19 @@ test("card orders apply the fixed 12.9% Stripe seller fee", () => {
   assert.doesNotMatch(cardHandler, /apply_sunrise_pay_fee/);
   assert.match(cardHandler, /apply_stripe_seller_fee/);
 });
+
+test("paid card orders resume until settlement is complete", () => {
+  const cardHandler = source.slice(
+    source.indexOf("async function settleCardOrder"),
+    source.indexOf("Deno.serve"),
+  );
+  assert.doesNotMatch(cardHandler, /ord\.status === "paid"/);
+  assert.match(cardHandler, /claim_stripe_order_settlement/);
+  assert.match(cardHandler, /card_settlement_status:\s*"settled"/);
+  assert.match(cardHandler, /card_settlement_status:\s*"failed"/);
+});
+
+test("duplicate checkout events may resume an incomplete settlement", () => {
+  assert.match(source, /event\.type !== "checkout\.session\.completed"/);
+  assert.match(source, /if \(eventInserted\) await sb\.from\("stripe_events"\)\.delete/);
+});
