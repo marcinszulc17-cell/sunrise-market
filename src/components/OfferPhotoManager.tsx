@@ -141,8 +141,8 @@ export default function OfferPhotoManager({ images, onChange, onAddFiles, upload
         onTouchStart={()=>{touchFrom.current=i}}
         className="group overflow-hidden rounded-xl p-2 transition"
         style={{border: overIndex===i?"2px solid var(--gold)":"1px solid var(--line)",background:"var(--glass)"}}>
-        <div className="relative cursor-grab active:cursor-grabbing">
-          <img src={displayImageUrl(url,900)} className="aspect-square w-full rounded-lg object-cover" alt="" draggable={false}/>
+        <div className="relative cursor-grab active:cursor-grabbing rounded-lg" style={{background:"rgba(0,0,0,.18)"}}>
+          <img src={displayImageUrl(url,900)} className="aspect-square w-full rounded-lg object-contain" alt="" draggable={false}/>
           <span className="absolute left-1 top-1 rounded bg-black/70 px-1.5 py-0.5 text-[10px] text-white">☰ {i+1}</span>
           {isHeicUrl(url)&&<span className="absolute bottom-1 right-1 rounded bg-black/70 px-1.5 py-0.5 text-[9px] text-white">HEIC</span>}
           <button type="button" onClick={()=>remove(i)} className="absolute right-1 top-1 rounded-full bg-black/75 px-2 py-0.5 text-xs text-white">×</button>
