@@ -325,6 +325,14 @@ export async function createBookingHold(offerId: string, startsAt: Date, endsAt?
   if (!hold) throw new Error("Nie udało się zablokować terminu");
   return hold;
 }
+export async function checkoutBooking(bookingId: string, paymentMethod: "wallet" | "card") {
+  const { data, error } = await supabase.functions.invoke("checkout", {
+    body: { booking_id: bookingId, payment_method: paymentMethod },
+  });
+  if (error) throw new Error((data as any)?.error ?? error.message ?? "Nie udało się opłacić rezerwacji");
+  if ((data as any)?.error) throw new Error((data as any).error);
+  return data as { order_id: string; url?: string; paid?: number; cashback?: number; balance?: number };
+}
 export async function myBookings() {
   const { data, error } = await supabase.rpc("my_bookings");
   if (error) throw error;

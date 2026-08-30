@@ -33,6 +33,7 @@ async function uuidv5(name: string): Promise<string> {
   return `${hex.slice(0,8)}-${hex.slice(8,12)}-${hex.slice(12,16)}-${hex.slice(16,20)}-${hex.slice(20,32)}`;
 }
 async function settleSellerPayouts(sb: any, orderId: string) {
+  const { data: booking } = await sb.from("bookings").select("ends_at").eq("order_id", orderId).maybeSingle();
   const { data: rows, error } = await sb.from("order_items")
     .select("seller_id,seller_payout,sellers!inner(email)")
     .eq("order_id", orderId);
@@ -55,10 +56,13 @@ async function settleSellerPayouts(sb: any, orderId: string) {
       seller_id: sellerId,
       seller_email: entry.email,
       amount: entry.amount,
-      status: "pending",
+      status: booking ? "scheduled" : "pending",
+      available_at: booking?.ends_at ?? null,
       updated_at: new Date().toISOString(),
     }, { onConflict: "order_id,seller_id", ignoreDuplicates: true });
     if (settlementError) throw settlementError;
+
+    if (booking) continue;
 
     const idem = await uuidv5(`market:seller:${orderId}:${sellerId}`);
     const credited = await pay("pay-credit", {
@@ -142,7 +146,7 @@ async function settleCardOrder(sb: any, s: any, stripe: any) {
   const orderId = s.metadata?.market_order_id;
   if (!orderId || s.payment_status !== "paid") return;
   const { data: ord, error: orderError } = await sb.from("orders")
-    .select("id,status,coupon_code,discount_amount,buyer_id,card_settlement_status")
+    .select("id,status,coupon_code,discount_amount,cashback_amount,buyer_id,card_settlement_status")
     .eq("id", orderId).maybeSingle();
   if (orderError) throw orderError;
   if (!ord || ord.card_settlement_status === "settled") return;
@@ -167,6 +171,23 @@ async function settleCardOrder(sb: any, s: any, stripe: any) {
     }
     const { error: feeError } = await sb.rpc("apply_stripe_seller_fee", { p_order_id: orderId });
     if (feeError) throw feeError;
+    if (s.metadata?.booking_id) {
+      const { error: bookingError } = await sb.rpc("confirm_paid_booking", { p_order_id: orderId, p_payment_provider: "stripe" });
+      if (bookingError) throw bookingError;
+    }
+    if (Number(ord.cashback_amount) > 0) {
+      const email = String(s.metadata?.user_email ?? s.customer_details?.email ?? s.customer_email ?? "").trim();
+      if (!email) throw new Error("Brak e-maila do naliczenia cashbacku");
+      const pointsKey = await uuidv5(`market:points:${orderId}`);
+      const points = await pay("pay-credit-points", {
+        user_ref: email,
+        points: Number(ord.cashback_amount),
+        reason: "cashback",
+        order_ref: orderId,
+        idempotency_key: pointsKey,
+      });
+      if (points.status !== 200 || points.data?.ok !== true) throw new Error(`MySunrise cashback failed: ${points.data?.message ?? points.data?.error ?? points.status}`);
+    }
     await settleSellerPayouts(sb, String(orderId));
     const now = new Date().toISOString();
     const { error: completedError } = await sb.from("orders").update({
@@ -214,13 +235,14 @@ Deno.serve(async (req) => {
   const { error: dupErr } = await sb.from("stripe_events").insert({ event_id: event.id, type: event.type });
   const eventInserted = !dupErr;
   if (dupErr) {
-    if ((dupErr as any).code === "23505" && event.type !== "checkout.session.completed") return ok();
+    if ((dupErr as any).code === "23505" && !["checkout.session.completed", "checkout.session.async_payment_succeeded"].includes(event.type)) return ok();
     if ((dupErr as any).code !== "23505") return new Response("DB error", { status: 500 });
   }
 
   try {
     switch (event.type) {
-      case "checkout.session.completed": {
+      case "checkout.session.completed":
+      case "checkout.session.async_payment_succeeded": {
         const s = event.data.object;
         const topupId = s.metadata?.topup_id;
         if (topupId && s.payment_status === "paid") {
@@ -233,6 +255,9 @@ Deno.serve(async (req) => {
       case "checkout.session.expired": {
         const s = event.data.object;
         if (s.metadata?.topup_id) await sb.from("wallet_topups").update({ status: "expired" }).eq("id", s.metadata.topup_id);
+        if (s.metadata?.booking_id && s.metadata?.market_order_id) {
+          await sb.rpc("expire_booking_payment", { p_booking_id: s.metadata.booking_id, p_order_id: s.metadata.market_order_id });
+        }
         break;
       }
       case "account.updated": {

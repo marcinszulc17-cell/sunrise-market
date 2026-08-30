@@ -1,6 +1,7 @@
 import { FormEvent, useEffect, useMemo, useState } from "react";
-import { toggleWatch, watchedIds } from "../lib/api";
+import { bookingPublicConfig, toggleWatch, watchedIds, type BookingConfig } from "../lib/api";
 import { supabase } from "../lib/supabase";
+import BookingPurchaseModal from "./BookingPurchaseModal";
 
 type Props = { offerId: string; categorySlug?: string; priceGross?: number | null };
 type Interaction = { type:"viewing"|"consultation"|"installation"|"quote"|"demo"|"reservation"|"contact"; label:string; title:string; needsDate:boolean; icon:string };
@@ -30,12 +31,15 @@ export default function BuyerOfferActions({ offerId, categorySlug="", priceGross
   const [message, setMessage] = useState("");
   const [status, setStatus] = useState<string | null>(null);
   const [cashbackRate,setCashbackRate]=useState(0.03);
+  const [bookingConfig,setBookingConfig]=useState<BookingConfig|null>(null);
+  const [bookingOpen,setBookingOpen]=useState(false);
 
   useEffect(() => {
     watchedIds().then(ids => setWatched(ids.includes(offerId))).catch(() => {});
     try { setCompare(JSON.parse(localStorage.getItem(COMPARE_KEY) || "[]").includes(offerId)); } catch { /* ignore */ }
     supabase.auth.getUser().then(({ data }) => setEmail(data.user?.email || ""));
     supabase.rpc("public_market_config").then(({data})=>{const r=Number((data as any)?.cashback_rate);if(Number.isFinite(r)&&r>=0)setCashbackRate(r);},()=>{});
+    bookingPublicConfig(offerId).then(setBookingConfig).catch(()=>setBookingConfig(null));
   }, [offerId]);
 
   async function watch() {
@@ -85,7 +89,7 @@ export default function BuyerOfferActions({ offerId, categorySlug="", priceGross
       <button disabled={busy} onClick={watch} className="rounded-xl px-3 py-2 text-sm font-semibold" style={{ border: "1px solid var(--line)", background: watched ? "rgba(200,150,90,.18)" : "var(--glass)" }}>{watched ? "♥ Obserwujesz" : "♡ Obserwuj cenę"}</button>
       <button onClick={toggleCompare} className="rounded-xl px-3 py-2 text-sm font-semibold" style={{ border: "1px solid var(--line)", background: compare ? "rgba(56,224,240,.12)" : "var(--glass)" }}>{compare ? "✓ W porównaniu" : "⇄ Porównaj"}</button>
       <a href="/porownaj" className="rounded-xl px-3 py-2 text-sm font-semibold" style={{ border: "1px solid var(--line)" }}>Porównanie</a>
-      <button onClick={() => setOpen(true)} className="rounded-xl px-3 py-2 text-sm font-semibold text-black" style={{ background: "linear-gradient(135deg,#C8965A,#E8C896)" }}>{action.icon} {action.label}</button>
+      <button onClick={() => bookingConfig ? setBookingOpen(true) : setOpen(true)} className="rounded-xl px-3 py-2 text-sm font-semibold text-black" style={{ background: "linear-gradient(135deg,#C8965A,#E8C896)" }}>{bookingConfig ? "📅 Wybierz termin i zapłać" : `${action.icon} ${action.label}`}</button>
     </div>
     {status && <div className="fixed left-4 bottom-24 z-50 max-w-sm rounded-xl px-4 py-3 text-sm shadow-xl" style={{ background: "var(--header)", border: "1px solid var(--line)" }}>{status}</div>}
     {open && <div className="fixed inset-0 z-50 grid place-items-center bg-black/60 p-4" onMouseDown={() => setOpen(false)}>
@@ -100,5 +104,6 @@ export default function BuyerOfferActions({ offerId, categorySlug="", priceGross
         </div>
       </form>
     </div>}
+    {bookingConfig && <BookingPurchaseModal offerId={offerId} config={bookingConfig} open={bookingOpen} onClose={() => setBookingOpen(false)} />}
   </>;
 }

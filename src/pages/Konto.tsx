@@ -88,10 +88,11 @@ function Przeglad({ w, ms, seller, isOp, onLogout, goTab }: { w: WalletLive | nu
       <PolecajPV />
       <div className="grid gap-3 sm:grid-cols-2">
         <button onClick={() => goTab("zamowienia")} className="text-left"><Card><div className="text-lg mb-1">📦 Moje zamówienia</div><div className="text-xs" style={{ color: "var(--mut)" }}>Status, dostawa, zwroty</div></Card></button>
+        <a href="/rezerwacje"><Card><div className="text-lg mb-1">📅 Moje rezerwacje</div><div className="text-xs" style={{ color: "var(--mut)" }}>Usługi, nieruchomości i pojazdy</div></Card></a>
         <button onClick={() => goTab("zyczenia")} className="text-left"><Card><div className="text-lg mb-1">♥ Lista życzeń</div><div className="text-xs" style={{ color: "var(--mut)" }}>Zapisane produkty</div></Card></button>
         {seller
-          ? <a href="/sprzedawca" onClick={() => setMode("seller")}><Card><div className="text-lg mb-1">🏪 Panel sprzedawcy</div><div className="text-xs" style={{ color: "var(--mut)" }}>Oferty, sprzedaż, portfel</div></Card></a>
-          : <a href="/sprzedawca"><Card><div className="text-lg mb-1">🏪 Zostań sprzedawcą</div><div className="text-xs" style={{ color: "var(--mut)" }}>Sprzedawaj w Sunrise Market</div></Card></a>}
+          ? <a href="/sprzedawca" onClick={() => setMode("seller")}><Card><div className="text-lg mb-1">🏪 Panel Partnera Handlowego</div><div className="text-xs" style={{ color: "var(--mut)" }}>Oferty, sprzedaż, portfel</div></Card></a>
+          : <a href="/sprzedawca"><Card><div className="text-lg mb-1">🏪 Zostań Partnerem Handlowym</div><div className="text-xs" style={{ color: "var(--mut)" }}>Sprzedawaj w Sunrise Market</div></Card></a>}
         {isOp && <a href="/operator"><Card><div className="text-lg mb-1">🛡️ Back-office</div><div className="text-xs" style={{ color: "var(--mut)" }}>Panel operatora</div></Card></a>}
       </div>
       <button onClick={onLogout} className="self-start text-sm px-4 py-2 rounded-xl" style={{ background: "var(--glass)", border: "1px solid var(--line)" }}>Wyloguj</button>

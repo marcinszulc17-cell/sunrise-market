@@ -34,6 +34,7 @@ async function pay(path: string, body: unknown): Promise<{ status: number; data:
 }
 
 async function settleSellerPayouts(sb: any, orderId: string) {
+  const { data: booking } = await sb.from("bookings").select("ends_at").eq("order_id", orderId).maybeSingle();
   const { data: rows, error } = await sb
     .from("order_items")
     .select("seller_id,seller_payout,sellers!inner(email)")
@@ -59,9 +60,14 @@ async function settleSellerPayouts(sb: any, orderId: string) {
       seller_id: sellerId,
       seller_email: entry.email,
       amount,
-      status: "pending",
+      status: booking ? "scheduled" : "pending",
+      available_at: booking?.ends_at ?? null,
       updated_at: new Date().toISOString(),
     }, { onConflict: "order_id,seller_id", ignoreDuplicates: true });
+
+    // Booking is paid now, but the Partner Handlowy receives the funds only
+    // after the reserved service/rental period. The retry worker releases it.
+    if (booking) continue;
 
     const idem = await uuidv5(`market:seller:${orderId}:${sellerId}`);
     const credited = await pay("pay-credit", {
@@ -93,14 +99,17 @@ Deno.serve(async (req) => {
     if (uErr || !user) return json({ error: "Brak autoryzacji" }, 401);
     const email = user.email;
     if (!email) return json({ error: "Konto bez e-maila" }, 400);
-    const { items, shipping_code, shipping_codes, shipping, coupon, payment_method } = await req.json();
-    if (!Array.isArray(items) || items.length === 0) return json({ error: "Pusty koszyk" }, 400);
+    const { items, booking_id, shipping_code, shipping_codes, shipping, coupon, payment_method } = await req.json();
+    const bookingId = typeof booking_id === "string" && booking_id ? booking_id : null;
+    if (!bookingId && (!Array.isArray(items) || items.length === 0)) return json({ error: "Pusty koszyk" }, 400);
     const payMethod = payment_method === "card" ? "card" : "wallet";
     const sb = createClient(Deno.env.get("SUPABASE_URL")!, SERVICE_KEY!, { db: { schema: "market" } });
-    const { data: orderId, error: e1 } = await sb.rpc("checkout", { p_buyer_id: user.id, p_items: items });
+    const { data: orderId, error: e1 } = bookingId
+      ? await sb.rpc("checkout_booking", { p_buyer_id: user.id, p_booking_id: bookingId })
+      : await sb.rpc("checkout", { p_buyer_id: user.id, p_items: items });
     if (e1) throw e1;
 
-    const codes: string[] = Array.isArray(shipping_codes) && shipping_codes.length ? shipping_codes.filter((c: unknown) => typeof c === "string") : (shipping_code ? [shipping_code] : []);
+    const codes: string[] = bookingId ? [] : (Array.isArray(shipping_codes) && shipping_codes.length ? shipping_codes.filter((c: unknown) => typeof c === "string") : (shipping_code ? [shipping_code] : []));
     let shipCost = 0; let shipLabel: string | null = null;
     if (codes.length) {
       const { data: sm } = await sb.from("shipping_methods").select("code,name,price_gross").in("code", codes);
@@ -121,7 +130,7 @@ Deno.serve(async (req) => {
 
     let discount = 0; let couponCode: string | null = null;
     try {
-      const couponRaw = (typeof coupon === "string" ? coupon : "").trim();
+      const couponRaw = bookingId ? "" : (typeof coupon === "string" ? coupon : "").trim();
       if (couponRaw) {
         const { data: cv } = await sb.rpc("validate_coupon", { p_code: couponRaw, p_subtotal: productSubtotal });
         if (cv && cv.valid === true) {
@@ -135,7 +144,7 @@ Deno.serve(async (req) => {
     const finalTotal = money(discountedProducts + shipCost);
     const { data: cashbackCfg } = await sb.from("platform_config").select("value").eq("key", "cashback_rate").maybeSingle();
     const cashbackRate = Math.max(0, Number(cashbackCfg?.value ?? 0.03));
-    const cashback = payMethod === "wallet" ? money(discountedProducts * cashbackRate) : 0;
+    const cashback = money(discountedProducts * cashbackRate);
 
     await sb.from("orders").update({
       shipping_method: shipLabel, shipping_cost: shipCost, total_gross: finalTotal,
@@ -149,9 +158,16 @@ Deno.serve(async (req) => {
     if (payMethod === "card") {
       const stripe = new Stripe(Deno.env.get("STRIPE_SECRET_KEY")!, { apiVersion: "2024-06-20", httpClient: Stripe.createFetchHttpClient() });
       const origin = Deno.env.get("PUBLIC_WEB_URL") ?? req.headers.get("origin") ?? "";
-      const session = await stripe.checkout.sessions.create({ mode: "payment", payment_method_types: ["card", "p24", "blik"], currency: "pln", line_items: [{ price_data: { currency: "pln", product_data: { name: "Zamówienie Sunrise Market" }, unit_amount: amountGrosz }, quantity: 1 }], metadata: { market_order_id: String(orderId), user_id: user.id, user_email: email }, customer_email: email, success_url: `${origin}/koszyk?card=success&order=${orderId}&paid=${finalTotal}`, cancel_url: `${origin}/koszyk?card=cancel&order=${orderId}` });
+      const successUrl = bookingId ? `${origin}/rezerwacje?card=success&booking=${bookingId}&order=${orderId}` : `${origin}/koszyk?card=success&order=${orderId}&paid=${finalTotal}`;
+      const cancelUrl = bookingId ? `${origin}/rezerwacje?card=cancel&booking=${bookingId}&order=${orderId}` : `${origin}/koszyk?card=cancel&order=${orderId}`;
+      let bookingExpiresAt: number | undefined;
+      if (bookingId) {
+        const { data: booking } = await sb.from("bookings").select("hold_expires_at").eq("id", bookingId).eq("order_id", orderId).single();
+        bookingExpiresAt = Math.floor(new Date(booking!.hold_expires_at).getTime() / 1000);
+      }
+      const session = await stripe.checkout.sessions.create({ mode: "payment", payment_method_types: ["card", "p24", "blik"], currency: "pln", line_items: [{ price_data: { currency: "pln", product_data: { name: bookingId ? "Rezerwacja Sunrise Market" : "Zamówienie Sunrise Market" }, unit_amount: amountGrosz }, quantity: 1 }], metadata: { market_order_id: String(orderId), booking_id: bookingId ?? "", user_id: user.id, user_email: email }, customer_email: email, expires_at: bookingExpiresAt, success_url: successUrl, cancel_url: cancelUrl }, bookingId ? { idempotencyKey: `market-booking:${orderId}` } : undefined);
       await sb.from("orders").update({ payment_provider: "stripe", stripe_session_id: session.id }).eq("id", orderId);
-      return json({ order_id: orderId, url: session.url, payment: "card", total: finalTotal, cashback: 0 });
+      return json({ order_id: orderId, url: session.url, payment: "card", total: finalTotal, cashback });
     }
 
     const chargeKey = await uuidv5(`market:charge:${orderId}`);
@@ -159,6 +175,7 @@ Deno.serve(async (req) => {
     if (charge.status === 402 || (charge.data && charge.data.ok === false && charge.data.error === "insufficient_funds")) {
       const balGr = Number(charge.data?.balance_grosz ?? 0);
       const shortGr = Number(charge.data?.shortfall_grosz ?? Math.max(0, amountGrosz - balGr));
+      if (bookingId) await sb.rpc("release_unpaid_booking", { p_booking_id: bookingId, p_order_id: orderId });
       return json({ error: "Za malo srodkow w portfelu Sunrise Pay", need_topup: true, balance: balGr / 100, shortfall: shortGr / 100, required: finalTotal }, 402);
     }
     if (charge.status !== 200 || !charge.data?.ok) return json({ error: `Platnosc portfelem nieudana: ${charge.data?.message ?? charge.data?.error ?? charge.status}` }, 402);
@@ -167,6 +184,10 @@ Deno.serve(async (req) => {
     const { error: feeError } = await sb.rpc("apply_sunrise_pay_fee", { p_order_id: orderId });
     if (feeError) throw feeError;
     await sb.from("orders").update({ status: "paid", payment_provider: "sunrise_pay" }).eq("id", orderId);
+    if (bookingId) {
+      const { error: bookingError } = await sb.rpc("confirm_paid_booking", { p_order_id: orderId, p_payment_provider: "sunrise_pay" });
+      if (bookingError) throw bookingError;
+    }
     if (couponCode && discount > 0) { try { await sb.rpc("coupon_consume", { p_code: couponCode }); } catch {} }
 
     if (cashback > 0) {
