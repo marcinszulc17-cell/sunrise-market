@@ -274,6 +274,101 @@ export async function myOrders() {
   return data ?? [];
 }
 
+// ── Wspólny booking: usługi, nieruchomości i pojazdy ─────────────
+// Rezerwacja jest nakładką na istniejącą ofertę. Płatność i rozliczenie nadal
+// przechodzą przez standardowe zamówienie Sunrise Market.
+export type BookingType = "appointment" | "daily";
+export type BookingWindow = { weekday: number; starts_at: string; ends_at: string };
+export type BookingConfig = {
+  offer_id: string;
+  booking_type: BookingType;
+  timezone: string;
+  duration_minutes: number | null;
+  slot_interval_minutes: number;
+  min_notice_hours: number;
+  max_advance_days: number;
+  max_units: number;
+  price_per_unit: number;
+  weekly_availability: BookingWindow[];
+};
+export type BookingSlot = { starts_at: string; ends_at: string; amount_gross: number };
+export type BookingHold = {
+  booking_id: string;
+  starts_at: string;
+  ends_at: string;
+  amount_gross: number;
+  hold_expires_at: string;
+};
+
+export async function bookingPublicConfig(offerId: string): Promise<BookingConfig | null> {
+  const { data, error } = await supabase.rpc("booking_public_config", { p_offer: offerId });
+  if (error) throw error;
+  return ((data as BookingConfig[] | null)?.[0]) ?? null;
+}
+export async function bookingAvailableSlots(offerId: string, from: Date, to: Date): Promise<BookingSlot[]> {
+  const { data, error } = await supabase.rpc("booking_available_slots", {
+    p_offer: offerId,
+    p_from: from.toISOString(),
+    p_to: to.toISOString(),
+  });
+  if (error) throw error;
+  return (data ?? []) as BookingSlot[];
+}
+export async function createBookingHold(offerId: string, startsAt: Date, endsAt?: Date): Promise<BookingHold> {
+  const { data, error } = await supabase.rpc("create_booking_hold", {
+    p_offer: offerId,
+    p_starts_at: startsAt.toISOString(),
+    p_ends_at: endsAt?.toISOString() ?? null,
+  });
+  if (error) throw error;
+  const hold = (data as BookingHold[] | null)?.[0];
+  if (!hold) throw new Error("Nie udało się zablokować terminu");
+  return hold;
+}
+export async function myBookings() {
+  const { data, error } = await supabase.rpc("my_bookings");
+  if (error) throw error;
+  return data ?? [];
+}
+export async function sellerBookings() {
+  const { data, error } = await supabase.rpc("seller_bookings");
+  if (error) throw error;
+  return data ?? [];
+}
+export async function configureBookingOffer(args: {
+  offerId: string;
+  bookingType: BookingType;
+  timezone?: string;
+  durationMinutes?: number | null;
+  slotIntervalMinutes?: number;
+  minNoticeHours?: number;
+  maxAdvanceDays?: number;
+  maxUnits?: number;
+  pricePerUnit?: number | null;
+  active?: boolean;
+}) {
+  const { error } = await supabase.rpc("configure_booking_offer", {
+    p_offer: args.offerId,
+    p_booking_type: args.bookingType,
+    p_timezone: args.timezone ?? "Europe/Warsaw",
+    p_duration_minutes: args.durationMinutes ?? null,
+    p_slot_interval_minutes: args.slotIntervalMinutes ?? 30,
+    p_min_notice_hours: args.minNoticeHours ?? 2,
+    p_max_advance_days: args.maxAdvanceDays ?? 180,
+    p_max_units: args.maxUnits ?? 30,
+    p_price_per_unit: args.pricePerUnit ?? null,
+    p_active: args.active ?? true,
+  });
+  if (error) throw error;
+}
+export async function replaceBookingAvailability(offerId: string, windows: BookingWindow[]) {
+  const { error } = await supabase.rpc("replace_booking_availability", {
+    p_offer: offerId,
+    p_windows: windows,
+  });
+  if (error) throw error;
+}
+
 // ── Opinie ────────────────────────────────────────────────────────
 export async function offerReviews(offerId: string) {
   const { data, error } = await supabase.rpc("offer_reviews", { p_offer: offerId });
