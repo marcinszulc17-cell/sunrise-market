@@ -117,6 +117,8 @@ async function settleCardOrder(sb: any, s: any, stripe: any) {
   if (ord.coupon_code && Number(ord.discount_amount) > 0) {
     try { await sb.rpc("coupon_consume", { p_code: ord.coupon_code }); } catch {}
   }
+  const { error: feeError } = await sb.rpc("apply_stripe_seller_fee", { p_order_id: orderId });
+  if (feeError) throw feeError;
   try { await settleSellerPayouts(sb, String(orderId)); } catch (e) { console.error("seller settlement failed", (e as Error).message); }
   try { await sb.rpc("notify_order", { p_order: orderId }); } catch {}
 
