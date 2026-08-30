@@ -223,6 +223,7 @@ export default function Market() {
   const [sort, setSort] = useState("trafnosc");
   const [pMin, setPMin] = useState("");
   const [pMax, setPMax] = useState("");
+  const [filterOpen, setFilterOpen] = useState(false);
   const [curSlug, setCurSlug] = useState<string | null>(null);
   const [limit, setLimit] = useState(24);          // ile ofert pobrać (paginacja „pokaż więcej”)
   const [more, setMore] = useState(false);         // czy trwa doładowywanie
@@ -240,7 +241,13 @@ export default function Market() {
     }, 220);
   }
 
-  async function load(query: string | null, slug: string | null = null, sortOverride?: string, lim = 24) {
+  async function load(
+    query: string | null,
+    slug: string | null = null,
+    sortOverride?: string,
+    lim = 24,
+    priceOverride?: { min: string; max: string },
+  ) {
     if (lim > 24) setMore(true); else setLoading(true);
     setErr(null); setCurSlug(slug); setLimit(lim);
     // Reklamy kontekstowe: baner dzialu i baner przy frazie. Doładowujemy razem z wynikami,
@@ -252,8 +259,8 @@ export default function Market() {
     try {
       setOffers(await searchOffers(query, slug, {
         sort: sortOverride ?? sort,
-        priceMin: pMin ? Number(pMin) : null,
-        priceMax: pMax ? Number(pMax) : null,
+        priceMin: (priceOverride?.min ?? pMin) ? Number(priceOverride?.min ?? pMin) : null,
+        priceMax: (priceOverride?.max ?? pMax) ? Number(priceOverride?.max ?? pMax) : null,
         limit: lim,
       }));
     }
@@ -262,6 +269,11 @@ export default function Market() {
   }
   // ponów wyszukiwanie z aktualnymi filtrami (sort/cena)
   function rerun() { load(q || null, curSlug); }
+  function clearFilters() {
+    setPMin(""); setPMax(""); setSort("trafnosc"); setQ("");
+    setActiveDept(null); setActiveSub(null); setActiveSub2(null); setSubs([]); setSubs2([]);
+    load(null, null, "trafnosc", 24, { min: "", max: "" });
+  }
   async function children(parentId?: string): Promise<Dept[]> {
     if (!parentId) return [];
     const { data } = await supabase.from("categories").select("id,slug,name")
@@ -601,40 +613,73 @@ export default function Market() {
           <div className="flex-1 min-w-0">
         <div className="flex items-center justify-between mb-4 flex-wrap gap-3">
           <h2 className="font-display text-2xl font-semibold">{wishMode ? "♥ Lista życzeń" : heading}</h2>
-          {authed && (
-            <button onClick={() => (wishMode ? setWishMode(false) : openWishlist())}
-                    className="text-sm px-3 py-1.5 rounded-xl"
-                    style={{ background: wishMode ? "linear-gradient(135deg,#C8965A,#A97B42)" : "var(--glass)", border: "1px solid var(--line)", color: wishMode ? "#000" : "var(--ink)", fontWeight: wishMode ? 600 : 400 }}>
-              {wishMode ? "← Wróć do ofert" : `♥ Lista życzeń${favs.size ? ` (${favs.size})` : ""}`}
-            </button>
-          )}
+          <div className="flex flex-wrap gap-2">
+            {!wishMode && (
+              <button onClick={() => setFilterOpen((open) => !open)}
+                      aria-expanded={filterOpen}
+                      className="rounded-xl px-4 py-2 text-sm font-semibold"
+                      style={{ background: filterOpen ? "rgba(200,150,90,.16)" : "var(--glass)", border: "1px solid var(--line)", color: filterOpen ? "var(--gold)" : "var(--ink)" }}>
+                ⚙ Filtry{(activeDept || pMin || pMax || sort !== "trafnosc") ? " · aktywne" : ""}
+              </button>
+            )}
+            {authed && (
+              <button onClick={() => (wishMode ? setWishMode(false) : openWishlist())}
+                      className="text-sm px-3 py-1.5 rounded-xl"
+                      style={{ background: wishMode ? "linear-gradient(135deg,#C8965A,#A97B42)" : "var(--glass)", border: "1px solid var(--line)", color: wishMode ? "#000" : "var(--ink)", fontWeight: wishMode ? 600 : 400 }}>
+                {wishMode ? "← Wróć do ofert" : `♥ Lista życzeń${favs.size ? ` (${favs.size})` : ""}`}
+              </button>
+            )}
+          </div>
         </div>
 
-        {/* pasek sortowania + filtr ceny (ukryty w widoku listy życzeń) */}
-        {!wishMode && (
-          <div className="flex items-center gap-2 mb-5 flex-wrap text-sm">
-            <span style={{ color: "var(--mut)" }}>Sortuj:</span>
-            <select value={sort} onChange={(e) => { setSort(e.target.value); load(q || null, curSlug, e.target.value); }}
-                    className="rounded-lg px-3 py-1.5 outline-none" style={{ background: "var(--glass)", border: "1px solid var(--line)", color: "var(--ink)" }}>
-              <option value="trafnosc">Trafność</option>
-              <option value="cena_rosnaco">Cena: rosnąco</option>
-              <option value="cena_malejaco">Cena: malejąco</option>
-              <option value="oceny">Najlepiej oceniane</option>
-              <option value="najnowsze">Najnowsze</option>
-            </select>
-            <span className="ml-2" style={{ color: "var(--mut)" }}>Cena:</span>
-            <input value={pMin} onChange={(e) => setPMin(e.target.value.replace(/[^0-9]/g, ""))} placeholder="od"
-                   className="w-20 rounded-lg px-2 py-1.5 outline-none" style={{ background: "var(--glass)", border: "1px solid var(--line)" }} />
-            <input value={pMax} onChange={(e) => setPMax(e.target.value.replace(/[^0-9]/g, ""))} placeholder="do"
-                   className="w-20 rounded-lg px-2 py-1.5 outline-none" style={{ background: "var(--glass)", border: "1px solid var(--line)" }} />
-            <button onClick={rerun} className="px-3 py-1.5 rounded-lg font-semibold text-black" style={{ background: "linear-gradient(135deg,#C8965A,#E8C896)" }}>Filtruj</button>
-            {(pMin || pMax || sort !== "trafnosc") && (
-              <button onClick={() => { setPMin(""); setPMax(""); setSort("trafnosc"); load(q || null, curSlug, "trafnosc"); }}
-                      className="px-3 py-1.5 rounded-lg" style={{ background: "var(--glass)", border: "1px solid var(--line)" }}>Wyczyść</button>
-            )}
-            <span className="ml-auto" style={{ color: "var(--mut)" }}>{offers.length} ofert</span>
+        {/* Uniwersalne filtry są częścią listy ofert, a nie pływającym przyciskiem. */}
+        {!wishMode && filterOpen && (
+          <div className="mb-5 rounded-2xl p-4 sm:p-5" style={{ background: "var(--glass)", border: "1px solid var(--line)" }}>
+            <div className="mb-4">
+              <div className="font-semibold">Filtry ofert</div>
+              <div className="mt-1 text-xs" style={{ color: "var(--mut)" }}>Działają w całym Sunrise Market — dla produktów, usług i ogłoszeń.</div>
+            </div>
+            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
+              <label className="text-xs"><span className="mb-1 block" style={{ color: "var(--mut)" }}>Dział</span>
+                <select value={activeDept?.slug ?? ""} onChange={(e) => { const d = depts.find((x) => x.slug === e.target.value) ?? null; void pickDept(d); }}
+                        className="w-full rounded-xl px-3 py-2.5 outline-none" style={{ background: "var(--bg)", border: "1px solid var(--line)", color: "var(--ink)" }}>
+                  <option value="">Wszystkie działy</option>{depts.map((d) => <option key={d.slug} value={d.slug}>{d.name}</option>)}
+                </select>
+              </label>
+              <label className="text-xs"><span className="mb-1 block" style={{ color: "var(--mut)" }}>Kategoria</span>
+                <select value={activeSub?.slug ?? ""} disabled={!activeDept || subs.length === 0} onChange={(e) => { const s = subs.find((x) => x.slug === e.target.value) ?? null; void pickSub(s); }}
+                        className="w-full rounded-xl px-3 py-2.5 outline-none disabled:opacity-50" style={{ background: "var(--bg)", border: "1px solid var(--line)", color: "var(--ink)" }}>
+                  <option value="">Wszystkie kategorie</option>{subs.map((s) => <option key={s.slug} value={s.slug}>{s.name}</option>)}
+                </select>
+              </label>
+              <label className="text-xs"><span className="mb-1 block" style={{ color: "var(--mut)" }}>Podkategoria</span>
+                <select value={activeSub2 ?? ""} disabled={!activeSub || subs2.length === 0} onChange={(e) => pickSub2(e.target.value || null)}
+                        className="w-full rounded-xl px-3 py-2.5 outline-none disabled:opacity-50" style={{ background: "var(--bg)", border: "1px solid var(--line)", color: "var(--ink)" }}>
+                  <option value="">Wszystkie podkategorie</option>{subs2.map((s) => <option key={s.slug} value={s.slug}>{s.name}</option>)}
+                </select>
+              </label>
+              <label className="text-xs"><span className="mb-1 block" style={{ color: "var(--mut)" }}>Cena od</span>
+                <input value={pMin} inputMode="numeric" onChange={(e) => setPMin(e.target.value.replace(/[^0-9]/g, ""))} placeholder="0 zł"
+                       className="w-full rounded-xl px-3 py-2.5 outline-none" style={{ background: "var(--bg)", border: "1px solid var(--line)" }} />
+              </label>
+              <label className="text-xs"><span className="mb-1 block" style={{ color: "var(--mut)" }}>Cena do</span>
+                <input value={pMax} inputMode="numeric" onChange={(e) => setPMax(e.target.value.replace(/[^0-9]/g, ""))} placeholder="bez limitu"
+                       className="w-full rounded-xl px-3 py-2.5 outline-none" style={{ background: "var(--bg)", border: "1px solid var(--line)" }} />
+              </label>
+            </div>
+            <div className="mt-3 flex flex-wrap items-end gap-3">
+              <label className="min-w-[220px] text-xs"><span className="mb-1 block" style={{ color: "var(--mut)" }}>Sortowanie</span>
+                <select value={sort} onChange={(e) => setSort(e.target.value)} className="w-full rounded-xl px-3 py-2.5 outline-none" style={{ background: "var(--bg)", border: "1px solid var(--line)", color: "var(--ink)" }}>
+                  <option value="trafnosc">Trafność</option><option value="cena_rosnaco">Cena: rosnąco</option><option value="cena_malejaco">Cena: malejąco</option><option value="oceny">Najlepiej oceniane</option><option value="najnowsze">Najnowsze</option>
+                </select>
+              </label>
+              <button onClick={rerun} className="rounded-xl px-5 py-2.5 text-sm font-semibold text-black" style={{ background: "linear-gradient(135deg,#C8965A,#E8C896)" }}>Pokaż wyniki</button>
+              <button onClick={clearFilters} className="rounded-xl px-4 py-2.5 text-sm" style={{ background: "var(--bg)", border: "1px solid var(--line)" }}>Wyczyść</button>
+              <span className="ml-auto pb-2 text-sm" style={{ color: "var(--mut)" }}>{offers.length} ofert</span>
+            </div>
           </div>
         )}
+        {!wishMode && !filterOpen && <div className="mb-5 text-right text-sm" style={{ color: "var(--mut)" }}>{offers.length} ofert</div>}
 
         {loading && !wishMode && (
           <div className="grid gap-5" style={{ gridTemplateColumns: "repeat(auto-fill,minmax(240px,1fr))" }}>
