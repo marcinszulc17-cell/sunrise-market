@@ -22,7 +22,9 @@ type OfferRow = {
 };
 
 const TYPES: OfferType[] = [
-  { id: "product", icon: "📦", title: "Produkt", description: "Klasyczna sprzedaż produktu z koszykiem i płatnością.", query: "produkt", mode: "purchase" },
+  { id: "product", icon: "📦", title: "Sprzedaż produktu", description: "Klasyczna sprzedaż dowolnego produktu z koszykiem i płatnością.", query: "produkt", mode: "purchase" },
+  { id: "equipment-rental", icon: "🧰", title: "Wynajem produktu / sprzętu", description: "Dowolny produkt lub sprzęt z kalendarzem od–do, ceną za dzień i płatną rezerwacją.", query: "produkt", mode: "daily", badge: "Booking" },
+  { id: "equipment-slot", icon: "⏱️", title: "Rezerwacja produktu na termin", description: "Rezerwacja produktu, stanowiska lub sprzętu na konkretny dzień i godzinę.", query: "produkt", mode: "appointment", badge: "Booking" },
   { id: "service", icon: "📅", title: "Usługa z terminem", description: "Klient wybiera usługę, dzień i godzinę, a następnie płaci — jak w Booksy.", query: "usluga", mode: "appointment", badge: "Booking" },
   { id: "car-sale", icon: "🚗", title: "Sprzedaż samochodu", description: "Ogłoszenie auta z parametrami motoryzacyjnymi, cashbackiem i pełną fakturą VAT.", query: "samochod", mode: "purchase" },
   { id: "car-rental", icon: "🚘", title: "Wynajem samochodu", description: "Kalendarz od–do, cena za dzień, dostępność pojazdu i płatna rezerwacja.", query: "samochod", mode: "daily", badge: "Booking" },
@@ -50,7 +52,7 @@ export default function SprzedawcaStart() {
             <div className="text-sm font-semibold" style={{ color: "var(--gold)" }}>SUNRISE MARKET</div>
             <h1 className="mt-1 font-display text-3xl font-semibold sm:text-4xl">Centrum sprzedawcy</h1>
             <p className="mt-2 max-w-2xl text-sm sm:text-base" style={{ color: "var(--mut)" }}>
-              W jednym miejscu sprzedajesz produkty, wystawiasz ogłoszenia i przyjmujesz płatne rezerwacje usług, aut oraz nieruchomości.
+              W jednym miejscu sprzedajesz produkty, wynajmujesz sprzęt i przyjmujesz płatne rezerwacje usług, aut oraz nieruchomości.
             </p>
           </div>
           <Link to="/sprzedawca/wystaw" className="rounded-2xl px-5 py-3 font-semibold text-black" style={{ background: "linear-gradient(135deg,#C8965A,#E8C896)" }}>
@@ -63,7 +65,7 @@ export default function SprzedawcaStart() {
             <div className="text-2xl">🧾</div><div className="mt-2 text-lg font-semibold">Twoje oferty</div><div className="mt-1 text-sm" style={{ color: "var(--mut)" }}>Ogłoszenia, zdjęcia, cashback/prowizje, faktura VAT i wejście do kalendarza.</div>
           </a>
           <Link to="/sprzedawca/rezerwacje" className="rounded-2xl p-5" style={{ background: "rgba(122,184,154,.08)", border: "1px solid rgba(122,184,154,.24)" }}>
-            <div className="text-2xl">📅</div><div className="mt-2 text-lg font-semibold">Rezerwacje</div><div className="mt-1 text-sm" style={{ color: "var(--mut)" }}>Terminy usług, auta, apartamenty, pokoje i inne zasoby rezerwowane online.</div>
+            <div className="text-2xl">📅</div><div className="mt-2 text-lg font-semibold">Rezerwacje</div><div className="mt-1 text-sm" style={{ color: "var(--mut)" }}>Terminy usług, auta, apartamenty, sprzęt i inne zasoby rezerwowane online.</div>
           </Link>
           <Link to="/sprzedawca/zapytania" className="rounded-2xl p-5" style={{ background: "var(--glass)", border: "1px solid var(--line)" }}>
             <div className="text-2xl">📈</div><div className="mt-2 text-lg font-semibold">Leady i sprzedaż</div><div className="mt-1 text-sm" style={{ color: "var(--mut)" }}>Nowe → kontakt → oferta → rezerwacja → sprzedaż deklarowana lub potwierdzona.</div>
@@ -116,7 +118,7 @@ export default function SprzedawcaStart() {
 
         <div className="mb-4">
           <h2 className="text-xl font-semibold">Co chcesz wystawić?</h2>
-          <p className="mt-1 text-sm" style={{ color: "var(--mut)" }}>Wybierz od razu sposób zakupu. Dla ofert rezerwacyjnych kalendarz uruchomi się automatycznie po publikacji.</p>
+          <p className="mt-1 text-sm" style={{ color: "var(--mut)" }}>Wybierz od razu sposób zakupu. Booking działa dla produktów, sprzętu, usług, aut i nieruchomości.</p>
         </div>
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {TYPES.map((type) => (
