@@ -1,8 +1,9 @@
 import { useEffect, useMemo, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { supabase } from "../lib/supabase";
 import {
   childCategories,
+  configureBookingOffer,
   genDescription,
   myOffers,
   mySeller,
@@ -14,12 +15,22 @@ type Cat = { id: string; slug: string; name: string };
 type AttrDef = { key: string; label: string; data_type: "text" | "number" | "bool" | "enum"; required: boolean; options: unknown };
 type Offer = { offer_id: string; title: string; price_gross: number; stock: number; status: string; category: string; commission_model?: string };
 type CommissionModel = "cashback_only" | "mlm_full";
+type PurchaseMode = "purchase" | "appointment" | "daily";
 
-const DRAFT_KEY = "sunrise_market_offer_draft_v2";
+const DRAFT_KEY = "sunrise_market_offer_draft_v3";
 const inputClass = "w-full rounded-xl px-3 py-2.5 outline-none";
 const inputStyle: React.CSSProperties = { background: "var(--glass)", border: "1px solid var(--line)", color: "var(--ink)" };
 
+const MODES: { id: PurchaseMode; icon: string; title: string; description: string }[] = [
+  { id: "purchase", icon: "🛒", title: "Sprzedaż", description: "Klient kupuje produkt od razu, bez wybierania terminu." },
+  { id: "appointment", icon: "⏱️", title: "Rezerwacja terminu", description: "Klient wybiera konkretny dzień i godzinę. Dobre dla sprzętu, stanowisk, atrakcji i wynajmu godzinowego." },
+  { id: "daily", icon: "🗓️", title: "Wynajem na dni", description: "Klient wybiera datę od–do i płaci za cały okres. Dobre dla rowerów, maszyn, przyczep i sprzętu." },
+];
+
 export default function SprzedawcaV2() {
+  const navigate = useNavigate();
+  const [sp] = useSearchParams();
+  const requestedMode = sp.get("mode") as PurchaseMode | null;
   const [authed, setAuthed] = useState<boolean | null>(null);
   const [seller, setSeller] = useState<any>(null);
   const [offers, setOffers] = useState<Offer[]>([]);
@@ -36,6 +47,7 @@ export default function SprzedawcaV2() {
   const [commissionModel, setCommissionModel] = useState<CommissionModel>("cashback_only");
   const [fullVatInvoice, setFullVatInvoice] = useState(false);
   const [images, setImages] = useState<string[]>([]);
+  const [purchaseMode, setPurchaseMode] = useState<PurchaseMode>(requestedMode && MODES.some(m => m.id === requestedMode) ? requestedMode : "purchase");
 
   const [d1, setD1] = useState<Cat[]>([]);
   const [d2, setD2] = useState<Cat[]>([]);
@@ -46,6 +58,10 @@ export default function SprzedawcaV2() {
   const [attrDefs, setAttrDefs] = useState<AttrDef[]>([]);
   const [attrs, setAttrs] = useState<Record<string, any>>({});
   const chosen = s3 ?? s2 ?? s1;
+
+  useEffect(() => {
+    if (requestedMode && MODES.some(m => m.id === requestedMode)) setPurchaseMode(requestedMode);
+  }, [requestedMode]);
 
   useEffect(() => {
     supabase.auth.getUser().then(async ({ data }) => {
@@ -62,16 +78,17 @@ export default function SprzedawcaV2() {
         setTitle(d.title || ""); setDescription(d.description || ""); setPrice(Number(d.price || 0)); setStock(Number(d.stock || 1));
         setCommissionModel(d.commissionModel === "mlm_full" ? "mlm_full" : "cashback_only");
         setFullVatInvoice(Boolean(d.fullVatInvoice)); setImages(Array.isArray(d.images) ? d.images : []); setAttrs(d.attrs || {});
+        if (MODES.some(m => m.id === d.purchaseMode)) setPurchaseMode(d.purchaseMode);
       }
     } catch { /* ignore draft */ }
   }, []);
 
   useEffect(() => {
     const t = setTimeout(() => {
-      localStorage.setItem(DRAFT_KEY, JSON.stringify({ title, description, price, stock, commissionModel, fullVatInvoice, images, attrs }));
+      localStorage.setItem(DRAFT_KEY, JSON.stringify({ title, description, price, stock, commissionModel, fullVatInvoice, images, attrs, purchaseMode }));
     }, 300);
     return () => clearTimeout(t);
-  }, [title, description, price, stock, commissionModel, fullVatInvoice, images, attrs]);
+  }, [title, description, price, stock, commissionModel, fullVatInvoice, images, attrs, purchaseMode]);
 
   useEffect(() => {
     if (!chosen) { setAttrDefs([]); return; }
@@ -127,7 +144,7 @@ export default function SprzedawcaV2() {
       const desc = fullVatInvoice && !description.includes("pełna faktura VAT")
         ? `${description.trim()}\n\n✅ Na produkt wystawiana jest pełna faktura VAT.`.trim()
         : description.trim();
-      const { error } = await supabase.rpc("create_offer_v2", {
+      const { data, error } = await supabase.rpc("create_offer_v2", {
         p_title: title.trim(),
         p_description: desc,
         p_price: price,
@@ -135,11 +152,30 @@ export default function SprzedawcaV2() {
         p_category_slug: chosen.slug,
         p_image_urls: images,
         p_commission_model: commissionModel,
-        p_attributes: { ...attrs, full_vat_invoice: fullVatInvoice },
+        p_attributes: { ...attrs, full_vat_invoice: fullVatInvoice, purchase_mode: purchaseMode, offer_type: "product" },
       });
       if (error) throw error;
+      const offerId = String(data || "");
+      if (!offerId) throw new Error("Oferta powstała, ale nie otrzymano jej ID.");
       localStorage.removeItem(DRAFT_KEY);
-      setTitle(""); setDescription(""); setPrice(0); setStock(1); setImages([]); setAttrs({}); setFullVatInvoice(false); setCommissionModel("cashback_only"); setStep(1);
+
+      if (purchaseMode !== "purchase") {
+        await configureBookingOffer({
+          offerId,
+          bookingType: purchaseMode === "daily" ? "daily" : "appointment",
+          durationMinutes: purchaseMode === "appointment" ? 60 : null,
+          slotIntervalMinutes: 30,
+          minNoticeHours: 2,
+          maxAdvanceDays: 365,
+          maxUnits: purchaseMode === "daily" ? Math.max(stock, 1) : 1,
+          pricePerUnit: price,
+          active: true,
+        });
+        navigate(`/sprzedawca/rezerwacje/ustawienia/${offerId}?new=1`);
+        return;
+      }
+
+      setTitle(""); setDescription(""); setPrice(0); setStock(1); setImages([]); setAttrs({}); setFullVatInvoice(false); setCommissionModel("cashback_only"); setPurchaseMode("purchase"); setStep(1);
       setOffers((await myOffers()) as Offer[]);
       setMsg("Oferta została opublikowana ✅");
     } catch (e) { setMsg("Nie udało się opublikować: " + (e as Error).message); }
@@ -152,23 +188,32 @@ export default function SprzedawcaV2() {
 
   return <Shell>
     <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
-      <div><h1 className="font-display text-3xl font-semibold">Centrum sprzedawcy</h1><p className="text-sm" style={{ color: "var(--mut)" }}>Dodaj ofertę w kilku prostych krokach.</p></div>
-      <Link to="/sprzedawca-klasyczny" className="text-sm underline" style={{ color: "var(--mut)" }}>Panel zaawansowany</Link>
+      <div><h1 className="font-display text-3xl font-semibold">Wystaw produkt lub sprzęt</h1><p className="text-sm" style={{ color: "var(--mut)" }}>Ta sama oferta może być sprzedawana albo rezerwowana.</p></div>
+      <Link to="/sprzedawca" className="text-sm underline" style={{ color: "var(--mut)" }}>← Centrum sprzedawcy</Link>
     </div>
     {msg && <div className="mb-4 rounded-xl px-4 py-3 text-sm" style={{ background: "rgba(200,150,90,.12)", color: "var(--gold)" }}>{msg}</div>}
 
     <div className="grid gap-6 xl:grid-cols-[1fr_320px]">
       <Card>
         <div className="mb-5 grid grid-cols-4 gap-2 text-center text-xs">
-          {["Kategoria", "Opis i zdjęcia", "Cena i korzyści", "Podgląd"].map((x, i) => <button key={x} onClick={() => setStep(i + 1)} className="rounded-lg px-2 py-2 font-semibold" style={{ background: step === i + 1 ? "rgba(200,150,90,.18)" : "var(--glass)", color: step === i + 1 ? "var(--gold)" : "var(--mut)" }}>{i + 1}. {x}</button>)}
+          {["Typ i kategoria", "Opis i zdjęcia", "Cena i korzyści", "Podgląd"].map((x, i) => <button type="button" key={x} onClick={() => setStep(i + 1)} className="rounded-lg px-2 py-2 font-semibold" style={{ background: step === i + 1 ? "rgba(200,150,90,.18)" : "var(--glass)", color: step === i + 1 ? "var(--gold)" : "var(--mut)" }}>{i + 1}. {x}</button>)}
         </div>
 
-        {step === 1 && <div className="space-y-4">
-          <h2 className="text-xl font-semibold">Co sprzedajesz?</h2>
-          <select className={inputClass} style={inputStyle} value={s1?.slug || ""} onChange={e => pick1(e.target.value)}><option value="">Wybierz dział</option>{d1.map(c => <option key={c.id} value={c.slug}>{c.name}</option>)}</select>
-          {d2.length > 0 && <select className={inputClass} style={inputStyle} value={s2?.slug || ""} onChange={e => pick2(e.target.value)}><option value="">Wybierz kategorię</option>{d2.map(c => <option key={c.id} value={c.slug}>{c.name}</option>)}</select>}
-          {d3.length > 0 && <select className={inputClass} style={inputStyle} value={s3?.slug || ""} onChange={e => pick3(e.target.value)}><option value="">Wybierz podkategorię</option>{d3.map(c => <option key={c.id} value={c.slug}>{c.name}</option>)}</select>}
-          {chosen && <div className="rounded-xl px-4 py-3 text-sm" style={{ background: "rgba(122,184,154,.10)", border: "1px solid rgba(122,184,154,.28)" }}>Wybrano: <b>{chosen.name}</b></div>}
+        {step === 1 && <div className="space-y-5">
+          <div>
+            <h2 className="text-xl font-semibold">Jak klient ma korzystać z oferty?</h2>
+            <p className="mt-1 text-sm" style={{ color: "var(--mut)" }}>Możesz sprzedawać lub uruchomić booking praktycznie w każdej kategorii.</p>
+            <div className="mt-3 grid gap-3 md:grid-cols-3">{MODES.map(mode => <button type="button" key={mode.id} onClick={() => setPurchaseMode(mode.id)} className="rounded-2xl p-4 text-left" style={{ background: purchaseMode === mode.id ? "rgba(200,150,90,.14)" : "var(--glass)", border: purchaseMode === mode.id ? "1px solid var(--gold)" : "1px solid var(--line)" }}><div className="text-2xl">{mode.icon}</div><div className="mt-2 font-semibold">{mode.title}</div><div className="mt-1 text-xs leading-5" style={{ color: "var(--mut)" }}>{mode.description}</div></button>)}</div>
+          </div>
+          <div className="border-t pt-5" style={{ borderColor: "var(--line)" }}>
+            <h2 className="text-xl font-semibold">Co wystawiasz?</h2>
+            <div className="mt-3 space-y-3">
+              <select className={inputClass} style={inputStyle} value={s1?.slug || ""} onChange={e => pick1(e.target.value)}><option value="">Wybierz dział</option>{d1.map(c => <option key={c.id} value={c.slug}>{c.name}</option>)}</select>
+              {d2.length > 0 && <select className={inputClass} style={inputStyle} value={s2?.slug || ""} onChange={e => pick2(e.target.value)}><option value="">Wybierz kategorię</option>{d2.map(c => <option key={c.id} value={c.slug}>{c.name}</option>)}</select>}
+              {d3.length > 0 && <select className={inputClass} style={inputStyle} value={s3?.slug || ""} onChange={e => pick3(e.target.value)}><option value="">Wybierz podkategorię</option>{d3.map(c => <option key={c.id} value={c.slug}>{c.name}</option>)}</select>}
+            </div>
+            {chosen && <div className="mt-3 rounded-xl px-4 py-3 text-sm" style={{ background: "rgba(122,184,154,.10)", border: "1px solid rgba(122,184,154,.28)" }}>Wybrano: <b>{chosen.name}</b></div>}
+          </div>
         </div>}
 
         {step === 2 && <div className="space-y-4">
@@ -176,23 +221,24 @@ export default function SprzedawcaV2() {
           <input className={inputClass} style={inputStyle} placeholder="Tytuł oferty" value={title} onChange={e => setTitle(e.target.value)} />
           {attrDefs.length > 0 && <div className="grid gap-3 sm:grid-cols-2">{attrDefs.map(a => <label key={a.key} className="text-sm"><span className="mb-1 block" style={{ color: "var(--mut)" }}>{a.label}{a.required ? " *" : ""}</span>{a.data_type === "enum" ? <select className={inputClass} style={inputStyle} value={attrs[a.key] ?? ""} onChange={e => setAttrs(p => ({ ...p, [a.key]: e.target.value }))}><option value="">Wybierz</option>{(Array.isArray(a.options) ? a.options : []).map((o: any) => <option key={String(o)} value={String(o)}>{String(o)}</option>)}</select> : a.data_type === "bool" ? <input type="checkbox" checked={Boolean(attrs[a.key])} onChange={e => setAttrs(p => ({ ...p, [a.key]: e.target.checked }))} /> : <input type={a.data_type === "number" ? "number" : "text"} className={inputClass} style={inputStyle} value={attrs[a.key] ?? ""} onChange={e => setAttrs(p => ({ ...p, [a.key]: a.data_type === "number" ? Number(e.target.value) : e.target.value }))} />}</label>)}</div>}
           <div className="flex items-center justify-between gap-3"><span className="text-sm font-semibold">Opis</span><button type="button" onClick={aiDescription} disabled={aiBusy} className="rounded-lg px-3 py-1.5 text-xs font-semibold" style={{ border: "1px solid var(--line)" }}>{aiBusy ? "Tworzę…" : "✨ Wygeneruj opis AI"}</button></div>
-          <textarea className={inputClass} style={inputStyle} rows={8} placeholder="Opisz produkt, stan, wyposażenie, najważniejsze zalety…" value={description} onChange={e => setDescription(e.target.value)} />
+          <textarea className={inputClass} style={inputStyle} rows={8} placeholder="Opisz produkt, sprzęt, stan, wyposażenie i zasady korzystania…" value={description} onChange={e => setDescription(e.target.value)} />
           <div><div className="mb-2 flex items-center justify-between"><span className="text-sm font-semibold">Zdjęcia ({images.length}/12)</span><span className="text-xs" style={{ color: "var(--mut)" }}>Pierwsze zdjęcie jest główne</span></div><label className="flex cursor-pointer items-center justify-center rounded-xl border border-dashed p-5 text-sm" style={{ borderColor: "var(--line)" }}>{uploading ? "Wysyłanie…" : "+ Dodaj zdjęcia"}<input className="hidden" type="file" accept="image/*" multiple onChange={e => uploadFiles(e.target.files)} /></label>{images.length > 0 && <div className="mt-3 grid grid-cols-3 gap-2 sm:grid-cols-5">{images.map((url, i) => <div key={url} className="relative"><img src={url} className="aspect-square w-full rounded-lg object-cover" alt=""/><button type="button" onClick={() => setImages(p => p.filter((_, j) => j !== i))} className="absolute right-1 top-1 rounded-full bg-black/70 px-1.5 text-xs text-white">×</button>{i === 0 && <span className="absolute bottom-1 left-1 rounded bg-black/70 px-1.5 py-0.5 text-[10px] text-white">Główne</span>}</div>)}</div>}</div>
         </div>}
 
         {step === 3 && <div className="space-y-5">
           <h2 className="text-xl font-semibold">Cena i korzyści</h2>
-          <div className="grid gap-3 sm:grid-cols-2"><label className="text-sm"><span className="mb-1 block" style={{ color: "var(--mut)" }}>Cena brutto *</span><input type="number" min="0" step="0.01" className={inputClass} style={inputStyle} value={price || ""} onChange={e => setPrice(Number(e.target.value))}/></label><label className="text-sm"><span className="mb-1 block" style={{ color: "var(--mut)" }}>Dostępna liczba</span><input type="number" min="0" className={inputClass} style={inputStyle} value={stock} onChange={e => setStock(Number(e.target.value))}/></label></div>
+          <div className="rounded-xl p-4" style={{ background: "rgba(56,224,240,.07)", border: "1px solid rgba(56,224,240,.18)" }}><div className="font-semibold">{MODES.find(m => m.id === purchaseMode)?.title}</div><div className="mt-1 text-xs" style={{ color: "var(--mut)" }}>{MODES.find(m => m.id === purchaseMode)?.description}</div></div>
+          <div className="grid gap-3 sm:grid-cols-2"><label className="text-sm"><span className="mb-1 block" style={{ color: "var(--mut)" }}>{purchaseMode === "daily" ? "Cena za dzień" : purchaseMode === "appointment" ? "Cena za termin / godzinę" : "Cena brutto"} *</span><input type="number" min="0" step="0.01" className={inputClass} style={inputStyle} value={price || ""} onChange={e => setPrice(Number(e.target.value))}/></label><label className="text-sm"><span className="mb-1 block" style={{ color: "var(--mut)" }}>{purchaseMode === "purchase" ? "Dostępna liczba" : "Liczba dostępnych sztuk / zasobów"}</span><input type="number" min="1" className={inputClass} style={inputStyle} value={stock} onChange={e => setStock(Math.max(1, Number(e.target.value)))}/></label></div>
           <div className="rounded-2xl p-4" style={{ border: "1px solid var(--line)" }}><div className="mb-2 font-semibold">Program poleceń</div><label className="flex cursor-pointer items-center justify-between gap-4"><div><div className="font-medium">Prowizje Ambassador Club</div><div className="text-xs" style={{ color: "var(--mut)" }}>{commissionModel === "cashback_only" ? "Tylko cashback dla kupującego — bez prowizji ambasadorskich." : "Cashback dla kupującego + prowizje za polecenia."}</div></div><input type="checkbox" className="h-5 w-5" checked={commissionModel === "mlm_full"} onChange={e => setCommissionModel(e.target.checked ? "mlm_full" : "cashback_only")}/></label></div>
           <div className="rounded-2xl p-4" style={{ border: "1px solid var(--line)" }}><label className="flex cursor-pointer items-center justify-between gap-4"><div><div className="font-medium">Pełna faktura VAT</div><div className="text-xs" style={{ color: "var(--mut)" }}>Pokaż klientowi wyraźną informację o pełnej fakturze VAT.</div></div><input type="checkbox" className="h-5 w-5" checked={fullVatInvoice} onChange={e => setFullVatInvoice(e.target.checked)}/></label></div>
         </div>}
 
-        {step === 4 && <div className="space-y-4"><h2 className="text-xl font-semibold">Podgląd oferty</h2><div className="overflow-hidden rounded-2xl" style={{ border: "1px solid var(--line)" }}>{images[0] && <img src={images[0]} className="h-64 w-full object-cover" alt=""/>}<div className="p-5"><div className="text-sm" style={{ color: "var(--mut)" }}>{chosen?.name || "Brak kategorii"}</div><h3 className="mt-1 text-2xl font-semibold">{title || "Tytuł oferty"}</h3><div className="mt-2 text-2xl font-bold" style={{ color: "var(--gold)" }}>{price.toLocaleString("pl-PL", { style: "currency", currency: "PLN" })}</div><div className="mt-3 flex flex-wrap gap-2 text-xs"><span className="rounded-full px-2 py-1" style={{ background: "rgba(122,184,154,.12)" }}>3% cashback</span>{commissionModel === "mlm_full" && <span className="rounded-full px-2 py-1" style={{ background: "rgba(200,150,90,.14)" }}>Prowizje Ambassador Club</span>}{fullVatInvoice && <span className="rounded-full px-2 py-1" style={{ background: "rgba(56,224,240,.10)" }}>Pełna faktura VAT</span>}</div><p className="mt-4 whitespace-pre-wrap text-sm" style={{ color: "var(--mut)" }}>{description || "Brak opisu"}</p></div></div><button type="button" onClick={publish} disabled={busy} className="w-full rounded-xl py-3 font-bold text-black disabled:opacity-50" style={{ background: "linear-gradient(135deg,#C8965A,#E8C896)" }}>{busy ? "Publikuję…" : "Opublikuj ofertę"}</button></div>}
+        {step === 4 && <div className="space-y-4"><h2 className="text-xl font-semibold">Podgląd oferty</h2><div className="overflow-hidden rounded-2xl" style={{ border: "1px solid var(--line)" }}>{images[0] && <img src={images[0]} className="h-64 w-full object-cover" alt=""/>}<div className="p-5"><div className="text-sm" style={{ color: "var(--mut)" }}>{chosen?.name || "Brak kategorii"}</div><h3 className="mt-1 text-2xl font-semibold">{title || "Tytuł oferty"}</h3><div className="mt-2 text-2xl font-bold" style={{ color: "var(--gold)" }}>{price.toLocaleString("pl-PL", { style: "currency", currency: "PLN" })}{purchaseMode === "daily" ? " / dzień" : purchaseMode === "appointment" ? " / termin" : ""}</div><div className="mt-3 flex flex-wrap gap-2 text-xs"><span className="rounded-full px-2 py-1" style={{ background: "rgba(122,184,154,.12)" }}>3% cashback</span>{purchaseMode !== "purchase" && <span className="rounded-full px-2 py-1" style={{ background: "rgba(56,224,240,.10)" }}>📅 Rezerwacja online</span>}{commissionModel === "mlm_full" && <span className="rounded-full px-2 py-1" style={{ background: "rgba(200,150,90,.14)" }}>Prowizje Ambassador Club</span>}{fullVatInvoice && <span className="rounded-full px-2 py-1" style={{ background: "rgba(56,224,240,.10)" }}>Pełna faktura VAT</span>}</div><p className="mt-4 whitespace-pre-wrap text-sm" style={{ color: "var(--mut)" }}>{description || "Brak opisu"}</p></div></div><button type="button" onClick={publish} disabled={busy} className="w-full rounded-xl py-3 font-bold text-black disabled:opacity-50" style={{ background: "linear-gradient(135deg,#C8965A,#E8C896)" }}>{busy ? "Publikuję…" : purchaseMode === "purchase" ? "Opublikuj ofertę" : "Opublikuj i ustaw kalendarz →"}</button></div>}
 
         <div className="mt-6 flex justify-between"><button type="button" onClick={() => setStep(s => Math.max(1, s - 1))} disabled={step === 1} className="rounded-xl px-4 py-2 text-sm disabled:opacity-30" style={{ border: "1px solid var(--line)" }}>← Wstecz</button>{step < 4 && <button type="button" onClick={() => setStep(s => Math.min(4, s + 1))} className="rounded-xl px-4 py-2 text-sm font-semibold text-black" style={{ background: "linear-gradient(135deg,#C8965A,#E8C896)" }}>Dalej →</button>}</div>
       </Card>
 
-      <div className="space-y-4"><Card><div className="text-sm font-semibold">Jakość oferty</div><div className="mt-2 text-4xl font-bold" style={{ color: score >= 80 ? "var(--green)" : "var(--gold)" }}>{score}/100</div><div className="mt-3 h-2 overflow-hidden rounded-full" style={{ background: "var(--glass)" }}><div className="h-full rounded-full" style={{ width: `${score}%`, background: "linear-gradient(90deg,#C8965A,#7AB89A)" }}/></div><ul className="mt-3 space-y-1 text-xs" style={{ color: "var(--mut)" }}><li>{images.length >= 5 ? "✅" : "○"} 5+ zdjęć</li><li>{description.length >= 80 ? "✅" : "○"} pełny opis</li><li>{missingRequired.length === 0 ? "✅" : "○"} wymagane parametry</li><li>{price > 0 ? "✅" : "○"} cena</li></ul></Card><Card><div className="text-sm font-semibold">Twoje oferty</div><div className="mt-3 space-y-2">{offers.slice(0, 8).map(o => <div key={o.offer_id} className="rounded-xl px-3 py-2 text-sm" style={{ border: "1px solid var(--line)" }}><div className="truncate font-medium">{o.title}</div><div className="mt-1 flex justify-between text-xs" style={{ color: "var(--mut)" }}><span>{Number(o.price_gross).toLocaleString("pl-PL")} zł</span><span>{o.status}</span></div></div>)}{offers.length === 0 && <div className="text-xs" style={{ color: "var(--mut)" }}>Brak ofert.</div>}</div></Card></div>
+      <div className="space-y-4"><Card><div className="text-sm font-semibold">Jakość oferty</div><div className="mt-2 text-4xl font-bold" style={{ color: score >= 80 ? "var(--green)" : "var(--gold)" }}>{score}/100</div><div className="mt-3 h-2 overflow-hidden rounded-full" style={{ background: "var(--glass)" }}><div className="h-full rounded-full" style={{ width: `${score}%`, background: "linear-gradient(90deg,#C8965A,#7AB89A)" }}/></div><ul className="mt-3 space-y-1 text-xs" style={{ color: "var(--mut)" }}><li>{images.length >= 5 ? "✅" : "○"} 5+ zdjęć</li><li>{description.length >= 80 ? "✅" : "○"} pełny opis</li><li>{missingRequired.length === 0 ? "✅" : "○"} wymagane parametry</li><li>{price > 0 ? "✅" : "○"} cena</li></ul>{purchaseMode !== "purchase" && <div className="mt-4 rounded-xl p-3 text-xs" style={{ background: "rgba(56,224,240,.07)", color: "var(--mut)" }}>Po publikacji automatycznie przejdziesz do ustawień kalendarza, dostępności i zasobów.</div>}</Card><Card><div className="text-sm font-semibold">Twoje oferty</div><div className="mt-3 space-y-2">{offers.slice(0, 8).map(o => <div key={o.offer_id} className="rounded-xl px-3 py-2 text-sm" style={{ border: "1px solid var(--line)" }}><div className="truncate font-medium">{o.title}</div><div className="mt-1 flex justify-between text-xs" style={{ color: "var(--mut)" }}><span>{Number(o.price_gross).toLocaleString("pl-PL")} zł</span><span>{o.status}</span></div></div>)}{offers.length === 0 && <div className="text-xs" style={{ color: "var(--mut)" }}>Brak ofert.</div>}</div></Card></div>
     </div>
   </Shell>;
 }
