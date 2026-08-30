@@ -7,8 +7,8 @@ export function isHeicUrl(url: string | null | undefined): boolean {
 /**
  * Keep the original Storage URL in the database, but render HEIC/HEIF files
  * through Supabase Image Transformations so browsers receive a web-friendly image.
- * A square contain box preserves the whole frame. We also cap render dimensions
- * so fullscreen zoom does not ask mobile browsers to decode unnecessarily huge HEIC variants.
+ * A square contain box preserves the whole frame. Render dimensions are capped
+ * so fullscreen zoom stays responsive on mobile devices while keeping useful detail.
  */
 export function displayImageUrl(url: string | null | undefined, width = 1600, height?: number): string {
   if (!url) return "";
