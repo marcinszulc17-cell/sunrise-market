@@ -9,6 +9,7 @@ import Rozliczenia from "./pages/Rozliczenia";
 import Sprzedawca from "./pages/Sprzedawca";
 import SprzedawcaStart from "./pages/SprzedawcaStart";
 import SprzedawcaWystaw from "./pages/SprzedawcaWystaw";
+import SellerOffersManage from "./pages/SellerOffersManage";
 import SellerLeads from "./pages/SellerLeads";
 import SaleConfirmation from "./pages/SaleConfirmation";
 import VerifyRequest from "./pages/VerifyRequest";
@@ -49,6 +50,7 @@ ReactDOM.createRoot(document.getElementById("root")!).render(
         <Route path="/portfel" element={<Portfel />} />
         <Route path="/konto" element={<Konto />} />
         <Route path="/sprzedawca" element={<SprzedawcaStart />} />
+        <Route path="/sprzedawca/oferty" element={<SellerOffersManage />} />
         <Route path="/sprzedawca/wystaw" element={<SprzedawcaWystaw />} />
         <Route path="/sprzedawca/zapytania" element={<SellerLeads />} />
         <Route path="/potwierdz-zakup/:token" element={<SaleConfirmation />} />
