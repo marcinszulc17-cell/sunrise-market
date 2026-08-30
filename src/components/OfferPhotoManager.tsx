@@ -1,4 +1,5 @@
 import { useRef, useState } from "react";
+import { uploadProductImage } from "../lib/api";
 
 type Props = {
   images: string[];
@@ -17,28 +18,29 @@ function isHeic(file: File) {
   return file.type === "image/heic" || file.type === "image/heif" || name.endsWith(".heic") || name.endsWith(".heif");
 }
 
+function isHeicUrl(url: string) {
+  return /\.(heic|heif)(?:\?|$)/i.test(url);
+}
+
+async function getHeicConverter() {
+  const moduleUrl = "https://cdn.jsdelivr.net/npm/heic2any@0.0.4/+esm";
+  const mod: any = await import(/* @vite-ignore */ moduleUrl);
+  return mod.default ?? mod;
+}
+
+async function convertHeicFile(file: File): Promise<File> {
+  const converter = await getHeicConverter();
+  const converted = await converter({ blob: file, toType: "image/jpeg", quality: 0.9 });
+  const blob = Array.isArray(converted) ? converted[0] : converted;
+  const baseName = file.name.replace(/\.(heic|heif)$/i, "") || `photo-${Date.now()}`;
+  return new File([blob], `${baseName}.jpg`, { type: "image/jpeg", lastModified: Date.now() });
+}
+
 async function normalizePhotoFiles(files: FileList): Promise<FileList> {
   const output = new DataTransfer();
-  let converter: any = null;
-
   for (const file of Array.from(files)) {
-    if (!isHeic(file)) {
-      output.items.add(file);
-      continue;
-    }
-
-    if (!converter) {
-      const moduleUrl = "https://cdn.jsdelivr.net/npm/heic2any@0.0.4/+esm";
-      const mod: any = await import(/* @vite-ignore */ moduleUrl);
-      converter = mod.default ?? mod;
-    }
-
-    const converted = await converter({ blob: file, toType: "image/jpeg", quality: 0.9 });
-    const blob = Array.isArray(converted) ? converted[0] : converted;
-    const baseName = file.name.replace(/\.(heic|heif)$/i, "");
-    output.items.add(new File([blob], `${baseName}.jpg`, { type: "image/jpeg", lastModified: Date.now() }));
+    output.items.add(isHeic(file) ? await convertHeicFile(file) : file);
   }
-
   return output.files;
 }
 
@@ -47,7 +49,9 @@ export default function OfferPhotoManager({ images, onChange, onAddFiles, upload
   const [overIndex,setOverIndex]=useState<number|null>(null);
   const [uploadDragOver,setUploadDragOver]=useState(false);
   const [processing,setProcessing]=useState(false);
+  const [repairing,setRepairing]=useState(false);
   const [photoError,setPhotoError]=useState<string|null>(null);
+  const [photoInfo,setPhotoInfo]=useState<string|null>(null);
   const touchFrom=useRef<number|null>(null);
 
   function move(from:number,to:number){
@@ -60,8 +64,9 @@ export default function OfferPhotoManager({ images, onChange, onAddFiles, upload
   function right(i:number){ if(i<images.length-1) move(i,i+1); }
 
   async function addFiles(files: FileList | null) {
-    if (!files?.length || !onAddFiles || uploading || processing) return;
+    if (!files?.length || !onAddFiles || uploading || processing || repairing) return;
     setPhotoError(null);
+    setPhotoInfo(null);
     setProcessing(true);
     try {
       const normalized = await normalizePhotoFiles(files);
@@ -74,13 +79,50 @@ export default function OfferPhotoManager({ images, onChange, onAddFiles, upload
     }
   }
 
-  const busy = Boolean(uploading || processing);
+  async function repairLegacyHeic() {
+    const legacy = images.filter(isHeicUrl);
+    if (!legacy.length || repairing || uploading || processing) return;
+    setRepairing(true);
+    setPhotoError(null);
+    setPhotoInfo(`Naprawiam ${legacy.length} zdjęć HEIC…`);
+    try {
+      const repaired = [...images];
+      for (let i = 0; i < repaired.length; i++) {
+        const url = repaired[i];
+        if (!isHeicUrl(url)) continue;
+        const response = await fetch(url);
+        if (!response.ok) throw new Error(`Nie można pobrać zdjęcia (${response.status})`);
+        const blob = await response.blob();
+        const rawName = decodeURIComponent(url.split("/").pop()?.split("?")[0] || `photo-${i}.heic`);
+        const source = new File([blob], rawName, { type: blob.type || "image/heic" });
+        const jpg = await convertHeicFile(source);
+        repaired[i] = await uploadProductImage(jpg);
+        setPhotoInfo(`Naprawiam zdjęcia HEIC… ${legacy.filter((_, idx)=>idx <= legacy.findIndex(x=>x===url)).length}/${legacy.length}`);
+      }
+      onChange(repaired);
+      setPhotoInfo("Zdjęcia naprawione ✅ Kliknij „Zapisz ofertę”, aby zachować podmianę.");
+    } catch (error) {
+      console.error("Legacy HEIC repair failed", error);
+      setPhotoError("Nie udało się naprawić wszystkich starych zdjęć HEIC. Spróbuj ponownie.");
+      setPhotoInfo(null);
+    } finally {
+      setRepairing(false);
+    }
+  }
+
+  const legacyCount = images.filter(isHeicUrl).length;
+  const busy = Boolean(uploading || processing || repairing);
 
   return <div>
     <div className="mb-2 flex flex-wrap items-center justify-between gap-2 text-sm">
       <b>Zdjęcia ({images.length}/{maxImages})</b>
       <span style={{color:"var(--mut)"}}>Przeciągnij, aby zmienić kolejność · pierwsze = główne</span>
     </div>
+    {legacyCount>0&&<div className="mb-3 rounded-xl p-3" style={{border:"1px solid rgba(200,150,90,.35)",background:"rgba(200,150,90,.08)"}}>
+      <div className="text-sm font-semibold">Wykryto {legacyCount} starych zdjęć HEIC</div>
+      <div className="mt-1 text-xs" style={{color:"var(--mut)"}}>Mogą być niewidoczne w części przeglądarek. Naprawimy je bez ponownego wybierania plików.</div>
+      <button type="button" disabled={busy} onClick={repairLegacyHeic} className="mt-2 rounded-lg px-3 py-2 text-xs font-bold disabled:opacity-50" style={{border:"1px solid var(--gold)",color:"var(--gold)"}}>{repairing?"Naprawiam…":"Napraw stare zdjęcia HEIC"}</button>
+    </div>}
     {onAddFiles && <label
       className="flex cursor-pointer flex-col items-center justify-center rounded-xl border border-dashed p-5 text-center text-sm transition"
       style={{
@@ -102,6 +144,7 @@ export default function OfferPhotoManager({ images, onChange, onAddFiles, upload
       {!busy&&!uploadDragOver&&<span className="mt-1 text-xs" style={{color:"var(--mut)"}}>albo kliknij, żeby wybrać pliki · HEIC z iPhone’a zamienimy automatycznie na JPG</span>}
       <input className="hidden" type="file" multiple accept="image/*,.heic,.heif" disabled={busy} onChange={async e=>{await addFiles(e.target.files); e.currentTarget.value="";}}/>
     </label>}
+    {photoInfo&&<div className="mt-2 rounded-lg px-3 py-2 text-xs" style={{background:"rgba(80,170,110,.10)",border:"1px solid rgba(80,170,110,.25)"}}>{photoInfo}</div>}
     {photoError&&<div className="mt-2 rounded-lg px-3 py-2 text-xs" style={{background:"rgba(220,70,70,.10)",border:"1px solid rgba(220,70,70,.25)",color:"#d66"}}>{photoError}</div>}
     <div className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
       {images.map((url,i)=><div key={`${url}-${i}`}
@@ -114,7 +157,7 @@ export default function OfferPhotoManager({ images, onChange, onAddFiles, upload
         className="group overflow-hidden rounded-xl p-2 transition"
         style={{border: overIndex===i?"2px solid var(--gold)":"1px solid var(--line)",background:"var(--glass)"}}>
         <div className="relative cursor-grab active:cursor-grabbing">
-          <img src={url} className="aspect-square w-full rounded-lg object-cover" alt="" draggable={false}/>
+          {isHeicUrl(url)?<div className="flex aspect-square w-full items-center justify-center rounded-lg text-center text-xs" style={{background:"rgba(255,255,255,.04)",color:"var(--mut)"}}>HEIC<br/>do naprawy</div>:<img src={url} className="aspect-square w-full rounded-lg object-cover" alt="" draggable={false}/>} 
           <span className="absolute left-1 top-1 rounded bg-black/70 px-1.5 py-0.5 text-[10px] text-white">☰ {i+1}</span>
           <button type="button" onClick={()=>remove(i)} className="absolute right-1 top-1 rounded-full bg-black/75 px-2 py-0.5 text-xs text-white">×</button>
           {i===0&&<span className="absolute bottom-1 left-1 rounded bg-black/75 px-2 py-1 text-[10px] font-semibold text-white">★ Główne</span>}
