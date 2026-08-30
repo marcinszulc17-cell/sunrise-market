@@ -12,10 +12,42 @@ type Props = {
   aiBusyIndex?: number | null;
 };
 
+function isHeic(file: File) {
+  const name = file.name.toLowerCase();
+  return file.type === "image/heic" || file.type === "image/heif" || name.endsWith(".heic") || name.endsWith(".heif");
+}
+
+async function normalizePhotoFiles(files: FileList): Promise<FileList> {
+  const output = new DataTransfer();
+  let converter: any = null;
+
+  for (const file of Array.from(files)) {
+    if (!isHeic(file)) {
+      output.items.add(file);
+      continue;
+    }
+
+    if (!converter) {
+      const moduleUrl = "https://cdn.jsdelivr.net/npm/heic2any@0.0.4/+esm";
+      const mod: any = await import(/* @vite-ignore */ moduleUrl);
+      converter = mod.default ?? mod;
+    }
+
+    const converted = await converter({ blob: file, toType: "image/jpeg", quality: 0.9 });
+    const blob = Array.isArray(converted) ? converted[0] : converted;
+    const baseName = file.name.replace(/\.(heic|heif)$/i, "");
+    output.items.add(new File([blob], `${baseName}.jpg`, { type: "image/jpeg", lastModified: Date.now() }));
+  }
+
+  return output.files;
+}
+
 export default function OfferPhotoManager({ images, onChange, onAddFiles, uploading, maxImages=12, baseLimit=12, onBuyMore, onEnhanceAi, aiBusyIndex }: Props) {
   const [dragIndex,setDragIndex]=useState<number|null>(null);
   const [overIndex,setOverIndex]=useState<number|null>(null);
   const [uploadDragOver,setUploadDragOver]=useState(false);
+  const [processing,setProcessing]=useState(false);
+  const [photoError,setPhotoError]=useState<string|null>(null);
   const touchFrom=useRef<number|null>(null);
 
   function move(from:number,to:number){
@@ -26,6 +58,23 @@ export default function OfferPhotoManager({ images, onChange, onAddFiles, upload
   function remove(i:number){ onChange(images.filter((_,j)=>j!==i)); }
   function left(i:number){ if(i>0) move(i,i-1); }
   function right(i:number){ if(i<images.length-1) move(i,i+1); }
+
+  async function addFiles(files: FileList | null) {
+    if (!files?.length || !onAddFiles || uploading || processing) return;
+    setPhotoError(null);
+    setProcessing(true);
+    try {
+      const normalized = await normalizePhotoFiles(files);
+      onAddFiles(normalized);
+    } catch (error) {
+      console.error("Photo conversion failed", error);
+      setPhotoError("Nie udało się odczytać zdjęcia HEIC. Spróbuj ponownie lub wybierz JPG/PNG.");
+    } finally {
+      setProcessing(false);
+    }
+  }
+
+  const busy = Boolean(uploading || processing);
 
   return <div>
     <div className="mb-2 flex flex-wrap items-center justify-between gap-2 text-sm">
@@ -42,19 +91,18 @@ export default function OfferPhotoManager({ images, onChange, onAddFiles, upload
       onDragEnter={e=>{e.preventDefault();e.stopPropagation();setUploadDragOver(true)}}
       onDragOver={e=>{e.preventDefault();e.stopPropagation();setUploadDragOver(true);e.dataTransfer.dropEffect="copy"}}
       onDragLeave={e=>{e.preventDefault();e.stopPropagation();setUploadDragOver(false)}}
-      onDrop={e=>{
+      onDrop={async e=>{
         e.preventDefault();
         e.stopPropagation();
         setUploadDragOver(false);
-        if(uploading) return;
-        const files=e.dataTransfer.files;
-        if(files?.length) onAddFiles(files);
+        await addFiles(e.dataTransfer.files);
       }}
     >
-      <span className="font-semibold">{uploading?"Wysyłanie…":uploadDragOver?"Puść zdjęcia tutaj":"Przeciągnij zdjęcia tutaj"}</span>
-      {!uploading&&!uploadDragOver&&<span className="mt-1 text-xs" style={{color:"var(--mut)"}}>albo kliknij, żeby wybrać pliki</span>}
-      <input className="hidden" type="file" multiple accept="image/*" onChange={e=>onAddFiles(e.target.files)}/>
+      <span className="font-semibold">{busy?"Przygotowuję zdjęcia…":uploadDragOver?"Puść zdjęcia tutaj":"Przeciągnij zdjęcia tutaj"}</span>
+      {!busy&&!uploadDragOver&&<span className="mt-1 text-xs" style={{color:"var(--mut)"}}>albo kliknij, żeby wybrać pliki · HEIC z iPhone’a zamienimy automatycznie na JPG</span>}
+      <input className="hidden" type="file" multiple accept="image/*,.heic,.heif" disabled={busy} onChange={async e=>{await addFiles(e.target.files); e.currentTarget.value="";}}/>
     </label>}
+    {photoError&&<div className="mt-2 rounded-lg px-3 py-2 text-xs" style={{background:"rgba(220,70,70,.10)",border:"1px solid rgba(220,70,70,.25)",color:"#d66"}}>{photoError}</div>}
     <div className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
       {images.map((url,i)=><div key={`${url}-${i}`}
         draggable
