@@ -18,7 +18,7 @@ function interactionFor(slug:string):Interaction {
   return {type:"contact",label:"Zapytaj sprzedawcę",title:"Skontaktuj się ze sprzedawcą",needsDate:false,icon:"✉️"};
 }
 
-export default function BuyerOfferActions({ offerId, categorySlug="", priceGross=null }: Props) {
+export default function BuyerOfferActions({ offerId, categorySlug="" }: Props) {
   const action=useMemo(()=>interactionFor(categorySlug),[categorySlug]);
   const [watched, setWatched] = useState(false);
   const [compare, setCompare] = useState(false);
@@ -30,7 +30,6 @@ export default function BuyerOfferActions({ offerId, categorySlug="", priceGross
   const [when, setWhen] = useState("");
   const [message, setMessage] = useState("");
   const [status, setStatus] = useState<string | null>(null);
-  const [cashbackRate,setCashbackRate]=useState(0.03);
   const [bookingConfig,setBookingConfig]=useState<BookingConfig|null>(null);
   const [bookingOpen,setBookingOpen]=useState(false);
 
@@ -38,7 +37,6 @@ export default function BuyerOfferActions({ offerId, categorySlug="", priceGross
     watchedIds().then(ids => setWatched(ids.includes(offerId))).catch(() => {});
     try { setCompare(JSON.parse(localStorage.getItem(COMPARE_KEY) || "[]").includes(offerId)); } catch { /* ignore */ }
     supabase.auth.getUser().then(({ data }) => setEmail(data.user?.email || ""));
-    supabase.rpc("public_market_config").then(({data})=>{const r=Number((data as any)?.cashback_rate);if(Number.isFinite(r)&&r>=0)setCashbackRate(r);},()=>{});
     bookingPublicConfig(offerId).then(setBookingConfig).catch(()=>setBookingConfig(null));
   }, [offerId]);
 
@@ -49,7 +47,7 @@ export default function BuyerOfferActions({ offerId, categorySlug="", priceGross
       setWatched(on);
       if (on) {
         await supabase.rpc("set_watch_alert", { p_offer: offerId, p_enabled: true });
-        setStatus("Obserwujesz ofertę. Powiadomimy Cię w aplikacji, gdy cena spadnie.");
+        setStatus("Obserwujesz ofertę. Powiadomimy Cię, gdy cena spadnie.");
       } else setStatus("Usunięto z obserwowanych.");
     } catch (e: any) {
       const msg = e?.message || "Nie udało się zmienić obserwowania.";
@@ -82,16 +80,14 @@ export default function BuyerOfferActions({ offerId, categorySlug="", priceGross
     setOpen(false);
   }
 
-  const cashback=priceGross&&priceGross>0?priceGross*cashbackRate:null;
   return <>
-    <div className="fixed left-4 bottom-4 z-40 flex max-w-[calc(100vw-32px)] flex-wrap gap-2 rounded-2xl p-2 shadow-2xl" style={{ background: "var(--header)", border: "1px solid var(--line)" }}>
-      {cashbackRate>0&&<div className="rounded-xl px-3 py-2 text-sm font-semibold" style={{border:"1px solid rgba(34,197,94,.35)",background:"rgba(34,197,94,.10)",color:"var(--green)"}}>↩ Cashback {(cashbackRate*100).toLocaleString("pl-PL",{maximumFractionDigits:1})}%{cashback?` · ok. ${cashback.toLocaleString("pl-PL",{maximumFractionDigits:2})} zł`:""}</div>}
+    <div className="fixed right-4 top-[72px] z-40 flex max-w-[calc(100vw-32px)] flex-wrap justify-end gap-2 rounded-2xl p-2 shadow-xl backdrop-blur-md" style={{ background: "color-mix(in srgb, var(--header) 92%, transparent)", border: "1px solid var(--line)" }}>
       <button disabled={busy} onClick={watch} className="rounded-xl px-3 py-2 text-sm font-semibold" style={{ border: "1px solid var(--line)", background: watched ? "rgba(200,150,90,.18)" : "var(--glass)" }}>{watched ? "♥ Obserwujesz" : "♡ Obserwuj cenę"}</button>
       <button onClick={toggleCompare} className="rounded-xl px-3 py-2 text-sm font-semibold" style={{ border: "1px solid var(--line)", background: compare ? "rgba(56,224,240,.12)" : "var(--glass)" }}>{compare ? "✓ W porównaniu" : "⇄ Porównaj"}</button>
-      <a href="/porownaj" className="rounded-xl px-3 py-2 text-sm font-semibold" style={{ border: "1px solid var(--line)" }}>Porównanie</a>
+      <a href="/porownaj" className="rounded-xl px-3 py-2 text-sm font-semibold" style={{ border: "1px solid var(--line)", background:"var(--glass)" }}>Porównanie</a>
       <button onClick={() => bookingConfig ? setBookingOpen(true) : setOpen(true)} className="rounded-xl px-3 py-2 text-sm font-semibold text-black" style={{ background: "linear-gradient(135deg,#C8965A,#E8C896)" }}>{bookingConfig ? "📅 Wybierz termin i zapłać" : `${action.icon} ${action.label}`}</button>
     </div>
-    {status && <div className="fixed left-4 bottom-24 z-50 max-w-sm rounded-xl px-4 py-3 text-sm shadow-xl" style={{ background: "var(--header)", border: "1px solid var(--line)" }}>{status}</div>}
+    {status && <div className="fixed right-4 top-[132px] z-50 max-w-sm rounded-xl px-4 py-3 text-sm shadow-xl" style={{ background: "var(--header)", border: "1px solid var(--line)" }}>{status}</div>}
     {open && <div className="fixed inset-0 z-50 grid place-items-center bg-black/60 p-4" onMouseDown={() => setOpen(false)}>
       <form onSubmit={submitInteraction} onMouseDown={e => e.stopPropagation()} className="w-full max-w-lg rounded-3xl p-6" style={{ background: "var(--header)", border: "1px solid var(--line)" }}>
         <div className="mb-4 flex items-center justify-between"><h2 className="text-xl font-semibold">{action.title}</h2><button type="button" onClick={() => setOpen(false)}>✕</button></div>
