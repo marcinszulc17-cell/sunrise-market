@@ -114,6 +114,13 @@ export default function SellerBookingsManage() {
     return runReschedule(r,target.toISOString());
   }
 
+  async function rescheduleAtExactTime(bookingId:string,targetTime:Date) {
+    const r=rows.find(x=>x.id===bookingId);
+    if (!r || r.status!=="confirmed") { setMsg("Przeciągać można tylko potwierdzone rezerwacje."); return false; }
+    if (r.booking_type!=="appointment") { setMsg("Na osi godzin można przesuwać tylko wizyty i usługi godzinowe."); return false; }
+    return runReschedule(r,new Date(targetTime).toISOString());
+  }
+
   async function addBlock() {
     if (!offerId || !start || !end) { setMsg("Wybierz ofertę i zakres blokady."); return; }
     setBusy(true); setMsg("");
@@ -149,12 +156,12 @@ export default function SellerBookingsManage() {
         <Stat label="Wartość opłaconych" value={pln(stats.paid)} />
       </div>
 
-      <SellerBookingCalendar bookings={rows} blocks={blocks} onPickDate={pickCalendarDate} onRescheduleDrop={rescheduleFromCalendar} rescheduleBusy={rescheduleBusy}/>
+      <SellerBookingCalendar bookings={rows} blocks={blocks} onPickDate={pickCalendarDate} onRescheduleDrop={rescheduleFromCalendar} onRescheduleTimeDrop={rescheduleAtExactTime} rescheduleBusy={rescheduleBusy}/>
 
       <div className="grid gap-6 xl:grid-cols-[1fr_360px]">
         <section>
           <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-            <div><h2 className="text-xl font-semibold">Lista rezerwacji</h2><p className="mt-1 text-sm" style={{color:"var(--mut)"}}>Kliknięcie zdarzenia w kalendarzu przewija do jego szczegółów tutaj. Potwierdzone rezerwacje możesz też przeciągnąć na inny dzień.</p></div>
+            <div><h2 className="text-xl font-semibold">Lista rezerwacji</h2><p className="mt-1 text-sm" style={{color:"var(--mut)"}}>Potwierdzone rezerwacje możesz przeciągać między dniami, a wizyty godzinowe także na konkretną godzinę w widoku dnia.</p></div>
             <div className="flex flex-wrap gap-2">{[['active','Aktywne'],['confirmed','Potwierdzone'],['pending_payment','Do opłacenia'],['completed','Zakończone'],['cancelled','Anulowane'],['all','Wszystkie']].map(([k,l])=><button key={k} onClick={()=>setFilter(k)} className="rounded-full px-3 py-1.5 text-sm" style={{background:filter===k?"rgba(200,150,90,.18)":"var(--glass)",border:"1px solid var(--line)",color:filter===k?"var(--gold)":"var(--ink)"}}>{l}</button>)}</div>
           </div>
           {loading && <p style={{color:"var(--mut)"}}>Ładowanie…</p>}
@@ -188,7 +195,7 @@ export default function SellerBookingsManage() {
 
         <aside className="space-y-5">
           <div id="block-editor" className="scroll-mt-24 rounded-2xl p-5" style={{background:"var(--glass)",border:"1px solid var(--line)"}}>
-            <h2 className="text-lg font-semibold">Oferta i blokada terminu</h2><p className="mt-1 text-sm" style={{color:"var(--mut)"}}>Kliknij dzień w kalendarzu, a godziny uzupełnią się automatycznie. Potem wybierz ofertę i zapisz blokadę.</p>
+            <h2 className="text-lg font-semibold">Oferta i blokada terminu</h2><p className="mt-1 text-sm" style={{color:"var(--mut)"}}>Kliknij dzień w kalendarzu, a godziny uzupełnią się automatycznie. W widoku dnia możesz też kliknąć dwukrotnie konkretny slot.</p>
             <select value={offerId} onChange={e=>setOfferId(e.target.value)} className="mt-4 w-full rounded-xl px-3 py-2.5" style={{background:"var(--bg)",border:"1px solid var(--line)"}}><option value="">Wybierz ofertę</option>{offers.map(o=><option key={o.offer_id} value={o.offer_id}>{o.title}</option>)}</select>
             {offerId&&<Link to={`/sprzedawca/rezerwacje/ustawienia/${offerId}`} className="mt-3 block w-full rounded-xl px-4 py-2.5 text-center text-sm font-semibold" style={{border:"1px solid var(--gold)",color:"var(--gold)"}}>⚙ Zaawansowane ustawienia bookingu</Link>}
             <h3 className="mt-5 font-semibold">Zablokuj termin</h3>
