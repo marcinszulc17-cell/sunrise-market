@@ -30,7 +30,7 @@ export default function ProductRouter() {
   if (kind === null) return <main className="min-h-screen px-4 py-10" style={{ background: "var(--bg)", color: "var(--mut)" }}>Ładowanie…</main>;
   return <>
     {kind === "special" ? <SpecializedProduct /> : <Product />}
-    <ProductPageExtras verifyKind={verifyKind} />
+    {id && <ProductPageExtras offerId={id} verifyKind={verifyKind} />}
     <MarketFooter />
     {id && <BuyerOfferActions offerId={id} categorySlug={categorySlug} priceGross={priceGross} />}
     {id&&verifyKind&&<VerifyOfferButton offerId={id} kind={verifyKind}/>} 
