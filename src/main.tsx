@@ -7,9 +7,10 @@ import CategoryPortal from "./pages/CategoryPortal";
 import Portfel from "./pages/Portfel";
 import Rozliczenia from "./pages/Rozliczenia";
 import Sprzedawca from "./pages/Sprzedawca";
-import SprzedawcaStart from "./pages/SprzedawcaStart";
+import SellerHome from "./pages/SellerHome";
 import SprzedawcaWystaw from "./pages/SprzedawcaWystaw";
 import TradePartnerActivate from "./pages/TradePartnerActivate";
+import PartnerDashboard from "./pages/PartnerDashboard";
 import SellerOffersManage from "./pages/SellerOffersManage";
 import SellerOfferEdit from "./pages/SellerOfferEdit";
 import SellerOrders from "./pages/SellerOrders";
@@ -122,8 +123,9 @@ ReactDOM.createRoot(document.getElementById("root")!).render(
         <Route path="/operator/refundy-rezerwacji" element={<OperatorBookingRefundExceptions />} />
         <Route path="/portfel" element={<Portfel />} />
         <Route path="/konto" element={<Konto />} />
-        <Route path="/sprzedawca" element={<SprzedawcaStart />} />
+        <Route path="/sprzedawca" element={<SellerHome />} />
         <Route path="/sprzedawca/partner" element={<TradePartnerActivate />} />
+        <Route path="/sprzedawca/partner/pulpit" element={<PartnerDashboard />} />
         <Route path="/sprzedawca/oferty" element={<SellerOffersManage />} />
         <Route path="/sprzedawca/oferty/:offerId/edytuj" element={<SellerOfferEdit />} />
         <Route path="/sprzedawca/zamowienia" element={<SellerOrders />} />
