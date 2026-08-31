@@ -12,9 +12,9 @@ test('seller payout includes booking fees stored in line_gross', () => {
   assert.match(migration, /apply_stripe_seller_fee/);
 });
 
-test('rental deposit is explicitly separate from online payment and cashback', () => {
-  assert.match(modal, /Kaucja zabezpieczająca · rozliczana osobno/);
-  assert.match(modal, /Do zapłaty online/);
-  assert.match(modal, /nie jest pobierana w tej płatności online/);
-  assert.match(modal, /nie podlega cashbackowi/);
+test('rental deposit is included in payment but excluded from cashback and commissions', () => {
+  assert.match(modal, /const paymentTotal = total \+ deposit/);
+  assert.match(modal, /Kaucja zabezpieczająca/);
+  assert.match(modal, /jest wliczona w kwotę płatności/);
+  assert.match(modal, /Nie podlega cashbackowi ani prowizjom/);
 });
