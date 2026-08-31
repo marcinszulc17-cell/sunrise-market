@@ -1,8 +1,8 @@
--- Prevent the seller settlement retry job from paying a booking while its full refund is in progress.
+-- Prevent seller payout and a full booking refund from running concurrently.
 
 alter table market.seller_settlements drop constraint if exists seller_settlements_status_check;
 alter table market.seller_settlements add constraint seller_settlements_status_check
-  check (status = any(array['scheduled'::text,'pending'::text,'settled'::text,'failed'::text,'refund_pending'::text,'cancelled'::text]));
+  check (status = any(array['scheduled'::text,'pending'::text,'processing'::text,'settled'::text,'failed'::text,'refund_pending'::text,'cancelled'::text]));
 
 create or replace function market.seller_booking_refund_prepare(p_booking uuid)
 returns table(
@@ -40,6 +40,9 @@ begin
 
   if exists(select 1 from market.seller_settlements s where s.order_id=o.id and s.status='settled') then
     raise exception 'Wypłata sprzedawcy została już rozliczona — wymagane rozliczenie operatora';
+  end if;
+  if exists(select 1 from market.seller_settlements s where s.order_id=o.id and s.status='processing') then
+    raise exception 'Wypłata sprzedawcy jest właśnie przetwarzana — spróbuj anulować rezerwację ponownie po zakończeniu rozliczenia';
   end if;
 
   if coalesce(v.deposit_gross,0)>0 and coalesce(v.deposit_status,'not_charged') not in ('held','not_charged') then
