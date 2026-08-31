@@ -20,8 +20,8 @@ begin
 
   select array_agg(distinct x) into v_ids
   from unnest(p_targets) x
-  where x is not null;
-  if v_ids is null or cardinality(v_ids)=0 then raise exception 'Wybierz co najmniej jeden zasób docelowy'; end if;
+  where x is not null and x<>p_source;
+  if v_ids is null or cardinality(v_ids)=0 then raise exception 'Zaznacz co najmniej jeden inny zasób docelowy'; end if;
 
   if exists(
     select 1 from unnest(v_ids) x
@@ -35,8 +35,7 @@ begin
   insert into market.booking_resource_availability(resource_id,weekday,starts_at,ends_at)
   select target.id,a.weekday,a.starts_at,a.ends_at
   from unnest(v_ids) target(id)
-  join market.booking_resource_availability a on a.resource_id=p_source
-  where target.id<>p_source;
+  join market.booking_resource_availability a on a.resource_id=p_source;
 
   return cardinality(v_ids);
 end;
