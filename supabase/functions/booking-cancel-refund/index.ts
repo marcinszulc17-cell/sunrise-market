@@ -93,6 +93,13 @@ Deno.serve(async (req) => {
     }
     bonusesReversed = true;
 
+    const { error: reversalStateError } = await service.from("booking_refunds").update({
+      status: "bonuses_reversed",
+      last_error: null,
+      updated_at: new Date().toISOString(),
+    }).eq("booking_id", bookingId);
+    if (reversalStateError) throw reversalStateError;
+
     const amount = Number(row.amount_gross ?? 0);
     const amountGrosz = Math.round(amount * 100);
     if (amountGrosz <= 0) throw new Error("Nieprawidłowa kwota zwrotu");
