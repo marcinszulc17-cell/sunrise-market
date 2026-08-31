@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
 import { getOffer } from "../lib/api";
 import Product from "./Product";
+import PrivateProduct from "./PrivateProduct";
 import SpecializedProduct from "./SpecializedProduct";
 import VerifyOfferButton from "../components/VerifyOfferButton";
 import BuyerOfferActions from "../components/BuyerOfferActions";
@@ -11,10 +12,11 @@ import { useProductJsonLd, useSeo } from "../lib/seo";
 
 type SeoOffer={offer_id:string;title:string;description?:string|null;price_gross:number;image_url?:string|null;rating?:number;reviews?:number;category?:string};
 type PurchaseMode="purchase"|"appointment"|"daily";
+type ProductKind="generic"|"special"|"private";
 
 export default function ProductRouter() {
   const { id } = useParams();
-  const [kind, setKind] = useState<"generic" | "special" | null>(null);
+  const [kind, setKind] = useState<ProductKind | null>(null);
   const [verifyKind,setVerifyKind]=useState<"vehicle"|"property"|null>(null);
   const [categorySlug,setCategorySlug]=useState("");
   const [priceGross,setPriceGross]=useState<number|null>(null);
@@ -25,14 +27,15 @@ export default function ProductRouter() {
     if (!id) return;
     getOffer(id).then((o: any) => {
       const slug = String(o?.category_slug || "");
+      const isPrivate = o?.attributes?.private_listing === true || o?.attributes?.buy_now_only === true;
       const special = slug.includes("motoryzacja-samochody-osobowe") || slug.startsWith("nieruchomosci-") || slug.startsWith("uslugi-") || slug.startsWith("ogloszenia-lokalne-");
       const rawMode=String(o?.attributes?.purchase_mode||"purchase");
       setPurchaseMode(rawMode==="appointment"||rawMode==="daily"?rawMode:"purchase");
       setCategorySlug(slug);
       const p=Number(o?.price_gross ?? o?.price ?? 0); setPriceGross(Number.isFinite(p)&&p>0?p:null);
       setSeoOffer(o as SeoOffer);
-      setKind(special ? "special" : "generic");
-      setVerifyKind(slug.includes("motoryzacja-samochody-osobowe")?"vehicle":slug.startsWith("nieruchomosci-")?"property":null);
+      setKind(isPrivate ? "private" : special ? "special" : "generic");
+      setVerifyKind(isPrivate?null:slug.includes("motoryzacja-samochody-osobowe")?"vehicle":slug.startsWith("nieruchomosci-")?"property":null);
     }).catch(() => setKind("generic"));
   }, [id]);
 
@@ -41,6 +44,7 @@ export default function ProductRouter() {
   useProductJsonLd(seoOffer&&id?{id,name:seoOffer.title,price:Number(seoOffer.price_gross||0),image:seoOffer.image_url||null,rating:Number(seoOffer.rating||0),reviews:Number(seoOffer.reviews||0)}:null);
 
   if (kind === null) return <main className="min-h-screen px-4 py-10" style={{ background: "var(--bg)", color: "var(--mut)" }}>Ładowanie…</main>;
+  if (kind === "private") return <><PrivateProduct /><MarketFooter /></>;
   return <>
     {kind === "special" ? <SpecializedProduct /> : <Product />}
     {id && <ProductPageExtras offerId={id} verifyKind={verifyKind} />}
