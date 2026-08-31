@@ -19,10 +19,24 @@ function interactionFor(slug:string):Interaction {
   return {type:"contact",label:"Zapytaj sprzedawcę",title:"Skontaktuj się ze sprzedawcą",needsDate:false,icon:"✉️"};
 }
 
+function bookingActionLabel(mode:PurchaseMode,slug:string){
+  const s=slug.toLowerCase();
+  if(mode==="daily"){
+    if(s.startsWith("nieruchomosci-")||s.includes("hotel")||s.includes("nocleg")||s.includes("apartament")) return "🏠 Zarezerwuj pobyt";
+    if(s.includes("motoryzacja")||s.includes("samochod")||s.includes("pojazd")) return "🚗 Zarezerwuj pojazd";
+    return "🗓️ Wybierz daty";
+  }
+  if(mode==="appointment"){
+    if(s.startsWith("uslugi-")||s.includes("serwis")||s.includes("beauty")||s.includes("zdrow")) return "📅 Umów usługę";
+    return "📅 Wybierz termin";
+  }
+  return "";
+}
+
 export default function BuyerOfferActions({ offerId, categorySlug="", purchaseMode="purchase" }: Props) {
   const action=useMemo(()=>interactionFor(categorySlug),[categorySlug]);
   const isBooking=purchaseMode==="appointment"||purchaseMode==="daily";
-  const bookingLabel=purchaseMode==="daily"?"🗓️ Wybierz daty":"📅 Wybierz termin";
+  const bookingLabel=bookingActionLabel(purchaseMode,categorySlug);
   const [watched, setWatched] = useState(false);
   const [compare, setCompare] = useState(false);
   const [busy, setBusy] = useState(false);
