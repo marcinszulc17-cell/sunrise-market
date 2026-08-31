@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { checkoutBooking, type BookingConfig } from "../lib/api";
 import {
   bookingAvailableSlotsV2,
@@ -181,12 +181,12 @@ export default function BookingPurchaseModal({ offerId, config, open, onClose }:
           {activeConfig.booking_type === "appointment" ? <>
             {catalog?.services?.length ? <section>
               <StepTitle n={1} title="Wybierz usługę" />
-              <div className="grid gap-3 sm:grid-cols-2">{catalog.services.map((s) => <button key={s.id} type="button" onClick={() => { setServiceId(s.id); setSelected(null); }} className="rounded-2xl p-4 text-left" style={{ border: serviceId === s.id ? "1px solid var(--gold)" : "1px solid var(--line)", background: serviceId === s.id ? "rgba(200,150,90,.12)" : "var(--glass)" }}><div className="flex justify-between gap-3"><div><b>{s.name}</b><div className="mt-1 text-xs" style={{ color: "var(--mut)" }}>{s.duration_minutes} min{s.description ? ` · ${s.description}` : ""}</div></div><b style={{ color: "var(--gold)" }}>{zl(s.price_gross)}</b></div></button>)}</div>
+              <div className="mt-3 grid gap-3 sm:grid-cols-2">{catalog.services.map((s) => <button key={s.id} type="button" onClick={() => { setServiceId(s.id); setSelected(null); }} className="rounded-2xl p-4 text-left" style={{ border: serviceId === s.id ? "1px solid var(--gold)" : "1px solid var(--line)", background: serviceId === s.id ? "rgba(200,150,90,.12)" : "var(--glass)" }}><div className="flex justify-between gap-3"><div><b>{s.name}</b><div className="mt-1 text-xs" style={{ color: "var(--mut)" }}>{s.duration_minutes} min{s.description ? ` · ${s.description}` : ""}</div></div><b style={{ color: "var(--gold)" }}>{zl(s.price_gross)}</b></div></button>)}</div>
             </section> : null}
 
             {catalog?.resources?.length ? <section>
               <StepTitle n={catalog?.services?.length ? 2 : 1} title="Wybierz pracownika lub zasób" optional />
-              <div className="flex flex-wrap gap-2">
+              <div className="mt-3 flex flex-wrap gap-2">
                 <button type="button" onClick={() => { setResourceId(null); setSelected(null); }} className="rounded-xl px-3 py-2 text-sm font-medium" style={{ border: !resourceId ? "1px solid var(--gold)" : "1px solid var(--line)", background: !resourceId ? "rgba(200,150,90,.10)" : "var(--glass)" }}>⚡ Dowolny dostępny</button>
                 {catalog.resources.map((r) => <button key={r.id} type="button" onClick={() => { setResourceId(r.id); setSelected(null); }} className="rounded-xl px-3 py-2 text-sm font-medium" style={{ border: resourceId === r.id ? "1px solid var(--gold)" : "1px solid var(--line)", background: resourceId === r.id ? "rgba(200,150,90,.10)" : "var(--glass)" }}>{r.kind === "staff" ? "👤" : "◉"} {r.name}</button>)}
               </div>
@@ -206,7 +206,7 @@ export default function BookingPurchaseModal({ offerId, config, open, onClose }:
             </section>
           </> : <section>
             <StepTitle n={1} title="Wybierz okres" />
-            <div className="grid gap-4 sm:grid-cols-2">
+            <div className="mt-3 grid gap-4 sm:grid-cols-2">
               <label className="text-sm"><span className="mb-2 block font-medium">Od</span><input type="date" min={today} max={latest} value={fromDay} onChange={(e) => { setFromDay(e.target.value); if (toDay && e.target.value >= toDay) setToDay(""); }} className="w-full rounded-2xl px-4 py-3" style={{ background: "var(--glass)", border: "1px solid var(--line)" }} /></label>
               <label className="text-sm"><span className="mb-2 block font-medium">Do</span><input type="date" min={fromDay || today} max={latest} value={toDay} onChange={(e) => setToDay(e.target.value)} className="w-full rounded-2xl px-4 py-3" style={{ background: "var(--glass)", border: "1px solid var(--line)" }} /></label>
             </div>
@@ -216,7 +216,7 @@ export default function BookingPurchaseModal({ offerId, config, open, onClose }:
 
           <section>
             <StepTitle n={activeConfig.booking_type === "appointment" ? 4 : 3} title="Wybierz płatność" />
-            <div className="grid gap-3 sm:grid-cols-2">
+            <div className="mt-3 grid gap-3 sm:grid-cols-2">
               <button type="button" onClick={() => setPayment("wallet")} className="rounded-2xl p-4 text-left" style={{ border: payment === "wallet" ? "1px solid var(--gold)" : "1px solid var(--line)", background: payment === "wallet" ? "rgba(200,150,90,.12)" : "var(--glass)" }}><b>Sunrise Pay</b><div className="mt-1 text-xs" style={{ color: "var(--mut)" }}>Płatność z portfela MySunrise</div></button>
               <button type="button" onClick={() => setPayment("card")} className="rounded-2xl p-4 text-left" style={{ border: payment === "card" ? "1px solid var(--gold)" : "1px solid var(--line)", background: payment === "card" ? "rgba(200,150,90,.12)" : "var(--glass)" }}><b>Karta / BLIK / P24</b><div className="mt-1 text-xs" style={{ color: "var(--mut)" }}>Bezpieczna płatność online</div></button>
             </div>
@@ -255,7 +255,7 @@ export default function BookingPurchaseModal({ offerId, config, open, onClose }:
 function StepTitle({ n, title, optional }: { n: number; title: string; optional?: boolean }) {
   return <div className="flex items-center gap-3"><span className="grid h-7 w-7 place-items-center rounded-full text-xs font-bold text-black" style={{ background: "var(--gold)" }}>{n}</span><div className="font-semibold">{title}{optional && <span className="ml-2 text-xs font-normal" style={{ color: "var(--mut)" }}>(opcjonalnie)</span>}</div></div>;
 }
-function Info({ children }: { children: React.ReactNode }) {
+function Info({ children }: { children: ReactNode }) {
   return <div className="rounded-2xl p-5 text-sm" style={{ background: "var(--glass)", border: "1px solid var(--line)", color: "var(--mut)" }}>{children}</div>;
 }
 function PriceRow({ label, value, strong, muted }: { label: string; value: number; strong?: boolean; muted?: boolean }) {
