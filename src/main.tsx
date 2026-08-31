@@ -27,6 +27,7 @@ import Zamowienia from "./pages/Zamowienia";
 import Cennik from "./pages/Cennik";
 import Operator from "./pages/Operator";
 import OperatorVerify from "./pages/OperatorVerify";
+import OperatorBookingRefundExceptions from "./pages/OperatorBookingRefundExceptions";
 import Konto from "./pages/Konto";
 import Rezerwacje from "./pages/Rezerwacje";
 import PwaInstallPrompt from "./components/PwaInstallPrompt";
@@ -104,6 +105,7 @@ ReactDOM.createRoot(document.getElementById("root")!).render(
         <Route path="/cennik" element={<Cennik />} />
         <Route path="/operator" element={<Operator />} />
         <Route path="/operator/verify" element={<OperatorVerify />} />
+        <Route path="/operator/refundy-rezerwacji" element={<OperatorBookingRefundExceptions />} />
         <Route path="/portfel" element={<Portfel />} />
         <Route path="/konto" element={<Konto />} />
         <Route path="/sprzedawca" element={<SprzedawcaStart />} />
