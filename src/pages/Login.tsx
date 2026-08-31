@@ -17,6 +17,18 @@ async function attributeRef(): Promise<void> {
   } catch { /* nie blokuj logowania */ }
 }
 
+// Po udanym logowaniu Market dopina brakujące konto MySunrise. Funkcja Edge
+// rozpoznaje użytkownika po JWT Marketu, więc frontend nie przekazuje e-maila
+// jako źródła tożsamości. Błąd mostu nie może blokować wejścia do Marketu.
+async function ensureMySunriseAccount(password: string): Promise<void> {
+  try {
+    const { data, error } = await supabase.functions.invoke("sso-register", { body: { password } });
+    if (error || !data?.ok) console.warn("MySunrise account link skipped", error ?? data?.error);
+  } catch (error) {
+    console.warn("MySunrise account link unavailable", error);
+  }
+}
+
 export default function Login() {
   const [mode, setMode] = useState<"login" | "register">("login");
   const [email, setEmail] = useState("");
@@ -43,9 +55,9 @@ export default function Login() {
           }
           throw error;
         }
-        try { await supabase.functions.invoke("sso-register", { body: { email, password } }); } catch { /* nie blokuj rejestracji Marketu */ }
         const { error: signErr } = await supabase.auth.signInWithPassword({ email, password });
         if (signErr) { setMsg("Konto utworzone. Możesz się teraz zalogować."); setMode("login"); return; }
+        await ensureMySunriseAccount(password);
         await attributeRef();
         window.location.href = nextTarget();
       } else {
@@ -61,6 +73,7 @@ export default function Login() {
           if (/not confirmed/i.test(error.message)) throw new Error("Konto wymaga potwierdzenia e-mail. Napisz do nas — aktywujemy je od ręki.");
           throw error;
         }
+        await ensureMySunriseAccount(password);
         await attributeRef();
         window.location.href = nextTarget();
       }

@@ -107,7 +107,12 @@ export default function Portfel() {
 
       {!linked && (
         <div className="mb-4 rounded-xl px-4 py-3 text-sm" style={{ background: "rgba(56,224,240,.1)", color: "#8fe3ef", border: "1px solid rgba(56,224,240,.22)" }}>
-          Nie udało się połączyć tego konta z portfelem MySunrise. Zaloguj się w MySunrise na ten sam e-mail lub aktywuj Sunrise Pay.
+          <div className="font-semibold">Portfel nie jest jeszcze połączony z tym kontem.</div>
+          <div className="mt-1">Wyloguj się z Sunrise Market i zaloguj ponownie tym samym adresem e-mail. Przy logowaniu konto MySunrise zostanie automatycznie dopięte. Jeśli komunikat pozostanie, otwórz MySunrise i sprawdź ten sam adres e-mail.</div>
+          <div className="mt-3 flex flex-wrap gap-2">
+            <a href="/login" className="rounded-lg px-3 py-1.5 font-semibold text-black" style={{ background: "linear-gradient(135deg,#E8C896,#C8965A)" }}>Przejdź do logowania</a>
+            <a href={MYSUNRISE_URL} target="_blank" rel="noopener" className="rounded-lg px-3 py-1.5" style={{ border: "1px solid rgba(56,224,240,.3)" }}>Otwórz MySunrise</a>
+          </div>
         </div>
       )}
       {msg && <div className="mb-4 rounded-xl px-4 py-3 text-sm" style={{ background: "rgba(200,150,90,.12)", color: "var(--gold)" }}>{msg}</div>}
