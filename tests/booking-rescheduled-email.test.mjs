@@ -25,6 +25,12 @@ test('rescheduled email event is allowed and repeatable through event_key', () =
   assert.match(migration, /'resource_name',v_resource_name/);
 });
 
+test('migration replays safely after the temporary PR 82 event-key model', () => {
+  assert.match(migration, /where event_key is null or event_key='default'/i);
+  assert.match(migration, /drop constraint if exists booking_mail_outbox_booking_event_recipient_event_key_key/i);
+  assert.match(migration, /alter column event_key drop default/i);
+});
+
 test('booking mail helpers stay internal and use one canonical trigger', () => {
   assert.match(migration, /revoke all on function market\.enqueue_booking_emails\(uuid,text\) from public/);
   assert.match(migration, /revoke execute on function market\.enqueue_booking_emails\(uuid,text\) from anon,authenticated/);
