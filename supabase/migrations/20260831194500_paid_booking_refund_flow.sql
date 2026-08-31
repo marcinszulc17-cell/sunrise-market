@@ -19,6 +19,10 @@ alter table market.ambassador_commission_outbox drop constraint if exists ambass
 alter table market.ambassador_commission_outbox add constraint ambassador_commission_outbox_status_check
   check (status = any (array['ready'::text,'pending_vat'::text,'pending_identity'::text,'sent'::text,'failed'::text,'reversed'::text]));
 
+alter table market.seller_settlements drop constraint if exists seller_settlements_status_check;
+alter table market.seller_settlements add constraint seller_settlements_status_check
+  check (status = any (array['scheduled'::text,'pending'::text,'settled'::text,'failed'::text,'cancelled'::text]));
+
 create or replace function market.seller_booking_set_status(p_booking uuid, p_status text)
 returns text
 language plpgsql
@@ -145,7 +149,7 @@ begin
   update market.seller_settlements set status='cancelled',last_error='Anulowana opłacona rezerwacja — zwrot klientowi',updated_at=now()
     where order_id=r.order_id and status<>'settled';
   update market.ambassador_commission_outbox set status='reversed',updated_at=now()
-    where order_id=r.order_id and status in ('sent','failed','pending_vat','pending_identity');
+    where order_id=r.order_id and status in ('ready','sent','failed','pending_vat','pending_identity');
 
   update market.booking_refunds set status='refunded',external_ref=p_external_ref,last_error=null,refunded_at=now(),updated_at=now() where booking_id=p_booking;
   return jsonb_build_object('ok',true,'order_id',r.order_id,'amount_gross',r.amount_gross);
