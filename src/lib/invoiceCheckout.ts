@@ -1,4 +1,5 @@
 import { supabase } from "./supabase";
+import { refreshCustomerAccess } from "./customerAccess";
 
 export type InvoiceDetails = {
   requested: boolean;
@@ -45,6 +46,9 @@ export function normalizedInvoice(invoice: InvoiceDetails) {
 }
 
 export async function checkoutWithInvoice(body: Record<string, unknown>, invoice: InvoiceDetails) {
+  // MySunrise is the identity hub. Always refresh eligibility immediately before money flow.
+  await refreshCustomerAccess();
+
   const { data, error } = await supabase.functions.invoke("checkout", {
     body: { ...body, invoice: normalizedInvoice(invoice) },
   });
