@@ -6,6 +6,8 @@ import { zl } from "../lib/money";
 
 type Item = { offer_id: string; title: string; qty: number; price: number };
 type Order = { order_id: string; status: string; total: number; cashback: number; created_at: string; shipping_method: string | null; tracking_no: string | null; invoice: InvoiceSnapshot; items: Item[] };
+type TimelineEvent = { event_type: string; details: Record<string, unknown>; created_at: string };
+type ItemTimeline = { task_id: string; offer_id: string; title: string; task_status: string; tracking_no: string | null; events: TimelineEvent[] };
 
 const statusLabel: Record<string, string> = {
   created: "Utworzone", paid: "Opłacone", shipped: "Wysłane",
@@ -15,11 +17,21 @@ const statusColor: Record<string, string> = {
   paid: "var(--green)", shipped: "#38E0F0", delivered: "#7AB89A", completed: "#7AB89A",
   cancelled: "#F25CB0", disputed: "#F25CB0",
 };
+const eventLabel: Record<string, { icon: string; label: string }> = {
+  paid: { icon: "💳", label: "Płatność potwierdzona" },
+  seller_seen: { icon: "👀", label: "Sprzedający zobaczył zamówienie" },
+  shipped: { icon: "📦", label: "Sprzedający oznaczył jako wysłane" },
+  handed_over: { icon: "🤝", label: "Sprzedający potwierdził przekazanie" },
+  buyer_notified: { icon: "🔔", label: "Wysłaliśmy Ci powiadomienie" },
+};
 
 export default function Zamowienia() {
   const [authed, setAuthed] = useState<boolean | null>(null);
   const [orders, setOrders] = useState<Order[]>([]);
   const [returns, setReturns] = useState<Record<string, string>>({});
+  const [openTimeline, setOpenTimeline] = useState<string | null>(null);
+  const [timelines, setTimelines] = useState<Record<string, ItemTimeline[]>>({});
+  const [timelineLoading, setTimelineLoading] = useState<string | null>(null);
 
   async function load() {
     setOrders((await myOrders()) as Order[]);
@@ -39,6 +51,16 @@ export default function Zamowienia() {
     if (reason === null) return;
     try { await openReturn(id, reason); await load(); } catch (e) { alert((e as Error).message); }
   }
+  async function toggleTimeline(orderId: string) {
+    if (openTimeline === orderId) { setOpenTimeline(null); return; }
+    setOpenTimeline(orderId);
+    if (timelines[orderId]) return;
+    setTimelineLoading(orderId);
+    const { data, error } = await supabase.rpc("my_order_item_timelines", { p_order: orderId });
+    if (!error) setTimelines(prev => ({ ...prev, [orderId]: (data ?? []) as ItemTimeline[] }));
+    setTimelineLoading(null);
+  }
+
   const retLabel: Record<string, string> = { requested: "Zwrot: w trakcie", approved: "Zwrot: zaakceptowany", refunded: "Zwrot: zwrócono na portfel", rejected: "Zwrot: odrzucony" };
 
   return (
@@ -62,8 +84,9 @@ export default function Zamowienia() {
         {authed && orders.length === 0 && <p style={{ color: "var(--mut)" }}>Brak zamówień. <a href="/" className="text-amber-400 underline">Zacznij zakupy</a>.</p>}
 
         <div className="flex flex-col gap-4">
-          {orders.map((o) => (
-            <div key={o.order_id} className="rounded-2xl p-5" style={{ background: "var(--glass)", border: "1px solid var(--line)" }}>
+          {orders.map((o) => {
+            const orderTimelines = timelines[o.order_id] ?? [];
+            return <div key={o.order_id} className="rounded-2xl p-5" style={{ background: "var(--glass)", border: "1px solid var(--line)" }}>
               <div className="flex items-center justify-between mb-3">
                 <div className="text-sm" style={{ color: "var(--mut)" }}>
                   {new Date(o.created_at).toLocaleString("pl-PL")} · nr {o.order_id.slice(0, 8)}
@@ -96,12 +119,45 @@ export default function Zamowienia() {
                 : (["paid", "shipped", "delivered"].includes(o.status) &&
                     <button onClick={() => onReturn(o.order_id)} className="mb-3 text-sm px-4 py-2 rounded-xl"
                             style={{ background: "var(--glass)", border: "1px solid var(--line)" }}>Zwróć / reklamuj</button>)}
+
+              <div className="mb-3 border-t pt-3" style={{ borderColor: "var(--line)" }}>
+                <button onClick={() => toggleTimeline(o.order_id)} className="text-sm font-semibold" style={{ color: "var(--gold)" }}>
+                  {openTimeline === o.order_id ? "Ukryj przebieg zamówienia" : "Przebieg zamówienia"} →
+                </button>
+                {openTimeline === o.order_id && <div className="mt-4">
+                  {timelineLoading === o.order_id ? <div className="text-sm" style={{ color: "var(--mut)" }}>Ładowanie przebiegu…</div> : orderTimelines.length === 0 ? <div className="text-sm" style={{ color: "var(--mut)" }}>Dla tego zamówienia nie ma jeszcze szczegółowej historii realizacji.</div> : <div className="space-y-4">
+                    {orderTimelines.map((tl) => <div key={tl.task_id} className="rounded-xl p-4" style={{ background: "var(--header)", border: "1px solid var(--line)" }}>
+                      <div className="flex flex-wrap items-start justify-between gap-2">
+                        <div>
+                          <a href={`/produkt/${tl.offer_id}`} className="font-semibold hover:text-amber-300">{tl.title}</a>
+                          <div className="mt-0.5 text-xs" style={{ color: "var(--mut)" }}>{tl.task_status === "shipped" ? "Wysłane" : tl.task_status === "handed_over" ? "Przekazane" : "W realizacji"}</div>
+                        </div>
+                        {tl.tracking_no && <div className="text-xs" style={{ color: "var(--mut)" }}>Nr przesyłki: <b style={{ color: "var(--ink)" }}>{tl.tracking_no}</b></div>}
+                      </div>
+                      <div className="mt-4 space-y-3">
+                        {(tl.events ?? []).map((event, idx) => {
+                          const meta = eventLabel[event.event_type] ?? { icon: "•", label: event.event_type };
+                          const trackingNo = typeof event.details?.tracking_no === "string" ? event.details.tracking_no : null;
+                          return <div key={`${event.event_type}-${event.created_at}-${idx}`} className="flex gap-3">
+                            <div className="grid h-8 w-8 shrink-0 place-items-center rounded-full" style={{ background: "var(--glass)", border: "1px solid var(--line)" }}>{meta.icon}</div>
+                            <div className="min-w-0 flex-1 border-b pb-3" style={{ borderColor: "var(--line)" }}>
+                              <div className="text-sm font-medium">{meta.label}</div>
+                              <div className="mt-0.5 text-xs" style={{ color: "var(--mut)" }}>{new Date(event.created_at).toLocaleString("pl-PL")}{trackingNo ? ` · nr przesyłki ${trackingNo}` : ""}</div>
+                            </div>
+                          </div>;
+                        })}
+                      </div>
+                    </div>)}
+                  </div>}
+                </div>}
+              </div>
+
               <div className="flex justify-between items-center pt-3" style={{ borderTop: "1px solid var(--line)" }}>
                 <span className="text-xs" style={{ color: "var(--green)" }}>Cashback +{Math.round(o.cashback).toLocaleString("pl-PL")} pkt</span>
                 <span className="font-display text-xl font-semibold">{zl(o.total)}</span>
               </div>
-            </div>
-          ))}
+            </div>;
+          })}
         </div>
       </main>
     </div>
