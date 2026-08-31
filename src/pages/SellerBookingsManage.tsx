@@ -35,6 +35,21 @@ type Block = { id: string; offer_id: string; title: string; starts_at: string; e
 type Offer = { offer_id: string; title: string; status: string };
 type Resource = { id: string; name: string; kind: string; description: string | null; active: boolean };
 type EligibleResource = { id: string; name: string; kind: string; description: string | null };
+type ReschedulePricePreview = {
+  booking_id: string;
+  price_locked: boolean;
+  paid: boolean;
+  locked_base_amount_gross: number;
+  locked_fees_gross: number;
+  locked_deposit_gross: number;
+  locked_amount_gross: number;
+  reference_base_amount_gross: number;
+  reference_fees_gross: number;
+  reference_deposit_gross: number;
+  reference_amount_gross: number;
+  difference_gross: number;
+  policy: string;
+};
 
 const pln = (v: number) => Number(v || 0).toLocaleString("pl-PL", { style: "currency", currency: "PLN" });
 const dt = (iso: string, time = true) => new Date(iso).toLocaleString("pl-PL", time ? { dateStyle: "medium", timeStyle: "short" } : { dateStyle: "medium" });
@@ -72,6 +87,9 @@ export default function SellerBookingsManage() {
   const [rescheduleBusy, setRescheduleBusy] = useState(false);
   const [eligibleResources, setEligibleResources] = useState<EligibleResource[]>([]);
   const [eligibleResourcesLoading, setEligibleResourcesLoading] = useState(false);
+  const [pricePreview, setPricePreview] = useState<ReschedulePricePreview | null>(null);
+  const [pricePreviewLoading, setPricePreviewLoading] = useState(false);
+  const [pricePreviewError, setPricePreviewError] = useState("");
 
   async function load() {
     setLoading(true);
@@ -108,12 +126,41 @@ export default function SellerBookingsManage() {
     setBusy(false);
   }
 
+  function previewStartIso(r: Booking, value: string) {
+    if (!value) return null;
+    const date = r.booking_type === "daily" ? new Date(`${value}T12:00:00`) : new Date(value);
+    if (Number.isNaN(date.getTime())) return null;
+    return date.toISOString();
+  }
+
+  async function loadPricePreview(r: Booking, value: string) {
+    const startsAt = previewStartIso(r, value);
+    if (!startsAt) { setPricePreview(null); setPricePreviewError(""); return; }
+    setPricePreviewLoading(true);
+    setPricePreviewError("");
+    const { data, error } = await supabase.rpc("seller_booking_reschedule_price_preview", {
+      p_booking: r.id,
+      p_starts_at: startsAt,
+    });
+    if (error) {
+      setPricePreview(null);
+      setPricePreviewError(error.message);
+    } else {
+      setPricePreview(((data || []) as ReschedulePricePreview[])[0] || null);
+    }
+    setPricePreviewLoading(false);
+  }
+
   async function openReschedule(r: Booking) {
+    const initialValue = r.booking_type === "daily" ? localDate(new Date(r.starts_at)) : localInput(new Date(r.starts_at));
     setRescheduleId(r.id);
-    setRescheduleValue(r.booking_type === "daily" ? localDate(new Date(r.starts_at)) : localInput(new Date(r.starts_at)));
+    setRescheduleValue(initialValue);
     setMoveResourceId("");
     setEligibleResources([]);
+    setPricePreview(null);
+    setPricePreviewError("");
     setMsg("");
+    void loadPricePreview(r, initialValue);
     if (r.booking_type !== "appointment") return;
 
     setEligibleResourcesLoading(true);
@@ -128,13 +175,22 @@ export default function SellerBookingsManage() {
     setEligibleResourcesLoading(false);
   }
 
+  function closeReschedule() {
+    setRescheduleId(null);
+    setRescheduleValue("");
+    setMoveResourceId("");
+    setEligibleResources([]);
+    setPricePreview(null);
+    setPricePreviewError("");
+  }
+
   async function runReschedule(r: Booking, startValue: string) {
     setRescheduleBusy(true); setMsg("");
     try {
       const { error } = await supabase.rpc("seller_booking_reschedule", { p_booking: r.id, p_starts_at: startValue });
       if (error) throw error;
-      setRescheduleId(null); setRescheduleValue(""); setMoveResourceId(""); setEligibleResources([]);
-      setMsg("Termin zmieniony ✅ System sprawdził kolizje, a klient otrzyma powiadomienie w aplikacji/push.");
+      closeReschedule();
+      setMsg("Termin zmieniony ✅ System sprawdził kolizje, a klient otrzyma powiadomienie w aplikacji/push i e-mail.");
       await load();
       return true;
     } catch (e) {
@@ -156,8 +212,8 @@ export default function SellerBookingsManage() {
       });
       if (error) throw error;
       const target = eligibleResources.find((x) => x.id === resourceId) || resources.find((x) => x.id === resourceId);
-      setRescheduleId(null); setRescheduleValue(""); setMoveResourceId(""); setEligibleResources([]);
-      setMsg(`Wizyta przeniesiona ✅ ${target ? `Nowy zasób: ${target.name}. ` : ""}System sprawdził usługę, grafik, dostępność i kolizje.`);
+      closeReschedule();
+      setMsg(`Wizyta przeniesiona ✅ ${target ? `Nowy zasób: ${target.name}. ` : ""}System sprawdził usługę, grafik, dostępność i kolizje. Klient otrzyma powiadomienie także e-mailem.`);
       await load();
       return true;
     } catch (e) {
@@ -275,6 +331,7 @@ export default function SellerBookingsManage() {
             {visible.map((r) => {
               const durationMinutes = Math.max(1, Math.round((new Date(r.ends_at).getTime() - new Date(r.starts_at).getTime()) / 60000));
               const previewEnd = r.booking_type === "daily" && rescheduleId === r.id && rescheduleValue ? addDays(new Date(`${rescheduleValue}T12:00:00`), r.units) : null;
+              const priceDifference = Number(pricePreview?.difference_gross || 0);
               return <article id={`booking-${r.id}`} key={r.id} className="scroll-mt-24 rounded-2xl p-5" style={{ background: "var(--glass)", border: "1px solid var(--line)" }}>
                 <div className="flex flex-wrap items-start justify-between gap-4">
                   <div>
@@ -302,7 +359,7 @@ export default function SellerBookingsManage() {
 
                 {r.status === "confirmed" && rescheduleId === r.id && <div className="mt-4 rounded-2xl p-4" style={{ background: "rgba(200,150,90,.07)", border: "1px solid rgba(200,150,90,.25)" }}>
                   <div className="font-semibold">Przenieś rezerwację</div>
-                  <div className="mt-1 text-xs" style={{ color: "var(--mut)" }}>{r.booking_type === "daily" ? `Okres: ${r.units} dni.` : `Czas: ${durationMinutes} min.`} Cena {pln(r.amount_gross)} się nie zmienia.</div>
+                  <div className="mt-1 text-xs" style={{ color: "var(--mut)" }}>{r.booking_type === "daily" ? `Okres: ${r.units} dni.` : `Czas: ${durationMinutes} min.`} Cena rezerwacji {pln(r.amount_gross)} jest zablokowana od momentu zakupu.</div>
 
                   {r.booking_type === "appointment" && <div className="mt-3">
                     <div className="mb-1.5 text-sm" style={{ color: "var(--mut)" }}>Pracownik / zasób</div>
@@ -314,15 +371,32 @@ export default function SellerBookingsManage() {
 
                   <label className="mt-3 block text-sm">
                     <span className="mb-1.5 block" style={{ color: "var(--mut)" }}>{r.booking_type === "daily" ? "Nowa data rozpoczęcia" : "Nowa data i godzina"}</span>
-                    <input type={r.booking_type === "daily" ? "date" : "datetime-local"} value={rescheduleValue} onChange={(e) => setRescheduleValue(e.target.value)} className="w-full rounded-xl px-3 py-2.5" style={{ background: "var(--bg)", border: "1px solid var(--line)", color: "var(--ink)" }} />
+                    <input type={r.booking_type === "daily" ? "date" : "datetime-local"} value={rescheduleValue} onChange={(e) => { const value = e.target.value; setRescheduleValue(value); void loadPricePreview(r, value); }} className="w-full rounded-xl px-3 py-2.5" style={{ background: "var(--bg)", border: "1px solid var(--line)", color: "var(--ink)" }} />
                   </label>
 
                   {previewEnd && <div className="mt-2 text-xs" style={{ color: "var(--mut)" }}>Nowy okres do {previewEnd.toLocaleDateString("pl-PL")}</div>}
                   {r.booking_type === "appointment" && <div className="mt-2 text-xs" style={{ color: "var(--mut)" }}>Lista pokazuje tylko zasoby przypisane do tej oferty i — jeśli usługa ma własne przypisania — tylko zasoby, które ją wykonują. System przed zapisem dodatkowo sprawdzi grafik, przerwy, nieobecności i kolizje.</div>}
 
+                  <div className="mt-3 rounded-2xl p-4" style={{ background: "var(--header)", border: "1px solid var(--line)" }}>
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <div className="font-semibold">🔒 Cena rezerwacji pozostaje zablokowana</div>
+                      <div className="font-semibold" style={{ color: "var(--gold)" }}>{pln(r.amount_gross)}</div>
+                    </div>
+                    {pricePreviewLoading && <div className="mt-2 text-xs" style={{ color: "var(--mut)" }}>Sprawdzam aktualną cenę nowego terminu…</div>}
+                    {!pricePreviewLoading && pricePreview && <div className="mt-3 space-y-2 text-sm">
+                      <div className="flex justify-between gap-3"><span style={{ color: "var(--mut)" }}>Aktualna cena wg cennika dla nowego terminu</span><b>{pln(pricePreview.reference_amount_gross)}</b></div>
+                      <div className="flex justify-between gap-3"><span style={{ color: "var(--mut)" }}>Różnica informacyjna</span><b style={{ color: priceDifference > 0 ? "#f59e0b" : priceDifference < 0 ? "var(--green)" : "var(--mut)" }}>{priceDifference > 0 ? "+" : ""}{pln(priceDifference)}</b></div>
+                      {r.booking_type === "daily" && Number(pricePreview.reference_deposit_gross || 0) !== Number(pricePreview.locked_deposit_gross || 0) && <div className="flex justify-between gap-3 text-xs"><span style={{ color: "var(--mut)" }}>Kaucja: w rezerwacji {pln(pricePreview.locked_deposit_gross)}, obecnie wg ustawień {pln(pricePreview.reference_deposit_gross)}</span><span>bez zmiany</span></div>}
+                      <div className="rounded-xl px-3 py-2.5 text-xs leading-5" style={{ background: "rgba(122,184,154,.08)", border: "1px solid rgba(122,184,154,.20)", color: "var(--mut)" }}>
+                        {pricePreview.paid ? "Rezerwacja jest opłacona. Zmiana terminu nie pobierze dopłaty i nie wykona zwrotu automatycznie — klient zachowuje warunki finansowe z momentu zakupu." : "Ta rezerwacja zachowuje warunki finansowe z momentu utworzenia. Aktualny cennik jest pokazany wyłącznie informacyjnie."}
+                      </div>
+                    </div>}
+                    {!pricePreviewLoading && pricePreviewError && <div className="mt-2 text-xs" style={{ color: "#fca5a5" }}>Nie udało się pobrać ceny referencyjnej: {pricePreviewError}. Nadal możesz zmienić termin — cena rezerwacji pozostanie bez zmian.</div>}
+                  </div>
+
                   <div className="mt-3 grid gap-2 sm:grid-cols-2">
                     <button disabled={rescheduleBusy || eligibleResourcesLoading || !rescheduleValue} onClick={() => reschedule(r)} className="rounded-xl py-2.5 font-semibold text-black disabled:opacity-50" style={{ background: "linear-gradient(135deg,#C8965A,#E8C896)" }}>{rescheduleBusy ? "Sprawdzam termin…" : "Sprawdź i przenieś"}</button>
-                    <button disabled={rescheduleBusy} onClick={() => { setRescheduleId(null); setMoveResourceId(""); setEligibleResources([]); }} className="rounded-xl py-2.5 text-sm font-semibold" style={{ border: "1px solid var(--line)" }}>Anuluj zmianę</button>
+                    <button disabled={rescheduleBusy} onClick={closeReschedule} className="rounded-xl py-2.5 text-sm font-semibold" style={{ border: "1px solid var(--line)" }}>Anuluj zmianę</button>
                   </div>
                 </div>}
               </article>;
