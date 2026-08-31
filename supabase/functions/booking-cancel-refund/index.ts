@@ -47,6 +47,15 @@ async function payCredit(userRef: string, amountGrosz: number, orderId: string, 
   return data;
 }
 
+async function restoreSellerSettlement(service: any, orderId: string) {
+  if (!orderId) return;
+  await service.from("seller_settlements").update({
+    status: "scheduled",
+    last_error: null,
+    updated_at: new Date().toISOString(),
+  }).eq("order_id", orderId).eq("status", "refund_pending");
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: cors });
   if (req.method !== "POST") return json({ ok: false, error: "method_not_allowed" }, 405);
@@ -82,6 +91,7 @@ Deno.serve(async (req) => {
     if (!reversal.ok) {
       const reason = String(reversal.data?.reason ?? reversal.data?.error ?? "bonus_reversal_failed");
       await service.from("booking_refunds").update({ status: reason === "points_already_used" ? "blocked_bonus" : "payment_failed", last_error: reason, updated_at: new Date().toISOString() }).eq("booking_id", bookingId);
+      await restoreSellerSettlement(service, orderId);
       if (reason === "points_already_used") return json({ ok: false, error: "bonus_points_already_used", message: "Nie można automatycznie anulować tej opłaconej rezerwacji, ponieważ część punktów cashback/prowizji została już wykorzystana. Wymagane jest rozliczenie operatora." }, 409);
       throw new Error(`Nie udało się cofnąć bonusów: ${reason}`);
     }
@@ -116,7 +126,10 @@ Deno.serve(async (req) => {
   } catch (error) {
     const message = String((error as Error).message ?? error);
     if (bonusesReversed && !paymentRefunded && orderId) { try { await bridge("restore", orderId); } catch {} }
-    if (!paymentRefunded) await service.from("booking_refunds").update({ status: "payment_failed", last_error: message.slice(0, 1000), updated_at: new Date().toISOString() }).eq("booking_id", bookingId);
+    if (!paymentRefunded) {
+      await restoreSellerSettlement(service, orderId);
+      await service.from("booking_refunds").update({ status: "payment_failed", last_error: message.slice(0, 1000), updated_at: new Date().toISOString() }).eq("booking_id", bookingId);
+    }
     return json({ ok: false, error: message }, 400);
   }
 });
