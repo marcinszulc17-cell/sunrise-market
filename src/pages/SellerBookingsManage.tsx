@@ -34,6 +34,7 @@ type Booking = {
 type Block = { id: string; offer_id: string; title: string; starts_at: string; ends_at: string; reason: string | null };
 type Offer = { offer_id: string; title: string; status: string };
 type Resource = { id: string; name: string; kind: string; description: string | null; active: boolean };
+type EligibleResource = Pick<Resource, "id" | "name" | "kind" | "description">;
 
 const pln = (v: number) => Number(v || 0).toLocaleString("pl-PL", { style: "currency", currency: "PLN" });
 const dt = (iso: string, time = true) => new Date(iso).toLocaleString("pl-PL", time ? { dateStyle: "medium", timeStyle: "short" } : { dateStyle: "medium" });
@@ -68,6 +69,8 @@ export default function SellerBookingsManage() {
   const [rescheduleId, setRescheduleId] = useState<string | null>(null);
   const [rescheduleValue, setRescheduleValue] = useState("");
   const [moveResourceId, setMoveResourceId] = useState("");
+  const [eligibleMoveResources, setEligibleMoveResources] = useState<EligibleResource[]>([]);
+  const [eligibleResourcesLoading, setEligibleResourcesLoading] = useState(false);
   const [rescheduleBusy, setRescheduleBusy] = useState(false);
 
   async function load() {
@@ -105,11 +108,24 @@ export default function SellerBookingsManage() {
     setBusy(false);
   }
 
-  function openReschedule(r: Booking) {
+  async function openReschedule(r: Booking) {
     setRescheduleId(r.id);
     setRescheduleValue(r.booking_type === "daily" ? localDate(new Date(r.starts_at)) : localInput(new Date(r.starts_at)));
-    setMoveResourceId(r.resource_id || "");
+    setMoveResourceId("");
+    setEligibleMoveResources([]);
     setMsg("");
+    if (r.booking_type !== "appointment") return;
+
+    setEligibleResourcesLoading(true);
+    const { data, error } = await supabase.rpc("seller_booking_eligible_resources", { p_booking: r.id });
+    if (error) {
+      setMsg("Nie udało się pobrać zasobów dla tej rezerwacji: " + error.message);
+    } else {
+      const eligible = (data || []) as EligibleResource[];
+      setEligibleMoveResources(eligible);
+      if (r.resource_id && eligible.some((resource) => resource.id === r.resource_id)) setMoveResourceId(r.resource_id);
+    }
+    setEligibleResourcesLoading(false);
   }
 
   async function runReschedule(r: Booking, startValue: string) {
@@ -117,7 +133,7 @@ export default function SellerBookingsManage() {
     try {
       const { error } = await supabase.rpc("seller_booking_reschedule", { p_booking: r.id, p_starts_at: startValue });
       if (error) throw error;
-      setRescheduleId(null); setRescheduleValue(""); setMoveResourceId("");
+      setRescheduleId(null); setRescheduleValue(""); setMoveResourceId(""); setEligibleMoveResources([]);
       setMsg("Termin zmieniony ✅ System sprawdził kolizje, a klient otrzyma powiadomienie w aplikacji/push.");
       await load();
       return true;
@@ -139,8 +155,8 @@ export default function SellerBookingsManage() {
         p_resource: resourceId,
       });
       if (error) throw error;
-      const target = resources.find((x) => x.id === resourceId);
-      setRescheduleId(null); setRescheduleValue(""); setMoveResourceId("");
+      const target = eligibleMoveResources.find((x) => x.id === resourceId) || resources.find((x) => x.id === resourceId);
+      setRescheduleId(null); setRescheduleValue(""); setMoveResourceId(""); setEligibleMoveResources([]);
       setMsg(`Wizyta przeniesiona ✅ ${target ? `Nowy zasób: ${target.name}. ` : ""}System sprawdził usługę, grafik, dostępność i kolizje.`);
       await load();
       return true;
@@ -152,7 +168,7 @@ export default function SellerBookingsManage() {
 
   async function reschedule(r: Booking) {
     if (!rescheduleValue) { setMsg("Wybierz nowy termin rezerwacji."); return; }
-    if (r.booking_type === "appointment" && moveResourceId) {
+    if (r.booking_type === "appointment" && moveResourceId && moveResourceId !== r.resource_id) {
       await moveToResource(r.id, new Date(rescheduleValue), moveResourceId);
       return;
     }
@@ -288,12 +304,13 @@ export default function SellerBookingsManage() {
                   <div className="font-semibold">Przenieś rezerwację</div>
                   <div className="mt-1 text-xs" style={{ color: "var(--mut)" }}>{r.booking_type === "daily" ? `Okres: ${r.units} dni.` : `Czas: ${durationMinutes} min.`} Cena {pln(r.amount_gross)} się nie zmienia.</div>
 
-                  {r.booking_type === "appointment" && resources.length > 0 && <label className="mt-3 block text-sm">
+                  {r.booking_type === "appointment" && <label className="mt-3 block text-sm">
                     <span className="mb-1.5 block" style={{ color: "var(--mut)" }}>Pracownik / zasób</span>
-                    <select value={moveResourceId} onChange={(e) => setMoveResourceId(e.target.value)} className="w-full rounded-xl px-3 py-2.5" style={{ background: "var(--bg)", border: "1px solid var(--line)", color: "var(--ink)" }}>
+                    {eligibleResourcesLoading ? <div className="rounded-xl px-3 py-2.5 text-sm" style={{ background: "var(--bg)", border: "1px solid var(--line)", color: "var(--mut)" }}>Sprawdzam zasoby dla tej usługi…</div> : <select value={moveResourceId} onChange={(e) => setMoveResourceId(e.target.value)} className="w-full rounded-xl px-3 py-2.5" style={{ background: "var(--bg)", border: "1px solid var(--line)", color: "var(--ink)" }}>
                       <option value="">Bez zmiany zasobu</option>
-                      {resources.map((resource) => <option key={resource.id} value={resource.id}>{resource.name} · {resourceKindLabel[resource.kind] || resource.kind}</option>)}
-                    </select>
+                      {eligibleMoveResources.map((resource) => <option key={resource.id} value={resource.id}>{resource.name} · {resourceKindLabel[resource.kind] || resource.kind}</option>)}
+                    </select>}
+                    {!eligibleResourcesLoading && eligibleMoveResources.length === 0 && <span className="mt-1.5 block text-xs" style={{ color: "var(--mut)" }}>Brak innych aktywnych zasobów przypisanych do tej oferty/usługi. Nadal możesz zmienić sam termin.</span>}
                   </label>}
 
                   <label className="mt-3 block text-sm">
@@ -302,11 +319,11 @@ export default function SellerBookingsManage() {
                   </label>
 
                   {previewEnd && <div className="mt-2 text-xs" style={{ color: "var(--mut)" }}>Nowy okres do {previewEnd.toLocaleDateString("pl-PL")}</div>}
-                  {r.booking_type === "appointment" && <div className="mt-2 text-xs" style={{ color: "var(--mut)" }}>System przed zapisem sprawdzi grafik wybranego zasobu, przerwy, nieobecności, usługę i kolizje.</div>}
+                  {r.booking_type === "appointment" && <div className="mt-2 text-xs" style={{ color: "var(--mut)" }}>Lista pokazuje tylko zasoby przypisane do tej oferty i usługi. System przed zapisem dodatkowo sprawdzi grafik, przerwy, nieobecności i kolizje.</div>}
 
                   <div className="mt-3 grid gap-2 sm:grid-cols-2">
-                    <button disabled={rescheduleBusy || !rescheduleValue} onClick={() => reschedule(r)} className="rounded-xl py-2.5 font-semibold text-black disabled:opacity-50" style={{ background: "linear-gradient(135deg,#C8965A,#E8C896)" }}>{rescheduleBusy ? "Sprawdzam termin…" : "Sprawdź i przenieś"}</button>
-                    <button disabled={rescheduleBusy} onClick={() => { setRescheduleId(null); setMoveResourceId(""); }} className="rounded-xl py-2.5 text-sm font-semibold" style={{ border: "1px solid var(--line)" }}>Anuluj zmianę</button>
+                    <button disabled={rescheduleBusy || eligibleResourcesLoading || !rescheduleValue} onClick={() => reschedule(r)} className="rounded-xl py-2.5 font-semibold text-black disabled:opacity-50" style={{ background: "linear-gradient(135deg,#C8965A,#E8C896)" }}>{rescheduleBusy ? "Sprawdzam termin…" : "Sprawdź i przenieś"}</button>
+                    <button disabled={rescheduleBusy} onClick={() => { setRescheduleId(null); setMoveResourceId(""); setEligibleMoveResources([]); }} className="rounded-xl py-2.5 text-sm font-semibold" style={{ border: "1px solid var(--line)" }}>Anuluj zmianę</button>
                   </div>
                 </div>}
               </article>;
