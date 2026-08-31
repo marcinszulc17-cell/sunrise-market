@@ -83,8 +83,9 @@ Deno.serve(async (req) => {
     const reversal = await bridge("reverse", orderId);
     if (!reversal.ok) {
       const reason = String(reversal.data?.reason ?? reversal.data?.error ?? "bonus_reversal_failed");
-      await service.from("booking_refunds").update({ status: reason === "points_already_used" ? "blocked_bonus" : "payment_failed", last_error: reason, updated_at: new Date().toISOString() }).eq("booking_id", bookingId);
+      try { await service.rpc("booking_refund_abort", { p_booking: bookingId, p_error: reason }); } catch {}
       if (reason === "points_already_used") {
+        await service.from("booking_refunds").update({ status: "blocked_bonus", last_error: reason, updated_at: new Date().toISOString() }).eq("booking_id", bookingId);
         return json({ ok: false, error: "bonus_points_already_used", message: "Nie można automatycznie anulować tej opłaconej rezerwacji, ponieważ część punktów cashback/prowizji została już wykorzystana. Wymagane jest rozliczenie operatora." }, 409);
       }
       throw new Error(`Nie udało się cofnąć bonusów: ${reason}`);
@@ -129,7 +130,7 @@ Deno.serve(async (req) => {
       try { await bridge("restore", orderId); } catch {}
     }
     if (!paymentRefunded) {
-      await service.from("booking_refunds").update({ status: "payment_failed", last_error: message.slice(0, 1000), updated_at: new Date().toISOString() }).eq("booking_id", bookingId);
+      try { await service.rpc("booking_refund_abort", { p_booking: bookingId, p_error: message }); } catch {}
     }
     return json({ ok: false, error: message }, 400);
   }
