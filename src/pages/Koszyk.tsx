@@ -1,11 +1,12 @@
 import { useEffect, useMemo, useState } from "react";
 import { supabase } from "../lib/supabase";
-import { checkout, validateCoupon, walletBalance, listShippingLanes, cartLanes, recommendedOffers, similarOffers, smartStatus, smartSubscribe, type ShipMethod, type CartLane, type ShipAddress, type CouponCheck } from "../lib/api";
+import { validateCoupon, walletBalance, listShippingLanes, cartLanes, recommendedOffers, similarOffers, smartStatus, smartSubscribe, type ShipMethod, type CartLane, type ShipAddress, type CouponCheck } from "../lib/api";
 import { useCart, setQty, removeItem, clearCart, cartTotal, addToCart, cleanTitle } from "../lib/cart";
 import { topupWallet, redeemPoints } from "../lib/payments";
 import { saveIntent, loadIntent, clearIntent } from "../lib/checkoutIntent";
 import { getMarketConfig, cashbackFor } from "../lib/marketConfig";
-
+import { checkoutWithInvoice, EMPTY_INVOICE, invoiceComplete, type InvoiceDetails } from "../lib/invoiceCheckout";
+import InvoiceDetailsFields from "../components/InvoiceDetailsFields";
 import { zl, pkt } from "../lib/money";
 const FREE_SHIP = 149;
 
@@ -24,7 +25,9 @@ export default function Koszyk() {
   const [lanes, setLanes] = useState<Record<string, CartLane>>({});
   const [selected, setSelected] = useState<Record<string, string>>({});
   const [addr, setAddr] = useState({ name: "", phone: "", street: "", city: "", postal: "" });
+  const [invoice, setInvoice] = useState<InvoiceDetails>(() => ({ ...EMPTY_INVOICE }));
   const addrOk = !!(addr.name && addr.street && addr.city && addr.postal);
+  const invoiceReady = invoiceComplete(invoice);
   const [balance, setBalance] = useState<number | null>(null);
   const [points, setPoints] = useState<number>(0);
   const [linked, setLinked] = useState(true);
@@ -116,14 +119,21 @@ export default function Koszyk() {
     setCouponRes(await validateCoupon(code, total));
   }
 
-  async function runCheckout(useAddr: ShipAddress, useCodes: string[], useCoupon?: string) {
+  async function runCheckout(useAddr: ShipAddress, useCodes: string[], useCoupon?: string, useInvoice: InvoiceDetails = invoice) {
     setBusy(true); setMsg(null);
     try {
+      if (!invoiceComplete(useInvoice)) throw new Error("Uzupełnij poprawne dane do faktury.");
       const cCode = useCoupon ?? (couponRes?.valid ? couponRes.code : undefined);
-      const res = await checkout(cart.map((i) => ({ offer_id: i.offer_id, qty: i.qty })), useCodes, useAddr, cCode);
+      const res = await checkoutWithInvoice({
+        items: cart.map((i) => ({ offer_id: i.offer_id, qty: i.qty })),
+        shipping_codes: useCodes,
+        shipping: useAddr,
+        coupon: cCode ?? null,
+        payment_method: "wallet",
+      }, useInvoice);
       clearIntent();
       clearCart();
-      setDone({ order: res.order_id, paid: res.paid, cashback: res.cashback, balance: res.balance, method: "wallet" });
+      setDone({ order: res.order_id, paid: Number(res.paid ?? grand), cashback: Number(res.cashback ?? 0), balance: typeof res.balance === "number" ? res.balance : null, method: "wallet" });
     } catch (e: any) {
       let m = e?.message ?? String(e);
       try { const b = await e.context.json(); if (b?.error) m = b.error; } catch { /* ignore */ }
@@ -137,6 +147,7 @@ export default function Koszyk() {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) { window.location.href = "/login"; return; }
     if (!addrOk) { setMsg("Uzupełnij adres dostawy (imię i nazwisko, ulica, miasto, kod)."); return; }
+    if (!invoiceReady) { setMsg("Uzupełnij poprawne dane do faktury."); return; }
     if (balance != null && balance < grand) { setMsg("Za mało środków w portfelu — doładuj brakującą kwotę poniżej."); return; }
     await runCheckout(addr, selectedCodes);
   }
@@ -146,10 +157,17 @@ export default function Koszyk() {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) { window.location.href = "/login"; return; }
     if (!addrOk) { setMsg("Uzupełnij adres dostawy (imię i nazwisko, ulica, miasto, kod)."); return; }
+    if (!invoiceReady) { setMsg("Uzupełnij poprawne dane do faktury."); return; }
     setBusy(true);
     try {
       const cCode = couponRes?.valid ? couponRes.code : undefined;
-      const res = await checkout(cart.map((i) => ({ offer_id: i.offer_id, qty: i.qty })), selectedCodes, addr, cCode, "card");
+      const res = await checkoutWithInvoice({
+        items: cart.map((i) => ({ offer_id: i.offer_id, qty: i.qty })),
+        shipping_codes: selectedCodes,
+        shipping: addr,
+        coupon: cCode ?? null,
+        payment_method: "card",
+      }, invoice);
       if (res?.url) { window.location.href = res.url as string; return; }
       setMsg(res?.error ?? "Nie udało się rozpocząć płatności kartą.");
       setBusy(false);
@@ -166,9 +184,10 @@ export default function Koszyk() {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) { window.location.href = "/login"; return; }
     if (!addrOk) { setMsg("Uzupełnij adres dostawy przed doładowaniem."); return; }
+    if (!invoiceReady) { setMsg("Uzupełnij poprawne dane do faktury przed doładowaniem."); return; }
     const amount = Math.max(shortfall, Math.ceil(amt) || 0);
     if (amount <= 0) { setMsg("Podaj kwotę doładowania."); return; }
-    saveIntent({ addr, shippingCodes: selectedCodes, grand, topup: amount, coupon: couponRes?.valid ? couponRes.code : undefined });
+    saveIntent({ addr, shippingCodes: selectedCodes, grand, topup: amount, coupon: couponRes?.valid ? couponRes.code : undefined, invoice });
     setBusy(true);
     try {
       await topupWallet(amount, "/koszyk?topup=success");
@@ -184,6 +203,7 @@ export default function Koszyk() {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) { window.location.href = "/login"; return; }
     if (!addrOk) { setMsg("Uzupełnij adres dostawy przed zapłatą."); return; }
+    if (!invoiceReady) { setMsg("Uzupełnij poprawne dane do faktury przed zapłatą."); return; }
     const use = Math.ceil(shortfall);
     if (use <= 0 || points < use) return;
     setBusy(true);
@@ -230,7 +250,10 @@ export default function Koszyk() {
     if (!p) return;
     const clean = () => { try { window.history.replaceState({}, "", "/koszyk"); } catch { /* ignore */ } };
     const intent = loadIntent();
-    if (intent) setAddr(intent.addr);
+    if (intent) {
+      setAddr(intent.addr);
+      if (intent.invoice) setInvoice(intent.invoice);
+    }
     if (p === "cancel") {
       setMsg("Doładowanie anulowane. Możesz spróbować ponownie.");
       clean();
@@ -243,7 +266,7 @@ export default function Koszyk() {
         if (w) { setBalance(w.balance); setLinked(w.linked); setPoints(w.points); }
         const need = intent?.grand ?? grand;
         if (w && intent && w.balance >= need) {
-          await runCheckout(intent.addr, intent.shippingCodes, intent.coupon);
+          await runCheckout(intent.addr, intent.shippingCodes, intent.coupon, intent.invoice ?? { ...EMPTY_INVOICE });
         } else {
           setResuming(false);
           setMsg("Doładowanie w toku — środki zaksięgują się w portfelu za chwilę. Kliknij „Zapłać saldem”, gdy saldo wystarczy.");
@@ -353,7 +376,10 @@ export default function Koszyk() {
                 </div>
               </div>
 
-              <div className="flex justify-between text-sm mb-1">
+              <InvoiceDetailsFields value={invoice} onChange={setInvoice} compact />
+              {!invoiceReady && <div className="mt-2 text-xs" style={{ color: "var(--gold)" }}>Uzupełnij komplet danych firmy i poprawny NIP, aby zamówić fakturę.</div>}
+
+              <div className="flex justify-between text-sm mb-1 mt-4">
                 <span style={{ color: "var(--mut)" }}>Produkty</span><span>{zl(total)}</span>
               </div>
               <div className="flex justify-between text-sm mb-1">
@@ -434,7 +460,7 @@ export default function Koszyk() {
                   </div>
                   {points >= Math.ceil(shortfall) && (
                     <>
-                      <button onClick={redeemAndPay} disabled={busy || resuming || !addrOk}
+                      <button onClick={redeemAndPay} disabled={busy || resuming || !addrOk || !invoiceReady}
                               className="w-full rounded-xl py-3 font-semibold text-black disabled:opacity-50"
                               style={{ background: "linear-gradient(135deg,#7AB89A,#12b981)" }}>
                         Wymień {pkt(Math.ceil(shortfall))} pkt i zapłać →
@@ -457,15 +483,16 @@ export default function Koszyk() {
                     <span className="text-xs" style={{ color: "var(--mut)" }}>min {zl(shortfall)}</span>
                   </div>
                   <div className="text-xs" style={{ color: "var(--mut)" }}>Większe doładowanie = mniej opłat i zapas w portfelu na kolejne zakupy.</div>
-                  <button onClick={() => topupAndPay(effectiveTopup)} disabled={busy || resuming || !addrOk}
+                  <button onClick={() => topupAndPay(effectiveTopup)} disabled={busy || resuming || !addrOk || !invoiceReady}
                           className="w-full rounded-xl py-3 font-semibold text-black disabled:opacity-50"
                           style={{ background: "linear-gradient(135deg,#C8965A,#E8C896)" }}>
                     {busy ? "Przekierowuję do płatności…" : `Doładuj ${zl(effectiveTopup)} i zapłać →`}
                   </button>
                   {!addrOk && <div className="text-xs" style={{ color: "var(--gold)" }}>Najpierw uzupełnij adres dostawy powyżej.</div>}
+                  {!invoiceReady && <div className="text-xs" style={{ color: "var(--gold)" }}>Uzupełnij dane do faktury powyżej.</div>}
                   <a href="/portfel" className="text-center text-xs underline" style={{ color: "var(--mut)" }}>albo doładuj w aplikacji MySunrise</a>
                   <div className="text-center text-xs pt-1" style={{ color: "var(--mut)" }}>— albo bez portfela —</div>
-                  <button onClick={payByCard} disabled={busy || resuming || !addrOk}
+                  <button onClick={payByCard} disabled={busy || resuming || !addrOk || !invoiceReady}
                           className="w-full rounded-xl py-3 font-semibold disabled:opacity-50"
                           style={{ background: "var(--glass)", border: "1px solid var(--line)", color: "var(--ink)" }}>
                     💳 Zapłać kartą (Stripe) — bez cashbacku
@@ -473,12 +500,12 @@ export default function Koszyk() {
                 </div>
               ) : (
                 <div className="flex flex-col gap-2">
-                  <button onClick={pay} disabled={busy || resuming || !addrOk || (balance != null && !enoughFunds)}
+                  <button onClick={pay} disabled={busy || resuming || !addrOk || !invoiceReady || (balance != null && !enoughFunds)}
                           className="w-full rounded-xl py-3 font-semibold text-black disabled:opacity-50"
                           style={{ background: "linear-gradient(135deg,#C8965A,#A97B42)" }}>
-                    {resuming ? "Dokańczam zamówienie…" : busy ? "Płacę…" : `Zapłać saldem · wróci ${pkt(cashback)} pkt`}
+                    {resuming ? "Dokańczam zamówienie…" : busy ? "Płacę…" : !invoiceReady ? "Uzupełnij dane do faktury" : `Zapłać saldem · wróci ${pkt(cashback)} pkt`}
                   </button>
-                  <button onClick={payByCard} disabled={busy || resuming || !addrOk}
+                  <button onClick={payByCard} disabled={busy || resuming || !addrOk || !invoiceReady}
                           className="w-full rounded-xl py-2.5 text-sm font-semibold disabled:opacity-50"
                           style={{ background: "var(--glass)", border: "1px solid var(--line)", color: "var(--ink)" }}>
                     💳 Zapłać kartą (Stripe) — bez cashbacku

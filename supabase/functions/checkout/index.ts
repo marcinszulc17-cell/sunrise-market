@@ -10,9 +10,49 @@ const PAY_TOKEN = Deno.env.get("SUNRISE_MARKET_SERVICE_TOKEN");
 const FREE_SHIPPING_THRESHOLD = 149;
 function json(b: unknown, s = 200) { return new Response(JSON.stringify(b), { status: s, headers: { ...cors, "Content-Type": "application/json" } }); }
 function money(v: number) { return Math.round(Math.max(0, Number(v) || 0) * 100) / 100; }
+function text(v: unknown) { return typeof v === "string" ? v.trim() : ""; }
+function validPolishNip(nip: string) {
+  if (!/^\d{10}$/.test(nip)) return false;
+  const w = [6, 5, 7, 2, 3, 4, 5, 6, 7];
+  const checksum = w.reduce((sum, weight, i) => sum + weight * Number(nip[i]), 0) % 11;
+  return checksum !== 10 && checksum === Number(nip[9]);
+}
+function invoiceSnapshot(raw: any) {
+  const requested = raw?.requested === true;
+  const now = new Date().toISOString();
+  if (!requested) return {
+    invoice_requested: false,
+    invoice_company_name: null,
+    invoice_tax_id: null,
+    invoice_street: null,
+    invoice_city: null,
+    invoice_postal: null,
+    invoice_country: null,
+    invoice_snapshot_at: now,
+  };
+  const company = text(raw.company_name);
+  const country = (text(raw.country) || "PL").toUpperCase().slice(0, 2);
+  const taxId = country === "PL" ? text(raw.tax_id).replace(/\D/g, "") : text(raw.tax_id).toUpperCase();
+  const street = text(raw.street);
+  const city = text(raw.city);
+  const postal = text(raw.postal);
+  if (!company || !taxId || !street || !city || !postal || !country) throw new Error("Uzupełnij komplet danych do faktury");
+  if (country === "PL" && !validPolishNip(taxId)) throw new Error("Podaj prawidłowy polski NIP");
+  if (country === "PL" && !/^\d{2}-\d{3}$/.test(postal)) throw new Error("Podaj kod pocztowy w formacie 00-000");
+  return {
+    invoice_requested: true,
+    invoice_company_name: company.slice(0, 200),
+    invoice_tax_id: taxId.slice(0, 40),
+    invoice_street: street.slice(0, 200),
+    invoice_city: city.slice(0, 120),
+    invoice_postal: postal.slice(0, 30),
+    invoice_country: country,
+    invoice_snapshot_at: now,
+  };
+}
 
 async function uuidv5(name: string): Promise<string> {
-  const NS = "6ba7b810-9dad-11d1-80b4-00c04fd430c8";
+  const NS = "6ba7b810-9dad-11d1-80b4-00f048300c8";
   const nsBytes = (NS.replace(/-/g, "").match(/.{2}/g) as string[]).map((h) => parseInt(h, 16));
   const nameBytes = Array.from(new TextEncoder().encode(name));
   const data = new Uint8Array([...nsBytes, ...nameBytes]);
@@ -65,8 +105,6 @@ async function settleSellerPayouts(sb: any, orderId: string) {
       updated_at: new Date().toISOString(),
     }, { onConflict: "order_id,seller_id", ignoreDuplicates: true });
 
-    // Booking is paid now, but the Partner Handlowy receives the funds only
-    // after the reserved service/rental period. The retry worker releases it.
     if (booking) continue;
 
     const idem = await uuidv5(`market:seller:${orderId}:${sellerId}`);
@@ -90,6 +128,52 @@ async function settleSellerPayouts(sb: any, orderId: string) {
   }
 }
 
+async function settleAmbassadorCommission(sb: any, orderId: string, email: string, description: string) {
+  try {
+    await sb.rpc("enqueue_ambassador_commission", { p_order: orderId });
+    const { data: outbox, error } = await sb.from("ambassador_commission_outbox")
+      .select("id,status,amount_net,attempts")
+      .eq("order_id", orderId)
+      .maybeSingle();
+    if (error) throw error;
+    if (!outbox || outbox.status === "sent" || outbox.status === "pending_vat" || outbox.status === "pending_identity") return;
+
+    const amountNet = money(Number(outbox.amount_net ?? 0));
+    if (amountNet <= 0) return;
+    const attempts = Number(outbox.attempts ?? 0) + 1;
+    const now = new Date().toISOString();
+    const referral = await pay("mkt-referral", {
+      action: "sale",
+      email,
+      order_id: orderId,
+      amount_net: amountNet,
+      description,
+    });
+    const reason = String(referral.data?.reason ?? referral.data?.error ?? "");
+    const noCommission = referral.status === 200 && referral.data?.ok === false && ["not_referred", "no_user", "zero_amount"].includes(reason);
+    const settled = referral.status === 200 && referral.data?.ok === true;
+
+    await sb.from("ambassador_commission_outbox").update({
+      status: settled || noCommission ? "sent" : "failed",
+      attempts,
+      last_error: settled ? null : noCommission ? `not_applicable:${reason}` : String(referral.data?.error ?? referral.data?.reason ?? referral.status).slice(0, 1000),
+      sent_at: settled || noCommission ? now : null,
+      updated_at: now,
+    }).eq("id", outbox.id).neq("status", "sent");
+  } catch (e) {
+    console.error("ambassador settlement failed", (e as Error).message);
+    try {
+      const { data: outbox } = await sb.from("ambassador_commission_outbox").select("id,attempts").eq("order_id", orderId).maybeSingle();
+      if (outbox) await sb.from("ambassador_commission_outbox").update({
+        status: "failed",
+        attempts: Number(outbox.attempts ?? 0) + 1,
+        last_error: String((e as Error).message ?? e).slice(0, 1000),
+        updated_at: new Date().toISOString(),
+      }).eq("id", outbox.id).neq("status", "sent");
+    } catch {}
+  }
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: cors });
   try {
@@ -99,7 +183,7 @@ Deno.serve(async (req) => {
     if (uErr || !user) return json({ error: "Brak autoryzacji" }, 401);
     const email = user.email;
     if (!email) return json({ error: "Konto bez e-maila" }, 400);
-    const { items, booking_id, shipping_code, shipping_codes, shipping, coupon, payment_method } = await req.json();
+    const { items, booking_id, shipping_code, shipping_codes, shipping, invoice, coupon, payment_method } = await req.json();
     const bookingId = typeof booking_id === "string" && booking_id ? booking_id : null;
     if (!bookingId && (!Array.isArray(items) || items.length === 0)) return json({ error: "Pusty koszyk" }, 400);
     const payMethod = payment_method === "card" ? "card" : "wallet";
@@ -117,7 +201,7 @@ Deno.serve(async (req) => {
       shipCost = rows.reduce((a, r) => a + Number(r.price_gross ?? 0), 0);
       shipLabel = rows.map((r) => r.name).join(" + ") || null;
     }
-    const { data: ord0 } = await sb.from("orders").select("total_gross").eq("id", orderId).single();
+    const { data: ord0 } = await sb.from("orders").select("total_gross,invoice_snapshot_at").eq("id", orderId).single();
     const productSubtotal = Number(ord0!.total_gross);
     if (productSubtotal >= FREE_SHIPPING_THRESHOLD) shipCost = 0;
     try {
@@ -145,13 +229,15 @@ Deno.serve(async (req) => {
     const { data: cashbackCfg } = await sb.from("platform_config").select("value").eq("key", "cashback_rate").maybeSingle();
     const cashbackRate = Math.max(0, Number(cashbackCfg?.value ?? 0.03));
     const cashback = money(discountedProducts * cashbackRate);
+    const inv = ord0?.invoice_snapshot_at ? {} : invoiceSnapshot(invoice);
 
     await sb.from("orders").update({
       shipping_method: shipLabel, shipping_cost: shipCost, total_gross: finalTotal,
       coupon_code: couponCode, discount_amount: discount, cashback_amount: cashback,
       ship_name: shipping?.name ?? null, ship_phone: shipping?.phone ?? null,
       ship_street: shipping?.street ?? null, ship_city: shipping?.city ?? null,
-      ship_postal: shipping?.postal ?? null, ship_country: shipping?.country ?? "PL"
+      ship_postal: shipping?.postal ?? null, ship_country: shipping?.country ?? "PL",
+      ...inv,
     }).eq("id", orderId);
     const amountGrosz = Math.round(finalTotal * 100);
 
@@ -199,12 +285,7 @@ Deno.serve(async (req) => {
       console.error("seller settlement failed", (e as Error).message);
     }
     await sb.rpc("notify_order", { p_order: orderId });
-
-    try {
-      const { data: ownItems } = await sb.from("order_items").select("qty, unit_price_gross, offers!inner(fulfillment_provider)").eq("order_id", orderId).eq("offers.fulfillment_provider", "mysunrise");
-      const ownNet = (ownItems ?? []).reduce((a: number, r: any) => a + Number(r.unit_price_gross ?? 0) * Number(r.qty ?? 0), 0);
-      if (ownNet > 0) await pay("mkt-referral", { action: "sale", email, order_id: orderId, amount_net: ownNet, description: "Zakup marki własnej w Sunrise Market" });
-    } catch {}
+    await settleAmbassadorCommission(sb, String(orderId), email, bookingId ? "Opłacona rezerwacja w Sunrise Market" : "Zakup w Sunrise Market");
 
     return json({ order_id: orderId, paid: finalTotal, discount, coupon: couponCode, cashback, balance: newBalanceGr / 100 });
   } catch (err) {
