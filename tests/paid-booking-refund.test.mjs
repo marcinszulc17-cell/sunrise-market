@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import test from "node:test";
 
-const edge = await readFile(new URL("../supabase/functions/booking-refund/index.ts", import.meta.url), "utf8");
+const edge = await readFile(new URL("../supabase/functions/booking-refund-action/index.ts", import.meta.url), "utf8");
 const migration = await readFile(new URL("../supabase/migrations/20260831184500_paid_booking_refund.sql", import.meta.url), "utf8");
 
 test("paid booking refund reverses bonuses before returning money", () => {
