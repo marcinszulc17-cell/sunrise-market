@@ -16,10 +16,11 @@ type OfferRow = {
   created_at?: string;
 };
 
-type EditState = ManagedOffer & { full_vat_invoice: boolean };
+type EditState = ManagedOffer & { full_vat_invoice: boolean; vat_rate: string };
 
 const inputClass = "w-full rounded-xl px-3 py-2.5 outline-none";
 const inputStyle: React.CSSProperties = { background: "var(--glass)", border: "1px solid var(--line)", color: "var(--ink)" };
+const VAT_RATES = ["23", "8", "5", "0"] as const;
 
 export default function SellerOffersManage() {
   const [authed, setAuthed] = useState<boolean | null>(null);
@@ -61,7 +62,8 @@ export default function SellerOffersManage() {
     try {
       const o = await getOfferForManage(id);
       const attrs = (o.attributes ?? {}) as Record<string, unknown>;
-      setEdit({ ...o, full_vat_invoice: Boolean(attrs.full_vat_invoice) });
+      const rawVat = String(attrs.vat_rate ?? "");
+      setEdit({ ...o, full_vat_invoice: Boolean(attrs.full_vat_invoice), vat_rate: VAT_RATES.includes(rawVat as typeof VAT_RATES[number]) ? rawVat : "" });
       window.scrollTo({ top: 0, behavior: "smooth" });
     } catch (e) { setMsg("Nie udało się otworzyć oferty: " + (e as Error).message); }
   }
@@ -80,6 +82,7 @@ export default function SellerOffersManage() {
 
   async function saveOffer() {
     if (!edit) return;
+    if (!VAT_RATES.includes(edit.vat_rate as typeof VAT_RATES[number])) { setMsg("Wybierz stawkę VAT: 23%, 8%, 5% lub 0%."); return; }
     setSaving(true); setMsg(null);
     try {
       await updateOfferManage({
@@ -90,10 +93,10 @@ export default function SellerOffersManage() {
         stock: Number(edit.stock),
         imageUrls: edit.image_urls,
         commissionModel: edit.commission_model,
-        attributes: { ...(edit.attributes ?? {}), full_vat_invoice: edit.full_vat_invoice },
+        attributes: { ...(edit.attributes ?? {}), full_vat_invoice: edit.full_vat_invoice, vat_rate: Number(edit.vat_rate) },
       });
       await reload();
-      setMsg("Oferta zapisana ✅");
+      setMsg("Oferta zapisana ✅ Stawka VAT jest używana jako podstawa netto dla nowych zamówień i prowizji.");
     } catch (e) { setMsg("Nie udało się zapisać: " + (e as Error).message); }
     finally { setSaving(false); }
   }
@@ -106,7 +109,7 @@ export default function SellerOffersManage() {
       <div>
         <Link to="/sprzedawca" className="text-sm" style={{ color: "var(--mut)" }}>← Centrum sprzedawcy</Link>
         <h1 className="mt-2 font-display text-3xl font-semibold">Moje oferty</h1>
-        <p className="mt-1 text-sm" style={{ color: "var(--mut)" }}>Edycja oferty, zdjęcia i model cashback/prowizji. Booking, grafiki i dostępność mają jedno centralne miejsce.</p>
+        <p className="mt-1 text-sm" style={{ color: "var(--mut)" }}>Edycja oferty, zdjęcia, VAT i model cashback/prowizji. Booking, grafiki i dostępność mają jedno centralne miejsce.</p>
       </div>
       <Link to="/sprzedawca/wystaw" className="rounded-xl px-4 py-2 font-semibold text-black" style={{ background: "linear-gradient(135deg,#C8965A,#E8C896)" }}>+ Wystaw ofertę</Link>
     </div>
@@ -122,15 +125,17 @@ export default function SellerOffersManage() {
         <div className="space-y-4">
           <input className={inputClass} style={inputStyle} value={edit.title} onChange={e => setEdit({ ...edit, title: e.target.value })}/>
           <OfferDescriptionEditor value={edit.description ?? ""} onChange={description=>setEdit({...edit,description})} title={edit.title} category={edit.category}/>
-          <div className="grid gap-3 sm:grid-cols-2">
+          <div className="grid gap-3 sm:grid-cols-3">
             <label className="text-sm">Cena brutto<input type="number" className={`${inputClass} mt-1`} style={inputStyle} value={edit.price_gross} onChange={e => setEdit({ ...edit, price_gross: Number(e.target.value) })}/></label>
+            <label className="text-sm">Stawka VAT<select className={`${inputClass} mt-1`} style={inputStyle} value={edit.vat_rate} onChange={e => setEdit({ ...edit, vat_rate: e.target.value })}><option value="">Wybierz VAT</option>{VAT_RATES.map(rate => <option key={rate} value={rate}>{rate}%</option>)}</select></label>
             <label className="text-sm">Stan / dostępność<input type="number" className={`${inputClass} mt-1`} style={inputStyle} value={edit.stock} onChange={e => setEdit({ ...edit, stock: Number(e.target.value) })}/></label>
           </div>
+          {!edit.vat_rate && <div className="rounded-xl p-3 text-xs" style={{ background: "rgba(239,68,68,.08)", border: "1px solid rgba(239,68,68,.20)", color: "#fca5a5" }}>Ta starsza oferta nie ma zapisanej stawki VAT. Wybierz właściwą stawkę przed zapisaniem — nie ustawiamy automatycznie 23%.</div>}
           <div className="rounded-xl p-4" style={{ border: "1px solid var(--line)" }}>
             <label className="flex items-center justify-between gap-4"><div><div className="font-medium">Prowizje Ambassador Club</div><div className="text-xs" style={{ color: "var(--mut)" }}>Wyłączone = tylko cashback. Włączone = cashback + prowizje polecające.</div></div><input type="checkbox" checked={edit.commission_model === "mlm_full"} onChange={e => setEdit({ ...edit, commission_model: e.target.checked ? "mlm_full" : "cashback_only" })}/></label>
           </div>
           <div className="rounded-xl p-4" style={{ border: "1px solid var(--line)" }}>
-            <label className="flex items-center justify-between gap-4"><div className="font-medium">Pełna faktura VAT</div><input type="checkbox" checked={edit.full_vat_invoice} onChange={e => setEdit({ ...edit, full_vat_invoice: e.target.checked })}/></label>
+            <label className="flex items-center justify-between gap-4"><div><div className="font-medium">Pełna faktura VAT</div><div className="text-xs" style={{ color: "var(--mut)" }}>To informacja widoczna klientowi. Stawka VAT powyżej służy do prawidłowych rozliczeń netto.</div></div><input type="checkbox" checked={edit.full_vat_invoice} onChange={e => setEdit({ ...edit, full_vat_invoice: e.target.checked })}/></label>
           </div>
           <OfferPhotoManager images={edit.image_urls} onChange={image_urls=>setEdit({...edit,image_urls})} onAddFiles={uploadEditFiles} uploading={uploading} onBuyMore={()=>setMsg("Płatne pakiety dodatkowych zdjęć są przygotowane jako następny moduł płatności Sunrise Pay.")}/>
           <button disabled={saving} onClick={saveOffer} className="w-full rounded-xl py-3 font-bold text-black disabled:opacity-50" style={{ background: "linear-gradient(135deg,#C8965A,#E8C896)" }}>{saving ? "Zapisuję…" : "Zapisz ofertę"}</button>
