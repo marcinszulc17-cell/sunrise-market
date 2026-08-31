@@ -13,14 +13,19 @@ create table if not exists market.booking_refunds (
   booking_id uuid primary key references market.bookings(id) on delete restrict,
   order_id uuid not null references market.orders(id) on delete restrict,
   status text not null check (status in ('preparing','blocked_bonus','payment_failed','refunded','finalize_failed')),
-  amount_gross numeric not null check (amount_gross >= 0),
-  payment_provider text not null,
+  amount_gross numeric not null check (amount_gross > 0),
+  payment_provider text not null check (payment_provider in ('sunrise_pay','stripe')),
   external_ref text,
   last_error text,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),
   refunded_at timestamptz
 );
+
+alter table market.booking_refunds enable row level security;
+revoke all on table market.booking_refunds from public, anon, authenticated;
+
+aLTER TABLE market.booking_refunds OWNER TO postgres;
 
 create or replace function market.seller_booking_set_status(p_booking uuid, p_status text)
 returns text
@@ -148,7 +153,7 @@ begin
   update market.seller_settlements set status='cancelled',last_error='Anulowana opłacona rezerwacja — zwrot klientowi',updated_at=now()
     where order_id=r.order_id and status<>'settled';
   update market.ambassador_commission_outbox set status='reversed',updated_at=now()
-    where order_id=r.order_id and status in ('sent','failed','pending_vat','pending_identity');
+    where order_id=r.order_id and status in ('ready','sent','failed','pending_vat','pending_identity');
 
   update market.booking_refunds set status='refunded',external_ref=p_external_ref,last_error=null,refunded_at=now(),updated_at=now() where booking_id=p_booking;
   return jsonb_build_object('ok',true,'order_id',r.order_id,'amount_gross',r.amount_gross);
@@ -158,3 +163,4 @@ $$;
 revoke all on function market.seller_booking_refund_prepare(uuid) from public;
 grant execute on function market.seller_booking_refund_prepare(uuid) to authenticated;
 revoke all on function market.booking_refund_finalize(uuid,text) from public;
+grant execute on function market.booking_refund_finalize(uuid,text) to service_role;
