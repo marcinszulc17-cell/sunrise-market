@@ -1,8 +1,9 @@
 // Zapamiętany zamiar zakupu na czas doładowania portfela.
 // Koszyk sam w sobie żyje w localStorage (cart.ts), więc tu trzymamy tylko
-// dane ulotne ze stanu Reacta (adres, wybór dostawy) + kwotę docelową, aby po
-// powrocie ze Stripe wznowić płatność bez ponownego wypełniania formularza.
+// dane ulotne ze stanu Reacta (adres, wybór dostawy, dane faktury) + kwotę
+// docelową, aby po powrocie ze Stripe wznowić płatność bez ponownego formularza.
 import type { ShipAddress } from "./api";
+import type { InvoiceDetails } from "./invoiceCheckout";
 
 const KEY = "sunrise_checkout_intent";
 const TTL_MS = 30 * 60 * 1000; // 30 min — po tym czasie zamiar wygasa
@@ -13,6 +14,7 @@ export type CheckoutIntent = {
   grand: number; // kwota do zapłaty w chwili doładowania (kontrola spójności)
   topup: number; // kwota doładowania zainicjowana
   coupon?: string; // opcjonalny kod rabatowy
+  invoice?: InvoiceDetails; // snapshot formularza faktury na czas powrotu z doładowania
   ts: number;    // znacznik czasu utworzenia
 };
 
