@@ -8,6 +8,7 @@ import {
   type BookingCatalogV2,
   type BookingSlotV2,
 } from "../lib/bookingV2";
+import { cashbackFor, getMarketConfig } from "../lib/marketConfig";
 import { zl } from "../lib/money";
 import DailyRangeCalendar from "./DailyRangeCalendar";
 
@@ -34,6 +35,7 @@ export default function BookingPurchaseModal({ offerId, config, open, onClose }:
   const [toDay, setToDay] = useState("");
   const [rentalBase, setRentalBase] = useState(0);
   const [rentalUnits, setRentalUnits] = useState(0);
+  const [cashbackRate, setCashbackRate] = useState(0.03);
   const [payment, setPayment] = useState<"wallet" | "card">("card");
   const [busy, setBusy] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -64,6 +66,7 @@ export default function BookingPurchaseModal({ offerId, config, open, onClose }:
     setToDay("");
     setRentalBase(0);
     setRentalUnits(0);
+    getMarketConfig().then((c) => setCashbackRate(c.cashbackRate));
     bookingPublicCatalogV2(offerId)
       .then((c) => {
         setCatalog(c);
@@ -120,7 +123,7 @@ export default function BookingPurchaseModal({ offerId, config, open, onClose }:
   const total = activeConfig.booking_type === "appointment"
     ? Number(selected?.amount_gross ?? selectedService?.price_gross ?? activeConfig.price_per_unit)
     : rentalBase + fees;
-  const cashback = total > 0 ? total * 0.03 : 0;
+  const cashback = cashbackFor(total, cashbackRate);
   const ready = activeConfig.booking_type === "appointment" ? Boolean(selected) : rentalUnits >= 1;
 
   function pickNearest() {
