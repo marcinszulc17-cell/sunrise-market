@@ -7,6 +7,7 @@ type Props = {
   maxUnits: number;
   from: string;
   to: string;
+  unavailableDates?: string[];
   onChange: (from: string, to: string) => void;
 };
 
@@ -43,10 +44,18 @@ function startOfCalendar(d: Date) {
 function diffDays(a: string, b: string) {
   return Math.round((parseDay(b).getTime() - parseDay(a).getTime()) / DAY);
 }
+function rangeHitsUnavailable(from: string, to: string, unavailable: Set<string>) {
+  if (!from || !to || to <= from) return false;
+  for (let d = parseDay(from); key(d) < to; d = addDays(d, 1)) {
+    if (unavailable.has(key(d))) return true;
+  }
+  return false;
+}
 
-export default function DailyRangeCalendar({ minDate, maxDate, minUnits, maxUnits, from, to, onChange }: Props) {
+export default function DailyRangeCalendar({ minDate, maxDate, minUnits, maxUnits, from, to, unavailableDates = [], onChange }: Props) {
   const min = parseDay(minDate);
   const max = parseDay(maxDate);
+  const unavailable = useMemo(() => new Set(unavailableDates), [unavailableDates]);
   const [cursor, setCursor] = useState(() => startOfMonth(from ? parseDay(from) : min));
 
   useEffect(() => {
@@ -66,15 +75,18 @@ export default function DailyRangeCalendar({ minDate, maxDate, minUnits, maxUnit
 
   function select(value: string) {
     if (!from || to) {
+      if (unavailable.has(value)) return;
       onChange(value, "");
       return;
     }
     if (value <= from) {
+      if (unavailable.has(value)) return;
       onChange(value, "");
       return;
     }
     const units = diffDays(from, value);
     if (units < minUnits || units > maxUnits) return;
+    if (rangeHitsUnavailable(from, value, unavailable)) return;
     onChange(from, value);
   }
 
@@ -94,24 +106,35 @@ export default function DailyRangeCalendar({ minDate, maxDate, minUnits, maxUnit
           const value = key(d);
           const sameMonth = d.getMonth() === month.getMonth();
           const outside = d < min || d > max;
-          const invalidEnd = Boolean(from && !to && value > from && ((minEnd && d < minEnd) || (maxEnd && d > maxEnd)));
-          const disabled = !sameMonth || outside || invalidEnd;
+          const occupied = unavailable.has(value);
+          const tooShortOrLong = Boolean(from && !to && value > from && ((minEnd && d < minEnd) || (maxEnd && d > maxEnd)));
+          const crossesOccupiedNight = Boolean(from && !to && value > from && rangeHitsUnavailable(from, value, unavailable));
           const isFrom = value === from;
           const isTo = value === to;
           const inRange = Boolean(from && to && value > from && value < to);
-          const selectableStartReset = Boolean(from && !to && value <= from && !outside && sameMonth);
-          const finalDisabled = disabled && !selectableStartReset;
+
+          let finalDisabled = !sameMonth || outside;
+          if (!finalDisabled) {
+            if (!from || to) finalDisabled = occupied;
+            else if (value <= from) finalDisabled = occupied;
+            else finalDisabled = tooShortOrLong || crossesOccupiedNight;
+          }
+
+          const checkoutOnOccupiedDay = Boolean(from && !to && value > from && occupied && !finalDisabled);
+          const aria = `${d.toLocaleDateString("pl-PL")}${occupied ? checkoutOnOccupiedDay ? ", zajęty od tego dnia, możliwy zwrot" : ", zajęty" : ""}`;
           return <button
             key={value}
             type="button"
             disabled={finalDisabled}
             onClick={() => select(value)}
-            aria-label={d.toLocaleDateString("pl-PL")}
+            aria-label={aria}
+            title={occupied ? checkoutOnOccupiedDay ? "Zajęty od tego dnia · możesz zakończyć pobyt tego dnia" : "Termin zajęty" : undefined}
             className="relative h-10 text-sm disabled:cursor-not-allowed"
-            style={{ opacity: !sameMonth ? 0 : finalDisabled ? 0.28 : 1 }}
+            style={{ opacity: !sameMonth ? 0 : finalDisabled ? 0.3 : 1 }}
           >
             {inRange && <span className="absolute inset-y-1 left-0 right-0" style={{ background: "rgba(200,150,90,.15)" }} />}
             <span className="relative z-10 mx-auto grid h-9 w-9 place-items-center rounded-full font-medium" style={isFrom || isTo ? { background: "var(--gold)", color: "#211406" } : undefined}>{d.getDate()}</span>
+            {occupied && !isFrom && !isTo && <span className="absolute bottom-0.5 left-1/2 z-20 h-1 w-4 -translate-x-1/2 rounded-full" style={{ background: checkoutOnOccupiedDay ? "var(--gold)" : "rgba(239,68,68,.75)" }} />}
           </button>;
         })}
       </div>
@@ -128,6 +151,10 @@ export default function DailyRangeCalendar({ minDate, maxDate, minUnits, maxUnit
       <div className="grid gap-6 md:grid-cols-2">
         {renderMonth(cursor)}
         <div className="hidden md:block">{renderMonth(addMonths(cursor, 1))}</div>
+      </div>
+      <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1 text-[11px]" style={{ color: "var(--mut)" }}>
+        <span><span style={{ color: "rgba(239,68,68,.9)" }}>●</span> zajęte / niedostępne</span>
+        <span><span style={{ color: "var(--gold)" }}>●</span> możliwy dzień zwrotu</span>
       </div>
       {(from || to) && <div className="mt-4 grid gap-2 border-t pt-4 sm:grid-cols-2" style={{ borderColor: "var(--line)" }}>
         <div className="rounded-2xl px-4 py-3" style={{ background: "var(--header)", border: "1px solid var(--line)" }}><div className="text-[11px]" style={{ color: "var(--mut)" }}>POCZĄTEK</div><div className="mt-1 font-semibold">{from ? parseDay(from).toLocaleDateString("pl-PL", { weekday: "short", day: "numeric", month: "long" }) : "Wybierz"}</div></div>
