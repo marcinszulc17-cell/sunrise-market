@@ -22,7 +22,6 @@ export default function PrivateOfferWizard() {
   const [price, setPrice] = useState("");
   const [condition, setCondition] = useState<Condition>("good");
   const [delivery, setDelivery] = useState<Delivery>("both");
-  const [negotiable, setNegotiable] = useState(true);
   const [referrals, setReferrals] = useState(true);
   const [d1, setD1] = useState<Cat[]>([]);
   const [d2, setD2] = useState<Cat[]>([]);
@@ -39,16 +38,16 @@ export default function PrivateOfferWizard() {
       if (d) {
         setTitle(d.title || ""); setDescription(d.description || ""); setPrice(d.price || "");
         setCondition(d.condition || "good"); setDelivery(d.delivery || "both");
-        setNegotiable(d.negotiable !== false); setReferrals(d.referrals !== false);
+        setReferrals(d.referrals !== false);
         setImages(Array.isArray(d.images) ? d.images : []);
       }
     } catch { /* ignore */ }
   }, []);
 
   useEffect(() => {
-    const t = setTimeout(() => localStorage.setItem(DRAFT_KEY, JSON.stringify({ title, description, price, condition, delivery, negotiable, referrals, images })), 250);
+    const t = setTimeout(() => localStorage.setItem(DRAFT_KEY, JSON.stringify({ title, description, price, condition, delivery, referrals, images })), 250);
     return () => clearTimeout(t);
-  }, [title, description, price, condition, delivery, negotiable, referrals, images]);
+  }, [title, description, price, condition, delivery, referrals, images]);
 
   async function pick1(slug: string) {
     const c = d1.find(x => x.slug === slug) ?? null;
@@ -93,10 +92,11 @@ export default function PrivateOfferWizard() {
           seller_nature: "private",
           condition,
           delivery,
-          negotiable,
+          negotiable: false,
           purchase_mode: "purchase",
           offer_type: "product",
           private_listing: true,
+          buy_now_only: true,
         },
       });
       if (error) throw error;
@@ -111,7 +111,7 @@ export default function PrivateOfferWizard() {
   return <main className="min-h-screen px-4 py-6 sm:px-6" style={{ background: "var(--bg)", color: "var(--ink)" }}>
     <div className="mx-auto max-w-3xl">
       <div className="mb-5 flex items-center justify-between gap-3">
-        <div><div className="text-xs font-semibold tracking-[.14em]" style={{ color: "var(--gold)" }}>PARTNER HANDLOWY</div><h1 className="mt-1 text-3xl font-semibold">Wystaw przedmiot</h1><p className="mt-1 text-sm" style={{ color: "var(--mut)" }}>Kilka pól i gotowe — bez firmowych formularzy.</p></div>
+        <div><div className="text-xs font-semibold tracking-[.14em]" style={{ color: "var(--gold)" }}>PARTNER HANDLOWY</div><h1 className="mt-1 text-3xl font-semibold">Wystaw przedmiot</h1><p className="mt-1 text-sm" style={{ color: "var(--mut)" }}>Stała cena i jeden prosty zakup: Kup teraz.</p></div>
         <Link to="/sprzedawca" className="text-sm underline" style={{ color: "var(--mut)" }}>Anuluj</Link>
       </div>
 
@@ -143,11 +143,11 @@ export default function PrivateOfferWizard() {
 
         <div className="grid gap-3 sm:grid-cols-2">
           <label><span className="mb-2 block text-sm font-semibold">Dostawa</span><select className={field} style={fieldStyle} value={delivery} onChange={e=>setDelivery(e.target.value as Delivery)}><option value="both">Wysyłka lub odbiór</option><option value="shipping">Tylko wysyłka</option><option value="pickup">Tylko odbiór osobisty</option></select></label>
-          <div className="space-y-2 pt-1 sm:pt-7"><Toggle label="Cena do negocjacji" checked={negotiable} onChange={setNegotiable}/><Toggle label="Pozwól zarabiać na poleceniu" checked={referrals} onChange={setReferrals}/></div>
+          <div className="pt-1 sm:pt-7"><Toggle label="Pozwól zarabiać na poleceniu" checked={referrals} onChange={setReferrals}/></div>
         </div>
 
         <div className="rounded-2xl p-4 text-xs leading-5" style={{ background: "rgba(122,184,154,.08)", border: "1px solid rgba(122,184,154,.2)", color: "var(--mut)" }}>
-          Sprzedajesz jako osoba prywatna. Klient zobaczy typ sprzedawcy przy ofercie. Jeśli sprzedajesz zawodowo lub w ramach działalności, przełącz konto sprzedawcy na firmowe.
+          Sprzedajesz jako osoba prywatna. Oferta ma stałą cenę i jest dostępna wyłącznie przez „Kup teraz”. Klient zobaczy typ sprzedawcy przy ofercie.
         </div>
 
         <button type="button" disabled={busy || uploading} onClick={publish} className="w-full rounded-2xl px-5 py-4 text-lg font-bold text-black disabled:opacity-50" style={{ background: "linear-gradient(135deg,#C8965A,#E8C896)" }}>{busy ? "Publikuję…" : "Opublikuj ofertę"}</button>
