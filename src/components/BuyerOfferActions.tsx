@@ -34,24 +34,30 @@ export default function BuyerOfferActions({ offerId, categorySlug="", purchaseMo
   const [message, setMessage] = useState("");
   const [status, setStatus] = useState<string | null>(null);
   const [bookingConfig,setBookingConfig]=useState<BookingConfig|null>(null);
+  const [bookingChecked,setBookingChecked]=useState(false);
   const [bookingOpen,setBookingOpen]=useState(false);
+  const bookingReady=!isBooking||Boolean(bookingConfig);
+  const bookingButtonLabel=!isBooking?`${action.icon} ${action.label}`:!bookingChecked?"⏳ Sprawdzam kalendarz…":bookingConfig?bookingLabel:"Kalendarz niedostępny";
 
   useEffect(() => {
     watchedIds().then(ids => setWatched(ids.includes(offerId))).catch(() => {});
     try { setCompare(JSON.parse(localStorage.getItem(COMPARE_KEY) || "[]").includes(offerId)); } catch { /* ignore */ }
     supabase.auth.getUser().then(({ data }) => setEmail(data.user?.email || ""));
-    bookingPublicConfig(offerId).then(setBookingConfig).catch(()=>setBookingConfig(null));
+    setBookingChecked(false);
+    setBookingConfig(null);
+    bookingPublicConfig(offerId).then(setBookingConfig).catch(()=>setBookingConfig(null)).finally(()=>setBookingChecked(true));
   }, [offerId]);
 
   useEffect(()=>{
     const openBooking=()=>{
       if(!isBooking) return;
+      if(!bookingChecked){setStatus("Sprawdzam dostępność kalendarza…");return;}
       if(bookingConfig) setBookingOpen(true);
-      else setStatus("Kalendarz tej oferty nie jest jeszcze dostępny. Spróbuj ponownie za chwilę.");
+      else setStatus("Kalendarz tej oferty nie jest jeszcze aktywny. Sprzedawca musi dokończyć konfigurację rezerwacji.");
     };
     window.addEventListener("sunrise-open-booking",openBooking);
     return()=>window.removeEventListener("sunrise-open-booking",openBooking);
-  },[isBooking,bookingConfig]);
+  },[isBooking,bookingConfig,bookingChecked]);
 
   async function watch() {
     setBusy(true); setStatus(null);
@@ -86,8 +92,9 @@ export default function BuyerOfferActions({ offerId, categorySlug="", purchaseMo
 
   function primaryAction(){
     if(isBooking){
+      if(!bookingChecked){setStatus("Sprawdzam dostępność kalendarza…");return;}
       if(bookingConfig) setBookingOpen(true);
-      else setStatus("Kalendarz tej oferty nie jest jeszcze dostępny. Spróbuj ponownie za chwilę.");
+      else setStatus("Kalendarz tej oferty nie jest jeszcze aktywny. Sprzedawca musi dokończyć konfigurację rezerwacji.");
       return;
     }
     setOpen(true);
@@ -114,7 +121,7 @@ export default function BuyerOfferActions({ offerId, categorySlug="", purchaseMo
       <button disabled={busy} onClick={watch} className="shrink-0 rounded-xl px-3 py-2 text-xs font-semibold sm:text-sm" style={{ border: "1px solid var(--line)", background: watched ? "rgba(200,150,90,.18)" : "var(--glass)" }}>{watched ? "♥ Obserwujesz" : "♡ Obserwuj"}</button>
       <button onClick={toggleCompare} className="shrink-0 rounded-xl px-3 py-2 text-xs font-semibold sm:text-sm" style={{ border: "1px solid var(--line)", background: compare ? "rgba(56,224,240,.12)" : "var(--glass)" }}>{compare ? "✓ Porównanie" : "⇄ Porównaj"}</button>
       <a href="/porownaj" className="hidden shrink-0 rounded-xl px-3 py-2 text-sm font-semibold sm:block" style={{ border: "1px solid var(--line)", background:"var(--glass)" }}>Porównanie</a>
-      <button onClick={primaryAction} className="min-w-[150px] flex-1 shrink-0 rounded-xl px-3 py-2 text-xs font-semibold text-black sm:flex-none sm:text-sm" style={{ background: "linear-gradient(135deg,#C8965A,#E8C896)" }}>{isBooking?bookingLabel:`${action.icon} ${action.label}`}</button>
+      <button disabled={busy||(isBooking&&(!bookingChecked||!bookingReady))} onClick={primaryAction} className="min-w-[150px] flex-1 shrink-0 rounded-xl px-3 py-2 text-xs font-semibold text-black disabled:cursor-not-allowed disabled:opacity-45 sm:flex-none sm:text-sm" style={{ background: "linear-gradient(135deg,#C8965A,#E8C896)" }}>{bookingButtonLabel}</button>
     </div>
     {status && <div className="fixed bottom-[calc(68px+env(safe-area-inset-bottom))] left-3 right-3 z-50 rounded-xl px-4 py-3 text-sm shadow-xl sm:bottom-auto sm:left-auto sm:right-4 sm:top-[132px] sm:max-w-sm" style={{ background: "var(--header)", border: "1px solid var(--line)" }}>{status}</div>}
     {open && !isBooking && <div className="fixed inset-0 z-50 grid place-items-center bg-black/60 p-4" onMouseDown={() => setOpen(false)}>
