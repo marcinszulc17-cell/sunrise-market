@@ -12,6 +12,8 @@ test("paid bookings use refund workflow instead of plain cancellation", () => {
   assert.match(seller, /Opłacona — do akceptacji/);
   assert.match(seller, /pending_approval/);
   assert.match(migration, /Opłaconą rezerwację anuluj przez zwrot płatności/);
+  assert.match(migration, /v\.starts_at <= now\(\)/);
+  assert.match(migration, /Po rozpoczęciu terminu automatyczny zwrot jest zablokowany/);
 });
 
 test("refund reverses bonuses before refunding the payment and restores them on payment failure", () => {
