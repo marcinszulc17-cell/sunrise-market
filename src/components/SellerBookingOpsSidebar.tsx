@@ -89,7 +89,7 @@ export default function SellerBookingOpsSidebar({
       <div className="mt-3 space-y-2 text-xs leading-5" style={{ color: "var(--mut)" }}>
         <div>✓ utworzenie i potwierdzenie rezerwacji</div>
         <div>✓ zmiana terminu lub zasobu — aplikacja/push</div>
-        <div>✓ e-mail dla zdarzeń bookingu jest przygotowany; wysyłka ruszy po aktywacji dostawcy poczty</div>
+        <div>✓ e-mail dla zdarzeń bookingu jest dodawany do kolejki wysyłkowej</div>
         <div>✓ cena opłaconej rezerwacji pozostaje zablokowana przy przenoszeniu</div>
       </div>
     </div>
