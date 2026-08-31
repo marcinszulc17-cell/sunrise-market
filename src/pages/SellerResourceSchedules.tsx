@@ -141,6 +141,19 @@ export default function SellerResourceSchedules() {
     await loadResources();
   }
 
+  async function bulkCopySchedule() {
+    if (!selected) { setMsg("Najpierw otwórz zasób, którego zapisany grafik chcesz skopiować."); return; }
+    if (!checkedResources.some((id) => id !== selected)) { setMsg("Zaznacz co najmniej jeden inny zasób docelowy."); return; }
+    setBusy(true); setMsg("");
+    const { data, error } = await supabase.schema("market").rpc("seller_booking_resources_schedule_copy", {
+      p_source: selected,
+      p_targets: checkedResources,
+    });
+    setBusy(false);
+    if (error) { setMsg(error.message); return; }
+    setMsg(`Skopiowano zapisany grafik „${resource?.name || "zasobu"}” na ${Number(data || 0)} zasobów ✅`);
+  }
+
   async function bulkAddOff() {
     if (!checkedResources.length) { setMsg("Zaznacz co najmniej jeden zasób."); return; }
     if (!bulkFrom || !bulkTo) { setMsg("Wybierz początek i koniec wspólnej niedostępności."); return; }
@@ -182,6 +195,7 @@ export default function SellerResourceSchedules() {
   }
 
   const allVisibleChecked = filteredResources.length > 0 && filteredResources.every((r) => checkedResources.includes(r.id));
+  const hasOtherBulkTarget = checkedResources.some((id) => id !== selected);
 
   return <main className="min-h-screen px-4 py-8 sm:px-6" style={{ background: "var(--bg)", color: "var(--ink)" }}><div className="mx-auto max-w-6xl">
     <div className="mb-6 flex flex-wrap items-start justify-between gap-4"><div><Link to="/sprzedawca/rezerwacje" className="text-sm underline" style={{ color: "var(--mut)" }}>← Rezerwacje i kalendarz</Link><h1 className="mt-2 font-display text-3xl font-semibold">Grafiki i zasoby</h1><p className="mt-1 max-w-2xl text-sm" style={{ color: "var(--mut)" }}>Zarządzaj pracownikami, autami, pokojami i sprzętem oraz ich godzinami pracy, urlopami, serwisem i innymi okresami niedostępności.</p></div></div>
@@ -207,6 +221,11 @@ export default function SellerResourceSchedules() {
             <div className="grid grid-cols-2 gap-2">
               <button disabled={busy} onClick={() => bulkSetActive(true)} className="rounded-lg px-2 py-2 text-xs font-semibold disabled:opacity-50" style={{ border: "1px solid rgba(122,184,154,.35)", color: "var(--green)" }}>Włącz zaznaczone</button>
               <button disabled={busy} onClick={() => bulkSetActive(false)} className="rounded-lg px-2 py-2 text-xs font-semibold disabled:opacity-50" style={{ border: "1px solid var(--line)" }}>Wyłącz zaznaczone</button>
+            </div>
+            <div className="rounded-lg p-2.5" style={{ border: "1px solid var(--line)" }}>
+              <div className="text-[11px]" style={{ color: "var(--mut)" }}>Źródło grafiku: <b style={{ color: "var(--ink)" }}>{resource?.name || "—"}</b></div>
+              <button disabled={busy || !selected || !hasOtherBulkTarget} onClick={bulkCopySchedule} className="mt-2 w-full rounded-lg px-2 py-2 text-xs font-semibold disabled:opacity-40" style={{ border: "1px solid var(--gold)", color: "var(--gold)" }}>Skopiuj zapisany grafik na zaznaczone</button>
+              <div className="mt-1.5 text-[10px] leading-4" style={{ color: "var(--mut)" }}>Jeśli źródło nie ma indywidualnych godzin, zaznaczone zasoby wrócą do dziedziczenia grafiku oferty.</div>
             </div>
             <div className="border-t pt-3" style={{ borderColor: "var(--line)" }}>
               <div className="text-xs font-semibold">Wspólny urlop / serwis</div>
