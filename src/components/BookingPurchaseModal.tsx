@@ -4,6 +4,7 @@ import {
   bookingAvailableSlotsV2,
   bookingDailyQuoteV2,
   bookingPublicCatalogV2,
+  bookingUnavailableDaysV2,
   createBookingHoldV2,
   type BookingCatalogV2,
   type BookingSlotV2,
@@ -35,6 +36,9 @@ export default function BookingPurchaseModal({ offerId, config, open, onClose }:
   const [toDay, setToDay] = useState("");
   const [rentalBase, setRentalBase] = useState(0);
   const [rentalUnits, setRentalUnits] = useState(0);
+  const [unavailableDays, setUnavailableDays] = useState<string[]>([]);
+  const [availabilityLoading, setAvailabilityLoading] = useState(false);
+  const [availabilityWarning, setAvailabilityWarning] = useState<string | null>(null);
   const [cashbackRate, setCashbackRate] = useState(0.03);
   const [payment, setPayment] = useState<"wallet" | "card">("card");
   const [busy, setBusy] = useState(false);
@@ -66,6 +70,8 @@ export default function BookingPurchaseModal({ offerId, config, open, onClose }:
     setToDay("");
     setRentalBase(0);
     setRentalUnits(0);
+    setUnavailableDays([]);
+    setAvailabilityWarning(null);
     getMarketConfig().then((c) => setCashbackRate(c.cashbackRate));
     bookingPublicCatalogV2(offerId)
       .then((c) => {
@@ -91,6 +97,30 @@ export default function BookingPurchaseModal({ offerId, config, open, onClose }:
       .catch((e) => setError(e?.message || "Nie udało się pobrać terminów"))
       .finally(() => setLoading(false));
   }, [open, offerId, activeConfig.booking_type, activeConfig.max_advance_days, activeConfig.timezone, serviceId, resourceId]);
+
+  useEffect(() => {
+    if (!open || activeConfig.booking_type !== "daily") {
+      setAvailabilityLoading(false);
+      setUnavailableDays([]);
+      setAvailabilityWarning(null);
+      return;
+    }
+    const from = dayKey(new Date(Date.now() + activeConfig.min_notice_hours * 3600000), activeConfig.timezone);
+    const to = dayKey(new Date(Date.now() + activeConfig.max_advance_days * 86400000), activeConfig.timezone);
+    let cancelled = false;
+    setAvailabilityLoading(true);
+    setAvailabilityWarning(null);
+    bookingUnavailableDaysV2(offerId, from, to)
+      .then((rows) => { if (!cancelled) setUnavailableDays(rows.map((row) => row.day)); })
+      .catch(() => {
+        if (!cancelled) {
+          setUnavailableDays([]);
+          setAvailabilityWarning("Nie udało się wczytać zajętych dni. Wybrany zakres zostanie jeszcze sprawdzony przez serwer przed płatnością.");
+        }
+      })
+      .finally(() => { if (!cancelled) setAvailabilityLoading(false); });
+    return () => { cancelled = true; };
+  }, [open, offerId, activeConfig.booking_type, activeConfig.min_notice_hours, activeConfig.max_advance_days, activeConfig.timezone]);
 
   useEffect(() => {
     if (!open || activeConfig.booking_type !== "daily" || !fromDay || !toDay) {
@@ -229,15 +259,17 @@ export default function BookingPurchaseModal({ offerId, config, open, onClose }:
             </section>
           </> : <section>
             <StepTitle n={1} title="Wybierz okres" />
-            <DailyRangeCalendar
+            {availabilityLoading ? <Info>Sprawdzam zajęte i zablokowane dni…</Info> : <DailyRangeCalendar
               minDate={today}
               maxDate={latest}
               minUnits={Number(activeConfig.min_units || 1)}
               maxUnits={Number(activeConfig.max_units || 1)}
               from={fromDay}
               to={toDay}
+              unavailableDates={unavailableDays}
               onChange={setRentalRange}
-            />
+            />}
+            {availabilityWarning && <div className="mt-3 rounded-2xl px-4 py-3 text-xs" style={{ background: "rgba(200,150,90,.08)", border: "1px solid rgba(200,150,90,.22)", color: "var(--gold)" }}>{availabilityWarning}</div>}
             <div className="mt-3 flex flex-wrap items-center justify-between gap-2 text-xs" style={{ color: "var(--mut)" }}>
               <span>Minimalnie {activeConfig.min_units} dni · maksymalnie {activeConfig.max_units} dni</span>
               <span>Rezerwacja do {shortDate(latest)}</span>
