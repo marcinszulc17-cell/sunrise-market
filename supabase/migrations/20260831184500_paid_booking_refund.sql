@@ -155,7 +155,7 @@ begin
     where order_id=r.order_id and status<>'settled';
   update market.ambassador_commission_outbox
     set status='reversed',updated_at=now()
-    where order_id=r.order_id and status in ('sent','failed','pending_vat','pending_identity');
+    where order_id=r.order_id and status in ('ready','sent','failed','pending_vat','pending_identity');
 
   update market.booking_refunds
     set status='refunded',external_ref=p_external_ref,last_error=null,refunded_at=now(),updated_at=now()
