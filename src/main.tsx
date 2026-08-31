@@ -19,7 +19,7 @@ import SaleConfirmation from "./pages/SaleConfirmation";
 import VerifyRequest from "./pages/VerifyRequest";
 import Login from "./pages/Login";
 import ProductRouter from "./pages/ProductRouter";
-import AdvancedSearch from "./pages/AdvancedSearch";
+import AdvancedSearchUniversal from "./pages/AdvancedSearchUniversal";
 import Compare from "./pages/Compare";
 import Koszyk from "./pages/Koszyk";
 import Zamowienia from "./pages/Zamowienia";
@@ -52,7 +52,7 @@ ReactDOM.createRoot(document.getElementById("root")!).render(
         <Route path="/" element={<MarketEnhanced />} />
         <Route path="/motoryzacja" element={<CategoryPortal mode="car" />} />
         <Route path="/nieruchomosci" element={<CategoryPortal mode="property" />} />
-        <Route path="/szukaj" element={<AdvancedSearch />} />
+        <Route path="/szukaj" element={<AdvancedSearchUniversal />} />
         <Route path="/porownaj" element={<Compare />} />
         <Route path="/login" element={<Login />} />
         <Route path="/sso" element={<Sso />} />
