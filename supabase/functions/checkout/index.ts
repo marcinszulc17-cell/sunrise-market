@@ -201,8 +201,9 @@ Deno.serve(async (req) => {
       shipCost = rows.reduce((a, r) => a + Number(r.price_gross ?? 0), 0);
       shipLabel = rows.map((r) => r.name).join(" + ") || null;
     }
-    const { data: ord0 } = await sb.from("orders").select("total_gross,invoice_snapshot_at").eq("id", orderId).single();
+    const { data: ord0 } = await sb.from("orders").select("total_gross,deposit_gross,invoice_snapshot_at").eq("id", orderId).single();
     const productSubtotal = Number(ord0!.total_gross);
+    const refundableDeposit = bookingId ? money(Number(ord0?.deposit_gross ?? 0)) : 0;
     if (productSubtotal >= FREE_SHIPPING_THRESHOLD) shipCost = 0;
     try {
       const { data: isSmart } = await sb.rpc("is_smart_member", { p_user: user.id });
@@ -228,7 +229,8 @@ Deno.serve(async (req) => {
     const finalTotal = money(discountedProducts + shipCost);
     const { data: cashbackCfg } = await sb.from("platform_config").select("value").eq("key", "cashback_rate").maybeSingle();
     const cashbackRate = Math.max(0, Number(cashbackCfg?.value ?? 0.03));
-    const cashback = money(discountedProducts * cashbackRate);
+    const cashbackBase = money(Math.max(0, discountedProducts - refundableDeposit));
+    const cashback = money(cashbackBase * cashbackRate);
     const inv = ord0?.invoice_snapshot_at ? {} : invoiceSnapshot(invoice);
 
     await sb.from("orders").update({
