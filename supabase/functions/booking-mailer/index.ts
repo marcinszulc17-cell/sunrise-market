@@ -37,7 +37,7 @@ Deno.serve(async () => {
   const service = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
   const resend = Deno.env.get("RESEND_API_KEY");
   const from = Deno.env.get("BOOKING_MAIL_FROM") || "Sunrise Market <noreply@sunrisemarket.pl>";
-  if (!resend) return json({ ok: true, configured: false, message: "RESEND_API_KEY missing" });
+  if (!resend) return json({ ok: false, configured: false, message: "RESEND_API_KEY missing" }, 503);
   const sb = createClient(url, service, { auth: { persistSession: false } });
   const { data: rows, error } = await sb.schema("market").from("booking_mail_outbox").select("id,event_type,recipient_type,recipient_email,payload,attempts").in("status", ["pending","failed"]).lt("attempts", 5).order("created_at").limit(25);
   if (error) return json({ ok: false, error: error.message }, 500);
