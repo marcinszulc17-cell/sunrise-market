@@ -5,9 +5,16 @@ import { zl } from "../lib/money";
 type Offer = { offer_id:string; title:string; price_gross:number; category:string; category_slug:string; seller:string; image_url:string|null; attributes:Record<string,any> };
 type Category = { id:string; slug:string; name:string; parent_id:string|null; sort_order?:number|null };
 type AttrDef = { key:string; label:string; data_type:"text"|"number"|"bool"|"enum"; options:any };
+type PurchaseModeFilter = "" | "purchase" | "appointment" | "daily";
 
 const PRIVATE_FILTER_KEYS = new Set(["vin","registration_number","kw_number","offer_type","cashback_only","purchase_mode"]);
 const box: React.CSSProperties = { background:"var(--glass)", border:"1px solid var(--line)", color:"var(--ink)" };
+const MODE_FILTERS: { id:PurchaseModeFilter; icon:string; label:string; description:string }[] = [
+  { id:"", icon:"☰", label:"Wszystko", description:"Zakupy, usługi i wynajem" },
+  { id:"purchase", icon:"🛒", label:"Kup", description:"Kupujesz od razu" },
+  { id:"appointment", icon:"⏱️", label:"Usługi", description:"Wybierasz dzień i godzinę" },
+  { id:"daily", icon:"🗓️", label:"Wynajem", description:"Wybierasz okres od–do" },
+];
 
 function emoji(name:string){
   const t=name.toLowerCase();
@@ -38,6 +45,7 @@ function normalizeOptions(options:any):string[]{
 export default function AdvancedSearchUniversal(){
   const [categories,setCategories]=useState<Category[]>([]);
   const [selected,setSelected]=useState<string>("");
+  const [mode,setMode]=useState<PurchaseModeFilter>("");
   const [q,setQ]=useState("");
   const [priceMin,setPriceMin]=useState("");
   const [priceMax,setPriceMax]=useState("");
@@ -73,6 +81,7 @@ export default function AdvancedSearchUniversal(){
     e?.preventDefault(); setBusy(true); setMsg(null);
     const rpcFilters:Record<string,string|boolean>={};
     for(const [k,v] of Object.entries(filters)) if(v!==""&&v!==false) rpcFilters[k]=v;
+    if(mode) rpcFilters.purchase_mode=mode;
     const {data,error}=await supabase.rpc("search_offers_v2",{
       p_query:q.trim()||null,
       p_category_slug:selected||null,
@@ -88,7 +97,7 @@ export default function AdvancedSearchUniversal(){
     if(!found.length)setMsg("Brak ofert spełniających wybrane kryteria.");
   }
 
-  function reset(){setQ("");setPriceMin("");setPriceMax("");setSort("trafnosc");setSelected("");setFilters({});setDefs([]);setRows([]);setMsg(null);}
+  function reset(){setQ("");setPriceMin("");setPriceMax("");setSort("trafnosc");setSelected("");setMode("");setFilters({});setDefs([]);setRows([]);setMsg(null);}
 
   return <main className="min-h-screen px-4 py-6 sm:px-6" style={{background:"var(--bg)",color:"var(--ink)"}}><div className="mx-auto max-w-7xl">
     <div className="mb-6 flex items-center gap-3"><a href="/" className="text-sm">← Market</a><div><div className="text-xs font-semibold" style={{color:"var(--gold)"}}>SUNRISE MARKET</div><h1 className="text-3xl font-semibold">Wyszukiwarka zaawansowana</h1><p className="mt-1 text-sm" style={{color:"var(--mut)"}}>Produkty, usługi, rezerwacje, wynajem, samochody, nieruchomości i wszystkie pozostałe kategorie w jednym miejscu.</p></div></div>
@@ -97,6 +106,11 @@ export default function AdvancedSearchUniversal(){
       <div className="mb-3 flex items-center justify-between gap-3"><b>Wybierz dział</b>{selected&&<button type="button" onClick={()=>{setSelected("");setFilters({});setDefs([]);}} className="text-xs" style={{color:"var(--gold)"}}>Wszystkie kategorie</button>}</div>
       <div className="flex gap-2 overflow-x-auto pb-2"><button type="button" onClick={()=>setSelected("")} className="shrink-0 rounded-xl px-4 py-3 text-sm font-semibold" style={!selected?{background:"linear-gradient(135deg,#C8965A,#E8C896)",color:"#000"}:box}>☰ Wszystko</button>{roots.map(r=><button type="button" key={r.id} onClick={()=>setSelected(r.slug)} className="shrink-0 rounded-xl px-4 py-3 text-sm font-semibold" style={selected===r.slug?{background:"linear-gradient(135deg,#C8965A,#E8C896)",color:"#000"}:box}>{emoji(r.name)} {r.name}</button>)}</div>
       {selectedCategory&&children(selectedCategory.id).length>0&&<div className="mt-3 flex gap-2 overflow-x-auto border-t pt-3" style={{borderColor:"var(--line)"}}>{children(selectedCategory.id).map(c=><button type="button" key={c.id} onClick={()=>setSelected(c.slug)} className="shrink-0 rounded-xl px-3 py-2 text-sm" style={selected===c.slug?{background:"rgba(200,150,90,.18)",border:"1px solid var(--gold)"}:box}>{c.name}</button>)}</div>}
+    </section>
+
+    <section className="mb-5 rounded-3xl p-4 sm:p-5" style={box}>
+      <div className="mb-3"><b>Jak chcesz skorzystać?</b><div className="mt-1 text-xs" style={{color:"var(--mut)"}}>Ten filtr działa w każdej kategorii — także dla aut, nieruchomości, sprzętu i usług.</div></div>
+      <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">{MODE_FILTERS.map(item=><button type="button" key={item.id||"all"} onClick={()=>setMode(item.id)} className="rounded-2xl px-4 py-3 text-left" style={mode===item.id?{background:"rgba(200,150,90,.16)",border:"1px solid var(--gold)"}:box}><div className="font-semibold">{item.icon} {item.label}</div><div className="mt-1 text-xs" style={{color:"var(--mut)"}}>{item.description}</div></button>)}</div>
     </section>
 
     <form onSubmit={search} className="rounded-3xl p-5 sm:p-6" style={box}><div className="grid gap-3 md:grid-cols-4">
