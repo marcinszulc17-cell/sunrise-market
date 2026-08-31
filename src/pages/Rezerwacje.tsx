@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { myBookings } from "../lib/api";
+import { myBookingsV2, type BuyerBooking } from "../lib/buyerBookings";
 import { supabase } from "../lib/supabase";
 import { zl } from "../lib/money";
 import { useSeo } from "../lib/seo";
@@ -9,7 +9,7 @@ const labels: Record<string, string> = {
   confirmed: "Potwierdzona", completed: "Zakończona", cancelled: "Anulowana", expired: "Wygasła",
 };
 const requestLabels: Record<string, string> = { pending: "Czeka na sprzedawcę", accepted: "Zaakceptowana", rejected: "Odrzucona", withdrawn: "Wycofana" };
-const bookingLabel = (r: any) => r.status === "pending_payment" && r.paid_at
+const bookingLabel = (r: BuyerBooking) => r.status === "pending_payment" && r.paid_at
   ? "Opłacona — czeka na akceptację"
   : labels[r.status] ?? r.status;
 const date = (iso: string, withTime: boolean) => new Date(iso).toLocaleString("pl-PL", withTime
@@ -24,7 +24,7 @@ type ChangeRequest = { id:string; booking_id:string; request_type:"cancel"|"resc
 
 export default function Rezerwacje() {
   useSeo("Moje rezerwacje", "Opłacone usługi i wynajem w Sunrise Market.", "/rezerwacje");
-  const [rows, setRows] = useState<any[]>([]);
+  const [rows, setRows] = useState<BuyerBooking[]>([]);
   const [requests, setRequests] = useState<ChangeRequest[]>([]);
   const [loading, setLoading] = useState(true);
   const [authed, setAuthed] = useState(true);
@@ -40,10 +40,10 @@ export default function Rezerwacje() {
 
   async function load() {
     const [bookings, changeRequests] = await Promise.all([
-      myBookings(),
+      myBookingsV2(),
       supabase.schema("market").rpc("buyer_booking_change_requests"),
     ]);
-    setRows(bookings as any[]);
+    setRows(bookings);
     if (!changeRequests.error) setRequests((changeRequests.data || []) as ChangeRequest[]);
   }
 
@@ -54,7 +54,7 @@ export default function Rezerwacje() {
     });
   }, []);
 
-  function openRequest(r:any, existing?:ChangeRequest) {
+  function openRequest(r:BuyerBooking, existing?:ChangeRequest) {
     setEditing(r.id);
     setRequestType(existing?.request_type || "reschedule");
     setRequestedAt(existing?.requested_starts_at ? localInput(existing.requested_starts_at) : localInput(r.starts_at));
@@ -62,7 +62,7 @@ export default function Rezerwacje() {
     setNotice("");
   }
 
-  async function submitRequest(r:any) {
+  async function submitRequest(r:BuyerBooking) {
     if (requestType === "reschedule" && !requestedAt) { setNotice("Wybierz proponowany nowy termin."); return; }
     setBusy(true); setNotice("");
     const { error } = await supabase.schema("market").rpc("buyer_booking_change_request_submit", {
@@ -100,6 +100,7 @@ export default function Rezerwacje() {
           <div className="flex flex-wrap items-start justify-between gap-3"><div><a href={`/produkt/${r.offer_id}`} className="font-semibold hover:underline">{r.title}</a><p className="mt-1 text-sm" style={{ color: "var(--mut)" }}>{r.booking_type === "appointment" ? date(r.starts_at, true) : `${date(r.starts_at, false)} – ${date(r.ends_at, false)} · ${r.units} dni`}</p></div><span className="rounded-full px-3 py-1 text-xs font-semibold" style={{ background: r.status === "confirmed" ? "rgba(34,197,94,.14)" : r.status === "pending_payment" && r.paid_at ? "rgba(200,150,90,.14)" : "var(--header)", border: "1px solid var(--line)" }}>{bookingLabel(r)}</span></div>
           {r.status === "pending_payment" && r.paid_at && <p className="mt-3 rounded-xl px-3 py-2 text-xs" style={{ background: "rgba(200,150,90,.08)", border: "1px solid rgba(200,150,90,.2)", color: "var(--mut)" }}>Płatność jest zaksięgowana, a termin nadal zarezerwowany dla Ciebie. Sprzedawca musi tylko zaakceptować rezerwację.</p>}
           <div className="mt-4 flex items-center justify-between text-sm"><span style={{ color: "var(--mut)" }}>{r.payment_provider === "stripe" ? "Karta / BLIK / P24" : r.payment_provider === "sunrise_pay" ? "Sunrise Pay" : ""}</span><strong>{zl(Number(r.amount_gross))}</strong></div>
+          {Number(r.deposit_gross) > 0 && <div className="mt-2 text-xs" style={{ color: "var(--mut)" }}>Kaucja zabezpieczająca: {zl(Number(r.deposit_gross))} · rozliczana osobno, poza ceną rezerwacji.</div>}
 
           {request && <div className="mt-4 rounded-2xl p-4 text-sm" style={{ background:"var(--header)", border:"1px solid var(--line)" }}>
             <div className="flex flex-wrap items-center justify-between gap-2"><b>{request.request_type === "cancel" ? "Prośba o anulowanie" : "Prośba o zmianę terminu"}</b><span className="rounded-full px-2.5 py-1 text-xs" style={{ border:"1px solid var(--line)", color: request.status === "accepted" ? "var(--green)" : request.status === "rejected" ? "#fca5a5" : "var(--gold)" }}>{requestLabels[request.status] || request.status}</span></div>
