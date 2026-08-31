@@ -1,4 +1,5 @@
 import { supabase } from "./supabase";
+import { refreshCustomerAccess } from "./customerAccess";
 
 export type BookingServiceV2 = {
   id: string;
@@ -117,6 +118,9 @@ export async function createBookingHoldV2(params: {
   serviceId?: string | null;
   resourceId?: string | null;
 }): Promise<BookingHoldV2> {
+  // MySunrise is the identity hub. Booking can only start for an eligible MySunrise account.
+  await refreshCustomerAccess();
+
   const { data, error } = await supabase.schema("market").rpc("create_booking_hold_v2", {
     p_offer: params.offerId,
     p_starts_at: params.startsAt.toISOString(),
