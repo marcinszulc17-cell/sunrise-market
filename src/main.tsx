@@ -11,7 +11,7 @@ import SellerHome from "./pages/SellerHome";
 import SprzedawcaWystaw from "./pages/SprzedawcaWystaw";
 import TradePartnerActivate from "./pages/TradePartnerActivate";
 import PartnerDashboard from "./pages/PartnerDashboard";
-import SellerOffersManage from "./pages/SellerOffersManage";
+import SellerOffersRouter from "./pages/SellerOffersRouter";
 import SellerOfferEdit from "./pages/SellerOfferEdit";
 import SellerOrders from "./pages/SellerOrders";
 import SellerBookingsManage from "./pages/SellerBookingsManage";
@@ -126,7 +126,7 @@ ReactDOM.createRoot(document.getElementById("root")!).render(
         <Route path="/sprzedawca" element={<SellerHome />} />
         <Route path="/sprzedawca/partner" element={<TradePartnerActivate />} />
         <Route path="/sprzedawca/partner/pulpit" element={<PartnerDashboard />} />
-        <Route path="/sprzedawca/oferty" element={<SellerOffersManage />} />
+        <Route path="/sprzedawca/oferty" element={<SellerOffersRouter />} />
         <Route path="/sprzedawca/oferty/:offerId/edytuj" element={<SellerOfferEdit />} />
         <Route path="/sprzedawca/zamowienia" element={<SellerOrders />} />
         <Route path="/sprzedawca/rezerwacje" element={<SellerBookingsManage />} />
