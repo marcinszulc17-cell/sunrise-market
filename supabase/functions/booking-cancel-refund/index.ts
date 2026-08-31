@@ -88,10 +88,20 @@ Deno.serve(async (req) => {
     if (!reversal.ok) {
       const reason = String(reversal.data?.reason ?? reversal.data?.error ?? "bonus_reversal_failed");
       await abortRefund(service, bookingId, reason);
-      if (reason === "points_already_used") return json({ ok: false, error: "bonus_points_already_used", message: "Nie można automatycznie anulować tej opłaconej rezerwacji, ponieważ część punktów cashback/prowizji została już wykorzystana. Wymagane jest rozliczenie operatora." }, 409);
+      if (reason === "points_already_used") {
+        await service.from("booking_refunds").update({ status: "blocked_bonus", last_error: reason, updated_at: new Date().toISOString() }).eq("booking_id", bookingId);
+        return json({ ok: false, error: "bonus_points_already_used", message: "Nie można automatycznie anulować tej opłaconej rezerwacji, ponieważ część punktów cashback/prowizji została już wykorzystana. Wymagane jest rozliczenie operatora." }, 409);
+      }
       throw new Error(`Nie udało się cofnąć bonusów: ${reason}`);
     }
     bonusesReversed = true;
+
+    const { error: reversalStateError } = await service.from("booking_refunds").update({
+      status: "bonuses_reversed",
+      last_error: null,
+      updated_at: new Date().toISOString(),
+    }).eq("booking_id", bookingId);
+    if (reversalStateError) throw reversalStateError;
 
     const amount = Number(row.amount_gross ?? 0);
     const amountGrosz = Math.round(amount * 100);
