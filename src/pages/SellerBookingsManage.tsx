@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { supabase } from "../lib/supabase";
 import SellerBookingCalendar from "../components/SellerBookingCalendar";
+import BookingChangeHistory from "../components/BookingChangeHistory";
 
 const statusLabel: Record<string, string> = {
   held: "Termin zablokowany",
@@ -360,6 +361,7 @@ export default function SellerBookingsManage() {
                   {["held", "pending_payment"].includes(r.status) && r.paid_at && <button disabled={busy || rescheduleBusy} onClick={() => setStatus(r.id, "confirmed")} className="rounded-xl px-3 py-2 text-sm font-semibold text-black" style={{ background: "linear-gradient(135deg,#C8965A,#E8C896)" }}>Potwierdź</button>}
                   {["held", "pending_payment", "confirmed"].includes(r.status) && <button disabled={busy || rescheduleBusy} onClick={() => setStatus(r.id, "cancelled")} className="rounded-xl px-3 py-2 text-sm" style={{ border: "1px solid rgba(239,68,68,.35)" }}>Anuluj</button>}
                   {r.buyer_email && <a href={`mailto:${r.buyer_email}`} className="rounded-xl px-3 py-2 text-sm" style={{ border: "1px solid var(--line)" }}>✉️ Napisz do klienta</a>}
+                  <BookingChangeHistory bookingId={r.id} />
                 </div>
 
                 {r.status === "confirmed" && rescheduleId === r.id && <div className="mt-4 rounded-2xl p-4" style={{ background: "rgba(200,150,90,.07)", border: "1px solid rgba(200,150,90,.25)" }}>
