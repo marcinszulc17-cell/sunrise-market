@@ -9,6 +9,7 @@ import {
   type BookingSlotV2,
 } from "../lib/bookingV2";
 import { zl } from "../lib/money";
+import DailyRangeCalendar from "./DailyRangeCalendar";
 
 type Props = { offerId: string; config: BookingConfig; open: boolean; onClose: () => void };
 
@@ -97,7 +98,11 @@ export default function BookingPurchaseModal({ offerId, config, open, onClose }:
     setError(null);
     bookingDailyQuoteV2(offerId, fromDay, toDay)
       .then((q) => { setRentalUnits(q.days); setRentalBase(q.base); })
-      .catch((e) => setError(e?.message || "Nie udało się policzyć ceny"));
+      .catch((e) => {
+        setRentalBase(0);
+        setRentalUnits(0);
+        setError(e?.message || "Nie udało się policzyć ceny");
+      });
   }, [open, offerId, activeConfig.booking_type, fromDay, toDay]);
 
   const days = useMemo(
@@ -123,6 +128,16 @@ export default function BookingPurchaseModal({ offerId, config, open, onClose }:
     if (!first) return;
     setSelectedDay(dayKey(first.starts_at, activeConfig.timezone));
     setSelected(first);
+  }
+
+  function setRentalRange(nextFrom: string, nextTo: string) {
+    setError(null);
+    setFromDay(nextFrom);
+    setToDay(nextTo);
+    if (!nextTo) {
+      setRentalBase(0);
+      setRentalUnits(0);
+    }
   }
 
   async function pay() {
@@ -165,6 +180,11 @@ export default function BookingPurchaseModal({ offerId, config, open, onClose }:
 
   if (!open) return null;
 
+  const serviceStep = catalog?.services?.length ? 1 : 0;
+  const resourceStep = catalog?.resources?.length ? 1 : 0;
+  const appointmentDateStep = serviceStep + resourceStep + 1;
+  const paymentStep = activeConfig.booking_type === "appointment" ? appointmentDateStep + 1 : 2;
+
   return <div className="fixed inset-0 z-[70] bg-black/75 p-0 sm:grid sm:place-items-center sm:p-4" onMouseDown={onClose}>
     <div className="flex h-full w-full flex-col overflow-hidden sm:h-auto sm:max-h-[92vh] sm:max-w-5xl sm:rounded-3xl" onMouseDown={(e) => e.stopPropagation()} style={{ background: "var(--header)", border: "1px solid var(--line)" }}>
       <header className="flex items-start justify-between gap-4 border-b px-5 py-4 sm:px-7" style={{ borderColor: "var(--line)" }}>
@@ -185,7 +205,7 @@ export default function BookingPurchaseModal({ offerId, config, open, onClose }:
             </section> : null}
 
             {catalog?.resources?.length ? <section>
-              <StepTitle n={catalog?.services?.length ? 2 : 1} title="Wybierz pracownika lub zasób" optional />
+              <StepTitle n={serviceStep + 1} title="Wybierz pracownika lub zasób" optional />
               <div className="mt-3 flex flex-wrap gap-2">
                 <button type="button" onClick={() => { setResourceId(null); setSelected(null); }} className="rounded-xl px-3 py-2 text-sm font-medium" style={{ border: !resourceId ? "1px solid var(--gold)" : "1px solid var(--line)", background: !resourceId ? "rgba(200,150,90,.10)" : "var(--glass)" }}>⚡ Dowolny dostępny</button>
                 {catalog.resources.map((r) => <button key={r.id} type="button" onClick={() => { setResourceId(r.id); setSelected(null); }} className="rounded-xl px-3 py-2 text-sm font-medium" style={{ border: resourceId === r.id ? "1px solid var(--gold)" : "1px solid var(--line)", background: resourceId === r.id ? "rgba(200,150,90,.10)" : "var(--glass)" }}>{r.kind === "staff" ? "👤" : "◉"} {r.name}</button>)}
@@ -194,7 +214,7 @@ export default function BookingPurchaseModal({ offerId, config, open, onClose }:
 
             <section>
               <div className="mb-3 flex items-center justify-between gap-3">
-                <StepTitle n={(catalog?.services?.length ? 1 : 0) + (catalog?.resources?.length ? 1 : 0) + 1} title="Wybierz dzień i godzinę" />
+                <StepTitle n={appointmentDateStep} title="Wybierz dzień i godzinę" />
                 {slots.length > 0 && <button type="button" onClick={pickNearest} className="rounded-xl px-3 py-2 text-xs font-semibold" style={{ border: "1px solid var(--gold)", color: "var(--gold)" }}>Najbliższy wolny termin</button>}
               </div>
               {loading && <Info>Pobieram dostępne terminy…</Info>}
@@ -206,16 +226,25 @@ export default function BookingPurchaseModal({ offerId, config, open, onClose }:
             </section>
           </> : <section>
             <StepTitle n={1} title="Wybierz okres" />
-            <div className="mt-3 grid gap-4 sm:grid-cols-2">
-              <label className="text-sm"><span className="mb-2 block font-medium">Od</span><input type="date" min={today} max={latest} value={fromDay} onChange={(e) => { setFromDay(e.target.value); if (toDay && e.target.value >= toDay) setToDay(""); }} className="w-full rounded-2xl px-4 py-3" style={{ background: "var(--glass)", border: "1px solid var(--line)" }} /></label>
-              <label className="text-sm"><span className="mb-2 block font-medium">Do</span><input type="date" min={fromDay || today} max={latest} value={toDay} onChange={(e) => setToDay(e.target.value)} className="w-full rounded-2xl px-4 py-3" style={{ background: "var(--glass)", border: "1px solid var(--line)" }} /></label>
+            <DailyRangeCalendar
+              minDate={today}
+              maxDate={latest}
+              minUnits={Number(activeConfig.min_units || 1)}
+              maxUnits={Number(activeConfig.max_units || 1)}
+              from={fromDay}
+              to={toDay}
+              onChange={setRentalRange}
+            />
+            <div className="mt-3 flex flex-wrap items-center justify-between gap-2 text-xs" style={{ color: "var(--mut)" }}>
+              <span>Minimalnie {activeConfig.min_units} dni · maksymalnie {activeConfig.max_units} dni</span>
+              <span>Rezerwacja do {shortDate(latest)}</span>
             </div>
-            <div className="mt-3 text-xs" style={{ color: "var(--mut)" }}>Minimalnie {activeConfig.min_units} dni · maksymalnie {activeConfig.max_units} dni · rezerwacja do {shortDate(latest)}</div>
+            {fromDay && toDay && rentalUnits === 0 && !error && <Info>Sprawdzam cenę i dostępność wybranego okresu…</Info>}
             {rentalUnits > 0 && <div className="mt-4 rounded-2xl p-4" style={{ background: "var(--glass)", border: "1px solid var(--line)" }}><PriceRow label={`${rentalUnits} ${rentalUnits === 1 ? "dzień" : "dni"}`} value={rentalBase} strong />{fees > 0 && <PriceRow label="Przygotowanie / opłata dodatkowa" value={fees} />}{deposit > 0 && <PriceRow label="Kaucja zabezpieczająca" value={deposit} muted />}</div>}
           </section>}
 
           <section>
-            <StepTitle n={activeConfig.booking_type === "appointment" ? 4 : 3} title="Wybierz płatność" />
+            <StepTitle n={paymentStep} title="Wybierz płatność" />
             <div className="mt-3 grid gap-3 sm:grid-cols-2">
               <button type="button" onClick={() => setPayment("wallet")} className="rounded-2xl p-4 text-left" style={{ border: payment === "wallet" ? "1px solid var(--gold)" : "1px solid var(--line)", background: payment === "wallet" ? "rgba(200,150,90,.12)" : "var(--glass)" }}><b>Sunrise Pay</b><div className="mt-1 text-xs" style={{ color: "var(--mut)" }}>Płatność z portfela MySunrise</div></button>
               <button type="button" onClick={() => setPayment("card")} className="rounded-2xl p-4 text-left" style={{ border: payment === "card" ? "1px solid var(--gold)" : "1px solid var(--line)", background: payment === "card" ? "rgba(200,150,90,.12)" : "var(--glass)" }}><b>Karta / BLIK / P24</b><div className="mt-1 text-xs" style={{ color: "var(--mut)" }}>Bezpieczna płatność online</div></button>
