@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { myOffers, uploadProductImage } from "../lib/api";
+import { deleteMyOffer, setMyOfferVisibility } from "../lib/sellerOfferActions";
 import { getOfferForManage, updateOfferManage, type ManagedOffer } from "../lib/sellerOfferManage";
 import { supabase } from "../lib/supabase";
 import OfferDescriptionEditor from "../components/OfferDescriptionEditor";
@@ -22,6 +23,16 @@ const inputClass = "w-full rounded-xl px-3 py-2.5 outline-none";
 const inputStyle: React.CSSProperties = { background: "var(--glass)", border: "1px solid var(--line)", color: "var(--ink)" };
 const VAT_RATES = ["23", "8", "5", "0"] as const;
 
+function statusLabel(value: string) {
+  if (value === "active") return "Aktywna";
+  if (value === "paused") return "Ukryta";
+  if (value === "draft") return "Szkic";
+  if (value === "blocked") return "Zablokowana";
+  if (value === "archived") return "Archiwum";
+  if (value === "sold_out") return "Wyprzedana";
+  return value;
+}
+
 export default function SellerOffersManage() {
   const [authed, setAuthed] = useState<boolean | null>(null);
   const [rows, setRows] = useState<OfferRow[]>([]);
@@ -32,6 +43,7 @@ export default function SellerOffersManage() {
   const [edit, setEdit] = useState<EditState | null>(null);
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
+  const [actionOfferId, setActionOfferId] = useState<string | null>(null);
 
   async function reload() {
     setLoading(true);
@@ -101,6 +113,33 @@ export default function SellerOffersManage() {
     finally { setSaving(false); }
   }
 
+  async function toggleVisibility(row: OfferRow) {
+    if (row.status !== "active" && row.status !== "paused") return;
+    const show = row.status === "paused";
+    setActionOfferId(row.offer_id);
+    setMsg(null);
+    try {
+      await setMyOfferVisibility(row.offer_id, show);
+      await reload();
+      setMsg(show ? "Oferta jest ponownie widoczna w Sunrise Market. ✅" : "Oferta została ukryta. Możesz ją pokazać ponownie w dowolnym momencie.");
+    } catch (e) { setMsg((e as Error).message); }
+    finally { setActionOfferId(null); }
+  }
+
+  async function removeOffer(row: OfferRow) {
+    if (row.status === "archived" || row.status === "blocked") return;
+    if (!window.confirm(`Usunąć ofertę „${row.title}”?\n\nOferta trafi do archiwum. Historia zamówień i rezerwacji zostanie zachowana.`)) return;
+    setActionOfferId(row.offer_id);
+    setMsg(null);
+    try {
+      await deleteMyOffer(row.offer_id);
+      if (edit?.offer_id === row.offer_id) setEdit(null);
+      await reload();
+      setMsg("Oferta została usunięta i przeniesiona do archiwum. ✅");
+    } catch (e) { setMsg((e as Error).message); }
+    finally { setActionOfferId(null); }
+  }
+
   if (authed === null) return <Shell><p>Ładowanie…</p></Shell>;
   if (!authed) return <Shell><p>Zaloguj się, aby zarządzać ofertami. <Link to="/login" className="underline">Logowanie</Link></p></Shell>;
 
@@ -158,10 +197,10 @@ export default function SellerOffersManage() {
     <Card>
       <div className="mb-4 grid gap-3 md:grid-cols-[1fr_180px_auto]">
         <input className={inputClass} style={inputStyle} placeholder="Szukaj po nazwie, kategorii lub ID…" value={query} onChange={e=>setQuery(e.target.value)}/>
-        <select className={inputClass} style={inputStyle} value={status} onChange={e=>setStatus(e.target.value)}><option value="all">Wszystkie statusy</option><option value="active">Aktywne</option><option value="draft">Szkice</option><option value="blocked">Zablokowane</option><option value="archived">Archiwum</option></select>
+        <select className={inputClass} style={inputStyle} value={status} onChange={e=>setStatus(e.target.value)}><option value="all">Wszystkie statusy</option><option value="active">Aktywne</option><option value="paused">Ukryte</option><option value="draft">Szkice</option><option value="blocked">Zablokowane</option><option value="archived">Archiwum</option></select>
         <div className="flex items-center text-sm" style={{ color: "var(--mut)" }}>{visible.length} z {rows.length}</div>
       </div>
-      {loading ? <p>Ładowanie ofert…</p> : <div className="overflow-x-auto"><table className="w-full min-w-[760px] text-sm"><thead><tr className="text-left" style={{ color: "var(--mut)" }}><th className="pb-3">Oferta</th><th className="pb-3">Kategoria</th><th className="pb-3">Cena</th><th className="pb-3">Stan</th><th className="pb-3">Status</th><th className="pb-3"></th></tr></thead><tbody>{visible.map(r => <tr key={r.offer_id} style={{ borderTop: "1px solid var(--line)" }}><td className="py-3 pr-3"><div className="max-w-md font-medium">{r.title}</div><div className="mt-1 font-mono text-[10px]" style={{ color: "var(--mut)" }}>{r.offer_id}</div></td><td className="py-3 pr-3">{r.category}</td><td className="py-3 pr-3 whitespace-nowrap">{Number(r.price_gross).toLocaleString("pl-PL")} zł</td><td className="py-3 pr-3">{r.stock}</td><td className="py-3 pr-3">{r.status}</td><td className="py-3 text-right"><div className="flex justify-end gap-2"><Link to={`/produkt/${r.offer_id}`} className="rounded-lg px-3 py-1.5" style={{ border:"1px solid var(--line)" }}>Podgląd</Link><button onClick={()=>openEdit(r.offer_id)} className="rounded-lg px-3 py-1.5 font-semibold text-black" style={{ background:"linear-gradient(135deg,#C8965A,#E8C896)" }}>Edytuj</button></div></td></tr>)}</tbody></table>{visible.length===0 && <p className="py-6 text-center" style={{ color:"var(--mut)" }}>Brak ofert spełniających kryteria.</p>}</div>}
+      {loading ? <p>Ładowanie ofert…</p> : <div className="overflow-x-auto"><table className="w-full min-w-[980px] text-sm"><thead><tr className="text-left" style={{ color: "var(--mut)" }}><th className="pb-3">Oferta</th><th className="pb-3">Kategoria</th><th className="pb-3">Cena</th><th className="pb-3">Stan</th><th className="pb-3">Status</th><th className="pb-3"></th></tr></thead><tbody>{visible.map(r => { const busy = actionOfferId === r.offer_id; return <tr key={r.offer_id} style={{ borderTop: "1px solid var(--line)" }}><td className="py-3 pr-3"><div className="max-w-md font-medium">{r.title}</div><div className="mt-1 font-mono text-[10px]" style={{ color: "var(--mut)" }}>{r.offer_id}</div></td><td className="py-3 pr-3">{r.category}</td><td className="py-3 pr-3 whitespace-nowrap">{Number(r.price_gross).toLocaleString("pl-PL")} zł</td><td className="py-3 pr-3">{r.stock}</td><td className="py-3 pr-3">{statusLabel(r.status)}</td><td className="py-3 text-right"><div className="flex flex-wrap justify-end gap-2"><Link to={`/produkt/${r.offer_id}`} className="rounded-lg px-3 py-1.5" style={{ border:"1px solid var(--line)" }}>Podgląd</Link><button onClick={()=>openEdit(r.offer_id)} className="rounded-lg px-3 py-1.5 font-semibold text-black" style={{ background:"linear-gradient(135deg,#C8965A,#E8C896)" }}>Edytuj</button>{(r.status === "active" || r.status === "paused") && <button disabled={busy} onClick={()=>toggleVisibility(r)} className="rounded-lg px-3 py-1.5 disabled:opacity-50" style={{ border:"1px solid var(--line)" }}>{busy ? "…" : r.status === "paused" ? "Pokaż" : "Ukryj"}</button>}{r.status !== "archived" && r.status !== "blocked" && <button disabled={busy} onClick={()=>removeOffer(r)} className="rounded-lg px-3 py-1.5 font-semibold disabled:opacity-50" style={{ border:"1px solid rgba(239,68,68,.35)", color:"#fca5a5" }}>Usuń</button>}</div></td></tr>; })}</tbody></table>{visible.length===0 && <p className="py-6 text-center" style={{ color:"var(--mut)" }}>Brak ofert spełniających kryteria.</p>}</div>}
     </Card>
   </Shell>;
 }
