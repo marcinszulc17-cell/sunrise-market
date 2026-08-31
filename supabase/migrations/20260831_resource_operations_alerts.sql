@@ -1,6 +1,10 @@
 -- Extend seller resource operations dashboard with overdue returns and expiring maintenance/time-off.
+-- PostgreSQL cannot change a function OUT/RETURNS TABLE signature via CREATE OR REPLACE.
+-- Recreate it explicitly so this migration is valid both on fresh installs and existing databases.
 
-create or replace function market.seller_resource_operations_dashboard()
+drop function if exists market.seller_resource_operations_dashboard();
+
+create function market.seller_resource_operations_dashboard()
 returns table(
   id uuid,
   name text,
