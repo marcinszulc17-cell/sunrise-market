@@ -126,17 +126,13 @@ export async function createBookingHoldV2(params: {
 }
 
 export async function bookingDailyQuoteV2(offerId: string, fromDay: string, toDay: string) {
-  const start = new Date(`${fromDay}T12:00:00Z`);
-  const end = new Date(`${toDay}T12:00:00Z`);
-  const days = Math.max(0, Math.round((end.getTime() - start.getTime()) / 86400000));
-  if (!days) return { days: 0, base: 0 };
-  let base = 0;
-  for (let i = 0; i < days; i++) {
-    const d = new Date(start.getTime() + i * 86400000);
-    const day = d.toISOString().slice(0, 10);
-    const { data, error } = await supabase.schema("market").rpc("booking_price_for_day", { p_offer: offerId, p_day: day });
-    if (error) throw error;
-    base += Number(data ?? 0);
-  }
-  return { days, base };
+  if (!fromDay || !toDay || toDay <= fromDay) return { days: 0, base: 0 };
+  const { data, error } = await supabase.schema("market").rpc("booking_daily_quote_v2", {
+    p_offer: offerId,
+    p_from: fromDay,
+    p_to: toDay,
+  });
+  if (error) throw error;
+  const row = (data as Array<{ days: number; base: number }> | null)?.[0];
+  return { days: Number(row?.days ?? 0), base: Number(row?.base ?? 0) };
 }
