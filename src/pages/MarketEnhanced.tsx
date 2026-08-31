@@ -4,7 +4,36 @@ import { getOffer } from "../lib/api";
 import { supabase } from "../lib/supabase";
 
 function isSpecial(slug: string) {
-  return slug.includes("motoryzacja-samochody-osobowe") || slug.startsWith("nieruchomosci-");
+  return slug.includes("motoryzacja-samochody-osobowe") || slug.startsWith("nieruchomosci-") || slug.startsWith("uslugi-") || slug.startsWith("ogloszenia-lokalne-");
+}
+
+function purchaseMode(offer: any): "purchase" | "appointment" | "daily" {
+  const mode = String(offer?.attributes?.purchase_mode || "purchase");
+  return mode === "appointment" || mode === "daily" ? mode : "purchase";
+}
+
+function primaryCta(offer: any): { label: string; booking: boolean; badge?: string } {
+  const slug = String(offer?.category_slug || "").toLowerCase();
+  const mode = purchaseMode(offer);
+
+  if (mode === "daily") {
+    if (slug.startsWith("nieruchomosci-") || slug.includes("hotel") || slug.includes("nocleg") || slug.includes("apartament")) {
+      return { label: "Zarezerwuj pobyt", booking: true, badge: "Rezerwacja online" };
+    }
+    if (slug.includes("motoryzacja") || slug.includes("samochod") || slug.includes("pojazd")) {
+      return { label: "Zarezerwuj pojazd", booking: true, badge: "Rezerwacja online" };
+    }
+    return { label: "Wybierz daty", booking: true, badge: "Rezerwacja online" };
+  }
+
+  if (mode === "appointment") {
+    if (slug.startsWith("uslugi-") || slug.includes("serwis") || slug.includes("beauty") || slug.includes("zdrow")) {
+      return { label: "Umów usługę", booking: true, badge: "Termin online" };
+    }
+    return { label: "Wybierz termin", booking: true, badge: "Termin online" };
+  }
+
+  return { label: isSpecial(slug) ? "Zobacz ofertę" : "Szczegóły", booking: false };
 }
 
 function fmt(v: any) {
@@ -31,6 +60,19 @@ function cashbackText(price: number, rate: number) {
   return `Cashback ${percent}% · +${amount.toLocaleString("pl-PL", { maximumFractionDigits: 2 })} pkt`;
 }
 
+function addBookingBadge(body: HTMLElement, badgeText: string) {
+  if (body.querySelector('[data-booking-badge="1"]')) return;
+  const badge = document.createElement("span");
+  badge.dataset.bookingBadge = "1";
+  badge.className = "text-[11px] font-semibold px-2 py-1 rounded-full self-start";
+  badge.style.background = "rgba(56,224,240,.10)";
+  badge.style.border = "1px solid rgba(56,224,240,.25)";
+  badge.style.color = "var(--ink)";
+  badge.textContent = badgeText;
+  const trustRow = Array.from(body.children).find((el) => (el as HTMLElement).className.includes("flex-wrap"));
+  if (trustRow) trustRow.appendChild(badge);
+}
+
 function decorate(article: HTMLElement, offer: any, cashbackRate: number) {
   if (article.dataset.smartDecorated === "1") return;
   article.dataset.smartDecorated = "1";
@@ -39,7 +81,6 @@ function decorate(article: HTMLElement, offer: any, cashbackRate: number) {
   if (!body) return;
   const price = Array.from(body.children).find((el) => (el as HTMLElement).className.includes("text-2xl")) as HTMLElement | undefined;
 
-  // Jedno źródło prawdy: platform_config.cashback_rate. Zastępujemy stare, lokalne 3% na każdej karcie.
   const existingCashback = Array.from(article.querySelectorAll("span")).find((el) => (el.textContent || "").includes("Cashback")) as HTMLElement | undefined;
   if (existingCashback && Number(offer?.price_gross) > 0) {
     existingCashback.textContent = cashbackText(Number(offer.price_gross), cashbackRate);
@@ -47,41 +88,58 @@ function decorate(article: HTMLElement, offer: any, cashbackRate: number) {
   }
 
   const slug = String(offer?.category_slug || "");
-  if (!isSpecial(slug)) return;
-  const meta = metaFor(offer);
-  if (price && meta.length) {
-    const row = document.createElement("div");
-    row.dataset.smartMeta = "1";
-    row.className = "flex flex-wrap gap-x-3 gap-y-1 text-xs";
-    row.style.color = "var(--mut)";
-    row.textContent = meta.join(" · ");
-    price.insertAdjacentElement("afterend", row);
+  const cta = primaryCta(offer);
+  const mode = purchaseMode(offer);
+  const special = isSpecial(slug);
+
+  const detail = Array.from(article.querySelectorAll("a")).find((a) => {
+    const text = (a.textContent || "").trim();
+    return text === "Szczegóły" || text === "Zobacz ofertę" || text === "Wybierz termin" || text === "Wybierz daty" || text === "Umów usługę" || text === "Zarezerwuj pobyt" || text === "Zarezerwuj pojazd";
+  }) as HTMLAnchorElement | undefined;
+  if (detail) {
+    detail.textContent = cta.label;
+    detail.classList.add("flex-1", "justify-center", "font-semibold");
+    if (cta.booking) detail.setAttribute("aria-label", `${cta.label}: ${offer?.title || "oferta"}`);
   }
 
-  if (offer?.attributes?.full_vat_invoice) {
-    const badge = document.createElement("span");
-    badge.className = "text-[11px] font-semibold px-2 py-1 rounded-full self-start";
-    badge.style.background = "rgba(56,224,240,.10)";
-    badge.style.border = "1px solid rgba(56,224,240,.25)";
-    badge.textContent = "Pełna faktura VAT";
-    const priceEl = price || body;
-    priceEl.insertAdjacentElement("afterend", badge);
-  }
+  if (cta.badge) addBookingBadge(body, cta.badge);
 
-  const buttons = Array.from(article.querySelectorAll("button"));
-  for (const b of buttons) {
-    if ((b.textContent || "").includes("Do koszyka") || (b.textContent || "").includes("Dodano do koszyka")) {
-      (b as HTMLElement).style.display = "none";
+  if (special) {
+    const meta = metaFor(offer);
+    if (price && meta.length && !body.querySelector('[data-smart-meta="1"]')) {
+      const row = document.createElement("div");
+      row.dataset.smartMeta = "1";
+      row.className = "flex flex-wrap gap-x-3 gap-y-1 text-xs";
+      row.style.color = "var(--mut)";
+      row.textContent = meta.join(" · ");
+      price.insertAdjacentElement("afterend", row);
+    }
+
+    if (offer?.attributes?.full_vat_invoice && !body.querySelector('[data-full-vat="1"]')) {
+      const badge = document.createElement("span");
+      badge.dataset.fullVat = "1";
+      badge.className = "text-[11px] font-semibold px-2 py-1 rounded-full self-start";
+      badge.style.background = "rgba(56,224,240,.10)";
+      badge.style.border = "1px solid rgba(56,224,240,.25)";
+      badge.textContent = "Pełna faktura VAT";
+      const priceEl = price || body;
+      priceEl.insertAdjacentElement("afterend", badge);
     }
   }
-  const detail = Array.from(article.querySelectorAll("a")).find((a) => (a.textContent || "").trim() === "Szczegóły") as HTMLAnchorElement | undefined;
-  if (detail) {
-    detail.textContent = "Zobacz ofertę";
-    detail.classList.add("flex-1", "justify-center", "font-semibold");
+
+  if (special || mode !== "purchase") {
+    const buttons = Array.from(article.querySelectorAll("button"));
+    for (const b of buttons) {
+      if ((b.textContent || "").includes("Do koszyka") || (b.textContent || "").includes("Dodano do koszyka")) {
+        (b as HTMLElement).style.display = "none";
+      }
+    }
   }
 
-  for (const badge of Array.from(article.querySelectorAll("span"))) {
-    if ((badge.textContent || "").includes("Darmowa dostawa")) (badge as HTMLElement).style.display = "none";
+  if (special || mode !== "purchase") {
+    for (const badge of Array.from(article.querySelectorAll("span"))) {
+      if ((badge.textContent || "").includes("Darmowa dostawa")) (badge as HTMLElement).style.display = "none";
+    }
   }
 }
 
