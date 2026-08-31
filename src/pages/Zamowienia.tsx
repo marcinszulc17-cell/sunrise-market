@@ -58,10 +58,28 @@ export default function Zamowienia() {
     if (!force && timelines[orderId]) return timelines[orderId];
     setTimelineLoading(orderId);
     const { data, error } = await supabase.rpc("my_order_item_timelines", { p_order: orderId });
-    setTimelineLoading(null);
-    if (error) { alert(error.message); return []; }
-    const rows = (data ?? []) as ItemTimeline[];
+    if (error) {
+      setTimelineLoading(null);
+      alert(error.message);
+      return [];
+    }
+
+    let rows = (data ?? []) as ItemTimeline[];
+    const shipped = rows.filter((row) => row.task_status === "shipped");
+    if (shipped.length) {
+      const checks = await Promise.allSettled(
+        shipped.map((row) => supabase.functions.invoke("courier-track-confirm", { body: { task_id: row.task_id } }))
+      );
+      const anyDelivered = checks.some((result) => result.status === "fulfilled" && result.value.data?.delivered === true);
+      if (anyDelivered) {
+        const refreshed = await supabase.rpc("my_order_item_timelines", { p_order: orderId });
+        if (!refreshed.error) rows = (refreshed.data ?? []) as ItemTimeline[];
+        await load();
+      }
+    }
+
     setTimelines(prev => ({ ...prev, [orderId]: rows }));
+    setTimelineLoading(null);
     return rows;
   }
 
@@ -139,7 +157,7 @@ export default function Zamowienia() {
                   {openTimeline === o.order_id ? "Ukryj przebieg zamówienia" : "Przebieg zamówienia"} →
                 </button>
                 {openTimeline === o.order_id && <div className="mt-4">
-                  {timelineLoading === o.order_id ? <div className="text-sm" style={{ color: "var(--mut)" }}>Ładowanie przebiegu…</div> : orderTimelines.length === 0 ? <div className="text-sm" style={{ color: "var(--mut)" }}>Dla tego zamówienia nie ma jeszcze szczegółowej historii realizacji.</div> : <div className="space-y-4">
+                  {timelineLoading === o.order_id ? <div className="text-sm" style={{ color: "var(--mut)" }}>Ładowanie przebiegu i statusu kuriera…</div> : orderTimelines.length === 0 ? <div className="text-sm" style={{ color: "var(--mut)" }}>Dla tego zamówienia nie ma jeszcze szczegółowej historii realizacji.</div> : <div className="space-y-4">
                     {orderTimelines.map((tl) => <div key={tl.task_id} className="rounded-xl p-4" style={{ background: "var(--header)", border: "1px solid var(--line)" }}>
                       <div className="flex flex-wrap items-start justify-between gap-2">
                         <div>
@@ -152,7 +170,7 @@ export default function Zamowienia() {
                       </div>
 
                       {tl.task_status === "shipped" && <div className="mt-3 rounded-lg p-3" style={{ background: "var(--glass)", border: "1px solid var(--line)" }}>
-                        <div className="text-xs" style={{ color: "var(--mut)" }}>Doręczenie powinno potwierdzić się automatycznie po statusie kuriera. Jeśli paczka jest już u Ciebie, możesz potwierdzić ją ręcznie.</div>
+                        <div className="text-xs" style={{ color: "var(--mut)" }}>Doręczenie sprawdzamy automatycznie po statusie kuriera. Jeśli paczka jest już u Ciebie, możesz potwierdzić ją ręcznie.</div>
                         <button disabled={confirming === tl.task_id} onClick={() => confirmItem(o.order_id, tl.task_id)} className="mt-2 rounded-xl px-4 py-2 text-sm font-semibold text-black disabled:opacity-50" style={{ background: "linear-gradient(135deg,#7AB89A,#38E0F0)" }}>✓ Potwierdzam odbiór tej przesyłki</button>
                       </div>}
 
