@@ -95,12 +95,17 @@ export async function bookingAvailableSlotsV2(
   return (data ?? []) as BookingSlotV2[];
 }
 
-export async function bookingUnavailableDaysV2(offerId: string, fromDay: string, toDay: string): Promise<BookingUnavailableDayV2[]> {
-  const { data, error } = await supabase.schema("market").rpc("booking_unavailable_days_v2", {
-    p_offer: offerId,
-    p_from: fromDay,
-    p_to: toDay,
-  });
+export async function bookingUnavailableDaysV2(
+  offerId: string,
+  fromDay: string,
+  toDay: string,
+  resourceId?: string | null,
+): Promise<BookingUnavailableDayV2[]> {
+  const rpc = resourceId ? "booking_unavailable_days_resource_v2" : "booking_unavailable_days_v2";
+  const params = resourceId
+    ? { p_offer: offerId, p_resource: resourceId, p_from: fromDay, p_to: toDay }
+    : { p_offer: offerId, p_from: fromDay, p_to: toDay };
+  const { data, error } = await supabase.schema("market").rpc(rpc, params);
   if (error) throw error;
   return (data ?? []) as BookingUnavailableDayV2[];
 }
@@ -125,13 +130,18 @@ export async function createBookingHoldV2(params: {
   return row;
 }
 
-export async function bookingDailyQuoteV2(offerId: string, fromDay: string, toDay: string) {
+export async function bookingDailyQuoteV2(
+  offerId: string,
+  fromDay: string,
+  toDay: string,
+  resourceId?: string | null,
+) {
   if (!fromDay || !toDay || toDay <= fromDay) return { days: 0, base: 0 };
-  const { data, error } = await supabase.schema("market").rpc("booking_daily_quote_v2", {
-    p_offer: offerId,
-    p_from: fromDay,
-    p_to: toDay,
-  });
+  const rpc = resourceId ? "booking_daily_quote_resource_v2" : "booking_daily_quote_v2";
+  const params = resourceId
+    ? { p_offer: offerId, p_resource: resourceId, p_from: fromDay, p_to: toDay }
+    : { p_offer: offerId, p_from: fromDay, p_to: toDay };
+  const { data, error } = await supabase.schema("market").rpc(rpc, params);
   if (error) throw error;
   const row = (data as Array<{ days: number; base: number }> | null)?.[0];
   return { days: Number(row?.days ?? 0), base: Number(row?.base ?? 0) };
