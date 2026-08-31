@@ -4,12 +4,8 @@ const json = (body: unknown, status = 200) => new Response(JSON.stringify(body),
 const esc = (v: unknown) => String(v ?? "").replace(/[&<>"']/g, (c) => ({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[c] || c));
 const safeTimezone = (value: unknown) => {
   const timezone = typeof value === "string" && value.trim() ? value.trim() : "Europe/Warsaw";
-  try {
-    new Intl.DateTimeFormat("pl-PL", { timeZone: timezone }).format(new Date());
-    return timezone;
-  } catch {
-    return "Europe/Warsaw";
-  }
+  try { new Intl.DateTimeFormat("pl-PL", { timeZone: timezone }).format(new Date()); return timezone; }
+  catch { return "Europe/Warsaw"; }
 };
 const fmt = (iso: string, timezone: string, withTime = true) => new Intl.DateTimeFormat("pl-PL", { timeZone: timezone, dateStyle: "long", ...(withTime ? { timeStyle: "short" } : {}) }).format(new Date(iso));
 
