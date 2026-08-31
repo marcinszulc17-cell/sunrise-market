@@ -1,6 +1,7 @@
 import { useEffect } from "react";
 import Market from "./Market";
 import { getOffer } from "../lib/api";
+import { offerDetailHref } from "../lib/bookingLink";
 import { supabase } from "../lib/supabase";
 
 function isSpecial(slug: string) {
@@ -99,7 +100,11 @@ function decorate(article: HTMLElement, offer: any, cashbackRate: number) {
   if (detail) {
     detail.textContent = cta.label;
     detail.classList.add("flex-1", "justify-center", "font-semibold");
-    if (cta.booking) detail.setAttribute("aria-label", `${cta.label}: ${offer?.title || "oferta"}`);
+    if (cta.booking) {
+      const offerId = String(offer?.offer_id || detail.getAttribute("href")?.split("/produkt/")[1]?.split("?")[0] || "");
+      if (offerId) detail.setAttribute("href", offerDetailHref(offerId, true));
+      detail.setAttribute("aria-label", `${cta.label}: ${offer?.title || "oferta"}`);
+    }
   }
 
   if (cta.badge) addBookingBadge(body, cta.badge);
@@ -166,7 +171,8 @@ export default function MarketEnhanced() {
         if (article.dataset.smartDecorated === "1") continue;
         const link = article.querySelector('a[href^="/produkt/"]') as HTMLAnchorElement | null;
         if (!link) continue;
-        const id = link.getAttribute("href")?.split("/").pop();
+        const href = link.getAttribute("href") || "";
+        const id = href.split("/produkt/")[1]?.split("?")[0];
         if (!id) continue;
         if (cache.has(id)) { decorate(article, cache.get(id), cashbackRate); continue; }
         if (inflight.has(id)) continue;
