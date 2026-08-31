@@ -1,10 +1,11 @@
 import { useEffect, useState } from "react";
 import { supabase } from "../lib/supabase";
 import { myOrders, confirmDelivery, openReturn, myReturns } from "../lib/api";
-
+import InvoiceSnapshotCard, { type InvoiceSnapshot } from "../components/InvoiceSnapshotCard";
 import { zl } from "../lib/money";
+
 type Item = { offer_id: string; title: string; qty: number; price: number };
-type Order = { order_id: string; status: string; total: number; cashback: number; created_at: string; shipping_method: string | null; tracking_no: string | null; items: Item[] };
+type Order = { order_id: string; status: string; total: number; cashback: number; created_at: string; shipping_method: string | null; tracking_no: string | null; invoice: InvoiceSnapshot; items: Item[] };
 
 const statusLabel: Record<string, string> = {
   created: "Utworzone", paid: "Opłacone", shipped: "Wysłane",
@@ -85,6 +86,7 @@ export default function Zamowienia() {
                   🚚 Dostawa: {o.shipping_method ?? "—"}{o.tracking_no && <> · nr przesyłki <b style={{ color: "var(--ink)" }}>{o.tracking_no}</b></>}
                 </div>
               )}
+              {o.invoice?.requested && <div className="mb-3"><InvoiceSnapshotCard invoice={o.invoice} compact /></div>}
               {o.status === "shipped" && (
                 <button onClick={() => onConfirm(o.order_id)} className="mb-3 mr-2 text-sm font-semibold px-4 py-2 rounded-xl text-black"
                         style={{ background: "linear-gradient(135deg,#7AB89A,#38E0F0)" }}>Potwierdź odbiór</button>
