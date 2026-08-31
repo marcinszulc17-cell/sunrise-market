@@ -93,6 +93,31 @@ function addBookingBadge(body: HTMLElement, badgeText: string) {
   if (trustRow) trustRow.appendChild(badge);
 }
 
+function cartButtons(article: HTMLElement) {
+  return Array.from(article.querySelectorAll("button")).filter((button) => {
+    const text = (button.textContent || "").trim();
+    return text.includes("Do koszyka") || text.includes("Dodano do koszyka");
+  }) as HTMLButtonElement[];
+}
+
+function guardCartUntilModeResolved(article: HTMLElement) {
+  for (const button of cartButtons(article)) {
+    if (button.dataset.bookingModeGuarded === "1") continue;
+    button.dataset.bookingModeGuarded = "1";
+    button.style.visibility = "hidden";
+    button.setAttribute("aria-hidden", "true");
+  }
+}
+
+function resolveCartForMode(article: HTMLElement, hide: boolean) {
+  for (const button of cartButtons(article)) {
+    button.style.visibility = "";
+    button.removeAttribute("aria-hidden");
+    button.style.display = hide ? "none" : "";
+    button.dataset.bookingModeGuarded = "0";
+  }
+}
+
 function decorate(article: HTMLElement, offer: any, cashbackRate: number) {
   if (article.dataset.smartDecorated === "1") return;
   article.dataset.smartDecorated = "1";
@@ -156,14 +181,7 @@ function decorate(article: HTMLElement, offer: any, cashbackRate: number) {
     }
   }
 
-  if (special || mode !== "purchase") {
-    const buttons = Array.from(article.querySelectorAll("button"));
-    for (const b of buttons) {
-      if ((b.textContent || "").includes("Do koszyka") || (b.textContent || "").includes("Dodano do koszyka")) {
-        (b as HTMLElement).style.display = "none";
-      }
-    }
-  }
+  resolveCartForMode(article, special || mode !== "purchase");
 
   if (special || mode !== "purchase") {
     for (const badge of Array.from(article.querySelectorAll("span"))) {
@@ -198,13 +216,17 @@ export default function MarketEnhanced() {
         const href = link.getAttribute("href") || "";
         const id = href.split("/produkt/")[1]?.split("?")[0];
         if (!id) continue;
+        guardCartUntilModeResolved(article);
         if (cache.has(id)) { decorate(article, cache.get(id), cashbackRate); continue; }
         if (inflight.has(id)) continue;
         inflight.add(id);
         getOffer(id).then((o) => {
           cache.set(id, o);
           if (o) decorate(article, o, cashbackRate);
-        }).catch(() => {}).finally(() => inflight.delete(id));
+        }).catch(() => {
+          // Brak danych oferty oznacza brak pewności co do trybu. Zostawiamy
+          // bezpieczną ścieżkę przez szczegóły zamiast ryzykować zakup bookingu jak produktu.
+        }).finally(() => inflight.delete(id));
       }
     }
 
