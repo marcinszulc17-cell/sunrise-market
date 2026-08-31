@@ -1,4 +1,5 @@
 import { FormEvent, useEffect, useMemo, useState } from "react";
+import { offerDetailHref } from "../lib/bookingLink";
 import { supabase } from "../lib/supabase";
 import { zl } from "../lib/money";
 
@@ -15,6 +16,13 @@ const MODE_FILTERS: { id:PurchaseModeFilter; icon:string; label:string; descript
   { id:"appointment", icon:"⏱️", label:"Usługi", description:"Wybierasz dzień i godzinę" },
   { id:"daily", icon:"🗓️", label:"Wynajem", description:"Wybierasz okres od–do" },
 ];
+
+function resultMode(offer:Offer){
+  const mode=String(offer.attributes?.purchase_mode||"purchase");
+  if(mode==="appointment") return {label:"📅 Usługa na termin",cta:"Umów termin",booking:true};
+  if(mode==="daily") return {label:"🗓️ Wynajem",cta:"Wybierz daty",booking:true};
+  return {label:"🛒 Sprzedaż",cta:"Zobacz ofertę",booking:false};
+}
 
 function emoji(name:string){
   const t=name.toLowerCase();
@@ -126,7 +134,7 @@ export default function AdvancedSearchUniversal(){
     <div className="mt-5 flex flex-wrap gap-2"><button disabled={busy} className="rounded-xl px-5 py-3 font-semibold text-black" style={{background:"linear-gradient(135deg,#C8965A,#E8C896)"}}>{busy?"Szukam…":"Pokaż oferty"}</button><button type="button" onClick={reset} className="rounded-xl px-4 py-3 text-sm" style={box}>Wyczyść</button></div></form>
 
     {msg&&<div className="mt-5 text-sm" style={{color:"var(--mut)"}}>{msg}</div>}
-    {rows.length>0&&<section className="mt-7"><div className="mb-4 text-sm" style={{color:"var(--mut)"}}>Znaleziono: {rows.length}</div><div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">{rows.map(o=><a href={`/produkt/${o.offer_id}`} key={o.offer_id} className="overflow-hidden rounded-2xl" style={box}><div className="h-44 overflow-hidden" style={{background:"var(--glass)"}}>{o.image_url?<img src={o.image_url} alt={o.title} className="h-full w-full object-cover"/>:<div className="grid h-full place-items-center text-5xl">{emoji(o.category||o.category_slug||"")}</div>}</div><div className="p-4"><div className="text-xs" style={{color:"var(--mut)"}}>{o.category}</div><div className="mt-1 font-semibold">{o.title}</div><div className="mt-2 text-2xl font-bold">{zl(o.price_gross)}</div></div></a>)}</div></section>}
+    {rows.length>0&&<section className="mt-7"><div className="mb-4 text-sm" style={{color:"var(--mut)"}}>Znaleziono: {rows.length}</div><div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">{rows.map(o=>{const action=resultMode(o);const href=action.booking?offerDetailHref(o.offer_id,true):`/produkt/${o.offer_id}`;return <a href={href} key={o.offer_id} className="overflow-hidden rounded-2xl transition-transform hover:-translate-y-0.5" style={box}><div className="relative h-44 overflow-hidden" style={{background:"var(--glass)"}}>{o.image_url?<img src={o.image_url} alt={o.title} className="h-full w-full object-cover"/>:<div className="grid h-full place-items-center text-5xl">{emoji(o.category||o.category_slug||"")}</div>}<span className="absolute left-2 top-2 rounded-full px-2.5 py-1 text-[11px] font-semibold" style={{background:"rgba(10,18,36,.75)",border:"1px solid rgba(255,255,255,.18)",color:"#fff"}}>{action.label}</span></div><div className="p-4"><div className="text-xs" style={{color:"var(--mut)"}}>{o.category}</div><div className="mt-1 font-semibold">{o.title}</div><div className="mt-2 text-2xl font-bold">{zl(o.price_gross)}</div><div className="mt-3 rounded-xl px-3 py-2 text-center text-sm font-semibold" style={action.booking?{background:"linear-gradient(135deg,#C8965A,#E8C896)",color:"#000"}:{border:"1px solid var(--line)",color:"var(--ink)"}}>{action.cta} →</div></div></a>;})}</div></section>}
   </div></main>;
 }
 
@@ -145,4 +153,5 @@ function DynamicField({def,value,onChange}:{def:AttrDef;value:string|boolean;onC
   if(def.data_type==="number") return <Field label={def.label}><input type="number" value={String(value||"")} onChange={e=>onChange(e.target.value)}/></Field>;
   return <Field label={def.label}><input value={String(value||"")} onChange={e=>onChange(e.target.value)}/></Field>;
 }
-function Field({label,children}:{label:string;children:React.ReactElement}){return <label className="text-sm"><span className="mb-1 block" style={{color:"var(--mut)"}}>{label}</span><div className="[&_input]:w-full [&_select]:w-full [&_input]:rounded-xl [&_select]:rounded-xl [&_input]:px-3 [&_select]:px-3 [&_input]:py-2.5 [&_select]:py-2.5 [&_input]:outline-none [&_select]:outline-none [&_input]:bg-transparent [&_select]:bg-transparent" style={{border:"1px solid var(--line)",borderRadius:12}}>{children}</div></label>}
+function Field({label,children}:{label:string;children:React.ReactElement}){return <label className="text-sm"><span className="mb-1 block" style={{color:"var(--mut)"}}>{label}</span><div className="[&_input]:w-full [&_select]:w-full [&_input]:rounded-xl [&_select]:rounded-xl [&_input]:px-3 [&_select]:px-3 [&_input]:py-2.5 [&_select]:py-2.5 [&_input]:outline-none [&_select]:outline-none [&_input]:bg-transparent [&_select]:bg-transparent" style={{border:"1px solid var(--line)",borderRadius:12}}>{children}</div></label>;
+}
