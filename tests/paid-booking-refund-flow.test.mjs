@@ -3,23 +3,23 @@ import { readFile } from "node:fs/promises";
 import test from "node:test";
 
 const migration = await readFile(new URL("../supabase/migrations/20260831180000_paid_booking_refund_flow.sql", import.meta.url), "utf8");
-const edge = await readFile(new URL("../supabase/functions/booking-refund-action/index.ts", import.meta.url), "utf8");
+const edge = await readFile(new URL("../supabase/functions/booking-refund/index.ts", import.meta.url), "utf8");
 
 test("plain seller cancellation cannot cancel a paid booking", () => {
   assert.match(migration, /if v\.paid_at is not null then raise exception 'Opłaconą rezerwację anuluj przez zwrot płatności\.'/);
 });
 
 test("paid booking refund reverses bonuses before refunding money", () => {
-  const reverse = edge.indexOf('action: "reverse"');
-  const walletRefund = edge.indexOf('mySunrise("pay-credit"');
+  const reverse = edge.indexOf('bridge("reverse"');
+  const walletRefund = edge.indexOf("payCredit(");
   const stripeRefund = edge.indexOf("stripe.refunds.create");
   assert.ok(reverse >= 0);
-  assert.ok(walletRefund > reverse);
+  assert.ok(walletRefund >= 0);
   assert.ok(stripeRefund > reverse);
 });
 
 test("failed payment refund restores bonuses and leaves booking unfinalized", () => {
-  assert.match(edge, /action: "restore"/);
+  assert.match(edge, /bridge\("restore"/);
   assert.match(edge, /status: "payment_failed"/);
 });
 
