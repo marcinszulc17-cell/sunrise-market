@@ -31,21 +31,29 @@ type DashboardData = {
   } | null;
 };
 
+type Attention = { pending_fulfillment: number; unread_new_sales: number };
+
 const pln = (n: number | undefined) => `${Number(n || 0).toLocaleString("pl-PL", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} zł`;
 const date = (s?: string | null) => s ? new Date(`${s}T00:00:00`).toLocaleDateString("pl-PL") : "—";
 
 export default function PartnerDashboard() {
   const [data, setData] = useState<DashboardData | null>(null);
+  const [attention, setAttention] = useState<Attention>({ pending_fulfillment: 0, unread_new_sales: 0 });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     (async () => {
       try {
-        const { data: result, error: e } = await supabase.functions.invoke("partner-dashboard", { body: {} });
+        const [{ data: result, error: e }, attentionResult] = await Promise.all([
+          supabase.functions.invoke("partner-dashboard", { body: {} }),
+          supabase.rpc("private_partner_dashboard_attention"),
+        ]);
         if (e) throw e;
         if (result?.error) throw new Error(result.error);
         setData(result as DashboardData);
+        const a = (attentionResult.data as Attention[] | null)?.[0];
+        if (!attentionResult.error && a) setAttention(a);
       } catch (e) {
         setError((e as Error).message || "Nie udało się wczytać centrum Partnera Handlowego");
       } finally {
@@ -75,6 +83,7 @@ export default function PartnerDashboard() {
   const totalIncome = own + referralEarnings;
   const network = Number(snap?.total_network_size || 0);
   const partnerActive = membership?.can_sell === true;
+  const hasAttention = attention.pending_fulfillment > 0 || attention.unread_new_sales > 0;
 
   return <Shell>
     <div className="mb-6 flex flex-wrap items-start justify-between gap-4">
@@ -85,6 +94,19 @@ export default function PartnerDashboard() {
       </div>
       <Link to="/sprzedawca/wystaw" className="rounded-2xl px-5 py-3 font-semibold text-black" style={{ background: "linear-gradient(135deg,#C8965A,#E8C896)" }}>+ Wystaw ofertę</Link>
     </div>
+
+    {hasAttention && <Link to="/sprzedawca/zamowienia" className="mb-5 block rounded-2xl p-4 sm:p-5" style={{ background: "linear-gradient(135deg,rgba(200,150,90,.22),rgba(200,150,90,.08))", border: "1px solid rgba(200,150,90,.42)" }}>
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="flex items-center gap-3">
+          <div className="grid h-11 w-11 place-items-center rounded-xl text-2xl" style={{ background: "rgba(200,150,90,.18)" }}>🔔</div>
+          <div>
+            <div className="font-semibold">{attention.unread_new_sales > 0 ? `Masz ${attention.unread_new_sales} ${attention.unread_new_sales === 1 ? "nową sprzedaż" : "nowe sprzedaże"}` : "Masz sprzedaże do realizacji"}</div>
+            <div className="mt-0.5 text-sm" style={{ color: "var(--mut)" }}>{attention.pending_fulfillment > 0 ? `${attention.pending_fulfillment} ${attention.pending_fulfillment === 1 ? "pozycja czeka" : "pozycji czeka"} na wysyłkę lub przekazanie.` : "Sprawdź najnowsze sprzedaże."}</div>
+          </div>
+        </div>
+        <div className="rounded-xl px-4 py-2 text-sm font-semibold text-black" style={{ background: "linear-gradient(135deg,#C8965A,#E8C896)" }}>Otwórz Moje sprzedaże →</div>
+      </div>
+    </Link>}
 
     <section className="mb-5 rounded-3xl p-6 sm:p-7" style={{ background: "linear-gradient(135deg,rgba(200,150,90,.18),rgba(56,224,240,.08))", border: "1px solid rgba(200,150,90,.3)" }}>
       <div className="flex flex-wrap items-end justify-between gap-4">
@@ -112,9 +134,12 @@ export default function PartnerDashboard() {
         <Stat label="Aktywne oferty" value={String(data.offers?.active || 0)} />
         <Stat label="Wszystkie oferty" value={String(data.offers?.total || 0)} />
         <Stat label="Opłacone sprzedaże" value={String(data.sales?.count || 0)} />
+        <Stat label="Do realizacji" value={String(attention.pending_fulfillment || 0)} />
         <div className="mt-4 grid gap-2 sm:grid-cols-2 lg:grid-cols-1">
           <Link to="/sprzedawca/oferty" className="rounded-xl px-4 py-2.5 text-center text-sm font-semibold" style={{ background: "var(--header)", border: "1px solid var(--line)" }}>Zarządzaj ofertami</Link>
-          <Link to="/sprzedawca/zamowienia" className="rounded-xl px-4 py-2.5 text-center text-sm font-semibold" style={{ background: "var(--header)", border: "1px solid var(--line)" }}>Zamówienia i wpływy</Link>
+          <Link to="/sprzedawca/zamowienia" className="relative rounded-xl px-4 py-2.5 text-center text-sm font-semibold" style={{ background: attention.pending_fulfillment > 0 ? "linear-gradient(135deg,#C8965A,#E8C896)" : "var(--header)", color: attention.pending_fulfillment > 0 ? "#000" : "var(--ink)", border: attention.pending_fulfillment > 0 ? "none" : "1px solid var(--line)" }}>
+            Moje sprzedaże{attention.unread_new_sales > 0 ? ` · ${attention.unread_new_sales} nowe` : ""}
+          </Link>
         </div>
       </Card>
 
@@ -139,7 +164,7 @@ export default function PartnerDashboard() {
       <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
         <Quick to="/sprzedawca/wystaw" icon="➕" title="Wystaw produkt" text="Sprzedaż, usługa lub wynajem" />
         <Quick to="/sprzedawca/oferty" icon="🖼️" title="Moje oferty" text="Zdjęcia, ceny i ustawienia" />
-        <Quick to="/sprzedawca/rezerwacje" icon="📅" title="Rezerwacje" text="Usługi, auta i nieruchomości" />
+        <Quick to="/sprzedawca/zamowienia" icon="🛍️" title="Moje sprzedaże" text={attention.pending_fulfillment > 0 ? `${attention.pending_fulfillment} do realizacji` : "Sprzedaże i realizacja"} />
         <a href="https://mysunrise.pl/mme/linki" className="rounded-2xl p-4" style={{ background: "var(--header)", border: "1px solid var(--line)" }}><div className="text-2xl">🔗</div><div className="mt-2 font-semibold">Linki polecające</div><div className="mt-1 text-xs" style={{ color: "var(--mut)" }}>Promuj i zarabiaj prowizje</div></a>
       </div>
     </section>
