@@ -46,10 +46,10 @@ Deno.serve(async (req) => {
         points: Number(data.points ?? 0),
       });
     }
-    if (data?.error === "user_not_found") return json({ available: false, error: "Konto nie jest jeszcze połączone z MySunrise" }, 404);
+    if (data?.error === "user_not_found") return json({ available: true, error: "Konto nie jest jeszcze połączone z MySunrise" }, 404);
     if (data?.error === "no_points") return json({ available: true, converted: 0, balance: Number(data.balance ?? 0), points: 0, error: "Brak punktów do zamiany" }, 400);
     return json({ available: true, error: data?.message ?? data?.error ?? `MySunrise ${response.status}` }, response.status >= 400 ? response.status : 502);
   } catch (error) {
-    return json({ available: false, error: String((error as Error).message ?? error) }, 500);
+    return json({ available: true, error: String((error as Error).message ?? error) }, 500);
   }
 });
