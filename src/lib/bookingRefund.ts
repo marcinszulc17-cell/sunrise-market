@@ -24,7 +24,7 @@ async function functionErrorMessage(error: unknown) {
 }
 
 export async function refundPaidBooking(bookingId: string) {
-  const { data, error } = await supabase.functions.invoke("booking-refund", {
+  const { data, error } = await supabase.functions.invoke("booking-refund-action", {
     body: { booking_id: bookingId },
   });
   if (error) throw new Error(await functionErrorMessage(error));
