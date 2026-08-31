@@ -1,6 +1,9 @@
 -- Add buyer contact and booking type metadata for operational quick actions.
+-- PostgreSQL cannot change RETURNS TABLE columns with CREATE OR REPLACE, so recreate safely.
 
-create or replace function market.seller_resource_operations_dashboard()
+drop function if exists market.seller_resource_operations_dashboard();
+
+create function market.seller_resource_operations_dashboard()
 returns table(
   id uuid,
   name text,
