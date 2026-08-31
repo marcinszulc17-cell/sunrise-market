@@ -41,7 +41,6 @@ export type BookingCatalogV2 = {
     cleaning_fee_gross: number;
     deposit_gross: number;
     instant_booking: boolean;
-    cashback_rate: number;
   };
   services: BookingServiceV2[];
   resources: BookingResourceV2[];
