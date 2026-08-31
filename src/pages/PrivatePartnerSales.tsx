@@ -44,7 +44,10 @@ export default function PrivatePartnerSales() {
     setLoading(false);
   }
 
-  useEffect(() => { reload(); }, []);
+  useEffect(() => {
+    void supabase.rpc("mark_new_sale_notifications_read");
+    void reload();
+  }, []);
 
   const stats = useMemo(() => ({
     pending: rows.filter(r => !["shipped","handed_over"].includes(r.task_status)).length,
