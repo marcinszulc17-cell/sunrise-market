@@ -11,21 +11,21 @@ export async function topupWallet(amountPln: number, returnTo?: string): Promise
   });
   if (error) throw error;
   if (!data?.url) throw new Error(data?.error ?? "Nie udało się utworzyć płatności");
-  window.location.href = data.url as string; // redirect na Stripe Checkout
+  window.location.href = data.url as string;
 }
 
-// Zamiana punktów (cashback) na saldo Sunrise Pay. Konwersja dzieje się po
-// stronie MySunrise (źródło prawdy o pieniądzach); 1 pkt = 1 zł. Nie zmienia
-// stawki cashbacku — przesuwa już wyemitowane punkty do salda.
-// Dopóki MySunrise nie wystawi endpointu, zwracamy available:false (jak
-// sellerWallet) i UI degraduje się do „zrób to w MySunrise" — nic się nie psuje.
+// Zamiana punktów SFC na saldo Sunrise Pay. MySunrise pozostaje jedynym
+// źródłem prawdy o pieniądzach; 1 pkt = 1 zł. Każde żądanie ma własny klucz
+// idempotencji, więc retry po timeoutcie nie może podwójnie zaksięgować konwersji.
 export type RedeemResult = { available: boolean; balance?: number; points?: number; converted?: number; error?: string };
 export async function redeemPoints(amountPln: number): Promise<RedeemResult> {
+  const idempotencyKey = crypto.randomUUID();
   const { data, error } = await supabase.functions.invoke("wallet-redeem-points", {
-    body: { amount: amountPln },
+    body: { amount: amountPln, idempotency_key: idempotencyKey },
   });
-  if (error || !data) return { available: false };
-  return data as RedeemResult;
+  if (data) return data as RedeemResult;
+  if (error) return { available: true, error: error.message || "Nie udało się zamienić punktów" };
+  return { available: false, error: "Nie udało się połączyć z Sunrise Pay" };
 }
 
 // Historia operacji powstałych w Sunrise Market. Nie jest źródłem salda ani
