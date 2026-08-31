@@ -3,6 +3,7 @@
 // https://sunrisemarket.pl/sso#th=<token_hash>. My robimy verifyOtp -> sesja -> home.
 import { useEffect, useState } from "react";
 import { supabase } from "../lib/supabase";
+import { refreshCustomerAccess } from "../lib/customerAccess";
 
 export default function Sso() {
   const [err, setErr] = useState<string | null>(null);
@@ -14,6 +15,12 @@ export default function Sso() {
         if (!th) { setErr("Brak tokenu logowania."); return; }
         const { error } = await supabase.auth.verifyOtp({ type: "email", token_hash: th });
         if (error) { setErr(error.message); return; }
+        try {
+          await refreshCustomerAccess();
+        } catch (e: any) {
+          setErr(String(e?.message || e));
+          return;
+        }
         window.location.replace("/");
       } catch (e: any) { setErr(String(e?.message || e)); }
     })();
@@ -23,9 +30,9 @@ export default function Sso() {
       <div style={{ textAlign: "center" }}>
         {err ? (
           <>
-            <div style={{ fontSize: 18, fontWeight: 700 }}>Nie udało się zalogować automatycznie</div>
+            <div style={{ fontSize: 18, fontWeight: 700 }}>Nie udało się potwierdzić konta MySunrise</div>
             <div style={{ marginTop: 8, fontSize: 13, opacity: 0.7 }}>{err}</div>
-            <a href="/login" style={{ display: "inline-block", marginTop: 16, color: "#fbae42" }}>Zaloguj się ręcznie →</a>
+            <a href="https://mysunrise.pl" style={{ display: "inline-block", marginTop: 16, color: "#fbae42" }}>Przejdź do MySunrise →</a>
           </>
         ) : (
           <div style={{ fontSize: 16 }}>☀️ Logowanie kontem MySunrise…</div>
