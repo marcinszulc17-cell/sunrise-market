@@ -23,6 +23,16 @@ type Sale = {
   tracking_no: string | null;
 };
 
+type SaleEvent = { event_type: string; details: Record<string, unknown>; created_at: string };
+
+const EVENT_LABELS: Record<string, { icon: string; label: string }> = {
+  paid: { icon: "💳", label: "Zamówienie opłacone" },
+  seller_seen: { icon: "👀", label: "Sprzedający otworzył sprzedaż" },
+  shipped: { icon: "📦", label: "Oznaczono jako wysłane" },
+  handed_over: { icon: "🤝", label: "Produkt przekazano kupującemu" },
+  buyer_notified: { icon: "🔔", label: "Kupujący otrzymał powiadomienie" },
+};
+
 function taskLabel(s: Sale) {
   if (s.task_status === "shipped") return "Wysłane";
   if (s.task_status === "handed_over") return "Przekazane";
@@ -35,6 +45,9 @@ export default function PrivatePartnerSales() {
   const [msg, setMsg] = useState<string | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
   const [tracking, setTracking] = useState<Record<string, string>>({});
+  const [openHistory, setOpenHistory] = useState<string | null>(null);
+  const [events, setEvents] = useState<Record<string, SaleEvent[]>>({});
+  const [historyLoading, setHistoryLoading] = useState<string | null>(null);
 
   async function reload() {
     setLoading(true);
@@ -46,6 +59,7 @@ export default function PrivatePartnerSales() {
 
   useEffect(() => {
     void supabase.rpc("mark_new_sale_notifications_read");
+    void supabase.rpc("mark_private_sales_seen");
     void reload();
   }, []);
 
@@ -54,6 +68,21 @@ export default function PrivatePartnerSales() {
     done: rows.filter(r => ["shipped","handed_over"].includes(r.task_status)).length,
     payout: rows.reduce((a, r) => a + Number(r.payout_gross || 0), 0),
   }), [rows]);
+
+  async function loadHistory(taskId: string, force = false) {
+    if (!force && events[taskId]) return;
+    setHistoryLoading(taskId);
+    const { data, error } = await supabase.rpc("private_partner_sale_events", { p_task: taskId });
+    if (error) setMsg(error.message);
+    else setEvents(prev => ({ ...prev, [taskId]: (data ?? []) as SaleEvent[] }));
+    setHistoryLoading(null);
+  }
+
+  async function toggleHistory(taskId: string) {
+    if (openHistory === taskId) { setOpenHistory(null); return; }
+    setOpenHistory(taskId);
+    await loadHistory(taskId);
+  }
 
   async function setStatus(row: Sale, action: "ship" | "hand_over") {
     setBusy(row.task_id); setMsg(null);
@@ -65,7 +94,7 @@ export default function PrivatePartnerSales() {
       });
       if (error) throw error;
       if (!data?.ok) throw new Error(data?.message ?? "Nie udało się zmienić statusu.");
-      await reload();
+      await Promise.all([reload(), loadHistory(row.task_id, true)]);
       setMsg(action === "ship" ? "Sprzedaż oznaczona jako wysłana. ✅" : "Sprzedaż oznaczona jako przekazana kupującemu. ✅");
     } catch (e) { setMsg((e as Error).message); }
     finally { setBusy(null); }
@@ -77,7 +106,7 @@ export default function PrivatePartnerSales() {
         <div>
           <Link to="/sprzedawca" className="text-sm" style={{ color: "var(--mut)" }}>← Panel Partnera Handlowego</Link>
           <h1 className="mt-2 font-display text-3xl font-semibold">Moje sprzedaże</h1>
-          <p className="mt-1 text-sm" style={{ color: "var(--mut)" }}>Tylko opłacone zakupy. Każda pozycja ma własny status realizacji.</p>
+          <p className="mt-1 text-sm" style={{ color: "var(--mut)" }}>Tylko opłacone zakupy. Każda pozycja ma własny status realizacji i historię zdarzeń.</p>
         </div>
         <Link to="/sprzedawca/oferty" className="rounded-xl px-4 py-2 text-sm font-semibold" style={{ border: "1px solid var(--line)" }}>Moje ogłoszenia</Link>
       </div>
@@ -94,6 +123,7 @@ export default function PrivatePartnerSales() {
         {rows.map(row => {
           const done = ["shipped","handed_over"].includes(row.task_status);
           const pickup = row.delivery_mode === "pickup";
+          const history = events[row.task_id] ?? [];
           return <article key={row.task_id} className="rounded-2xl p-5" style={{ background: "var(--glass)", border: "1px solid var(--line)" }}>
             <div className="flex flex-wrap items-start justify-between gap-4">
               <div className="min-w-0">
@@ -124,6 +154,23 @@ export default function PrivatePartnerSales() {
               {pickup ? <button disabled={busy===row.task_id} onClick={() => setStatus(row,"hand_over")} className="rounded-xl px-5 py-2.5 font-semibold text-black disabled:opacity-50" style={{ background: "linear-gradient(135deg,#C8965A,#E8C896)" }}>✓ Przekazane kupującemu</button> : <div className="flex flex-wrap gap-2"><input value={tracking[row.task_id] ?? ""} onChange={e => setTracking({ ...tracking, [row.task_id]: e.target.value })} placeholder="Nr przesyłki (opcjonalnie)" className="min-w-[220px] flex-1 rounded-xl px-3 py-2.5 outline-none" style={{ background: "var(--header)", border: "1px solid var(--line)" }}/><button disabled={busy===row.task_id} onClick={() => setStatus(row,"ship")} className="rounded-xl px-5 py-2.5 font-semibold text-black disabled:opacity-50" style={{ background: "linear-gradient(135deg,#C8965A,#E8C896)" }}>📦 Oznacz jako wysłane</button></div>}
             </div>}
             {done && row.tracking_no && <div className="mt-3 text-xs" style={{ color: "var(--mut)" }}>Nr przesyłki: {row.tracking_no}</div>}
+
+            <div className="mt-4 border-t pt-4" style={{ borderColor: "var(--line)" }}>
+              <button onClick={() => toggleHistory(row.task_id)} className="text-sm font-semibold" style={{ color: "var(--gold)" }}>{openHistory === row.task_id ? "Ukryj historię" : "Historia sprzedaży"} →</button>
+              {openHistory === row.task_id && <div className="mt-4 space-y-3">
+                {historyLoading === row.task_id ? <div className="text-sm" style={{ color: "var(--mut)" }}>Ładowanie historii…</div> : history.length === 0 ? <div className="text-sm" style={{ color: "var(--mut)" }}>Brak zapisanych zdarzeń.</div> : history.map((event, idx) => {
+                  const meta = EVENT_LABELS[event.event_type] ?? { icon: "•", label: event.event_type };
+                  const trackingNo = typeof event.details?.tracking_no === "string" ? event.details.tracking_no : null;
+                  return <div key={`${event.event_type}-${event.created_at}-${idx}`} className="flex gap-3">
+                    <div className="mt-0.5 grid h-8 w-8 shrink-0 place-items-center rounded-full" style={{ background: "var(--header)", border: "1px solid var(--line)" }}>{meta.icon}</div>
+                    <div className="min-w-0 flex-1 border-b pb-3" style={{ borderColor: "var(--line)" }}>
+                      <div className="text-sm font-medium">{meta.label}</div>
+                      <div className="mt-0.5 text-xs" style={{ color: "var(--mut)" }}>{new Date(event.created_at).toLocaleString("pl-PL")}{trackingNo ? ` · nr przesyłki ${trackingNo}` : ""}</div>
+                    </div>
+                  </div>;
+                })}
+              </div>}
+            </div>
           </article>;
         })}
       </div>}
