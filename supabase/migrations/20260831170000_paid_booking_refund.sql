@@ -27,6 +27,19 @@ alter table market.ambassador_commission_outbox
     'reversed'::text
   ]));
 
+alter table market.seller_settlements
+  drop constraint if exists seller_settlements_status_check;
+
+alter table market.seller_settlements
+  add constraint seller_settlements_status_check
+  check (status = any (array[
+    'scheduled'::text,
+    'pending'::text,
+    'settled'::text,
+    'failed'::text,
+    'cancelled'::text
+  ]));
+
 create or replace function market.seller_booking_set_status(p_booking uuid, p_status text)
 returns text
 language plpgsql
