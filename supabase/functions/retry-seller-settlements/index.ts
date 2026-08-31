@@ -41,8 +41,17 @@ Deno.serve(async (req) => {
   const { data: secretRow, error: secretError } = await sb.from("internal_secrets").select("value").eq("key", "seller_settlement_retry_token").maybeSingle();
   if (secretError || !secretRow?.value || provided !== secretRow.value) return json({ ok: false, error: "unauthorized" }, 401);
 
-  const cutoff = new Date(Date.now() - 5 * 60 * 1000).toISOString();
   const now = new Date().toISOString();
+  const cutoff = new Date(Date.now() - 5 * 60 * 1000).toISOString();
+  const staleProcessingCutoff = new Date(Date.now() - 15 * 60 * 1000).toISOString();
+
+  // A crashed worker can leave a settlement claimed. Retrying is safe because pay-credit uses a stable idempotency key.
+  await sb.from("seller_settlements").update({
+    status: "failed",
+    last_error: "Stary claim wypłaty został zwolniony do ponowienia.",
+    updated_at: now,
+  }).eq("status", "processing").lt("updated_at", staleProcessingCutoff);
+
   const { data: rows, error } = await sb
     .from("seller_settlements")
     .select("id,order_id,seller_id,seller_email,amount,status,attempts,updated_at,available_at")
@@ -56,7 +65,15 @@ Deno.serve(async (req) => {
 
   let settled = 0;
   let failed = 0;
+  let skipped = 0;
   for (const row of rows ?? []) {
+    const { data: claimed, error: claimError } = await sb.from("seller_settlements").update({
+      status: "processing",
+      updated_at: new Date().toISOString(),
+    }).eq("id", row.id).eq("status", row.status).select("id").maybeSingle();
+    if (claimError) { failed++; continue; }
+    if (!claimed) { skipped++; continue; }
+
     const attempts = Number(row.attempts ?? 0) + 1;
     const idem = await uuidv5(`market:seller:${row.order_id}:${row.seller_id}`);
     try {
@@ -75,7 +92,7 @@ Deno.serve(async (req) => {
         last_error: ok ? null : String(credited.data?.message ?? credited.data?.error ?? credited.status),
         settled_at: ok ? new Date().toISOString() : null,
         updated_at: new Date().toISOString(),
-      }).eq("id", row.id);
+      }).eq("id", row.id).eq("status", "processing");
       if (ok && row.status === "scheduled") {
         await sb.from("bookings").update({ status: "completed", updated_at: new Date().toISOString() })
           .eq("order_id", row.order_id).eq("status", "confirmed");
@@ -87,10 +104,10 @@ Deno.serve(async (req) => {
         attempts,
         last_error: String((e as Error).message ?? e),
         updated_at: new Date().toISOString(),
-      }).eq("id", row.id);
+      }).eq("id", row.id).eq("status", "processing");
       failed++;
     }
   }
 
-  return json({ ok: true, checked: (rows ?? []).length, settled, failed });
+  return json({ ok: true, checked: (rows ?? []).length, settled, failed, skipped });
 });
