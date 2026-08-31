@@ -112,6 +112,10 @@ export default function SellerBookingsManage() {
     () => rows.filter((r) => filter === "all" ? true : filter === "active" ? ["held", "pending_payment", "confirmed"].includes(r.status) : r.status === filter),
     [rows, filter],
   );
+  const activeBlocks = useMemo(
+    () => blocks.filter((block) => new Date(block.ends_at).getTime() > Date.now()).sort((a, b) => new Date(a.starts_at).getTime() - new Date(b.starts_at).getTime()),
+    [blocks],
+  );
   const stats = useMemo(() => ({
     active: rows.filter((r) => ["held", "pending_payment", "confirmed"].includes(r.status)).length,
     confirmed: rows.filter((r) => r.status === "confirmed").length,
@@ -292,9 +296,10 @@ export default function SellerBookingsManage() {
 
       {msg && <div className="mb-5 rounded-2xl p-4 text-sm" style={{ background: "rgba(200,150,90,.12)", border: "1px solid rgba(200,150,90,.25)" }}>{msg}</div>}
 
-      <div className="mb-6 grid gap-3 sm:grid-cols-4">
+      <div className="mb-6 grid gap-3 sm:grid-cols-5">
         <Stat label="Aktywne rezerwacje" value={String(stats.active)} />
         <Stat label="Potwierdzone" value={String(stats.confirmed)} />
+        <Stat label="Blokady terminów" value={String(activeBlocks.length)} />
         <Stat label="Aktywne zasoby" value={String(resources.length)} />
         <Stat label="Wartość opłaconych" value={pln(stats.paid)} />
       </div>
@@ -416,6 +421,25 @@ export default function SellerBookingsManage() {
             <input type="datetime-local" value={end} onChange={(e) => setEnd(e.target.value)} className="mt-3 w-full rounded-xl px-3 py-2.5" style={{ background: "var(--bg)", border: "1px solid var(--line)" }} />
             <input value={reason} onChange={(e) => setReason(e.target.value)} placeholder="Powód (opcjonalnie)" className="mt-3 w-full rounded-xl px-3 py-2.5" style={{ background: "var(--bg)", border: "1px solid var(--line)" }} />
             <button disabled={busy} onClick={addBlock} className="mt-3 w-full rounded-xl px-4 py-2.5 font-semibold text-black" style={{ background: "linear-gradient(135deg,#C8965A,#E8C896)" }}>Zablokuj termin</button>
+          </div>
+
+          <div className="rounded-2xl p-5" style={{ background: "var(--glass)", border: "1px solid var(--line)" }}>
+            <div className="flex items-center justify-between gap-3">
+              <div>
+                <h2 className="text-lg font-semibold">Aktywne blokady</h2>
+                <p className="mt-1 text-xs" style={{ color: "var(--mut)" }}>Terminy ręcznie wyłączone ze sprzedaży.</p>
+              </div>
+              <span className="rounded-full px-2.5 py-1 text-xs font-semibold" style={{ background: "rgba(200,150,90,.12)", color: "var(--gold)" }}>{activeBlocks.length}</span>
+            </div>
+            <div className="mt-4 space-y-2">
+              {activeBlocks.map((block) => <div key={block.id} className="rounded-xl p-3 text-sm" style={{ border: "1px solid var(--line)", background: "var(--header)" }}>
+                <div className="font-semibold">{block.title}</div>
+                <div className="mt-1 text-xs" style={{ color: "var(--mut)" }}>{dt(block.starts_at)} → {dt(block.ends_at)}</div>
+                {block.reason && <div className="mt-2 text-xs">{block.reason}</div>}
+                <button disabled={busy} onClick={() => deleteBlock(block.id)} className="mt-3 w-full rounded-lg px-3 py-2 text-xs font-semibold disabled:opacity-50" style={{ border: "1px solid rgba(239,68,68,.35)", color: "#fca5a5" }}>Usuń blokadę</button>
+              </div>)}
+              {activeBlocks.length === 0 && <div className="rounded-xl p-4 text-sm" style={{ background: "var(--header)", color: "var(--mut)" }}>Brak przyszłych blokad. Kliknij zakres w kalendarzu albo ustaw go powyżej.</div>}
+            </div>
           </div>
 
           <div className="rounded-2xl p-5" style={{ background: "var(--glass)", border: "1px solid var(--line)" }}>
