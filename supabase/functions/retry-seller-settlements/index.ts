@@ -3,14 +3,15 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 const SERVICE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? Deno.env.get("SUPABASE_SERVICE_KEY");
 const PAY_BASE = (Deno.env.get("MYSUNRISE_PAY_BASE_URL") ?? "https://lvmrhgpxhqvfuoftblky.supabase.co/functions/v1").replace(/\/$/, "");
 const PAY_TOKEN = Deno.env.get("SUNRISE_MARKET_SERVICE_TOKEN");
+const SUNRISE_PAY_PAYOUT_NS = "6ba7b810-9dad-11d1-80b4-00f048300c8";
+const STRIPE_PAYOUT_NS = "6ba7b810-9dad-11d1-80b4-00c04fd430c8";
 
 function json(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), { status, headers: { "Content-Type": "application/json" } });
 }
 
-async function uuidv5(name: string): Promise<string> {
-  const NS = "6ba7b810-9dad-11d1-80b4-00c04fd430c8";
-  const nsBytes = (NS.replace(/-/g, "").match(/.{2}/g) as string[]).map((h) => parseInt(h, 16));
+async function uuidv5(name: string, namespace: string): Promise<string> {
+  const nsBytes = (namespace.replace(/-/g, "").match(/.{2}/g) as string[]).map((h) => parseInt(h, 16));
   const nameBytes = Array.from(new TextEncoder().encode(name));
   const data = new Uint8Array([...nsBytes, ...nameBytes]);
   const hash = new Uint8Array(await crypto.subtle.digest("SHA-1", data));
@@ -45,7 +46,7 @@ Deno.serve(async (req) => {
   const now = new Date().toISOString();
   const staleProcessingCutoff = new Date(Date.now() - 15 * 60 * 1000).toISOString();
 
-  // A crashed worker may leave a payout claim behind. Releasing it is safe because pay-credit uses a stable idempotency key.
+  // A crashed worker may leave a payout claim behind. Releasing it is safe because pay-credit uses a provider-matched stable idempotency key.
   await sb.from("seller_settlements").update({
     status: "failed",
     last_error: "Stary claim wypłaty został zwolniony do ponowienia.",
@@ -75,8 +76,14 @@ Deno.serve(async (req) => {
     if (!claimed) { skipped++; continue; }
 
     const attempts = Number(row.attempts ?? 0) + 1;
-    const idem = await uuidv5(`market:seller:${row.order_id}:${row.seller_id}`);
     try {
+      const { data: order, error: orderError } = await sb.from("orders").select("payment_provider").eq("id", row.order_id).maybeSingle();
+      if (orderError) throw orderError;
+      const provider = String(order?.payment_provider ?? "");
+      if (provider !== "sunrise_pay" && provider !== "stripe") throw new Error(`Nieobsługiwana metoda płatności settlementu: ${provider || "brak"}`);
+      const namespace = provider === "stripe" ? STRIPE_PAYOUT_NS : SUNRISE_PAY_PAYOUT_NS;
+      const idem = await uuidv5(`market:seller:${row.order_id}:${row.seller_id}`, namespace);
+
       const credited = await pay("pay-credit", {
         user_ref: row.seller_email,
         amount_grosz: Math.round(Number(row.amount ?? 0) * 100),
