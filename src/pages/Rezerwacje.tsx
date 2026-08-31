@@ -9,6 +9,15 @@ const labels: Record<string, string> = {
   confirmed: "Potwierdzona", completed: "Zakończona", cancelled: "Anulowana", expired: "Wygasła",
 };
 const requestLabels: Record<string, string> = { pending: "Czeka na sprzedawcę", accepted: "Zaakceptowana", rejected: "Odrzucona", withdrawn: "Wycofana" };
+const depositLabels: Record<string, string> = {
+  not_charged: "niepobrana",
+  held: "pobrana i zabezpieczona",
+  refunding: "zwrot w toku",
+  refunded: "zwrócona",
+  retaining: "rozliczenie w toku",
+  retained: "zatrzymana",
+  failed: "wymaga sprawdzenia",
+};
 const bookingLabel = (r: BuyerBooking) => r.status === "pending_payment" && r.paid_at
   ? "Opłacona — czeka na akceptację"
   : labels[r.status] ?? r.status;
@@ -96,11 +105,15 @@ export default function Rezerwacje() {
       <div className="grid gap-3">{rows.map((r) => {
         const request = requests.find((x) => x.booking_id === r.id && x.status === "pending") || requests.find((x) => x.booking_id === r.id);
         const canRequest = r.status === "confirmed" && new Date(r.starts_at).getTime() > Date.now();
+        const deposit = Number(r.deposit_gross || 0);
+        const bookingPrice = Number(r.amount_gross || 0);
         return <article key={r.id} className="rounded-2xl p-5" style={{ background: "var(--glass)", border: "1px solid var(--line)" }}>
           <div className="flex flex-wrap items-start justify-between gap-3"><div><a href={`/produkt/${r.offer_id}`} className="font-semibold hover:underline">{r.title}</a><p className="mt-1 text-sm" style={{ color: "var(--mut)" }}>{r.booking_type === "appointment" ? date(r.starts_at, true) : `${date(r.starts_at, false)} – ${date(r.ends_at, false)} · ${r.units} dni`}</p></div><span className="rounded-full px-3 py-1 text-xs font-semibold" style={{ background: r.status === "confirmed" ? "rgba(34,197,94,.14)" : r.status === "pending_payment" && r.paid_at ? "rgba(200,150,90,.14)" : "var(--header)", border: "1px solid var(--line)" }}>{bookingLabel(r)}</span></div>
           {r.status === "pending_payment" && r.paid_at && <p className="mt-3 rounded-xl px-3 py-2 text-xs" style={{ background: "rgba(200,150,90,.08)", border: "1px solid rgba(200,150,90,.2)", color: "var(--mut)" }}>Płatność jest zaksięgowana, a termin nadal zarezerwowany dla Ciebie. Sprzedawca musi tylko zaakceptować rezerwację.</p>}
-          <div className="mt-4 flex items-center justify-between text-sm"><span style={{ color: "var(--mut)" }}>{r.payment_provider === "stripe" ? "Karta / BLIK / P24" : r.payment_provider === "sunrise_pay" ? "Sunrise Pay" : ""}</span><strong>{zl(Number(r.amount_gross))}</strong></div>
-          {Number(r.deposit_gross) > 0 && <div className="mt-2 text-xs" style={{ color: "var(--mut)" }}>Kaucja zabezpieczająca: {zl(Number(r.deposit_gross))} · rozliczana osobno, poza ceną rezerwacji.</div>}
+          <div className="mt-4 flex items-center justify-between text-sm"><span style={{ color: "var(--mut)" }}>Cena rezerwacji</span><strong>{zl(bookingPrice)}</strong></div>
+          {deposit > 0 && <div className="mt-2 rounded-xl px-3 py-2 text-xs" style={{ background: "rgba(200,150,90,.08)", border: "1px solid rgba(200,150,90,.18)", color: "var(--mut)" }}>Kaucja zabezpieczająca: {zl(deposit)} · {depositLabels[r.deposit_status] ?? r.deposit_status}. Kaucja została pobrana razem z płatnością za rezerwację, ale nie podlega cashbackowi ani prowizji.</div>}
+          {deposit > 0 && r.paid_at && <div className="mt-2 flex items-center justify-between text-sm"><span style={{ color: "var(--mut)" }}>Łącznie pobrano</span><strong>{zl(bookingPrice + deposit)}</strong></div>}
+          <div className="mt-2 text-xs" style={{ color: "var(--mut)" }}>{r.payment_provider === "stripe" ? "Karta / BLIK / P24" : r.payment_provider === "sunrise_pay" ? "Sunrise Pay" : ""}</div>
 
           {request && <div className="mt-4 rounded-2xl p-4 text-sm" style={{ background:"var(--header)", border:"1px solid var(--line)" }}>
             <div className="flex flex-wrap items-center justify-between gap-2"><b>{request.request_type === "cancel" ? "Prośba o anulowanie" : "Prośba o zmianę terminu"}</b><span className="rounded-full px-2.5 py-1 text-xs" style={{ border:"1px solid var(--line)", color: request.status === "accepted" ? "var(--green)" : request.status === "rejected" ? "#fca5a5" : "var(--gold)" }}>{requestLabels[request.status] || request.status}</span></div>
