@@ -3,11 +3,16 @@ import { readFile } from "node:fs/promises";
 import test from "node:test";
 
 const migration = await readFile(new URL("../supabase/migrations/20260831180000_paid_booking_refund_flow.sql", import.meta.url), "utf8");
+const startGuard = await readFile(new URL("../supabase/migrations/20260831194500_booking_refund_before_start_guard.sql", import.meta.url), "utf8");
 const edge = await readFile(new URL("../supabase/functions/booking-cancel-refund/index.ts", import.meta.url), "utf8");
 const sellerPage = await readFile(new URL("../src/pages/SellerBookingsManage.tsx", import.meta.url), "utf8");
 
 test("paid booking cannot use plain cancellation", () => {
   assert.match(migration, /if v\.paid_at is not null then raise exception 'Opłaconą rezerwację anuluj przez zwrot płatności\.'/);
+});
+
+test("automatic paid booking refund is blocked after booking start", () => {
+  assert.match(startGuard, /if v\.starts_at <= now\(\) then raise exception 'Automatyczny zwrot jest dostępny tylko przed rozpoczęciem terminu\.'/);
 });
 
 test("paid booking refund reverses bonuses and restores them if payment refund fails", () => {
