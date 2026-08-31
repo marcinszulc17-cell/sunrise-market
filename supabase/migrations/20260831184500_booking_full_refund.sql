@@ -63,7 +63,10 @@ begin
 end;
 $$;
 
-create or replace function market.seller_booking_refund_prepare(p_booking uuid)
+-- The return contract changed during the rollout of the refund flow. Drop first so
+-- the migration remains safe on environments where an earlier version already exists.
+drop function if exists market.seller_booking_refund_prepare(uuid);
+create function market.seller_booking_refund_prepare(p_booking uuid)
 returns table(
   booking_id uuid,
   order_id uuid,
@@ -91,17 +94,18 @@ begin
   if not(v.seller_id=market.current_seller_id() or market.is_operator()) then raise exception 'Brak dostępu'; end if;
   if v.status in ('cancelled','completed','expired','no_show') then raise exception 'Tej rezerwacji nie można zwrócić'; end if;
   if v.paid_at is null or v.order_id is null then raise exception 'Rezerwacja nie jest opłacona'; end if;
+  if v.starts_at <= now() then raise exception 'Po rozpoczęciu terminu automatyczny zwrot jest zablokowany — wymagane rozliczenie operatora'; end if;
 
   select * into o from market.orders where id=v.order_id for update;
   if o.id is null then raise exception 'Brak zamówienia rezerwacji'; end if;
-  if o.status not in ('paid','created') then raise exception 'Zamówienie nie jest w stanie możliwym do zwrotu'; end if;
+  if o.status <> 'paid' then raise exception 'Zamówienie nie ma statusu opłaconego'; end if;
   if o.payment_provider not in ('sunrise_pay','stripe') then raise exception 'Nieobsługiwana metoda płatności'; end if;
 
   if exists(select 1 from market.seller_settlements s where s.order_id=o.id and s.status='settled') then
     raise exception 'Wypłata sprzedawcy została już rozliczona — wymagane rozliczenie operatora';
   end if;
 
-  if coalesce(v.deposit_gross,0)>0 and coalesce(v.deposit_status,'not_charged') not in ('held','not_charged') then
+  if coalesce(v.deposit_gross,0)>0 and coalesce(v.deposit_status,'not_charged') <> 'held' then
     raise exception 'Kaucja została już osobno rozliczona — wymagane rozliczenie operatora';
   end if;
 
@@ -147,7 +151,7 @@ begin
     updated_at=now()
   where id=p_booking;
 
-  update market.orders set status='cancelled' where id=r.order_id and status in ('paid','created');
+  update market.orders set status='cancelled' where id=r.order_id and status='paid';
   update market.seller_settlements set status='cancelled',last_error='Anulowana opłacona rezerwacja — zwrot klientowi',updated_at=now()
     where order_id=r.order_id and status<>'settled';
   update market.ambassador_commission_outbox set status='reversed',updated_at=now()
