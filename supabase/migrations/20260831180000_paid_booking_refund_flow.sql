@@ -61,6 +61,11 @@ alter table market.ambassador_commission_outbox
   add constraint ambassador_commission_outbox_status_check
   check (status in ('ready','pending_vat','pending_identity','sent','failed','reversed'));
 
+alter table market.seller_settlements drop constraint if exists seller_settlements_status_check;
+alter table market.seller_settlements
+  add constraint seller_settlements_status_check
+  check (status in ('scheduled','pending','settled','failed','cancelled'));
+
 create or replace function market.seller_booking_refund_prepare(p_booking uuid)
 returns table(
   booking_id uuid,
