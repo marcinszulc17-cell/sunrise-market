@@ -13,6 +13,9 @@ const FREE_SHIP = 149;
 const laneMeta: Record<string, { title: string; icon: string; note: string }> = {
   ours: { title: "Sunrise — magazyn / dropship", icon: "☀", note: "Wysyłamy my (Sunrise). Kurier do Ciebie." },
   seller: { title: "Sprzedawcy Sunrise Market", icon: "📦", note: "Wysyłka od partnera — Paczkomat lub kurier." },
+  private_shipping: { title: "Sprzedający prywatny", icon: "📦", note: "Ta oferta jest dostępna wyłącznie z wysyłką." },
+  private_pickup: { title: "Sprzedający prywatny", icon: "🤝", note: "Ta oferta jest dostępna wyłącznie z odbiorem osobistym." },
+  private_both: { title: "Sprzedający prywatny", icon: "📦", note: "Wybierz wysyłkę albo bezpłatny odbiór osobisty." },
 };
 
 export default function Koszyk() {
@@ -92,6 +95,8 @@ export default function Koszyk() {
   const total = cartTotal();
   const freeShip = total >= FREE_SHIP;
   const selectedCodes = presentLanes.map((l) => selected[l]).filter(Boolean) as string[];
+  const pickupOnly = presentLanes.length > 0 && presentLanes.every((lane) => selected[lane] === "private_pickup");
+  const deliveryReady = pickupOnly || addrOk;
   const rawShip = selectedCodes.reduce((a, c) => a + Number(methods.find((m) => m.code === c)?.price_gross ?? 0), 0);
   const shipCost = freeShip ? 0 : rawShip;
   const discount = couponRes?.valid ? Math.min(Number(couponRes.discount || 0), total) : 0;
@@ -127,7 +132,7 @@ export default function Koszyk() {
       const res = await checkoutWithInvoice({
         items: cart.map((i) => ({ offer_id: i.offer_id, qty: i.qty })),
         shipping_codes: useCodes,
-        shipping: useAddr,
+        shipping: pickupOnly ? null : useAddr,
         coupon: cCode ?? null,
         payment_method: "wallet",
       }, useInvoice);
@@ -146,7 +151,7 @@ export default function Koszyk() {
     setMsg(null);
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) { window.location.href = "/login"; return; }
-    if (!addrOk) { setMsg("Uzupełnij adres dostawy (imię i nazwisko, ulica, miasto, kod)."); return; }
+    if (!deliveryReady) { setMsg("Uzupełnij adres dostawy (imię i nazwisko, ulica, miasto, kod)."); return; }
     if (!invoiceReady) { setMsg("Uzupełnij poprawne dane do faktury."); return; }
     if (balance != null && balance < grand) { setMsg("Za mało środków w portfelu — doładuj brakującą kwotę poniżej."); return; }
     await runCheckout(addr, selectedCodes);
@@ -156,7 +161,7 @@ export default function Koszyk() {
     setMsg(null);
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) { window.location.href = "/login"; return; }
-    if (!addrOk) { setMsg("Uzupełnij adres dostawy (imię i nazwisko, ulica, miasto, kod)."); return; }
+    if (!deliveryReady) { setMsg("Uzupełnij adres dostawy (imię i nazwisko, ulica, miasto, kod)."); return; }
     if (!invoiceReady) { setMsg("Uzupełnij poprawne dane do faktury."); return; }
     setBusy(true);
     try {
@@ -164,7 +169,7 @@ export default function Koszyk() {
       const res = await checkoutWithInvoice({
         items: cart.map((i) => ({ offer_id: i.offer_id, qty: i.qty })),
         shipping_codes: selectedCodes,
-        shipping: addr,
+        shipping: pickupOnly ? null : addr,
         coupon: cCode ?? null,
         payment_method: "card",
       }, invoice);
@@ -183,7 +188,7 @@ export default function Koszyk() {
     setMsg(null);
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) { window.location.href = "/login"; return; }
-    if (!addrOk) { setMsg("Uzupełnij adres dostawy przed doładowaniem."); return; }
+    if (!deliveryReady) { setMsg("Uzupełnij adres dostawy przed doładowaniem."); return; }
     if (!invoiceReady) { setMsg("Uzupełnij poprawne dane do faktury przed doładowaniem."); return; }
     const amount = Math.max(shortfall, Math.ceil(amt) || 0);
     if (amount <= 0) { setMsg("Podaj kwotę doładowania."); return; }
@@ -202,7 +207,7 @@ export default function Koszyk() {
     setMsg(null);
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) { window.location.href = "/login"; return; }
-    if (!addrOk) { setMsg("Uzupełnij adres dostawy przed zapłatą."); return; }
+    if (!deliveryReady) { setMsg("Uzupełnij adres dostawy przed zapłatą."); return; }
     if (!invoiceReady) { setMsg("Uzupełnij poprawne dane do faktury przed zapłatą."); return; }
     const use = Math.ceil(shortfall);
     if (use <= 0 || points < use) return;
@@ -235,7 +240,8 @@ export default function Koszyk() {
     const paidAmt = Number(q.get("paid") ?? 0);
     try { window.history.replaceState({}, "", "/koszyk"); } catch { /* ignore */ }
     if (card === "cancel") {
-      setMsg("Płatność kartą anulowana — koszyk czeka, możesz też zapłacić portfelem.");
+      if (orderId) supabase.functions.invoke("cancel-unpaid-order", { body: { order_id: orderId } }).catch(() => {});
+      setMsg("Płatność kartą anulowana — oferta została zwolniona, możesz spróbować ponownie.");
       return;
     }
     if (card === "success" && orderId) {
@@ -280,262 +286,63 @@ export default function Koszyk() {
     <div className="min-h-screen">
       <header className="sticky top-0 z-20 backdrop-blur" style={{ background: "var(--header)", borderBottom: "1px solid var(--line)" }}>
         <div className="mx-auto max-w-4xl px-4 py-3 flex items-center gap-3">
-          <a href="/" className="flex items-center gap-2">
-            <img src="/logo-sunrise-market.png" alt="Sunrise Market" className="h-8 w-auto rounded-lg bg-white p-1" onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = "none"; }} />
-          </a>
-          <div className="flex-1" />
-          <a href="/" className="text-sm navlink">← Sklep</a>
+          <a href="/" className="flex items-center gap-2"><img src="/logo-sunrise-market.png" alt="Sunrise Market" className="h-8 w-auto rounded-lg bg-white p-1" onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = "none"; }} /></a>
+          <div className="flex-1" /><a href="/" className="text-sm navlink">← Sklep</a>
         </div>
       </header>
 
       <main className="mx-auto max-w-4xl px-4 py-8">
         <h1 className="font-display text-3xl font-semibold mb-6">Koszyk</h1>
-
         {done ? (
           <div className="rounded-2xl p-6" style={{ background: "var(--glass)", border: "1px solid rgba(122,184,154,.4)" }}>
             <div className="text-2xl font-display font-semibold mb-2" style={{ color: "var(--green)" }}>Zamówienie opłacone ✅</div>
-            <p className="text-sm" style={{ color: "var(--ink)" }}>
-              {done.method === "card" ? (
-                <>Zapłacono {done.paid > 0 ? <b>{zl(done.paid)}</b> : null} kartą (Stripe). Cashback przysługuje przy płatności portfelem Sunrise Pay — następnym razem doładuj portfel i zgarnij punkty.</>
-              ) : (<>
-              Zapłacono <b>{zl(done.paid)}</b> z portfela Sunrise Pay. Cashback <b style={{ color: "var(--green)" }}>+{pkt(done.cashback)} pkt</b> trafił na portfel
-              {done.balance != null && <> — nowe saldo: <b>{zl(done.balance)}</b></>}.
-              </>)}
-            </p>
+            <p className="text-sm" style={{ color: "var(--ink)" }}>{done.method === "card" ? <>Zapłacono {done.paid > 0 ? <b>{zl(done.paid)}</b> : null} kartą (Stripe). Cashback przysługuje przy płatności portfelem Sunrise Pay — następnym razem doładuj portfel i zgarnij punkty.</> : <>Zapłacono <b>{zl(done.paid)}</b> z portfela Sunrise Pay. Cashback <b style={{ color: "var(--green)" }}>+{pkt(done.cashback)} pkt</b> trafił na portfel{done.balance != null && <> — nowe saldo: <b>{zl(done.balance)}</b></>}.</>}</p>
             <p className="text-xs mt-2" style={{ color: "var(--mut)" }}>Nr zamówienia: {done.order}</p>
-            <div className="flex gap-3 mt-4">
-              <a href="/" className="rounded-xl px-5 py-2 font-semibold text-black" style={{ background: "linear-gradient(135deg,#C8965A,#E8C896)" }}>Kupuj dalej</a>
-              <a href="/zamowienia" className="rounded-xl px-5 py-2 text-sm" style={{ background: "var(--glass)", border: "1px solid var(--line)" }}>Moje zamówienia</a>
-              <a href="/portfel" className="rounded-xl px-5 py-2 text-sm" style={{ background: "var(--glass)", border: "1px solid var(--line)" }}>Portfel</a>
-            </div>
+            <div className="flex gap-3 mt-4"><a href="/" className="rounded-xl px-5 py-2 font-semibold text-black" style={{ background: "linear-gradient(135deg,#C8965A,#E8C896)" }}>Kupuj dalej</a><a href="/zamowienia" className="rounded-xl px-5 py-2 text-sm" style={{ background: "var(--glass)", border: "1px solid var(--line)" }}>Moje zamówienia</a><a href="/portfel" className="rounded-xl px-5 py-2 text-sm" style={{ background: "var(--glass)", border: "1px solid var(--line)" }}>Portfel</a></div>
           </div>
-        ) : cart.length === 0 ? (
-          <p style={{ color: "var(--mut)" }}>Koszyk jest pusty. <a href="/" className="text-amber-400 underline">Przejdź do sklepu</a>.</p>
-        ) : (
-          <>
+        ) : cart.length === 0 ? <p style={{ color: "var(--mut)" }}>Koszyk jest pusty. <a href="/" className="text-amber-400 underline">Przejdź do sklepu</a>.</p> : <>
           <div className="grid gap-6 md:grid-cols-3">
             <div className="md:col-span-2 flex flex-col gap-5">
               {presentLanes.map((lane) => {
                 const meta = laneMeta[lane] ?? laneMeta.seller;
                 const opt = methods.filter((m) => m.lanes.includes(lane));
                 const etaSample = (groups[lane] ?? []).map((i) => lanes[i.offer_id]?.eta).find(Boolean);
-                return (
-                  <div key={lane} className="rounded-2xl p-4" style={{ background: "var(--glass)", border: "1px solid var(--line)" }}>
-                    <div className="flex items-center justify-between mb-1">
-                      <div className="font-semibold flex items-center gap-2">{meta.icon} {meta.title}</div>
-                      {etaSample && <span className="text-xs px-2 py-0.5 rounded-full" style={{ background: "rgba(200,150,90,.12)", color: "var(--gold)" }}>⏱ {etaSample}</span>}
-                    </div>
-                    <div className="text-xs mb-3" style={{ color: "var(--mut)" }}>{meta.note}</div>
-                    <div className="flex flex-col gap-2">
-                      {(groups[lane] ?? []).map((i) => (
-                        <div key={i.offer_id} className="flex items-center gap-3">
-                          <div className="flex-1">
-                            <a href={`/produkt/${i.offer_id}`} className="font-medium hover:text-amber-300">{cleanTitle(i.title)}</a>
-                            {i.variant && <div className="text-xs" style={{ color: "var(--gold)" }}>{i.variant}</div>}
-                            <div className="text-xs" style={{ color: "var(--mut)" }}>{zl(i.price)} / szt.</div>
-                          </div>
-                          <div className="flex items-center gap-2">
-                            <button onClick={() => setQty(i.offer_id, i.qty - 1)} className="w-8 h-8 rounded-lg" style={{ background: "var(--glass)", border: "1px solid var(--line)" }}>−</button>
-                            <span className="w-8 text-center">{i.qty}</span>
-                            <button onClick={() => setQty(i.offer_id, i.qty + 1)} className="w-8 h-8 rounded-lg" style={{ background: "var(--glass)", border: "1px solid var(--line)" }}>+</button>
-                          </div>
-                          <div className="w-24 text-right font-display text-lg font-semibold">{zl(i.price * i.qty)}</div>
-                          <button onClick={() => removeItem(i.offer_id)} className="text-zinc-500 hover:text-rose-400">✕</button>
-                        </div>
-                      ))}
-                    </div>
-                    <div className="mt-3 pt-3" style={{ borderTop: "1px solid var(--line)" }}>
-                      <div className="text-xs mb-2" style={{ color: "var(--mut)" }}>Dostawa dla tej części</div>
-                      <div className="flex flex-wrap gap-2">
-                        {opt.map((m) => (
-                          <label key={m.code} className="flex items-center gap-2 text-sm cursor-pointer rounded-lg px-3 py-1.5"
-                                 style={{ border: selected[lane] === m.code ? "1px solid rgba(200,150,90,.6)" : "1px solid var(--line)" }}>
-                            <input type="radio" name={`ship-${lane}`} checked={selected[lane] === m.code} onChange={() => setSelected({ ...selected, [lane]: m.code })} />
-                            {m.name}
-                            <span style={{ color: freeShip && Number(m.price_gross) > 0 ? "var(--green)" : "var(--mut)" }}>
-                              {freeShip ? (Number(m.price_gross) === 0 ? "0 zł" : <><s style={{ opacity: .5 }}>{zl(m.price_gross)}</s> 0 zł</>) : (Number(m.price_gross) === 0 ? "0 zł" : zl(m.price_gross))}
-                            </span>
-                          </label>
-                        ))}
-                      </div>
-                    </div>
-                  </div>
-                );
+                return <div key={lane} className="rounded-2xl p-4" style={{ background: "var(--glass)", border: "1px solid var(--line)" }}>
+                  <div className="flex items-center justify-between mb-1"><div className="font-semibold flex items-center gap-2">{meta.icon} {meta.title}</div>{etaSample && <span className="text-xs px-2 py-0.5 rounded-full" style={{ background: "rgba(200,150,90,.12)", color: "var(--gold)" }}>⏱ {etaSample}</span>}</div>
+                  <div className="text-xs mb-3" style={{ color: "var(--mut)" }}>{meta.note}</div>
+                  <div className="flex flex-col gap-2">{(groups[lane] ?? []).map((i) => <div key={i.offer_id} className="flex items-center gap-3"><div className="flex-1"><a href={`/produkt/${i.offer_id}`} className="font-medium hover:text-amber-300">{cleanTitle(i.title)}</a>{i.variant && <div className="text-xs" style={{ color: "var(--gold)" }}>{i.variant}</div>}<div className="text-xs" style={{ color: "var(--mut)" }}>{zl(i.price)} / szt.</div></div><div className="flex items-center gap-2"><button onClick={() => setQty(i.offer_id, i.qty - 1)} className="w-8 h-8 rounded-lg" style={{ background: "var(--glass)", border: "1px solid var(--line)" }}>−</button><span className="w-8 text-center">{i.qty}</span><button onClick={() => setQty(i.offer_id, i.qty + 1)} className="w-8 h-8 rounded-lg" style={{ background: "var(--glass)", border: "1px solid var(--line)" }}>+</button></div><div className="w-24 text-right font-display text-lg font-semibold">{zl(i.price * i.qty)}</div><button onClick={() => removeItem(i.offer_id)} className="text-zinc-500 hover:text-rose-400">✕</button></div>)}</div>
+                  <div className="mt-3 pt-3" style={{ borderTop: "1px solid var(--line)" }}><div className="text-xs mb-2" style={{ color: "var(--mut)" }}>Dostawa dla tej części</div><div className="flex flex-wrap gap-2">{opt.map((m) => <label key={m.code} className="flex items-center gap-2 text-sm cursor-pointer rounded-lg px-3 py-1.5" style={{ border: selected[lane] === m.code ? "1px solid rgba(200,150,90,.6)" : "1px solid var(--line)" }}><input type="radio" name={`ship-${lane}`} checked={selected[lane] === m.code} onChange={() => setSelected({ ...selected, [lane]: m.code })} />{m.name}<span style={{ color: freeShip && Number(m.price_gross) > 0 ? "var(--green)" : "var(--mut)" }}>{freeShip ? (Number(m.price_gross) === 0 ? "0 zł" : <><s style={{ opacity: .5 }}>{zl(m.price_gross)}</s> 0 zł</>) : (Number(m.price_gross) === 0 ? "0 zł" : zl(m.price_gross))}</span></label>)}</div></div>
+                </div>;
               })}
             </div>
 
             <div className="rounded-2xl p-5 h-fit" style={{ background: "var(--glass)", border: "1px solid var(--line)" }}>
-              <div className="mb-4">
-                <div className="text-sm mb-2" style={{ color: "var(--mut)" }}>Adres dostawy</div>
-                <div className="flex flex-col gap-2">
-                  {([["name", "Imię i nazwisko"], ["street", "Ulica i nr"], ["city", "Miasto"], ["postal", "Kod pocztowy"], ["phone", "Telefon (opcjonalnie)"]] as const).map(([k, ph]) => (
-                    <input key={k} value={(addr as any)[k]} onChange={(e) => setAddr({ ...addr, [k]: e.target.value })}
-                           placeholder={ph} className="rounded-lg px-3 py-2 text-sm outline-none"
-                           style={{ background: "var(--glass)", border: "1px solid var(--line)" }} />
-                  ))}
-                </div>
-              </div>
+              {pickupOnly ? <div className="mb-4 rounded-xl px-3 py-3 text-sm" style={{ background: "rgba(122,184,154,.10)", border: "1px solid rgba(122,184,154,.35)" }}><b>🤝 Odbiór osobisty</b><div className="mt-1 text-xs" style={{ color: "var(--mut)" }}>Adres dostawy nie jest potrzebny. Szczegóły odbioru znajdziesz przy zamówieniu po opłaceniu.</div></div> : <div className="mb-4"><div className="text-sm mb-2" style={{ color: "var(--mut)" }}>Adres dostawy</div><div className="flex flex-col gap-2">{([["name", "Imię i nazwisko"], ["street", "Ulica i nr"], ["city", "Miasto"], ["postal", "Kod pocztowy"], ["phone", "Telefon (opcjonalnie)"]] as const).map(([k, ph]) => <input key={k} value={(addr as any)[k]} onChange={(e) => setAddr({ ...addr, [k]: e.target.value })} placeholder={ph} className="rounded-lg px-3 py-2 text-sm outline-none" style={{ background: "var(--glass)", border: "1px solid var(--line)" }} />)}</div></div>}
 
               <InvoiceDetailsFields value={invoice} onChange={setInvoice} compact />
               {!invoiceReady && <div className="mt-2 text-xs" style={{ color: "var(--gold)" }}>Uzupełnij komplet danych firmy i poprawny NIP, aby zamówić fakturę.</div>}
-
-              <div className="flex justify-between text-sm mb-1 mt-4">
-                <span style={{ color: "var(--mut)" }}>Produkty</span><span>{zl(total)}</span>
-              </div>
-              <div className="flex justify-between text-sm mb-1">
-                <span style={{ color: "var(--mut)" }}>Dostawa {presentLanes.length > 1 && <>({presentLanes.length} przesyłki)</>}</span>
-                <span>{freeShip ? <span style={{ color: "var(--green)" }}>0 zł 🎉</span> : zl(shipCost)}</span>
-              </div>
-              {!freeShip ? (
-                <div className="mb-3">
-                  <div className="text-xs mb-1" style={{ color: "var(--gold)" }}>Do darmowej dostawy brakuje: <b>{zl(FREE_SHIP - total)}</b></div>
-                  <div className="h-2 rounded-full overflow-hidden" style={{ background: "var(--glass)", border: "1px solid var(--line)" }}>
-                    <div className="h-full rounded-full" style={{ width: `${Math.min(100, Math.round(total / FREE_SHIP * 100))}%`, background: "linear-gradient(90deg,#C8965A,#E8C896)", transition: "width .3s" }} />
-                  </div>
-                </div>
-              ) : (
-                <div className="text-xs mb-2" style={{ color: "var(--green)" }}>🎉 Masz darmową dostawę!</div>
-              )}
-              {discount > 0 && (
-                <div className="flex justify-between text-sm mb-1" style={{ color: "var(--green)" }}>
-                  <span>Rabat ({couponRes?.code})</span><span>−{zl(discount)}</span>
-                </div>
-              )}
-              <div className="flex gap-2 my-2">
-                <input value={coupon} onChange={(e) => setCoupon(e.target.value)} onKeyDown={(e) => e.key === "Enter" && applyCoupon()} placeholder="Kod rabatowy"
-                       className="flex-1 rounded-lg px-3 py-2 text-sm outline-none" style={{ background: "var(--glass)", border: "1px solid var(--line)", color: "var(--ink)" }} />
-                <button onClick={applyCoupon} className="px-3 py-2 rounded-lg text-sm font-semibold" style={{ background: "var(--glass)", border: "1px solid var(--line)", color: "var(--ink)" }}>Zastosuj</button>
-              </div>
+              <div className="flex justify-between text-sm mb-1 mt-4"><span style={{ color: "var(--mut)" }}>Produkty</span><span>{zl(total)}</span></div>
+              <div className="flex justify-between text-sm mb-1"><span style={{ color: "var(--mut)" }}>Dostawa {presentLanes.length > 1 && <>({presentLanes.length} przesyłki)</>}</span><span>{freeShip ? <span style={{ color: "var(--green)" }}>0 zł 🎉</span> : zl(shipCost)}</span></div>
+              {!freeShip ? <div className="mb-3"><div className="text-xs mb-1" style={{ color: "var(--gold)" }}>Do darmowej dostawy brakuje: <b>{zl(FREE_SHIP - total)}</b></div><div className="h-2 rounded-full overflow-hidden" style={{ background: "var(--glass)", border: "1px solid var(--line)" }}><div className="h-full rounded-full" style={{ width: `${Math.min(100, Math.round(total / FREE_SHIP * 100))}%`, background: "linear-gradient(90deg,#C8965A,#E8C896)", transition: "width .3s" }} /></div></div> : <div className="text-xs mb-2" style={{ color: "var(--green)" }}>🎉 Masz darmową dostawę!</div>}
+              {discount > 0 && <div className="flex justify-between text-sm mb-1" style={{ color: "var(--green)" }}><span>Rabat ({couponRes?.code})</span><span>−{zl(discount)}</span></div>}
+              <div className="flex gap-2 my-2"><input value={coupon} onChange={(e) => setCoupon(e.target.value)} onKeyDown={(e) => e.key === "Enter" && applyCoupon()} placeholder="Kod rabatowy" className="flex-1 rounded-lg px-3 py-2 text-sm outline-none" style={{ background: "var(--glass)", border: "1px solid var(--line)", color: "var(--ink)" }} /><button onClick={applyCoupon} className="px-3 py-2 rounded-lg text-sm font-semibold" style={{ background: "var(--glass)", border: "1px solid var(--line)", color: "var(--ink)" }}>Zastosuj</button></div>
               {couponRes && !couponRes.valid && <div className="text-xs mb-2" style={{ color: "#F25CB0" }}>{couponRes.message}</div>}
               <div className="flex justify-between mb-2 mt-1"><span style={{ color: "var(--mut)" }}>Razem</span><span className="font-display text-2xl font-semibold">{zl(grand)}</span></div>
-              <div className="rounded-xl p-3 mb-3" style={{ background: "rgba(122,184,154,.10)", border: "1px solid rgba(122,184,154,.35)" }}>
-                <div className="flex justify-between gap-3 items-end">
-                  <div>
-                    <div className="text-xs" style={{ color: "var(--mut)" }}>Płacisz za produkty</div>
-                    <div className="font-display text-lg font-semibold">{zl(cashbackBase)}</div>
-                  </div>
-                  <div className="text-right">
-                    <div className="text-xs" style={{ color: "var(--mut)" }}>Wraca {cashbackPct}%</div>
-                    <div className="font-display text-xl font-semibold" style={{ color: "var(--green)" }}>+{pkt(cashback)} pkt</div>
-                  </div>
-                </div>
-                <div className="text-xs mt-1" style={{ color: "var(--green)" }}>1 pkt = 1 zł w Sunrise Pay</div>
-              </div>
+              <div className="rounded-xl p-3 mb-3" style={{ background: "rgba(122,184,154,.10)", border: "1px solid rgba(122,184,154,.35)" }}><div className="flex justify-between gap-3 items-end"><div><div className="text-xs" style={{ color: "var(--mut)" }}>Płacisz za produkty</div><div className="font-display text-lg font-semibold">{zl(cashbackBase)}</div></div><div className="text-right"><div className="text-xs" style={{ color: "var(--mut)" }}>Wraca {cashbackPct}%</div><div className="font-display text-xl font-semibold" style={{ color: "var(--green)" }}>+{pkt(cashback)} pkt</div></div></div><div className="text-xs mt-1" style={{ color: "var(--green)" }}>1 pkt = 1 zł w Sunrise Pay</div></div>
               <SmartCard />
-
-              <div className="mt-4 pt-3" style={{ borderTop: "1px solid var(--line)" }}>
-                <div className="text-xs mb-2" style={{ color: "var(--mut)" }}>Płatność portfelem</div>
-                <div className="grid grid-cols-2 gap-2">
-                  <button onClick={() => setCurrency("SUNRISE_PAY")}
-                          className="text-sm rounded-lg px-3 py-2 text-left"
-                          style={{ border: currency === "SUNRISE_PAY" ? "1px solid rgba(200,150,90,.6)" : "1px solid var(--line)", background: "var(--glass)" }}>
-                    ☀ Sunrise Pay <span style={{ color: "var(--mut)" }}>(zł)</span>
-                  </button>
-                  <button disabled title="Gold Pay ruszy po uruchomieniu kursu Gold w MySunrise"
-                          className="text-sm rounded-lg px-3 py-2 text-left opacity-55 cursor-not-allowed"
-                          style={{ border: "1px solid var(--line)", background: "var(--glass)" }}>
-                    🟡 Gold Pay <span style={{ color: "var(--mut)" }}>· wkrótce</span>
-                  </button>
-                </div>
-              </div>
-
-              {balance != null && (
-                <div className="flex justify-between text-sm mb-4 pt-2 mt-2" style={{ borderTop: "1px solid var(--line)" }}>
-                  <span style={{ color: "var(--mut)" }}>Saldo Sunrise Pay</span>
-                  <span style={{ color: enoughFunds ? "var(--green)" : "#F8A8D2" }}>{zl(balance)}</span>
-                </div>
-              )}
-
-              {!linked && (
-                <div className="mb-3 rounded-lg px-3 py-2 text-sm" style={{ background: "rgba(56,224,240,.12)", color: "#8fe3ef" }}>
-                  Twoje konto nie jest połączone z portfelem MySunrise. Aktywuj Sunrise Pay w aplikacji MySunrise na ten sam e‑mail.
-                </div>
-              )}
+              <div className="mt-4 pt-3" style={{ borderTop: "1px solid var(--line)" }}><div className="text-xs mb-2" style={{ color: "var(--mut)" }}>Płatność portfelem</div><div className="grid grid-cols-2 gap-2"><button onClick={() => setCurrency("SUNRISE_PAY")} className="text-sm rounded-lg px-3 py-2 text-left" style={{ border: currency === "SUNRISE_PAY" ? "1px solid rgba(200,150,90,.6)" : "1px solid var(--line)", background: "var(--glass)" }}>☀ Sunrise Pay <span style={{ color: "var(--mut)" }}>(zł)</span></button><button disabled title="Gold Pay ruszy po uruchomieniu kursu Gold w MySunrise" className="text-sm rounded-lg px-3 py-2 text-left opacity-55 cursor-not-allowed" style={{ border: "1px solid var(--line)", background: "var(--glass)" }}>🟡 Gold Pay <span style={{ color: "var(--mut)" }}>· wkrótce</span></button></div></div>
+              {balance != null && <div className="flex justify-between text-sm mb-4 pt-2 mt-2" style={{ borderTop: "1px solid var(--line)" }}><span style={{ color: "var(--mut)" }}>Saldo Sunrise Pay</span><span style={{ color: enoughFunds ? "var(--green)" : "#F8A8D2" }}>{zl(balance)}</span></div>}
+              {!linked && <div className="mb-3 rounded-lg px-3 py-2 text-sm" style={{ background: "rgba(56,224,240,.12)", color: "#8fe3ef" }}>Twoje konto nie jest połączone z portfelem MySunrise. Aktywuj Sunrise Pay w aplikacji MySunrise na ten sam e-mail.</div>}
               {msg && <div className="mb-3 rounded-lg px-3 py-2 text-sm" style={{ background: "rgba(242,92,176,.12)", color: "#F8A8D2" }}>{msg}</div>}
 
-              {balance != null && !enoughFunds ? (
-                <div className="flex flex-col gap-2">
-                  <div className="rounded-lg px-3 py-2 text-sm" style={{ background: "rgba(200,150,90,.12)", color: "var(--gold)" }}>
-                    Brakuje <b>{zl(shortfall)}</b> w portfelu. Zapłać punktami albo doładuj — bez wychodzenia z koszyka:
-                  </div>
-                  {points >= Math.ceil(shortfall) && (
-                    <>
-                      <button onClick={redeemAndPay} disabled={busy || resuming || !addrOk || !invoiceReady}
-                              className="w-full rounded-xl py-3 font-semibold text-black disabled:opacity-50"
-                              style={{ background: "linear-gradient(135deg,#7AB89A,#12b981)" }}>
-                        Wymień {pkt(Math.ceil(shortfall))} pkt i zapłać →
-                      </button>
-                      <div className="text-center text-xs" style={{ color: "var(--mut)" }}>masz {pkt(points)} pkt · albo doładuj kartą:</div>
-                    </>
-                  )}
-                  <div className="flex flex-wrap items-center gap-2">
-                    {topupSuggestions.map((v) => (
-                      <button key={v} onClick={() => setTopupAmount(String(v))}
-                              className="rounded-lg px-3 py-1.5 text-sm"
-                              style={{ border: topupDisplay === String(v) ? "1px solid rgba(200,150,90,.6)" : "1px solid var(--line)", background: "var(--glass)" }}>
-                        {zl(v)}
-                      </button>
-                    ))}
-                    <input type="number" min={ceilShort} step={1} inputMode="numeric"
-                           value={topupDisplay} onChange={(e) => setTopupAmount(e.target.value)}
-                           className="w-24 rounded-lg px-3 py-2 text-sm outline-none"
-                           style={{ background: "var(--glass)", border: "1px solid var(--line)" }} />
-                    <span className="text-xs" style={{ color: "var(--mut)" }}>min {zl(shortfall)}</span>
-                  </div>
-                  <div className="text-xs" style={{ color: "var(--mut)" }}>Większe doładowanie = mniej opłat i zapas w portfelu na kolejne zakupy.</div>
-                  <button onClick={() => topupAndPay(effectiveTopup)} disabled={busy || resuming || !addrOk || !invoiceReady}
-                          className="w-full rounded-xl py-3 font-semibold text-black disabled:opacity-50"
-                          style={{ background: "linear-gradient(135deg,#C8965A,#E8C896)" }}>
-                    {busy ? "Przekierowuję do płatności…" : `Doładuj ${zl(effectiveTopup)} i zapłać →`}
-                  </button>
-                  {!addrOk && <div className="text-xs" style={{ color: "var(--gold)" }}>Najpierw uzupełnij adres dostawy powyżej.</div>}
-                  {!invoiceReady && <div className="text-xs" style={{ color: "var(--gold)" }}>Uzupełnij dane do faktury powyżej.</div>}
-                  <a href="/portfel" className="text-center text-xs underline" style={{ color: "var(--mut)" }}>albo doładuj w aplikacji MySunrise</a>
-                  <div className="text-center text-xs pt-1" style={{ color: "var(--mut)" }}>— albo bez portfela —</div>
-                  <button onClick={payByCard} disabled={busy || resuming || !addrOk || !invoiceReady}
-                          className="w-full rounded-xl py-3 font-semibold disabled:opacity-50"
-                          style={{ background: "var(--glass)", border: "1px solid var(--line)", color: "var(--ink)" }}>
-                    💳 Zapłać kartą (Stripe) — bez cashbacku
-                  </button>
-                </div>
-              ) : (
-                <div className="flex flex-col gap-2">
-                  <button onClick={pay} disabled={busy || resuming || !addrOk || !invoiceReady || (balance != null && !enoughFunds)}
-                          className="w-full rounded-xl py-3 font-semibold text-black disabled:opacity-50"
-                          style={{ background: "linear-gradient(135deg,#C8965A,#A97B42)" }}>
-                    {resuming ? "Dokańczam zamówienie…" : busy ? "Płacę…" : !invoiceReady ? "Uzupełnij dane do faktury" : `Zapłać saldem · wróci ${pkt(cashback)} pkt`}
-                  </button>
-                  <button onClick={payByCard} disabled={busy || resuming || !addrOk || !invoiceReady}
-                          className="w-full rounded-xl py-2.5 text-sm font-semibold disabled:opacity-50"
-                          style={{ background: "var(--glass)", border: "1px solid var(--line)", color: "var(--ink)" }}>
-                    💳 Zapłać kartą (Stripe) — bez cashbacku
-                  </button>
-                </div>
-              )}
-              <p className="text-xs mt-3" style={{ color: "var(--mut)" }}>
-                Portfel Sunrise Pay = cashback {cashbackPct}% po zakupie. Karta (Stripe) — szybka płatność bez cashbacku. Subskrypcje rozliczane wyłącznie przez Stripe.
-              </p>
+              {balance != null && !enoughFunds ? <div className="flex flex-col gap-2"><div className="rounded-lg px-3 py-2 text-sm" style={{ background: "rgba(200,150,90,.12)", color: "var(--gold)" }}>Brakuje <b>{zl(shortfall)}</b> w portfelu. Zapłać punktami albo doładuj — bez wychodzenia z koszyka:</div>{points >= Math.ceil(shortfall) && <><button onClick={redeemAndPay} disabled={busy || resuming || !deliveryReady || !invoiceReady} className="w-full rounded-xl py-3 font-semibold text-black disabled:opacity-50" style={{ background: "linear-gradient(135deg,#7AB89A,#12b981)" }}>Wymień {pkt(Math.ceil(shortfall))} pkt i zapłać →</button><div className="text-center text-xs" style={{ color: "var(--mut)" }}>masz {pkt(points)} pkt · albo doładuj kartą:</div></>}
+                <div className="flex flex-wrap items-center gap-2">{topupSuggestions.map((v) => <button key={v} onClick={() => setTopupAmount(String(v))} className="rounded-lg px-3 py-1.5 text-sm" style={{ border: topupDisplay === String(v) ? "1px solid rgba(200,150,90,.6)" : "1px solid var(--line)", background: "var(--glass)" }}>{zl(v)}</button>)}<input type="number" min={ceilShort} step={1} inputMode="numeric" value={topupDisplay} onChange={(e) => setTopupAmount(e.target.value)} className="w-24 rounded-lg px-3 py-2 text-sm outline-none" style={{ background: "var(--glass)", border: "1px solid var(--line)" }} /><span className="text-xs" style={{ color: "var(--mut)" }}>min {zl(shortfall)}</span></div>
+                <div className="text-xs" style={{ color: "var(--mut)" }}>Większe doładowanie = mniej opłat i zapas w portfelu na kolejne zakupy.</div><button onClick={() => topupAndPay(effectiveTopup)} disabled={busy || resuming || !deliveryReady || !invoiceReady} className="w-full rounded-xl py-3 font-semibold text-black disabled:opacity-50" style={{ background: "linear-gradient(135deg,#C8965A,#E8C896)" }}>{busy ? "Przekierowuję do płatności…" : `Doładuj ${zl(effectiveTopup)} i zapłać →`}</button>{!deliveryReady && <div className="text-xs" style={{ color: "var(--gold)" }}>Najpierw uzupełnij adres dostawy powyżej.</div>}{!invoiceReady && <div className="text-xs" style={{ color: "var(--gold)" }}>Uzupełnij dane do faktury powyżej.</div>}<a href="/portfel" className="text-center text-xs underline" style={{ color: "var(--mut)" }}>albo doładuj w aplikacji MySunrise</a><div className="text-center text-xs pt-1" style={{ color: "var(--mut)" }}>— albo bez portfela —</div><button onClick={payByCard} disabled={busy || resuming || !deliveryReady || !invoiceReady} className="w-full rounded-xl py-3 font-semibold disabled:opacity-50" style={{ background: "var(--glass)", border: "1px solid var(--line)", color: "var(--ink)" }}>💳 Zapłać kartą (Stripe) — bez cashbacku</button></div> : <div className="flex flex-col gap-2"><button onClick={pay} disabled={busy || resuming || !deliveryReady || !invoiceReady || (balance != null && !enoughFunds)} className="w-full rounded-xl py-3 font-semibold text-black disabled:opacity-50" style={{ background: "linear-gradient(135deg,#C8965A,#A97B42)" }}>{resuming ? "Dokańczam zamówienie…" : busy ? "Płacę…" : !invoiceReady ? "Uzupełnij dane do faktury" : `Zapłać saldem · wróci ${pkt(cashback)} pkt`}</button><button onClick={payByCard} disabled={busy || resuming || !deliveryReady || !invoiceReady} className="w-full rounded-xl py-2.5 text-sm font-semibold disabled:opacity-50" style={{ background: "var(--glass)", border: "1px solid var(--line)", color: "var(--ink)" }}>💳 Zapłać kartą (Stripe) — bez cashbacku</button></div>}
+              <p className="text-xs mt-3" style={{ color: "var(--mut)" }}>Portfel Sunrise Pay = cashback {cashbackPct}% po zakupie. Karta (Stripe) — szybka płatność bez cashbacku. Subskrypcje rozliczane wyłącznie przez Stripe.</p>
             </div>
           </div>
-          {recs.length > 0 && (
-            <section className="mt-8">
-              <h2 className="font-display text-xl font-semibold mb-4">Może Cię zainteresować</h2>
-              <div className="grid gap-4" style={{ gridTemplateColumns: "repeat(auto-fill,minmax(200px,1fr))" }}>
-                {recs.map((r) => (
-                  <div key={r.offer_id} className="rounded-2xl p-3 flex flex-col" style={{ background: "var(--glass)", border: "1px solid var(--line)" }}>
-                    <a href={`/produkt/${r.offer_id}`} className="font-medium text-sm hover:text-amber-300 flex-1">{r.title}</a>
-                    <div className="flex items-center justify-between mt-2">
-                      <span className="font-display text-lg font-semibold">{zl(r.price_gross)}</span>
-                      <button onClick={() => addToCart({ offer_id: r.offer_id, title: r.title, price: Number(r.price_gross) })}
-                              className="text-xs font-semibold px-3 py-1.5 rounded-lg text-black" style={{ background: "linear-gradient(135deg,#C8965A,#E8C896)" }}>+ Dodaj</button>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </section>
-          )}
-          </>
-        )}
+          {recs.length > 0 && <section className="mt-8"><h2 className="font-display text-xl font-semibold mb-4">Może Cię zainteresować</h2><div className="grid gap-4" style={{ gridTemplateColumns: "repeat(auto-fill,minmax(200px,1fr))" }}>{recs.map((r) => <div key={r.offer_id} className="rounded-2xl p-3 flex flex-col" style={{ background: "var(--glass)", border: "1px solid var(--line)" }}><a href={`/produkt/${r.offer_id}`} className="font-medium text-sm hover:text-amber-300 flex-1">{r.title}</a><div className="flex items-center justify-between mt-2"><span className="font-display text-lg font-semibold">{zl(r.price_gross)}</span><button onClick={() => addToCart({ offer_id: r.offer_id, title: r.title, price: Number(r.price_gross) })} className="text-xs font-semibold px-3 py-1.5 rounded-lg text-black" style={{ background: "linear-gradient(135deg,#C8965A,#E8C896)" }}>+ Dodaj</button></div></div>)}</div></section>}
+        </>}
       </main>
     </div>
   );
@@ -553,12 +360,5 @@ function SmartCard() {
     try { const r: any = await smartSubscribe(); if (r?.need_topup) setMsg("Za mało środków w portfelu — doładuj Sunrise Pay."); else setMember(true); }
     catch (e) { setMsg((e as Error).message); } finally { setBusy(false); }
   }
-  return (
-    <div className="mt-3 rounded-xl p-3" style={{ background: "linear-gradient(140deg,#061434,#123a86)", border: "1px solid rgba(232,200,150,.4)" }}>
-      <div className="text-sm font-semibold" style={{ color: "#E8C896" }}>⚡ Sunrise Smart — darmowe wysyłki</div>
-      <div className="text-xs mt-1" style={{ color: "rgba(255,255,255,.75)" }}>Darmowa dostawa InPost na wszystkie zamówienia od 49 zł. 59 zł/rok.</div>
-      <button onClick={buy} disabled={busy} className="mt-2 text-sm font-semibold px-3 py-1.5 rounded-lg text-black disabled:opacity-50" style={{ background: "linear-gradient(135deg,#C8965A,#E8C896)" }}>{busy ? "Kupuję…" : "Kup Sunrise Smart (59 zł/rok)"}</button>
-      {msg && <div className="text-xs mt-1" style={{ color: "#F8A8D2" }}>{msg}</div>}
-    </div>
-  );
+  return <div className="mt-3 rounded-xl p-3" style={{ background: "linear-gradient(140deg,#061434,#123a86)", border: "1px solid rgba(232,200,150,.4)" }}><div className="text-sm font-semibold" style={{ color: "#E8C896" }}>⚡ Sunrise Smart — darmowe wysyłki</div><div className="text-xs mt-1" style={{ color: "rgba(255,255,255,.75)" }}>Darmowa dostawa InPost na wszystkie zamówienia od 49 zł. 59 zł/rok.</div><button onClick={buy} disabled={busy} className="mt-2 text-sm font-semibold px-3 py-1.5 rounded-lg text-black disabled:opacity-50" style={{ background: "linear-gradient(135deg,#C8965A,#E8C896)" }}>{busy ? "Kupuję…" : "Kup Sunrise Smart (59 zł/rok)"}</button>{msg && <div className="text-xs mt-1" style={{ color: "#F8A8D2" }}>{msg}</div>}</div>;
 }
