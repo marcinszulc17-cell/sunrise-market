@@ -112,6 +112,11 @@ export default function SellerBookingsManage() {
     () => rows.filter((r) => filter === "all" ? true : filter === "active" ? ["held", "pending_payment", "confirmed"].includes(r.status) : r.status === filter),
     [rows, filter],
   );
+  const activeBlocks = useMemo(
+    () => blocks.filter((block) => new Date(block.ends_at).getTime() > Date.now()).sort((a, b) => new Date(a.starts_at).getTime() - new Date(b.starts_at).getTime()),
+    [blocks],
+  );
+  const selectedOffer = useMemo(() => offers.find((offer) => offer.offer_id === offerId) ?? null, [offers, offerId]);
   const stats = useMemo(() => ({
     active: rows.filter((r) => ["held", "pending_payment", "confirmed"].includes(r.status)).length,
     confirmed: rows.filter((r) => r.status === "confirmed").length,
@@ -252,11 +257,16 @@ export default function SellerBookingsManage() {
 
   async function addBlock() {
     if (!offerId || !start || !end) { setMsg("Wybierz ofertę i zakres blokady."); return; }
+    const from = new Date(start), to = new Date(end);
+    if (Number.isNaN(from.getTime()) || Number.isNaN(to.getTime()) || to.getTime() <= from.getTime()) {
+      setMsg("Koniec blokady musi być później niż jej początek.");
+      return;
+    }
     setBusy(true); setMsg("");
     const { error } = await supabase.rpc("seller_booking_block_add", {
       p_offer: offerId,
-      p_starts_at: new Date(start).toISOString(),
-      p_ends_at: new Date(end).toISOString(),
+      p_starts_at: from.toISOString(),
+      p_ends_at: to.toISOString(),
       p_reason: reason || null,
     });
     if (error) setMsg(error.message);
@@ -265,9 +275,9 @@ export default function SellerBookingsManage() {
   }
 
   async function deleteBlock(id: string) {
-    setBusy(true);
+    setBusy(true); setMsg("");
     const { error } = await supabase.rpc("seller_booking_block_delete", { p_block: id });
-    if (error) setMsg(error.message); else { setMsg("Blokada usunięta."); await load(); }
+    if (error) setMsg(error.message); else { setMsg("Blokada usunięta. Termin znów może być dostępny dla klientów."); await load(); }
     setBusy(false);
   }
 
@@ -292,9 +302,10 @@ export default function SellerBookingsManage() {
 
       {msg && <div className="mb-5 rounded-2xl p-4 text-sm" style={{ background: "rgba(200,150,90,.12)", border: "1px solid rgba(200,150,90,.25)" }}>{msg}</div>}
 
-      <div className="mb-6 grid gap-3 sm:grid-cols-4">
+      <div className="mb-6 grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
         <Stat label="Aktywne rezerwacje" value={String(stats.active)} />
         <Stat label="Potwierdzone" value={String(stats.confirmed)} />
+        <Stat label="Aktywne blokady" value={String(activeBlocks.length)} />
         <Stat label="Aktywne zasoby" value={String(resources.length)} />
         <Stat label="Wartość opłaconych" value={pln(stats.paid)} />
       </div>
@@ -406,16 +417,37 @@ export default function SellerBookingsManage() {
 
         <aside className="space-y-5">
           <div id="block-editor" className="scroll-mt-24 rounded-2xl p-5" style={{ background: "var(--glass)", border: "1px solid var(--line)" }}>
-            <h2 className="text-lg font-semibold">Oferta i blokada terminu</h2>
+            <div className="flex items-start justify-between gap-3">
+              <div><h2 className="text-lg font-semibold">Blokada terminu</h2><p className="mt-1 text-xs" style={{ color: "var(--mut)" }}>Urlop, serwis, wydarzenie lub inny okres niedostępności całej oferty.</p></div>
+              <span className="rounded-full px-2.5 py-1 text-xs font-semibold" style={{ background: "var(--header)", border: "1px solid var(--line)" }}>{activeBlocks.length}</span>
+            </div>
             <select value={offerId} onChange={(e) => setOfferId(e.target.value)} className="mt-4 w-full rounded-xl px-3 py-2.5" style={{ background: "var(--bg)", border: "1px solid var(--line)" }}>
               <option value="">Wybierz ofertę</option>
               {offers.map((o) => <option key={o.offer_id} value={o.offer_id}>{o.title}</option>)}
             </select>
-            <h3 className="mt-5 font-semibold">Zablokuj termin</h3>
-            <input type="datetime-local" value={start} onChange={(e) => setStart(e.target.value)} className="mt-3 w-full rounded-xl px-3 py-2.5" style={{ background: "var(--bg)", border: "1px solid var(--line)" }} />
-            <input type="datetime-local" value={end} onChange={(e) => setEnd(e.target.value)} className="mt-3 w-full rounded-xl px-3 py-2.5" style={{ background: "var(--bg)", border: "1px solid var(--line)" }} />
-            <input value={reason} onChange={(e) => setReason(e.target.value)} placeholder="Powód (opcjonalnie)" className="mt-3 w-full rounded-xl px-3 py-2.5" style={{ background: "var(--bg)", border: "1px solid var(--line)" }} />
-            <button disabled={busy} onClick={addBlock} className="mt-3 w-full rounded-xl px-4 py-2.5 font-semibold text-black" style={{ background: "linear-gradient(135deg,#C8965A,#E8C896)" }}>Zablokuj termin</button>
+            {selectedOffer && <Link to={`/sprzedawca/rezerwacje/ustawienia/${selectedOffer.offer_id}`} className="mt-2 block text-xs font-semibold" style={{ color: "var(--gold)" }}>⚙ Ustaw booking dla „{selectedOffer.title}” →</Link>}
+            <div className="mt-4 grid gap-2">
+              <label className="text-xs" style={{ color: "var(--mut)" }}>Od<input type="datetime-local" value={start} onChange={(e) => setStart(e.target.value)} className="mt-1 w-full rounded-xl px-3 py-2.5 text-sm" style={{ background: "var(--bg)", border: "1px solid var(--line)", color: "var(--ink)" }} /></label>
+              <label className="text-xs" style={{ color: "var(--mut)" }}>Do<input type="datetime-local" value={end} onChange={(e) => setEnd(e.target.value)} className="mt-1 w-full rounded-xl px-3 py-2.5 text-sm" style={{ background: "var(--bg)", border: "1px solid var(--line)", color: "var(--ink)" }} /></label>
+            </div>
+            <input value={reason} onChange={(e) => setReason(e.target.value)} placeholder="Powód, np. urlop / serwis" className="mt-3 w-full rounded-xl px-3 py-2.5" style={{ background: "var(--bg)", border: "1px solid var(--line)" }} />
+            <button disabled={busy || !offerId || !start || !end} onClick={addBlock} className="mt-3 w-full rounded-xl px-4 py-2.5 font-semibold text-black disabled:opacity-45" style={{ background: "linear-gradient(135deg,#C8965A,#E8C896)" }}>{busy ? "Zapisuję…" : "Zablokuj termin"}</button>
+          </div>
+
+          <div className="rounded-2xl p-5" style={{ background: "var(--glass)", border: "1px solid var(--line)" }}>
+            <div className="flex items-center justify-between gap-3">
+              <h2 className="text-lg font-semibold">Aktywne blokady</h2>
+              <span className="text-xs" style={{ color: "var(--mut)" }}>{activeBlocks.length}</span>
+            </div>
+            <div className="mt-3 space-y-2">
+              {activeBlocks.map((block) => <div key={block.id} className="rounded-xl p-3 text-sm" style={{ background: "var(--header)", border: "1px solid var(--line)" }}>
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0"><div className="truncate font-semibold">{block.title}</div><div className="mt-1 text-xs" style={{ color: "var(--mut)" }}>{dt(block.starts_at)} → {dt(block.ends_at)}</div>{block.reason && <div className="mt-1 text-xs" style={{ color: "var(--mut)" }}>{block.reason}</div>}</div>
+                  <button type="button" disabled={busy} onClick={() => deleteBlock(block.id)} className="shrink-0 rounded-lg px-2.5 py-1.5 text-xs font-semibold disabled:opacity-45" style={{ border: "1px solid rgba(239,68,68,.35)", color: "#fca5a5" }}>Usuń</button>
+                </div>
+              </div>)}
+              {activeBlocks.length === 0 && <p className="text-sm" style={{ color: "var(--mut)" }}>Brak przyszłych blokad. Możesz zaznaczyć zakres w kalendarzu albo wpisać go powyżej.</p>}
+            </div>
           </div>
 
           <div className="rounded-2xl p-5" style={{ background: "var(--glass)", border: "1px solid var(--line)" }}>
@@ -427,6 +459,11 @@ export default function SellerBookingsManage() {
               {resources.map((r) => <div key={r.id} className="rounded-xl p-3 text-sm" style={{ border: "1px solid var(--line)" }}><div className="font-semibold">{r.name}</div><div className="text-xs" style={{ color: "var(--mut)" }}>{resourceKindLabel[r.kind] || r.kind}</div></div>)}
               {resources.length === 0 && <p className="text-sm" style={{ color: "var(--mut)" }}>Brak aktywnych zasobów.</p>}
             </div>
+          </div>
+
+          <div className="rounded-2xl p-5 text-sm" style={{ background: "rgba(122,184,154,.07)", border: "1px solid rgba(122,184,154,.20)" }}>
+            <h2 className="font-semibold">🔔 Powiadomienia automatyczne</h2>
+            <p className="mt-2 text-xs leading-5" style={{ color: "var(--mut)" }}>Potwierdzenie, anulowanie i zakończenie trafiają do kolejki e-mail. Zmiana terminu lub zasobu wysyła klientowi powiadomienie w aplikacji/push oraz e-mail. Przeniesienie nie zmienia automatycznie ceny opłaconej rezerwacji.</p>
           </div>
         </aside>
       </div>
