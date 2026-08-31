@@ -9,6 +9,9 @@ alter table market.booking_mail_outbox
   alter column event_key set not null;
 
 alter table market.booking_mail_outbox
+  alter column event_key drop default;
+
+alter table market.booking_mail_outbox
   drop constraint if exists booking_mail_outbox_event_type_check;
 
 alter table market.booking_mail_outbox
@@ -149,5 +152,7 @@ for each row execute function market.booking_mail_trigger();
 
 revoke all on function market.enqueue_booking_emails(uuid,text) from public;
 revoke execute on function market.enqueue_booking_emails(uuid,text) from anon,authenticated;
+grant execute on function market.enqueue_booking_emails(uuid,text) to service_role;
 revoke all on function market.booking_mail_trigger() from public;
 revoke execute on function market.booking_mail_trigger() from anon,authenticated;
+grant execute on function market.booking_mail_trigger() to service_role;
