@@ -1,5 +1,6 @@
-import { FormEvent, useEffect, useMemo, useState } from "react";
+import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
 import { bookingPublicConfig, toggleWatch, watchedIds, type BookingConfig } from "../lib/api";
+import { shouldAutoOpenBooking } from "../lib/bookingLink";
 import { supabase } from "../lib/supabase";
 import BookingPurchaseModal from "./BookingPurchaseModal";
 
@@ -37,6 +38,7 @@ export default function BuyerOfferActions({ offerId, categorySlug="", purchaseMo
   const action=useMemo(()=>interactionFor(categorySlug),[categorySlug]);
   const isBooking=purchaseMode==="appointment"||purchaseMode==="daily";
   const bookingLabel=bookingActionLabel(purchaseMode,categorySlug);
+  const autoOpenHandled=useRef(false);
   const [watched, setWatched] = useState(false);
   const [compare, setCompare] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -54,6 +56,7 @@ export default function BuyerOfferActions({ offerId, categorySlug="", purchaseMo
   const bookingButtonLabel=!isBooking?`${action.icon} ${action.label}`:!bookingChecked?"⏳ Sprawdzam kalendarz…":bookingConfig?bookingLabel:"Kalendarz niedostępny";
 
   useEffect(() => {
+    autoOpenHandled.current=false;
     watchedIds().then(ids => setWatched(ids.includes(offerId))).catch(() => {});
     try { setCompare(JSON.parse(localStorage.getItem(COMPARE_KEY) || "[]").includes(offerId)); } catch { /* ignore */ }
     supabase.auth.getUser().then(({ data }) => setEmail(data.user?.email || ""));
@@ -61,6 +64,13 @@ export default function BuyerOfferActions({ offerId, categorySlug="", purchaseMo
     setBookingConfig(null);
     bookingPublicConfig(offerId).then(setBookingConfig).catch(()=>setBookingConfig(null)).finally(()=>setBookingChecked(true));
   }, [offerId]);
+
+  useEffect(()=>{
+    if(autoOpenHandled.current||!isBooking||!bookingChecked||!shouldAutoOpenBooking(window.location.search)) return;
+    autoOpenHandled.current=true;
+    if(bookingConfig) setBookingOpen(true);
+    else setStatus("Kalendarz tej oferty nie jest jeszcze aktywny. Sprzedawca musi dokończyć konfigurację rezerwacji.");
+  },[isBooking,bookingConfig,bookingChecked]);
 
   useEffect(()=>{
     const openBooking=()=>{
