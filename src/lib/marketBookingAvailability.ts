@@ -5,6 +5,8 @@ type PurchaseMode = "purchase" | "appointment" | "daily";
 type AvailabilitySummary = {
   text: string;
   title: string;
+  mode: Exclude<PurchaseMode, "purchase">;
+  startsAt?: string;
 };
 
 const offerCache = new Map<string, any>();
@@ -48,6 +50,7 @@ async function loadSummary(offerId: string, offer: any): Promise<AvailabilitySum
   const first = slots[0];
   if (!first) {
     return {
+      mode,
       text: "Sprawdź dostępność",
       title: mode === "appointment" ? "Brak wolnego terminu w najbliższych 14 dniach" : "Brak wolnego dnia w najbliższych 45 dniach",
     };
@@ -55,31 +58,41 @@ async function loadSummary(offerId: string, offer: any): Promise<AvailabilitySum
 
   if (mode === "appointment") {
     return {
+      mode,
+      startsAt: first.starts_at,
       text: `Najbliższy termin: ${formatAppointment(first.starts_at)}`,
-      title: "Najbliższy realnie dostępny termin z kalendarza sprzedawcy",
+      title: "Kliknij, aby od razu wybrać najbliższy wolny termin",
     };
   }
 
   return {
+    mode,
+    startsAt: first.starts_at,
     text: `Najbliżej dostępne: ${formatDay(first.starts_at)}`,
-    title: "Najbliższy realnie dostępny dzień z kalendarza wynajmu",
+    title: "Kliknij, aby otworzyć kalendarz wynajmu od najbliższej dostępności",
   };
 }
 
-function insertSummary(article: HTMLElement, summary: AvailabilitySummary) {
+function insertSummary(article: HTMLElement, offerId: string, summary: AvailabilitySummary) {
   if (article.querySelector('[data-booking-availability-summary="1"]')) return;
   const body = article.querySelector(".p-4.flex.flex-col") as HTMLElement | null;
   if (!body) return;
 
   const actions = Array.from(body.children).find((el) => (el as HTMLElement).className.includes("flex gap-2 mt-1"));
-  const row = document.createElement("div");
+  const row = document.createElement("a");
   row.dataset.bookingAvailabilitySummary = "1";
-  row.className = "text-xs font-semibold rounded-xl px-3 py-2";
+  row.className = "block text-xs font-semibold rounded-xl px-3 py-2 transition hover:brightness-110";
   row.style.background = "rgba(56,224,240,.07)";
   row.style.border = "1px solid rgba(56,224,240,.18)";
   row.style.color = "var(--ink)";
-  row.textContent = `📅 ${summary.text}`;
+  row.style.textDecoration = "none";
+  const params = new URLSearchParams({ booking: "1" });
+  if (summary.mode === "appointment" && summary.startsAt) params.set("quick", "nearest");
+  if (summary.mode === "daily" && summary.startsAt) params.set("from", summary.startsAt.slice(0, 10));
+  row.href = `/produkt/${encodeURIComponent(offerId)}?${params.toString()}`;
+  row.textContent = `📅 ${summary.text}${summary.startsAt ? " →" : ""}`;
   row.title = summary.title;
+  row.setAttribute("aria-label", summary.title);
 
   if (actions) body.insertBefore(row, actions);
   else body.appendChild(row);
@@ -102,7 +115,7 @@ async function enrich(article: HTMLElement, offerId: string) {
       summary = await loadSummary(offerId, offer);
       summaryCache.set(offerId, summary);
     }
-    if (summary) insertSummary(article, summary);
+    if (summary) insertSummary(article, offerId, summary);
   } catch {
     article.dataset.bookingAvailabilityResolved = "0";
   }
