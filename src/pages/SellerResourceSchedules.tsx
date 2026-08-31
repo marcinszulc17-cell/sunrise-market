@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import { supabase } from "../lib/supabase";
 
 type Resource={id:string;name:string;kind:string;description:string|null;active:boolean};
@@ -11,15 +11,17 @@ const style:React.CSSProperties={background:"var(--bg)",border:"1px solid var(--
 const kindLabel:Record<string,string>={staff:"Pracownik",vehicle:"Pojazd",property:"Nieruchomość",room:"Pomieszczenie",equipment:"Sprzęt",other:"Zasób"};
 
 export default function SellerResourceSchedules(){
+ const[sp,setSp]=useSearchParams();const requested=sp.get("resource")||"";
  const[resources,setResources]=useState<Resource[]>([]);const[selected,setSelected]=useState("");const[windows,setWindows]=useState<Window[]>([]);const[timeOff,setTimeOff]=useState<TimeOff[]>([]);const[busy,setBusy]=useState(false);const[msg,setMsg]=useState("");
  const[from,setFrom]=useState("");const[to,setTo]=useState("");const[reason,setReason]=useState("");
  const[edit,setEdit]=useState({name:"",kind:"other",description:"",active:true});
  const resource=useMemo(()=>resources.find(r=>r.id===selected)||null,[resources,selected]);
+ function selectResource(id:string){setSelected(id);const next=new URLSearchParams(sp);next.set("resource",id);setSp(next,{replace:true})}
  async function loadResources(){
   const{data,error}=await supabase.schema("market").rpc("seller_booking_resources_manage");
   if(error){setMsg(error.message);return;}
   const rows=(data||[]) as Resource[];setResources(rows);
-  setSelected(current=>rows.some(r=>r.id===current)?current:(rows[0]?.id||""));
+  setSelected(current=>(requested&&rows.some(r=>r.id===requested)?requested:rows.some(r=>r.id===current)?current:(rows[0]?.id||"")));
  }
  async function loadSchedule(id:string){if(!id){setWindows([]);setTimeOff([]);return;}const{data,error}=await supabase.schema("market").rpc("seller_booking_resource_schedule",{p_resource:id});if(error){setMsg(error.message);return;}setWindows(Array.isArray(data?.windows)?data.windows:[]);setTimeOff(Array.isArray(data?.time_off)?data.time_off:[])}
  useEffect(()=>{loadResources()},[]);useEffect(()=>{loadSchedule(selected)},[selected]);
@@ -42,7 +44,7 @@ export default function SellerResourceSchedules(){
   <div className="mb-6 flex flex-wrap items-start justify-between gap-4"><div><Link to="/sprzedawca/rezerwacje" className="text-sm underline" style={{color:"var(--mut)"}}>← Rezerwacje i kalendarz</Link><h1 className="mt-2 font-display text-3xl font-semibold">Grafiki i zasoby</h1><p className="mt-1 max-w-2xl text-sm" style={{color:"var(--mut)"}}>Zarządzaj pracownikami, autami, pokojami i sprzętem oraz ich godzinami pracy, urlopami, serwisem i innymi okresami niedostępności.</p></div></div>
   {msg&&<div className="mb-5 rounded-2xl p-4 text-sm" style={{background:"rgba(200,150,90,.12)",border:"1px solid rgba(200,150,90,.25)"}}>{msg}</div>}
   <div className="grid gap-6 lg:grid-cols-[280px_1fr]">
-   <aside className="rounded-2xl p-4" style={{background:"var(--glass)",border:"1px solid var(--line)"}}><div className="flex items-center justify-between gap-2"><h2 className="font-semibold">Zasoby</h2><span className="text-xs" style={{color:"var(--mut)"}}>{resources.length}</span></div><div className="mt-3 space-y-2">{resources.map(r=><button key={r.id} onClick={()=>setSelected(r.id)} className="w-full rounded-xl p-3 text-left" style={{border:selected===r.id?"1px solid var(--gold)":"1px solid var(--line)",background:selected===r.id?"rgba(200,150,90,.10)":"transparent",opacity:r.active?1:.6}}><div className="flex items-center justify-between gap-2"><div className="font-semibold">{r.name}</div><span className="rounded-full px-2 py-0.5 text-[10px]" style={{background:r.active?"rgba(122,184,154,.12)":"rgba(148,163,184,.12)",color:r.active?"var(--green)":"var(--mut)"}}>{r.active?"Aktywny":"Wyłączony"}</span></div><div className="text-xs" style={{color:"var(--mut)"}}>{kindLabel[r.kind]||r.kind}</div></button>)}{resources.length===0&&<p className="text-sm" style={{color:"var(--mut)"}}>Najpierw dodaj zasób w ustawieniach bookingu oferty.</p>}</div></aside>
+   <aside className="rounded-2xl p-4" style={{background:"var(--glass)",border:"1px solid var(--line)"}}><div className="flex items-center justify-between gap-2"><h2 className="font-semibold">Zasoby</h2><span className="text-xs" style={{color:"var(--mut)"}}>{resources.length}</span></div><div className="mt-3 space-y-2">{resources.map(r=><button key={r.id} onClick={()=>selectResource(r.id)} className="w-full rounded-xl p-3 text-left" style={{border:selected===r.id?"1px solid var(--gold)":"1px solid var(--line)",background:selected===r.id?"rgba(200,150,90,.10)":"transparent",opacity:r.active?1:.6}}><div className="flex items-center justify-between gap-2"><div className="font-semibold">{r.name}</div><span className="rounded-full px-2 py-0.5 text-[10px]" style={{background:r.active?"rgba(122,184,154,.12)":"rgba(148,163,184,.12)",color:r.active?"var(--green)":"var(--mut)"}}>{r.active?"Aktywny":"Wyłączony"}</span></div><div className="text-xs" style={{color:"var(--mut)"}}>{kindLabel[r.kind]||r.kind}</div></button>)}{resources.length===0&&<p className="text-sm" style={{color:"var(--mut)"}}>Najpierw dodaj zasób w ustawieniach bookingu oferty.</p>}</div></aside>
    <section className="space-y-6">{resource&&<>
     <div className="rounded-2xl p-5" style={{background:"var(--glass)",border:resource.active?"1px solid var(--line)":"1px solid rgba(148,163,184,.30)"}}>
      <div className="flex flex-wrap items-start justify-between gap-3"><div><div className="text-[10px] font-semibold tracking-[.14em]" style={{color:"var(--gold)"}}>DANE ZASOBU</div><h2 className="mt-1 text-xl font-semibold">{resource.name}</h2><p className="mt-1 text-sm" style={{color:"var(--mut)"}}>{resource.active?"Widoczny w dostępności i może być przydzielany do nowych rezerwacji.":"Wyłączony z nowych rezerwacji. Historia i istniejące rezerwacje pozostają bez zmian."}</p></div><span className="rounded-full px-3 py-1 text-xs font-semibold" style={{background:resource.active?"rgba(122,184,154,.12)":"rgba(148,163,184,.12)",color:resource.active?"var(--green)":"var(--mut)"}}>{resource.active?"● Aktywny":"○ Wyłączony"}</span></div>
