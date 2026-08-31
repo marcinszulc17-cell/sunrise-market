@@ -3,7 +3,7 @@ alter table market.booking_mail_outbox
 
 update market.booking_mail_outbox
 set event_key = event_type
-where event_key is null;
+where event_key is null or event_key='default';
 
 alter table market.booking_mail_outbox
   alter column event_key set not null;
@@ -20,6 +20,9 @@ alter table market.booking_mail_outbox
 
 alter table market.booking_mail_outbox
   drop constraint if exists booking_mail_outbox_booking_id_event_type_recipient_type_key;
+
+alter table market.booking_mail_outbox
+  drop constraint if exists booking_mail_outbox_booking_event_recipient_event_key_key;
 
 drop index if exists market.booking_mail_outbox_booking_id_event_type_recipient_type_key;
 drop index if exists market.booking_mail_outbox_idempotent_event_idx;
