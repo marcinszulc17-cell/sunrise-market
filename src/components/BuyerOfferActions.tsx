@@ -1,5 +1,6 @@
-import { FormEvent, useEffect, useMemo, useState } from "react";
+import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
 import { bookingPublicConfig, toggleWatch, watchedIds, type BookingConfig } from "../lib/api";
+import { shouldAutoOpenBooking } from "../lib/bookingLink";
 import { supabase } from "../lib/supabase";
 import BookingPurchaseModal from "./BookingPurchaseModal";
 
@@ -37,6 +38,7 @@ export default function BuyerOfferActions({ offerId, categorySlug="", purchaseMo
   const action=useMemo(()=>interactionFor(categorySlug),[categorySlug]);
   const isBooking=purchaseMode==="appointment"||purchaseMode==="daily";
   const bookingLabel=bookingActionLabel(purchaseMode,categorySlug);
+  const autoOpenHandled=useRef(false);
   const [watched, setWatched] = useState(false);
   const [compare, setCompare] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -54,6 +56,7 @@ export default function BuyerOfferActions({ offerId, categorySlug="", purchaseMo
   const bookingButtonLabel=!isBooking?`${action.icon} ${action.label}`:!bookingChecked?"⏳ Sprawdzam kalendarz…":bookingConfig?bookingLabel:"Kalendarz niedostępny";
 
   useEffect(() => {
+    autoOpenHandled.current=false;
     watchedIds().then(ids => setWatched(ids.includes(offerId))).catch(() => {});
     try { setCompare(JSON.parse(localStorage.getItem(COMPARE_KEY) || "[]").includes(offerId)); } catch { /* ignore */ }
     supabase.auth.getUser().then(({ data }) => setEmail(data.user?.email || ""));
@@ -61,6 +64,13 @@ export default function BuyerOfferActions({ offerId, categorySlug="", purchaseMo
     setBookingConfig(null);
     bookingPublicConfig(offerId).then(setBookingConfig).catch(()=>setBookingConfig(null)).finally(()=>setBookingChecked(true));
   }, [offerId]);
+
+  useEffect(()=>{
+    if(autoOpenHandled.current||!isBooking||!bookingChecked||!shouldAutoOpenBooking(window.location.search)) return;
+    autoOpenHandled.current=true;
+    if(bookingConfig) setBookingOpen(true);
+    else setStatus("Kalendarz tej oferty nie jest jeszcze aktywny. Sprzedawca musi dokończyć konfigurację rezerwacji.");
+  },[isBooking,bookingConfig,bookingChecked]);
 
   useEffect(()=>{
     const openBooking=()=>{
@@ -130,7 +140,6 @@ export default function BuyerOfferActions({ offerId, categorySlug="", purchaseMo
 
   return <>
     <button onClick={goBack} className="fixed left-3 top-[calc(env(safe-area-inset-top)+10px)] z-50 rounded-full px-3 py-2 text-sm font-semibold shadow-lg backdrop-blur-md sm:left-4 sm:top-4" style={{ background: "color-mix(in srgb, var(--header) 94%, transparent)", border: "1px solid var(--line)" }} aria-label="Wróć do poprzedniej strony">← Wróć</button>
-
     <div className="fixed bottom-0 left-0 right-0 z-40 flex gap-2 overflow-x-auto p-2 pb-[max(.5rem,env(safe-area-inset-bottom))] shadow-2xl backdrop-blur-md sm:bottom-auto sm:left-auto sm:right-4 sm:top-[72px] sm:max-w-[calc(100vw-32px)] sm:flex-wrap sm:justify-end sm:rounded-2xl sm:p-2 sm:shadow-xl" style={{ background: "color-mix(in srgb, var(--header) 96%, transparent)", borderTop: "1px solid var(--line)", border: "1px solid var(--line)" }}>
       <button disabled={busy} onClick={watch} className="shrink-0 rounded-xl px-3 py-2 text-xs font-semibold sm:text-sm" style={{ border: "1px solid var(--line)", background: watched ? "rgba(200,150,90,.18)" : "var(--glass)" }}>{watched ? "♥ Obserwujesz" : "♡ Obserwuj"}</button>
       <button onClick={toggleCompare} className="shrink-0 rounded-xl px-3 py-2 text-xs font-semibold sm:text-sm" style={{ border: "1px solid var(--line)", background: compare ? "rgba(56,224,240,.12)" : "var(--glass)" }}>{compare ? "✓ Porównanie" : "⇄ Porównaj"}</button>
