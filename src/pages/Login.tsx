@@ -1,15 +1,13 @@
 import { useEffect, useState } from "react";
 import { supabase } from "../lib/supabase";
 import { refAttribute } from "../lib/api";
+import { refreshCustomerAccess } from "../lib/customerAccess";
 
-// Ekran logowania/rejestracji (Supabase Auth). Po sukcesie wraca tam, skąd
-// przyszedł użytkownik (?next=...) lub na stronę główną — nigdy nie zostawia go
-// w ślepym zaułku (wcześniej wpychał na /portfel bez możliwości powrotu).
 function nextTarget(): string {
   const n = new URLSearchParams(window.location.search).get("next");
   return n && n.startsWith("/") ? n : "/";
 }
-// Po zalogowaniu: jesli byl kod polecajacy (?ref=), przypnij klienta do ambasadora.
+
 async function attributeRef(): Promise<void> {
   try {
     const code = localStorage.getItem("sunrise_ref");
@@ -17,20 +15,7 @@ async function attributeRef(): Promise<void> {
   } catch { /* nie blokuj logowania */ }
 }
 
-// Po udanym logowaniu Market dopina brakujące konto MySunrise. Funkcja Edge
-// rozpoznaje użytkownika po JWT Marketu, więc frontend nie przekazuje e-maila
-// jako źródła tożsamości. Błąd mostu nie może blokować wejścia do Marketu.
-async function ensureMySunriseAccount(password: string): Promise<void> {
-  try {
-    const { data, error } = await supabase.functions.invoke("sso-register", { body: { password } });
-    if (error || !data?.ok) console.warn("MySunrise account link skipped", error ?? data?.error);
-  } catch (error) {
-    console.warn("MySunrise account link unavailable", error);
-  }
-}
-
 export default function Login() {
-  const [mode, setMode] = useState<"login" | "register">("login");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [busy, setBusy] = useState(false);
@@ -45,38 +30,21 @@ export default function Login() {
     e.preventDefault();
     setBusy(true); setMsg(null);
     try {
-      if (mode === "register") {
-        const { error } = await supabase.auth.signUp({ email, password });
-        if (error) {
-          if (/already|registered|exists/i.test(error.message)) {
-            setMsg("Ten e-mail ma już konto. Zaloguj się poniżej.");
-            setMode("login");
-            return;
-          }
-          throw error;
-        }
-        const { error: signErr } = await supabase.auth.signInWithPassword({ email, password });
-        if (signErr) { setMsg("Konto utworzone. Możesz się teraz zalogować."); setMode("login"); return; }
-        await ensureMySunriseAccount(password);
-        await attributeRef();
-        window.location.href = nextTarget();
-      } else {
-        let { error } = await supabase.auth.signInWithPassword({ email, password });
-        if (error) {
-          try {
-            const { data } = await supabase.functions.invoke("sso-login", { body: { email, password } });
-            if (data?.ok) ({ error } = await supabase.auth.signInWithPassword({ email, password }));
-          } catch { /* most SSO niedostępny */ }
-        }
-        if (error) {
-          if (/invalid login|credentials/i.test(error.message)) throw new Error("Nieprawidłowy e-mail lub hasło.");
-          if (/not confirmed/i.test(error.message)) throw new Error("Konto wymaga potwierdzenia e-mail. Napisz do nas — aktywujemy je od ręki.");
-          throw error;
-        }
-        await ensureMySunriseAccount(password);
-        await attributeRef();
-        window.location.href = nextTarget();
+      let { error } = await supabase.auth.signInWithPassword({ email, password });
+      if (error) {
+        try {
+          const { data } = await supabase.functions.invoke("sso-login", { body: { email, password } });
+          if (data?.ok) ({ error } = await supabase.auth.signInWithPassword({ email, password }));
+        } catch { /* most SSO niedostępny */ }
       }
+      if (error) {
+        if (/invalid login|credentials/i.test(error.message)) throw new Error("Nieprawidłowy e-mail lub hasło MySunrise.");
+        if (/not confirmed/i.test(error.message)) throw new Error("Potwierdź konto w MySunrise i spróbuj ponownie.");
+        throw error;
+      }
+      await refreshCustomerAccess();
+      await attributeRef();
+      window.location.href = nextTarget();
     } catch (err) {
       setMsg((err as Error).message);
     } finally { setBusy(false); }
@@ -97,8 +65,8 @@ export default function Login() {
       </header>
 
       <div className="mx-auto max-w-sm px-4 py-10">
-        <h1 className="font-display text-2xl font-semibold mb-1">{me ? "Twoje konto" : mode === "login" ? "Zaloguj się" : "Załóż konto"}</h1>
-        <p className="text-sm mb-6" style={{ color: "var(--mut)" }}>Jedno konto działa w Markecie i aplikacji MySunrise.</p>
+        <h1 className="font-display text-2xl font-semibold mb-1">{me ? "Twoje konto" : "Zaloguj się kontem MySunrise"}</h1>
+        <p className="text-sm mb-6" style={{ color: "var(--mut)" }}>MySunrise jest hubem. Jedno konto i jedno logowanie działa we wszystkich usługach Sunrise.</p>
 
         {me ? (
           <div className="rounded-2xl p-5" style={{ background: "var(--glass)", border: "1px solid var(--line)" }}>
@@ -111,21 +79,22 @@ export default function Login() {
             </div>
           </div>
         ) : (
-          <form onSubmit={submit} className="space-y-3">
-            {mode === "login" && <p className="text-xs -mt-1" style={{ color: "var(--mut)" }}>Masz konto <b>MySunrise</b>? Zaloguj się tymi samymi danymi.</p>}
-            <input type="email" required placeholder="e-mail" value={email} onChange={(e) => setEmail(e.target.value)}
-                   className="w-full rounded-lg px-3 py-2 outline-none" style={{ background: "var(--glass)", border: "1px solid var(--line)", color: "var(--ink)" }} />
-            <input type="password" required placeholder="hasło (min. 6 znaków)" value={password} onChange={(e) => setPassword(e.target.value)}
-                   className="w-full rounded-lg px-3 py-2 outline-none" style={{ background: "var(--glass)", border: "1px solid var(--line)", color: "var(--ink)" }} />
-            <button type="submit" disabled={busy} className="w-full rounded-lg px-4 py-2 font-semibold disabled:opacity-50"
-                    style={{ background: "linear-gradient(135deg,#E8C896,#C8965A)", color: "#241606" }}>
-              {busy ? "…" : mode === "login" ? "Zaloguj" : "Zarejestruj"}
-            </button>
-            <button type="button" onClick={() => { setMode(mode === "login" ? "register" : "login"); setMsg(null); }}
-                    className="w-full text-sm navlink">
-              {mode === "login" ? "Nie masz konta? Załóż" : "Masz konto? Zaloguj się"}
-            </button>
-          </form>
+          <>
+            <form onSubmit={submit} className="space-y-3">
+              <input type="email" required placeholder="e-mail MySunrise" value={email} onChange={(e) => setEmail(e.target.value)}
+                     className="w-full rounded-lg px-3 py-2 outline-none" style={{ background: "var(--glass)", border: "1px solid var(--line)", color: "var(--ink)" }} />
+              <input type="password" required placeholder="hasło MySunrise" value={password} onChange={(e) => setPassword(e.target.value)}
+                     className="w-full rounded-lg px-3 py-2 outline-none" style={{ background: "var(--glass)", border: "1px solid var(--line)", color: "var(--ink)" }} />
+              <button type="submit" disabled={busy} className="w-full rounded-lg px-4 py-2 font-semibold disabled:opacity-50"
+                      style={{ background: "linear-gradient(135deg,#E8C896,#C8965A)", color: "#241606" }}>
+                {busy ? "…" : "Zaloguj przez MySunrise"}
+              </button>
+            </form>
+            <div className="mt-5 rounded-xl p-4 text-sm" style={{ background: "var(--glass)", border: "1px solid var(--line)", color: "var(--mut)" }}>
+              Nie masz jeszcze konta? Rejestracja odbywa się wyłącznie w MySunrise.
+              <a href="https://mysunrise.pl/dolacz" className="mt-2 block font-semibold navlink">Załóż konto w MySunrise →</a>
+            </div>
+          </>
         )}
 
         {msg && <div className="mt-4 rounded-lg px-4 py-2 text-sm" style={{ background: "rgba(200,150,90,.12)", color: "#E8C896" }}>{msg}</div>}
