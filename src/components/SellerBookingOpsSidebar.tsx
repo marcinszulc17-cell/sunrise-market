@@ -1,4 +1,5 @@
 import { Link } from "react-router-dom";
+import SellerBookingChangeRequests from "./SellerBookingChangeRequests";
 
 type Block = { id: string; offer_id: string; title: string; starts_at: string; ends_at: string; reason: string | null };
 type Offer = { offer_id: string; title: string; status: string };
@@ -42,6 +43,8 @@ export default function SellerBookingOpsSidebar({
   const selectedOffer = offers.find((offer) => offer.offer_id === offerId) ?? null;
 
   return <aside className="space-y-5">
+    <SellerBookingChangeRequests />
+
     <div id="block-editor" className="scroll-mt-24 rounded-2xl p-5" style={{ background: "var(--glass)", border: "1px solid var(--line)" }}>
       <div className="flex items-start justify-between gap-3">
         <div>
