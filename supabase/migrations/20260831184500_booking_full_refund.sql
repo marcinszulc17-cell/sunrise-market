@@ -25,8 +25,6 @@ create table if not exists market.booking_refunds (
 alter table market.booking_refunds enable row level security;
 revoke all on table market.booking_refunds from public, anon, authenticated;
 
-aLTER TABLE market.booking_refunds OWNER TO postgres;
-
 create or replace function market.seller_booking_set_status(p_booking uuid, p_status text)
 returns text
 language plpgsql
