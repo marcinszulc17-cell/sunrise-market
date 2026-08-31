@@ -15,6 +15,16 @@ const statusLabel: Record<string, string> = {
   no_show: "Nie pojawił się",
 };
 
+const depositStatusLabel: Record<string, string> = {
+  not_charged: "Niepobrana",
+  held: "Zabezpieczona",
+  refunding: "Zwrot w toku",
+  refunded: "Zwrócona",
+  retaining: "Zatrzymanie w toku",
+  retained: "Zatrzymana",
+  failed: "Błąd rozliczenia",
+};
+
 type Booking = {
   id: string;
   offer_id: string;
@@ -33,6 +43,12 @@ type Booking = {
   resource_id?: string | null;
   resource_name?: string | null;
   resource_kind?: string | null;
+  deposit_gross?: number;
+  deposit_status?: string | null;
+  deposit_paid_at?: string | null;
+  deposit_resolved_at?: string | null;
+  deposit_retained_gross?: number;
+  deposit_resolution_note?: string | null;
 };
 type Block = { id: string; offer_id: string; title: string; starts_at: string; ends_at: string; reason: string | null };
 type Offer = { offer_id: string; title: string; status: string };
@@ -84,6 +100,7 @@ export default function SellerBookingsManage() {
   const [end, setEnd] = useState("");
   const [reason, setReason] = useState("");
   const [busy, setBusy] = useState(false);
+  const [depositBusyId, setDepositBusyId] = useState<string | null>(null);
   const [rescheduleId, setRescheduleId] = useState<string | null>(null);
   const [rescheduleValue, setRescheduleValue] = useState("");
   const [moveResourceId, setMoveResourceId] = useState("");
@@ -134,6 +151,30 @@ export default function SellerBookingsManage() {
       await load();
     }
     setBusy(false);
+  }
+
+  async function settleDeposit(r: Booking, action: "refund" | "retain") {
+    const amount = Number(r.deposit_gross || 0);
+    if (amount <= 0) return;
+    const label = action === "refund" ? "zwrócić klientowi" : "zatrzymać dla sprzedawcy";
+    if (!window.confirm(`Czy na pewno ${label} kaucję ${pln(amount)}?`)) return;
+    const note = window.prompt(action === "refund" ? "Notatka do zwrotu kaucji (opcjonalnie):" : "Powód zatrzymania kaucji (zalecane):", r.deposit_resolution_note || "");
+    if (note === null) return;
+    setDepositBusyId(r.id);
+    setMsg("");
+    try {
+      const { data, error } = await supabase.functions.invoke("booking-deposit-action", {
+        body: { booking_id: r.id, action, note: note.trim() || null },
+      });
+      if (error) throw error;
+      if (!data?.ok) throw new Error(data?.error || "Nie udało się rozliczyć kaucji");
+      setMsg(action === "refund" ? `Kaucja ${pln(amount)} została zwrócona klientowi. ✅` : `Kaucja ${pln(amount)} została zatrzymana i przekazana sprzedawcy. ✅`);
+      await load();
+    } catch (e) {
+      setMsg("Nie udało się rozliczyć kaucji: " + (e as Error).message);
+    } finally {
+      setDepositBusyId(null);
+    }
   }
 
   function previewStartIso(r: Booking, value: string) {
@@ -349,6 +390,11 @@ export default function SellerBookingsManage() {
               const previewEnd = r.booking_type === "daily" && rescheduleId === r.id && rescheduleValue ? addDays(new Date(`${rescheduleValue}T12:00:00`), r.units) : null;
               const priceDifference = Number(pricePreview?.difference_gross || 0);
               const canMarkNoShow = r.booking_type === "appointment" && r.status === "confirmed" && new Date(r.starts_at).getTime() <= Date.now();
+              const hasDeposit = Number(r.deposit_gross || 0) > 0;
+              const depositReady = ["held", "failed"].includes(r.deposit_status || "");
+              const canRefundDeposit = hasDeposit && depositReady && ["cancelled", "completed", "no_show"].includes(r.status);
+              const canRetainDeposit = hasDeposit && depositReady && ["completed", "no_show"].includes(r.status);
+              const depositBusy = depositBusyId === r.id;
               return <article id={`booking-${r.id}`} key={r.id} className="scroll-mt-24 rounded-2xl p-5" style={{ background: "var(--glass)", border: "1px solid var(--line)" }}>
                 <div className="flex flex-wrap items-start justify-between gap-4">
                   <div>
@@ -359,19 +405,34 @@ export default function SellerBookingsManage() {
                   <span className="rounded-full px-3 py-1 text-xs font-semibold" style={{ background: r.status === "confirmed" ? "rgba(34,197,94,.12)" : "var(--header)", border: "1px solid var(--line)" }}>{statusLabel[r.status] || r.status}</span>
                 </div>
 
-                <div className="mt-4 grid gap-2 text-sm sm:grid-cols-3">
+                <div className={`mt-4 grid gap-2 text-sm ${hasDeposit ? "sm:grid-cols-4" : "sm:grid-cols-3"}`}>
                   <div><span style={{ color: "var(--mut)" }}>Klient</span><div>{r.buyer_name || r.buyer_email || "—"}</div></div>
                   <div><span style={{ color: "var(--mut)" }}>Płatność</span><div>{r.paid_at ? `Opłacono · ${r.payment_provider || ""}` : "Nieopłacona"}</div></div>
                   <div><span style={{ color: "var(--mut)" }}>Kwota</span><div className="font-semibold">{pln(r.amount_gross)}</div></div>
+                  {hasDeposit && <div><span style={{ color: "var(--mut)" }}>Kaucja</span><div className="font-semibold">{pln(Number(r.deposit_gross || 0))}</div><div className="text-xs" style={{ color: r.deposit_status === "failed" ? "#fca5a5" : "var(--mut)" }}>{depositStatusLabel[r.deposit_status || ""] || r.deposit_status || "—"}</div></div>}
                 </div>
+
+                {hasDeposit && <div className="mt-4 rounded-2xl p-4" style={{ background: "var(--header)", border: "1px solid rgba(200,150,90,.22)" }}>
+                  <div className="flex flex-wrap items-center justify-between gap-3">
+                    <div>
+                      <div className="font-semibold">🔐 Rozliczenie kaucji</div>
+                      <div className="mt-1 text-xs" style={{ color: "var(--mut)" }}>Kaucja jest rozliczana osobno od ceny wynajmu i nie generuje cashbacku ani prowizji Ambassador Club.</div>
+                      {r.deposit_resolution_note && <div className="mt-1 text-xs" style={{ color: "var(--mut)" }}>Notatka: {r.deposit_resolution_note}</div>}
+                    </div>
+                    <div className="flex flex-wrap gap-2">
+                      {canRefundDeposit && <button disabled={depositBusy} onClick={() => settleDeposit(r, "refund")} className="rounded-xl px-3 py-2 text-sm font-semibold disabled:opacity-50" style={{ border: "1px solid rgba(34,197,94,.35)", color: "var(--green)" }}>{depositBusy ? "Rozliczam…" : "↩ Zwróć kaucję"}</button>}
+                      {canRetainDeposit && <button disabled={depositBusy} onClick={() => settleDeposit(r, "retain")} className="rounded-xl px-3 py-2 text-sm font-semibold disabled:opacity-50" style={{ border: "1px solid rgba(245,158,11,.45)", color: "#f59e0b" }}>{depositBusy ? "Rozliczam…" : "Zatrzymaj kaucję"}</button>}
+                    </div>
+                  </div>
+                </div>}
 
                 <div className="mt-4 flex flex-wrap gap-2">
                   <Link to={`/sprzedawca/rezerwacje/ustawienia/${r.offer_id}`} className="rounded-xl px-3 py-2 text-sm font-semibold" style={{ border: "1px solid var(--line)" }}>⚙ Ustawienia bookingu</Link>
-                  {r.status === "confirmed" && <button disabled={busy || rescheduleBusy} onClick={() => openReschedule(r)} className="rounded-xl px-3 py-2 text-sm font-semibold" style={{ border: "1px solid var(--gold)", color: "var(--gold)" }}>↔ Przenieś / zmień termin</button>}
-                  {r.status === "confirmed" && <button disabled={busy || rescheduleBusy} onClick={() => setStatus(r.id, "completed")} className="rounded-xl px-3 py-2 text-sm font-semibold" style={{ border: "1px solid var(--line)" }}>✓ Zakończ</button>}
-                  {canMarkNoShow && <button disabled={busy || rescheduleBusy} onClick={() => setStatus(r.id, "no_show")} className="rounded-xl px-3 py-2 text-sm font-semibold" style={{ border: "1px solid rgba(245,158,11,.45)", color: "#f59e0b" }}>Nie pojawił się</button>}
-                  {["held", "pending_payment"].includes(r.status) && r.paid_at && <button disabled={busy || rescheduleBusy} onClick={() => setStatus(r.id, "confirmed")} className="rounded-xl px-3 py-2 text-sm font-semibold text-black" style={{ background: "linear-gradient(135deg,#C8965A,#E8C896)" }}>Potwierdź</button>}
-                  {["held", "pending_payment", "confirmed"].includes(r.status) && <button disabled={busy || rescheduleBusy} onClick={() => setStatus(r.id, "cancelled")} className="rounded-xl px-3 py-2 text-sm" style={{ border: "1px solid rgba(239,68,68,.35)" }}>Anuluj</button>}
+                  {r.status === "confirmed" && <button disabled={busy || rescheduleBusy || depositBusy} onClick={() => openReschedule(r)} className="rounded-xl px-3 py-2 text-sm font-semibold" style={{ border: "1px solid var(--gold)", color: "var(--gold)" }}>↔ Przenieś / zmień termin</button>}
+                  {r.status === "confirmed" && <button disabled={busy || rescheduleBusy || depositBusy} onClick={() => setStatus(r.id, "completed")} className="rounded-xl px-3 py-2 text-sm font-semibold" style={{ border: "1px solid var(--line)" }}>✓ Zakończ</button>}
+                  {canMarkNoShow && <button disabled={busy || rescheduleBusy || depositBusy} onClick={() => setStatus(r.id, "no_show")} className="rounded-xl px-3 py-2 text-sm font-semibold" style={{ border: "1px solid rgba(245,158,11,.45)", color: "#f59e0b" }}>Nie pojawił się</button>}
+                  {["held", "pending_payment"].includes(r.status) && r.paid_at && <button disabled={busy || rescheduleBusy || depositBusy} onClick={() => setStatus(r.id, "confirmed")} className="rounded-xl px-3 py-2 text-sm font-semibold text-black" style={{ background: "linear-gradient(135deg,#C8965A,#E8C896)" }}>Potwierdź</button>}
+                  {["held", "pending_payment", "confirmed"].includes(r.status) && <button disabled={busy || rescheduleBusy || depositBusy} onClick={() => setStatus(r.id, "cancelled")} className="rounded-xl px-3 py-2 text-sm" style={{ border: "1px solid rgba(239,68,68,.35)" }}>Anuluj</button>}
                   {r.buyer_email && <a href={`mailto:${r.buyer_email}`} className="rounded-xl px-3 py-2 text-sm" style={{ border: "1px solid var(--line)" }}>✉️ Napisz do klienta</a>}
                   <BookingChangeHistory bookingId={r.id} />
                 </div>
