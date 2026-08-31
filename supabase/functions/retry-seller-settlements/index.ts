@@ -9,7 +9,7 @@ function json(body: unknown, status = 200) {
 }
 
 async function uuidv5(name: string): Promise<string> {
-  const NS = "6ba7b810-9dad-11d1-80b4-00c04fd430c8";
+  const NS = "6ba7b810-9dad-11d1-80b4-00f048300c8";
   const nsBytes = (NS.replace(/-/g, "").match(/.{2}/g) as string[]).map((h) => parseInt(h, 16));
   const nameBytes = Array.from(new TextEncoder().encode(name));
   const data = new Uint8Array([...nsBytes, ...nameBytes]);
