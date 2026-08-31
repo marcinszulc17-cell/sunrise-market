@@ -19,6 +19,13 @@ type ChangeRequest = {
   amount_gross: number;
 };
 
+type BookingPaymentState = {
+  id: string;
+  paid_at: string | null;
+  amount_gross: number;
+  deposit_gross?: number | null;
+};
+
 type Props = {
   onChanged?: () => Promise<void> | void;
   onMessage?: (message: string) => void;
@@ -58,27 +65,50 @@ export default function SellerBookingChangeRequests({ onChanged, onMessage }: Pr
     if (!onChanged) window.setTimeout(() => window.location.reload(), 350);
   }
 
+  async function acceptCancellation(request: ChangeRequest) {
+    const { data: dashboard, error: dashboardError } = await supabase.rpc("seller_booking_dashboard_v2");
+    if (dashboardError) throw dashboardError;
+    const booking = ((dashboard || []) as BookingPaymentState[]).find((row) => row.id === request.booking_id);
+    if (!booking) throw new Error("Nie znaleziono aktualnej rezerwacji w panelu sprzedawcy.");
+
+    if (booking.paid_at) {
+      const fullAmount = Number(booking.amount_gross || 0) + Number(booking.deposit_gross || 0);
+      if (!window.confirm(`Zaakceptować prośbę klienta, anulować opłaconą rezerwację i zwrócić ${zl(fullAmount)}?\n\nSystem cofnie cashback/prowizje, zwróci pełną płatność wraz z nierozliczoną kaucją i zatrzyma planowaną wypłatę sprzedawcy.`)) return false;
+      const { data, error } = await supabase.functions.invoke("booking-cancel-refund", { body: { booking_id: request.booking_id } });
+      if (error) throw error;
+      if (!data?.ok) throw new Error(data?.message || data?.error || "Nie udało się wykonać pełnego zwrotu.");
+      await refreshAfter(`Prośba zaakceptowana ✅ Rezerwacja została anulowana, a klient otrzymał zwrot ${zl(Number(data.refunded ?? fullAmount))}. Cashback i prowizje zostały cofnięte.`);
+      return true;
+    }
+
+    if (!window.confirm("Zaakceptować prośbę klienta i anulować tę nieopłaconą rezerwację?")) return false;
+    const { error } = await supabase.rpc("seller_booking_set_status", { p_booking: request.booking_id, p_status: "cancelled" });
+    if (error) throw error;
+    await refreshAfter("Prośba zaakceptowana ✅ Nieopłacona rezerwacja została anulowana, a klient otrzyma powiadomienie.");
+    return true;
+  }
+
   async function accept(request: ChangeRequest) {
     if (request.request_type === "reschedule" && !request.requested_starts_at) {
       emit("Klient nie podał nowego terminu.");
       return;
     }
-    if (request.request_type === "cancel" && !window.confirm("Zaakceptować prośbę klienta i anulować tę rezerwację?")) return;
 
     setBusyId(request.id);
     emit("");
-    const response = request.request_type === "reschedule"
-      ? await supabase.rpc("seller_booking_reschedule", { p_booking: request.booking_id, p_starts_at: request.requested_starts_at })
-      : await supabase.rpc("seller_booking_set_status", { p_booking: request.booking_id, p_status: "cancelled" });
-
-    if (response.error) {
-      emit("Nie udało się zaakceptować prośby: " + response.error.message);
-    } else {
-      await refreshAfter(request.request_type === "reschedule"
-        ? "Prośba zaakceptowana ✅ Termin został zmieniony, a klient otrzyma powiadomienie."
-        : "Prośba zaakceptowana ✅ Rezerwacja została anulowana, a klient otrzyma powiadomienie.");
+    try {
+      if (request.request_type === "cancel") {
+        await acceptCancellation(request);
+      } else {
+        const { error } = await supabase.rpc("seller_booking_reschedule", { p_booking: request.booking_id, p_starts_at: request.requested_starts_at });
+        if (error) throw error;
+        await refreshAfter("Prośba zaakceptowana ✅ Termin został zmieniony, a klient otrzyma powiadomienie.");
+      }
+    } catch (error) {
+      emit("Nie udało się zaakceptować prośby: " + (error as Error).message);
+    } finally {
+      setBusyId(null);
     }
-    setBusyId(null);
   }
 
   async function reject(request: ChangeRequest) {
@@ -105,7 +135,7 @@ export default function SellerBookingChangeRequests({ onChanged, onMessage }: Pr
       <div>
         <div className="text-xs font-semibold tracking-[.14em]" style={{ color: "var(--gold)" }}>DO OBSŁUGI</div>
         <h2 className="mt-1 text-lg font-semibold">Prośby klientów</h2>
-        <p className="mt-1 text-xs leading-5" style={{ color: "var(--mut)" }}>Zmiana terminu przechodzi przez ten sam silnik dostępności i kolizji co kalendarz.</p>
+        <p className="mt-1 text-xs leading-5" style={{ color: "var(--mut)" }}>Zmiana terminu przechodzi przez ten sam silnik dostępności i kolizji co kalendarz. Anulowanie opłaconej rezerwacji zawsze przechodzi przez pełny zwrot płatności i cofnięcie bonusów.</p>
       </div>
       <span className="rounded-full px-3 py-1 text-xs font-semibold" style={{ background: "rgba(200,150,90,.14)", color: "var(--gold)", border: "1px solid rgba(200,150,90,.25)" }}>{loading ? "…" : `${rows.length} oczekuje`}</span>
     </div>
@@ -131,7 +161,7 @@ export default function SellerBookingChangeRequests({ onChanged, onMessage }: Pr
         {request.message && <div className="mt-3 rounded-xl px-3 py-2.5 text-xs" style={{ background: "var(--glass)", border: "1px solid var(--line)" }}><span style={{ color: "var(--mut)" }}>Wiadomość: </span>{request.message}</div>}
 
         <div className="mt-3 grid gap-2">
-          <button disabled={busyId === request.id} onClick={() => void accept(request)} className="rounded-xl px-3 py-2 text-xs font-semibold text-black disabled:opacity-50" style={{ background: "linear-gradient(135deg,#C8965A,#E8C896)" }}>{busyId === request.id ? "Obsługuję…" : request.request_type === "reschedule" ? "✓ Akceptuj nowy termin" : "✓ Zaakceptuj anulowanie"}</button>
+          <button disabled={busyId === request.id} onClick={() => void accept(request)} className="rounded-xl px-3 py-2 text-xs font-semibold text-black disabled:opacity-50" style={{ background: "linear-gradient(135deg,#C8965A,#E8C896)" }}>{busyId === request.id ? "Obsługuję…" : request.request_type === "reschedule" ? "✓ Akceptuj nowy termin" : "✓ Zaakceptuj anulowanie / zwrot"}</button>
           <button disabled={busyId === request.id} onClick={() => { setRejectId(rejectId === request.id ? null : request.id); setRejectNote(""); }} className="rounded-xl px-3 py-2 text-xs font-semibold" style={{ border: "1px solid var(--line)" }}>Odrzuć prośbę</button>
         </div>
 
