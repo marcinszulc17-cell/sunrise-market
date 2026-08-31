@@ -18,7 +18,7 @@ function rentalRange() {
   const from = p.get("from");
   const to = p.get("to");
   if (!from || !to || to <= from) return null;
-  return { from, to };
+  return { from, to, resource: p.get("resource") };
 }
 
 function clearParams(...names: string[]) {
@@ -65,9 +65,22 @@ function plDateLabel(day: string) {
   return d.toLocaleDateString("pl-PL");
 }
 
+function selectRentalResourceIfReady(resource: string | null) {
+  if (!resource) return true;
+  const buttons = Array.from(document.querySelectorAll("button")) as HTMLButtonElement[];
+  const target = buttons.find((b) => (b.textContent || "").trim().endsWith(resource));
+  if (!target || target.disabled) return false;
+  if (target.dataset.quickRentalResourceClicked === "1") return true;
+  target.dataset.quickRentalResourceClicked = "1";
+  target.click();
+  return true;
+}
+
 function clickRentalRangeIfReady() {
   const range = rentalRange();
   if (!range) return false;
+
+  if (!selectRentalResourceIfReady(range.resource)) return false;
 
   const buttons = Array.from(document.querySelectorAll("button[aria-label]")) as HTMLButtonElement[];
   const fromLabel = plDateLabel(range.from);
@@ -88,7 +101,7 @@ function clickRentalRangeIfReady() {
     toButton.dataset.quickRentalClicked = "1";
     toButton.click();
   }
-  clearParams("from", "to");
+  clearParams("from", "to", "resource");
   return true;
 }
 
