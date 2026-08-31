@@ -61,6 +61,25 @@ function cashbackText(price: number, rate: number) {
   return `Cashback ${percent}% · +${amount.toLocaleString("pl-PL", { maximumFractionDigits: 2 })} pkt`;
 }
 
+function bookingCashbackText(rate: number) {
+  const percent = (rate * 100).toLocaleString("pl-PL", { maximumFractionDigits: 1 });
+  return `Cashback ${percent}% od wartości rezerwacji`;
+}
+
+function addBookingPriceUnit(price: HTMLElement | undefined, mode: "purchase" | "appointment" | "daily") {
+  if (!price || mode === "purchase" || price.querySelector('[data-booking-price-unit="1"]')) return;
+  if (mode === "appointment" && !price.dataset.bookingPricePrefixed) {
+    price.prepend("od ");
+    price.dataset.bookingPricePrefixed = "1";
+  }
+  const unit = document.createElement("span");
+  unit.dataset.bookingPriceUnit = "1";
+  unit.className = "ml-1 text-sm font-medium";
+  unit.style.color = "var(--mut)";
+  unit.textContent = mode === "daily" ? "/ dzień" : "/ termin";
+  price.appendChild(unit);
+}
+
 function addBookingBadge(body: HTMLElement, badgeText: string) {
   if (body.querySelector('[data-booking-badge="1"]')) return;
   const badge = document.createElement("span");
@@ -81,17 +100,22 @@ function decorate(article: HTMLElement, offer: any, cashbackRate: number) {
   const body = article.querySelector(".p-4.flex.flex-col") as HTMLElement | null;
   if (!body) return;
   const price = Array.from(body.children).find((el) => (el as HTMLElement).className.includes("text-2xl")) as HTMLElement | undefined;
-
-  const existingCashback = Array.from(article.querySelectorAll("span")).find((el) => (el.textContent || "").includes("Cashback")) as HTMLElement | undefined;
-  if (existingCashback && Number(offer?.price_gross) > 0) {
-    existingCashback.textContent = cashbackText(Number(offer.price_gross), cashbackRate);
-    existingCashback.title = "Cashback naliczany zgodnie z aktualną konfiguracją Sunrise Market";
-  }
-
   const slug = String(offer?.category_slug || "");
   const cta = primaryCta(offer);
   const mode = purchaseMode(offer);
   const special = isSpecial(slug);
+
+  addBookingPriceUnit(price, mode);
+
+  const existingCashback = Array.from(article.querySelectorAll("span")).find((el) => (el.textContent || "").includes("Cashback")) as HTMLElement | undefined;
+  if (existingCashback && Number(offer?.price_gross) > 0) {
+    existingCashback.textContent = mode === "purchase"
+      ? cashbackText(Number(offer.price_gross), cashbackRate)
+      : bookingCashbackText(cashbackRate);
+    existingCashback.title = mode === "purchase"
+      ? "Cashback naliczany zgodnie z aktualną konfiguracją Sunrise Market"
+      : "Cashback jest liczony od faktycznej wartości opłaconej rezerwacji, bez zwrotnej kaucji";
+  }
 
   const detail = Array.from(article.querySelectorAll("a")).find((a) => {
     const text = (a.textContent || "").trim();
