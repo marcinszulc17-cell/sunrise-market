@@ -101,6 +101,7 @@ export default function SellerBookingsManage() {
   const [reason, setReason] = useState("");
   const [busy, setBusy] = useState(false);
   const [depositBusyId, setDepositBusyId] = useState<string | null>(null);
+  const [refundBusyId, setRefundBusyId] = useState<string | null>(null);
   const [rescheduleId, setRescheduleId] = useState<string | null>(null);
   const [rescheduleValue, setRescheduleValue] = useState("");
   const [moveResourceId, setMoveResourceId] = useState("");
@@ -151,6 +152,24 @@ export default function SellerBookingsManage() {
       await load();
     }
     setBusy(false);
+  }
+
+  async function refundPaidBooking(r: Booking) {
+    const fullPayment = Number(r.amount_gross || 0) + Number(r.deposit_gross || 0);
+    if (!window.confirm(`Anulować opłaconą rezerwację i zwrócić klientowi całą wpłatę ${pln(fullPayment)}?\n\nSystem najpierw cofnie cashback i prowizje z tej transakcji, następnie wykona zwrot płatności. Jeśli bonusy zostały już wykorzystane, automatyczny zwrot zostanie bezpiecznie zablokowany.`)) return;
+    setRefundBusyId(r.id);
+    setMsg("");
+    try {
+      const { data, error } = await supabase.functions.invoke("booking-refund", { body: { booking_id: r.id } });
+      if (error) throw error;
+      if (!data?.ok) throw new Error(data?.message || data?.error || "Nie udało się wykonać zwrotu");
+      setMsg(`Rezerwacja anulowana, a płatność ${pln(Number(data.amount ?? fullPayment))} została zwrócona klientowi. Cashback i prowizje z tej transakcji zostały cofnięte. ✅`);
+      await load();
+    } catch (e) {
+      setMsg("Nie udało się bezpiecznie anulować i zwrócić płatności: " + (e as Error).message);
+    } finally {
+      setRefundBusyId(null);
+    }
   }
 
   async function settleDeposit(r: Booking, action: "refund" | "retain") {
@@ -375,7 +394,7 @@ export default function SellerBookingsManage() {
               <p className="mt-1 text-sm" style={{ color: "var(--mut)" }}>Na komputerze możesz przeciągać wizyty. Na telefonie użyj „Przenieś” i wybierz zasób oraz termin.</p>
             </div>
             <div className="flex flex-wrap gap-2">
-              {[['active','Aktywne'],['confirmed','Potwierdzone'],['pending_payment','Do opłacenia'],['completed','Zakończone'],['no_show','Nieobecni'],['cancelled','Anulowane'],['all','Wszystkie']].map(([k, l]) =>
+              {[['active','Aktywne'],['confirmed','Potwierdzone'],['pending_payment','Płatność / akceptacja'],['completed','Zakończone'],['no_show','Nieobecni'],['cancelled','Anulowane'],['all','Wszystkie']].map(([k, l]) =>
                 <button key={k} onClick={() => setFilter(k)} className="rounded-full px-3 py-1.5 text-sm" style={{ background: filter === k ? "rgba(200,150,90,.18)" : "var(--glass)", border: "1px solid var(--line)", color: filter === k ? "var(--gold)" : "var(--ink)" }}>{l}</button>
               )}
             </div>
@@ -395,6 +414,9 @@ export default function SellerBookingsManage() {
               const canRefundDeposit = hasDeposit && depositReady && ["cancelled", "completed", "no_show"].includes(r.status);
               const canRetainDeposit = hasDeposit && depositReady && ["completed", "no_show"].includes(r.status);
               const depositBusy = depositBusyId === r.id;
+              const refundBusy = refundBusyId === r.id;
+              const activeBooking = ["held", "pending_payment", "confirmed"].includes(r.status);
+              const displayStatus = r.status === "pending_payment" && r.paid_at ? "Opłacona — do akceptacji" : statusLabel[r.status] || r.status;
               return <article id={`booking-${r.id}`} key={r.id} className="scroll-mt-24 rounded-2xl p-5" style={{ background: "var(--glass)", border: "1px solid var(--line)" }}>
                 <div className="flex flex-wrap items-start justify-between gap-4">
                   <div>
@@ -402,7 +424,7 @@ export default function SellerBookingsManage() {
                     <div className="mt-1 text-sm" style={{ color: "var(--mut)" }}>{r.booking_type === "daily" ? `${dt(r.starts_at, false)} – ${dt(r.ends_at, false)} · ${r.units} dni` : dt(r.starts_at, true)}</div>
                     {r.resource_name && (r.resource_id ? <Link to={`/sprzedawca/rezerwacje/grafiki?resource=${encodeURIComponent(r.resource_id)}`} className="mt-1 inline-block text-xs hover:underline" style={{ color: "var(--gold)" }}>{resourceKindLabel[r.resource_kind || ""] || "Zasób"}: {r.resource_name} · otwórz grafik</Link> : <div className="mt-1 text-xs" style={{ color: "var(--gold)" }}>{resourceKindLabel[r.resource_kind || ""] || "Zasób"}: {r.resource_name}</div>)}
                   </div>
-                  <span className="rounded-full px-3 py-1 text-xs font-semibold" style={{ background: r.status === "confirmed" ? "rgba(34,197,94,.12)" : "var(--header)", border: "1px solid var(--line)" }}>{statusLabel[r.status] || r.status}</span>
+                  <span className="rounded-full px-3 py-1 text-xs font-semibold" style={{ background: r.status === "confirmed" || (r.status === "pending_payment" && !!r.paid_at) ? "rgba(34,197,94,.12)" : "var(--header)", border: "1px solid var(--line)" }}>{displayStatus}</span>
                 </div>
 
                 <div className={`mt-4 grid gap-2 text-sm ${hasDeposit ? "sm:grid-cols-4" : "sm:grid-cols-3"}`}>
@@ -428,11 +450,12 @@ export default function SellerBookingsManage() {
 
                 <div className="mt-4 flex flex-wrap gap-2">
                   <Link to={`/sprzedawca/rezerwacje/ustawienia/${r.offer_id}`} className="rounded-xl px-3 py-2 text-sm font-semibold" style={{ border: "1px solid var(--line)" }}>⚙ Ustawienia bookingu</Link>
-                  {r.status === "confirmed" && <button disabled={busy || rescheduleBusy || depositBusy} onClick={() => openReschedule(r)} className="rounded-xl px-3 py-2 text-sm font-semibold" style={{ border: "1px solid var(--gold)", color: "var(--gold)" }}>↔ Przenieś / zmień termin</button>}
-                  {r.status === "confirmed" && <button disabled={busy || rescheduleBusy || depositBusy} onClick={() => setStatus(r.id, "completed")} className="rounded-xl px-3 py-2 text-sm font-semibold" style={{ border: "1px solid var(--line)" }}>✓ Zakończ</button>}
-                  {canMarkNoShow && <button disabled={busy || rescheduleBusy || depositBusy} onClick={() => setStatus(r.id, "no_show")} className="rounded-xl px-3 py-2 text-sm font-semibold" style={{ border: "1px solid rgba(245,158,11,.45)", color: "#f59e0b" }}>Nie pojawił się</button>}
-                  {["held", "pending_payment"].includes(r.status) && r.paid_at && <button disabled={busy || rescheduleBusy || depositBusy} onClick={() => setStatus(r.id, "confirmed")} className="rounded-xl px-3 py-2 text-sm font-semibold text-black" style={{ background: "linear-gradient(135deg,#C8965A,#E8C896)" }}>Potwierdź</button>}
-                  {["held", "pending_payment", "confirmed"].includes(r.status) && <button disabled={busy || rescheduleBusy || depositBusy} onClick={() => setStatus(r.id, "cancelled")} className="rounded-xl px-3 py-2 text-sm" style={{ border: "1px solid rgba(239,68,68,.35)" }}>Anuluj</button>}
+                  {r.status === "confirmed" && <button disabled={busy || rescheduleBusy || depositBusy || refundBusy} onClick={() => openReschedule(r)} className="rounded-xl px-3 py-2 text-sm font-semibold" style={{ border: "1px solid var(--gold)", color: "var(--gold)" }}>↔ Przenieś / zmień termin</button>}
+                  {r.status === "confirmed" && <button disabled={busy || rescheduleBusy || depositBusy || refundBusy} onClick={() => setStatus(r.id, "completed")} className="rounded-xl px-3 py-2 text-sm font-semibold" style={{ border: "1px solid var(--line)" }}>✓ Zakończ</button>}
+                  {canMarkNoShow && <button disabled={busy || rescheduleBusy || depositBusy || refundBusy} onClick={() => setStatus(r.id, "no_show")} className="rounded-xl px-3 py-2 text-sm font-semibold" style={{ border: "1px solid rgba(245,158,11,.45)", color: "#f59e0b" }}>Nie pojawił się</button>}
+                  {["held", "pending_payment"].includes(r.status) && r.paid_at && <button disabled={busy || rescheduleBusy || depositBusy || refundBusy} onClick={() => setStatus(r.id, "confirmed")} className="rounded-xl px-3 py-2 text-sm font-semibold text-black" style={{ background: "linear-gradient(135deg,#C8965A,#E8C896)" }}>Potwierdź</button>}
+                  {activeBooking && !r.paid_at && <button disabled={busy || rescheduleBusy || depositBusy || refundBusy} onClick={() => setStatus(r.id, "cancelled")} className="rounded-xl px-3 py-2 text-sm" style={{ border: "1px solid rgba(239,68,68,.35)" }}>Anuluj</button>}
+                  {activeBooking && !!r.paid_at && <button disabled={busy || rescheduleBusy || depositBusy || refundBusy} onClick={() => refundPaidBooking(r)} className="rounded-xl px-3 py-2 text-sm font-semibold disabled:opacity-50" style={{ border: "1px solid rgba(239,68,68,.5)", color: "#fca5a5" }}>{refundBusy ? "Zwracam płatność…" : "Anuluj i zwróć"}</button>}
                   {r.buyer_email && <a href={`mailto:${r.buyer_email}`} className="rounded-xl px-3 py-2 text-sm" style={{ border: "1px solid var(--line)" }}>✉️ Napisz do klienta</a>}
                   <BookingChangeHistory bookingId={r.id} />
                 </div>
