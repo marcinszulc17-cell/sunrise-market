@@ -349,7 +349,7 @@ export default function SellerBookingsManage() {
                   <div>
                     <Link to={`/produkt/${r.offer_id}`} className="font-semibold hover:underline">{r.title}</Link>
                     <div className="mt-1 text-sm" style={{ color: "var(--mut)" }}>{r.booking_type === "daily" ? `${dt(r.starts_at, false)} – ${dt(r.ends_at, false)} · ${r.units} dni` : dt(r.starts_at, true)}</div>
-                    {r.resource_name && <div className="mt-1 text-xs" style={{ color: "var(--gold)" }}>{resourceKindLabel[r.resource_kind || ""] || "Zasób"}: {r.resource_name}</div>}
+                    {r.resource_name && (r.resource_id ? <Link to={`/sprzedawca/rezerwacje/grafiki?resource=${encodeURIComponent(r.resource_id)}`} className="mt-1 inline-block text-xs hover:underline" style={{ color: "var(--gold)" }}>{resourceKindLabel[r.resource_kind || ""] || "Zasób"}: {r.resource_name} · otwórz grafik</Link> : <div className="mt-1 text-xs" style={{ color: "var(--gold)" }}>{resourceKindLabel[r.resource_kind || ""] || "Zasób"}: {r.resource_name}</div>)}
                   </div>
                   <span className="rounded-full px-3 py-1 text-xs font-semibold" style={{ background: r.status === "confirmed" ? "rgba(34,197,94,.12)" : "var(--header)", border: "1px solid var(--line)" }}>{statusLabel[r.status] || r.status}</span>
                 </div>
