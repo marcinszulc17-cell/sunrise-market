@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { supabase } from "../lib/supabase";
-import { myOrders, confirmDelivery, openReturn, myReturns } from "../lib/api";
+import { myOrders, openReturn, myReturns } from "../lib/api";
 import InvoiceSnapshotCard, { type InvoiceSnapshot } from "../components/InvoiceSnapshotCard";
 import { zl } from "../lib/money";
 
@@ -22,6 +22,7 @@ const eventLabel: Record<string, { icon: string; label: string }> = {
   seller_seen: { icon: "👀", label: "Sprzedający zobaczył zamówienie" },
   shipped: { icon: "📦", label: "Sprzedający oznaczył jako wysłane" },
   handed_over: { icon: "🤝", label: "Sprzedający potwierdził przekazanie" },
+  delivered: { icon: "✅", label: "Doręczenie potwierdzone" },
   buyer_notified: { icon: "🔔", label: "Wysłaliśmy Ci powiadomienie" },
 };
 
@@ -32,6 +33,7 @@ export default function Zamowienia() {
   const [openTimeline, setOpenTimeline] = useState<string | null>(null);
   const [timelines, setTimelines] = useState<Record<string, ItemTimeline[]>>({});
   const [timelineLoading, setTimelineLoading] = useState<string | null>(null);
+  const [confirming, setConfirming] = useState<string | null>(null);
 
   async function load() {
     setOrders((await myOrders()) as Order[]);
@@ -45,20 +47,36 @@ export default function Zamowienia() {
       await load();
     });
   }, []);
-  async function onConfirm(id: string) { await confirmDelivery(id); await load(); }
+
   async function onReturn(id: string) {
     const reason = window.prompt("Powód zwrotu / reklamacji:");
     if (reason === null) return;
     try { await openReturn(id, reason); await load(); } catch (e) { alert((e as Error).message); }
   }
+
+  async function fetchTimeline(orderId: string, force = false) {
+    if (!force && timelines[orderId]) return timelines[orderId];
+    setTimelineLoading(orderId);
+    const { data, error } = await supabase.rpc("my_order_item_timelines", { p_order: orderId });
+    setTimelineLoading(null);
+    if (error) { alert(error.message); return []; }
+    const rows = (data ?? []) as ItemTimeline[];
+    setTimelines(prev => ({ ...prev, [orderId]: rows }));
+    return rows;
+  }
+
   async function toggleTimeline(orderId: string) {
     if (openTimeline === orderId) { setOpenTimeline(null); return; }
     setOpenTimeline(orderId);
-    if (timelines[orderId]) return;
-    setTimelineLoading(orderId);
-    const { data, error } = await supabase.rpc("my_order_item_timelines", { p_order: orderId });
-    if (!error) setTimelines(prev => ({ ...prev, [orderId]: (data ?? []) as ItemTimeline[] }));
-    setTimelineLoading(null);
+    await fetchTimeline(orderId);
+  }
+
+  async function confirmItem(orderId: string, taskId: string) {
+    setConfirming(taskId);
+    const { data, error } = await supabase.rpc("buyer_confirm_item_delivery", { p_task: taskId });
+    setConfirming(null);
+    if (error || !data?.ok) { alert(error?.message ?? data?.message ?? "Nie udało się potwierdzić odbioru."); return; }
+    await Promise.all([load(), fetchTimeline(orderId, true)]);
   }
 
   const retLabel: Record<string, string> = { requested: "Zwrot: w trakcie", approved: "Zwrot: zaakceptowany", refunded: "Zwrot: zwrócono na portfel", rejected: "Zwrot: odrzucony" };
@@ -110,10 +128,6 @@ export default function Zamowienia() {
                 </div>
               )}
               {o.invoice?.requested && <div className="mb-3"><InvoiceSnapshotCard invoice={o.invoice} compact /></div>}
-              {o.status === "shipped" && (
-                <button onClick={() => onConfirm(o.order_id)} className="mb-3 mr-2 text-sm font-semibold px-4 py-2 rounded-xl text-black"
-                        style={{ background: "linear-gradient(135deg,#7AB89A,#38E0F0)" }}>Potwierdź odbiór</button>
-              )}
               {returns[o.order_id]
                 ? <div className="mb-3 text-sm" style={{ color: "var(--gold)" }}>{retLabel[returns[o.order_id]] ?? returns[o.order_id]}</div>
                 : (["paid", "shipped", "delivered"].includes(o.status) &&
@@ -130,18 +144,27 @@ export default function Zamowienia() {
                       <div className="flex flex-wrap items-start justify-between gap-2">
                         <div>
                           <a href={`/produkt/${tl.offer_id}`} className="font-semibold hover:text-amber-300">{tl.title}</a>
-                          <div className="mt-0.5 text-xs" style={{ color: "var(--mut)" }}>{tl.task_status === "shipped" ? "Wysłane" : tl.task_status === "handed_over" ? "Przekazane" : "W realizacji"}</div>
+                          <div className="mt-0.5 text-xs" style={{ color: "var(--mut)" }}>
+                            {tl.task_status === "delivered" ? "Dostarczone" : tl.task_status === "shipped" ? "Wysłane" : tl.task_status === "handed_over" ? "Przekazane" : "W realizacji"}
+                          </div>
                         </div>
                         {tl.tracking_no && <div className="text-xs" style={{ color: "var(--mut)" }}>Nr przesyłki: <b style={{ color: "var(--ink)" }}>{tl.tracking_no}</b></div>}
                       </div>
+
+                      {tl.task_status === "shipped" && <div className="mt-3 rounded-lg p-3" style={{ background: "var(--glass)", border: "1px solid var(--line)" }}>
+                        <div className="text-xs" style={{ color: "var(--mut)" }}>Doręczenie powinno potwierdzić się automatycznie po statusie kuriera. Jeśli paczka jest już u Ciebie, możesz potwierdzić ją ręcznie.</div>
+                        <button disabled={confirming === tl.task_id} onClick={() => confirmItem(o.order_id, tl.task_id)} className="mt-2 rounded-xl px-4 py-2 text-sm font-semibold text-black disabled:opacity-50" style={{ background: "linear-gradient(135deg,#7AB89A,#38E0F0)" }}>✓ Potwierdzam odbiór tej przesyłki</button>
+                      </div>}
+
                       <div className="mt-4 space-y-3">
                         {(tl.events ?? []).map((event, idx) => {
                           const meta = eventLabel[event.event_type] ?? { icon: "•", label: event.event_type };
                           const trackingNo = typeof event.details?.tracking_no === "string" ? event.details.tracking_no : null;
+                          const source = event.event_type === "delivered" && typeof event.details?.source === "string" ? event.details.source : null;
                           return <div key={`${event.event_type}-${event.created_at}-${idx}`} className="flex gap-3">
                             <div className="grid h-8 w-8 shrink-0 place-items-center rounded-full" style={{ background: "var(--glass)", border: "1px solid var(--line)" }}>{meta.icon}</div>
                             <div className="min-w-0 flex-1 border-b pb-3" style={{ borderColor: "var(--line)" }}>
-                              <div className="text-sm font-medium">{meta.label}</div>
+                              <div className="text-sm font-medium">{meta.label}{source === "courier" ? " przez kuriera" : source === "buyer" ? " przez Ciebie" : ""}</div>
                               <div className="mt-0.5 text-xs" style={{ color: "var(--mut)" }}>{new Date(event.created_at).toLocaleString("pl-PL")}{trackingNo ? ` · nr przesyłki ${trackingNo}` : ""}</div>
                             </div>
                           </div>;
