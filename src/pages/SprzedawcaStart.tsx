@@ -122,10 +122,13 @@ export default function SprzedawcaStart() {
           </Link>
         </div>
 
-        <div className="mb-4 grid gap-3 sm:grid-cols-3">
+        <div className="mb-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
           <a href="#twoje-oferty" className="rounded-2xl p-5" style={{ background: "rgba(200,150,90,.09)", border: "1px solid rgba(200,150,90,.28)" }}>
             <div className="text-2xl">🧾</div><div className="mt-2 text-lg font-semibold">Twoje oferty</div><div className="mt-1 text-sm" style={{ color: "var(--mut)" }}>Ogłoszenia, zdjęcia, cashback/prowizje, faktura VAT i wejście do kalendarza.</div>
           </a>
+          <Link to="/sprzedawca/zamowienia" className="rounded-2xl p-5" style={{ background: "rgba(200,150,90,.07)", border: "1px solid rgba(200,150,90,.24)" }}>
+            <div className="text-2xl">💳</div><div className="mt-2 text-lg font-semibold">Zamówienia i faktury</div><div className="mt-1 text-sm" style={{ color: "var(--mut)" }}>Opłacone zakupy, Twoje wpływy oraz zamrożone dane firmy i NIP do faktury.</div>
+          </Link>
           <Link to="/sprzedawca/rezerwacje" className="rounded-2xl p-5" style={{ background: "rgba(122,184,154,.08)", border: "1px solid rgba(122,184,154,.24)" }}>
             <div className="text-2xl">📅</div><div className="mt-2 text-lg font-semibold">Rezerwacje</div><div className="mt-1 text-sm" style={{ color: "var(--mut)" }}>Terminy usług, auta, apartamenty, sprzęt i inne zasoby rezerwowane online.</div>
           </Link>
@@ -210,7 +213,7 @@ export default function SprzedawcaStart() {
         </div>
 
         <div className="mt-6 flex flex-wrap items-center gap-3 text-sm">
-          <Link to="/sprzedawca/oferty" className="underline" style={{ color: "var(--mut)" }}>Zarządzaj ofertami</Link><span style={{ color: "var(--mut)" }}>•</span><Link to="/sprzedawca/rezerwacje" className="underline" style={{ color: "var(--mut)" }}>Rezerwacje</Link><span style={{ color: "var(--mut)" }}>•</span><Link to="/sprzedawca-klasyczny" className="underline" style={{ color: "var(--mut)" }}>Panel zaawansowany</Link><span style={{ color: "var(--mut)" }}>•</span><Link to="/" className="underline" style={{ color: "var(--mut)" }}>Wróć do Marketu</Link>
+          <Link to="/sprzedawca/oferty" className="underline" style={{ color: "var(--mut)" }}>Zarządzaj ofertami</Link><span style={{ color: "var(--mut)" }}>•</span><Link to="/sprzedawca/zamowienia" className="underline" style={{ color: "var(--mut)" }}>Zamówienia i faktury</Link><span style={{ color: "var(--mut)" }}>•</span><Link to="/sprzedawca/rezerwacje" className="underline" style={{ color: "var(--mut)" }}>Rezerwacje</Link><span style={{ color: "var(--mut)" }}>•</span><Link to="/sprzedawca-klasyczny" className="underline" style={{ color: "var(--mut)" }}>Panel zaawansowany</Link><span style={{ color: "var(--mut)" }}>•</span><Link to="/" className="underline" style={{ color: "var(--mut)" }}>Wróć do Marketu</Link>
         </div>
       </div>
     </main>
