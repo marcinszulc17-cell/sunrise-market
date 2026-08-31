@@ -12,6 +12,7 @@ const statusLabel: Record<string, string> = {
   completed: "Zakończona",
   cancelled: "Anulowana",
   expired: "Wygasła",
+  no_show: "Nie pojawił się",
 };
 
 type Booking = {
@@ -124,11 +125,14 @@ export default function SellerBookingsManage() {
     paid: rows.filter((r) => !!r.paid_at).reduce((a, r) => a + Number(r.amount_gross || 0), 0),
   }), [rows]);
 
-  async function setStatus(id: string, status: "confirmed" | "cancelled" | "completed") {
+  async function setStatus(id: string, status: "confirmed" | "cancelled" | "completed" | "no_show") {
     setBusy(true); setMsg("");
     const { error } = await supabase.rpc("seller_booking_set_status", { p_booking: id, p_status: status });
     if (error) setMsg(error.message);
-    else { setMsg("Status rezerwacji zaktualizowany. Powiadomienie e-mail zostało dodane do wysyłki."); await load(); }
+    else {
+      setMsg(status === "no_show" ? "Rezerwacja oznaczona jako nieobecność klienta." : "Status rezerwacji zaktualizowany. Powiadomienie e-mail zostało dodane do wysyłki.");
+      await load();
+    }
     setBusy(false);
   }
 
@@ -330,7 +334,7 @@ export default function SellerBookingsManage() {
               <p className="mt-1 text-sm" style={{ color: "var(--mut)" }}>Na komputerze możesz przeciągać wizyty. Na telefonie użyj „Przenieś” i wybierz zasób oraz termin.</p>
             </div>
             <div className="flex flex-wrap gap-2">
-              {[['active','Aktywne'],['confirmed','Potwierdzone'],['pending_payment','Do opłacenia'],['completed','Zakończone'],['cancelled','Anulowane'],['all','Wszystkie']].map(([k, l]) =>
+              {[['active','Aktywne'],['confirmed','Potwierdzone'],['pending_payment','Do opłacenia'],['completed','Zakończone'],['no_show','Nieobecni'],['cancelled','Anulowane'],['all','Wszystkie']].map(([k, l]) =>
                 <button key={k} onClick={() => setFilter(k)} className="rounded-full px-3 py-1.5 text-sm" style={{ background: filter === k ? "rgba(200,150,90,.18)" : "var(--glass)", border: "1px solid var(--line)", color: filter === k ? "var(--gold)" : "var(--ink)" }}>{l}</button>
               )}
             </div>
@@ -344,6 +348,7 @@ export default function SellerBookingsManage() {
               const durationMinutes = Math.max(1, Math.round((new Date(r.ends_at).getTime() - new Date(r.starts_at).getTime()) / 60000));
               const previewEnd = r.booking_type === "daily" && rescheduleId === r.id && rescheduleValue ? addDays(new Date(`${rescheduleValue}T12:00:00`), r.units) : null;
               const priceDifference = Number(pricePreview?.difference_gross || 0);
+              const canMarkNoShow = r.booking_type === "appointment" && r.status === "confirmed" && new Date(r.starts_at).getTime() <= Date.now();
               return <article id={`booking-${r.id}`} key={r.id} className="scroll-mt-24 rounded-2xl p-5" style={{ background: "var(--glass)", border: "1px solid var(--line)" }}>
                 <div className="flex flex-wrap items-start justify-between gap-4">
                   <div>
@@ -364,6 +369,7 @@ export default function SellerBookingsManage() {
                   <Link to={`/sprzedawca/rezerwacje/ustawienia/${r.offer_id}`} className="rounded-xl px-3 py-2 text-sm font-semibold" style={{ border: "1px solid var(--line)" }}>⚙ Ustawienia bookingu</Link>
                   {r.status === "confirmed" && <button disabled={busy || rescheduleBusy} onClick={() => openReschedule(r)} className="rounded-xl px-3 py-2 text-sm font-semibold" style={{ border: "1px solid var(--gold)", color: "var(--gold)" }}>↔ Przenieś / zmień termin</button>}
                   {r.status === "confirmed" && <button disabled={busy || rescheduleBusy} onClick={() => setStatus(r.id, "completed")} className="rounded-xl px-3 py-2 text-sm font-semibold" style={{ border: "1px solid var(--line)" }}>✓ Zakończ</button>}
+                  {canMarkNoShow && <button disabled={busy || rescheduleBusy} onClick={() => setStatus(r.id, "no_show")} className="rounded-xl px-3 py-2 text-sm font-semibold" style={{ border: "1px solid rgba(245,158,11,.45)", color: "#f59e0b" }}>Nie pojawił się</button>}
                   {["held", "pending_payment"].includes(r.status) && r.paid_at && <button disabled={busy || rescheduleBusy} onClick={() => setStatus(r.id, "confirmed")} className="rounded-xl px-3 py-2 text-sm font-semibold text-black" style={{ background: "linear-gradient(135deg,#C8965A,#E8C896)" }}>Potwierdź</button>}
                   {["held", "pending_payment", "confirmed"].includes(r.status) && <button disabled={busy || rescheduleBusy} onClick={() => setStatus(r.id, "cancelled")} className="rounded-xl px-3 py-2 text-sm" style={{ border: "1px solid rgba(239,68,68,.35)" }}>Anuluj</button>}
                   {r.buyer_email && <a href={`mailto:${r.buyer_email}`} className="rounded-xl px-3 py-2 text-sm" style={{ border: "1px solid var(--line)" }}>✉️ Napisz do klienta</a>}
