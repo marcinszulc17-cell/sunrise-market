@@ -108,7 +108,7 @@ export default function SellerBookingOpsSidebar({
         <Link to="/sprzedawca/rezerwacje/grafiki" className="text-xs font-semibold" style={{ color: "var(--gold)" }}>Edytuj grafiki →</Link>
       </div>
       <div className="mt-3 space-y-2">
-        {resources.map((resource) => <div key={resource.id} className="rounded-xl p-3 text-sm" style={{ border: "1px solid var(--line)" }}><div className="font-semibold">{resource.name}</div><div className="text-xs" style={{ color: "var(--mut)" }}>{resourceKindLabel[resource.kind] || resource.kind}</div></div>)}
+        {resources.map((resource) => <Link key={resource.id} to={`/sprzedawca/rezerwacje/grafiki?resource=${encodeURIComponent(resource.id)}`} className="block rounded-xl p-3 text-sm transition hover:-translate-y-px" style={{ border: "1px solid var(--line)" }}><div className="flex items-center justify-between gap-2"><div className="font-semibold">{resource.name}</div><span className="text-[11px]" style={{ color: "var(--gold)" }}>Edytuj →</span></div><div className="text-xs" style={{ color: "var(--mut)" }}>{resourceKindLabel[resource.kind] || resource.kind}</div></Link>)}
         {resources.length === 0 && <p className="text-sm" style={{ color: "var(--mut)" }}>Brak aktywnych zasobów.</p>}
       </div>
     </div>
