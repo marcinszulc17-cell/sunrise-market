@@ -4,12 +4,24 @@ import assert from 'node:assert/strict';
 
 const mailer = fs.readFileSync(new URL('../supabase/functions/booking-mailer/index.ts', import.meta.url), 'utf8');
 
-test('booking mailer fails loudly when Resend is not configured', () => {
-  assert.match(mailer, /if \(!resend\) return json\(\{ ok: false, configured: false, message: "RESEND_API_KEY missing" \}, 503\)/);
-  assert.doesNotMatch(mailer, /RESEND_API_KEY missing" \}\);/);
+test('booking mailer checks the queue before requiring a provider key', () => {
+  const selectAt = mailer.indexOf('booking_mail_outbox');
+  const missingProviderAt = mailer.indexOf('if (!resend) return json');
+  assert.ok(selectAt >= 0);
+  assert.ok(missingProviderAt > selectAt);
 });
 
-test('configured booking mailer still reports healthy success', () => {
-  assert.match(mailer, /ok: true, configured: true/);
+test('idle cron stays healthy even if Resend is not configured', () => {
+  assert.match(mailer, /if \(!rows\?\.length\) return json\(\{ ok: true, configured: Boolean\(resend\), processed: 0, sent: 0, failed: 0 \}\)/);
+});
+
+test('pending mail without Resend becomes an explicit service error', () => {
+  assert.match(mailer, /pending: rows\.length/);
+  assert.match(mailer, /error: "RESEND_API_KEY missing"/);
+  assert.match(mailer, /\}, 503\)/);
+});
+
+test('configured booking mailer still uses Resend and no credential is committed', () => {
   assert.match(mailer, /https:\/\/api\.resend\.com\/emails/);
+  assert.doesNotMatch(mailer, /re_[A-Za-z0-9]{20,}/);
 });
