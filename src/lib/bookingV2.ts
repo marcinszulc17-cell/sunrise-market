@@ -146,3 +146,19 @@ export async function bookingDailyQuoteV2(
   const row = (data as Array<{ days: number; base: number }> | null)?.[0];
   return { days: Number(row?.days ?? 0), base: Number(row?.base ?? 0) };
 }
+
+export async function refundPaidBooking(bookingId: string) {
+  const { data, error } = await supabase.functions.invoke("booking-refund-action", {
+    body: { booking_id: bookingId },
+  });
+  if (error) throw error;
+  if (!data?.ok) throw new Error(data?.message || data?.error || "Nie udało się anulować i zwrócić rezerwacji.");
+  return data as {
+    ok: true;
+    already?: boolean;
+    booking_id: string;
+    order_id: string;
+    refunded?: number;
+    payment_provider?: string;
+  };
+}
