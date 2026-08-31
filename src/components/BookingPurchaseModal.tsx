@@ -24,6 +24,7 @@ const dateLabel = (iso: string, timezone: string) =>
 const shortDate = (value: string) =>
   value ? new Date(`${value}T12:00:00`).toLocaleDateString("pl-PL", { day: "numeric", month: "short", year: "numeric" }) : "—";
 const dateAtNoonUtc = (value: string) => new Date(`${value}T12:00:00Z`);
+const resourceIcon = (kind: string) => kind === "staff" ? "👤" : kind === "vehicle" ? "🚗" : kind === "property" ? "🏠" : kind === "room" ? "🛏️" : kind === "equipment" ? "🧰" : "◉";
 
 export default function BookingPurchaseModal({ offerId, config, open, onClose }: Props) {
   const [catalog, setCatalog] = useState<BookingCatalogV2 | null>(null);
@@ -110,7 +111,7 @@ export default function BookingPurchaseModal({ offerId, config, open, onClose }:
     let cancelled = false;
     setAvailabilityLoading(true);
     setAvailabilityWarning(null);
-    bookingUnavailableDaysV2(offerId, from, to)
+    bookingUnavailableDaysV2(offerId, from, to, resourceId)
       .then((rows) => { if (!cancelled) setUnavailableDays(rows.map((row) => row.day)); })
       .catch(() => {
         if (!cancelled) {
@@ -120,7 +121,7 @@ export default function BookingPurchaseModal({ offerId, config, open, onClose }:
       })
       .finally(() => { if (!cancelled) setAvailabilityLoading(false); });
     return () => { cancelled = true; };
-  }, [open, offerId, activeConfig.booking_type, activeConfig.min_notice_hours, activeConfig.max_advance_days, activeConfig.timezone]);
+  }, [open, offerId, activeConfig.booking_type, activeConfig.min_notice_hours, activeConfig.max_advance_days, activeConfig.timezone, resourceId]);
 
   useEffect(() => {
     if (!open || activeConfig.booking_type !== "daily" || !fromDay || !toDay) {
@@ -129,14 +130,14 @@ export default function BookingPurchaseModal({ offerId, config, open, onClose }:
       return;
     }
     setError(null);
-    bookingDailyQuoteV2(offerId, fromDay, toDay)
+    bookingDailyQuoteV2(offerId, fromDay, toDay, resourceId)
       .then((q) => { setRentalUnits(q.days); setRentalBase(q.base); })
       .catch((e) => {
         setRentalBase(0);
         setRentalUnits(0);
         setError(e?.message || "Nie udało się policzyć ceny");
       });
-  }, [open, offerId, activeConfig.booking_type, fromDay, toDay]);
+  }, [open, offerId, activeConfig.booking_type, fromDay, toDay, resourceId]);
 
   const days = useMemo(
     () => Array.from(new Map(slots.map((s) => [dayKey(s.starts_at, activeConfig.timezone), s.starts_at])).entries()),
@@ -171,6 +172,16 @@ export default function BookingPurchaseModal({ offerId, config, open, onClose }:
       setRentalBase(0);
       setRentalUnits(0);
     }
+  }
+
+  function selectRentalResource(nextResourceId: string | null) {
+    setResourceId(nextResourceId);
+    setFromDay("");
+    setToDay("");
+    setRentalBase(0);
+    setRentalUnits(0);
+    setUnavailableDays([]);
+    setError(null);
   }
 
   async function pay() {
@@ -216,14 +227,16 @@ export default function BookingPurchaseModal({ offerId, config, open, onClose }:
   const serviceStep = catalog?.services?.length ? 1 : 0;
   const resourceStep = catalog?.resources?.length ? 1 : 0;
   const appointmentDateStep = serviceStep + resourceStep + 1;
-  const paymentStep = activeConfig.booking_type === "appointment" ? appointmentDateStep + 1 : 2;
+  const dailyResourceStep = activeConfig.booking_type === "daily" && catalog?.resources?.length ? 1 : 0;
+  const dailyDateStep = dailyResourceStep + 1;
+  const paymentStep = activeConfig.booking_type === "appointment" ? appointmentDateStep + 1 : dailyDateStep + 1;
 
   return <div className="fixed inset-0 z-[70] bg-black/75 p-0 sm:grid sm:place-items-center sm:p-4" onMouseDown={onClose}>
     <div className="flex h-full w-full flex-col overflow-hidden sm:h-auto sm:max-h-[92vh] sm:max-w-5xl sm:rounded-3xl" onMouseDown={(e) => e.stopPropagation()} style={{ background: "var(--header)", border: "1px solid var(--line)" }}>
       <header className="flex items-start justify-between gap-4 border-b px-5 py-4 sm:px-7" style={{ borderColor: "var(--line)" }}>
         <div>
           <div className="text-[11px] font-semibold tracking-[.16em]" style={{ color: "var(--gold)" }}>{activeConfig.booking_type === "appointment" ? "REZERWACJA TERMINU" : "REZERWACJA ONLINE"}</div>
-          <h2 className="mt-1 font-display text-2xl font-semibold">{activeConfig.booking_type === "appointment" ? "Wybierz usługę i termin" : "Wybierz daty wynajmu"}</h2>
+          <h2 className="mt-1 font-display text-2xl font-semibold">{activeConfig.booking_type === "appointment" ? "Wybierz usługę i termin" : catalog?.resources?.length ? "Wybierz zasób i daty wynajmu" : "Wybierz daty wynajmu"}</h2>
           <p className="mt-1 text-sm" style={{ color: "var(--mut)" }}>Po wyborze blokujemy termin na 15 minut na czas płatności.</p>
         </div>
         <button type="button" onClick={onClose} className="rounded-xl px-3 py-2 text-lg" style={{ background: "var(--glass)", border: "1px solid var(--line)" }} aria-label="Zamknij">✕</button>
@@ -241,7 +254,7 @@ export default function BookingPurchaseModal({ offerId, config, open, onClose }:
               <StepTitle n={serviceStep + 1} title="Wybierz pracownika lub zasób" optional />
               <div className="mt-3 flex flex-wrap gap-2">
                 <button type="button" onClick={() => { setResourceId(null); setSelected(null); }} className="rounded-xl px-3 py-2 text-sm font-medium" style={{ border: !resourceId ? "1px solid var(--gold)" : "1px solid var(--line)", background: !resourceId ? "rgba(200,150,90,.10)" : "var(--glass)" }}>⚡ Dowolny dostępny</button>
-                {catalog.resources.map((r) => <button key={r.id} type="button" onClick={() => { setResourceId(r.id); setSelected(null); }} className="rounded-xl px-3 py-2 text-sm font-medium" style={{ border: resourceId === r.id ? "1px solid var(--gold)" : "1px solid var(--line)", background: resourceId === r.id ? "rgba(200,150,90,.10)" : "var(--glass)" }}>{r.kind === "staff" ? "👤" : "◉"} {r.name}</button>)}
+                {catalog.resources.map((r) => <button key={r.id} type="button" onClick={() => { setResourceId(r.id); setSelected(null); }} className="rounded-xl px-3 py-2 text-sm font-medium" style={{ border: resourceId === r.id ? "1px solid var(--gold)" : "1px solid var(--line)", background: resourceId === r.id ? "rgba(200,150,90,.10)" : "var(--glass)" }}>{resourceIcon(r.kind)} {r.name}</button>)}
               </div>
             </section> : null}
 
@@ -257,26 +270,37 @@ export default function BookingPurchaseModal({ offerId, config, open, onClose }:
                 <div className="grid grid-cols-3 gap-2 sm:grid-cols-4 md:grid-cols-5">{visibleSlots.map((slot) => <button key={`${slot.starts_at}-${slot.resource_id || "offer"}`} type="button" onClick={() => setSelected(slot)} className="rounded-xl py-3 text-sm font-semibold" style={{ background: selected?.starts_at === slot.starts_at && selected?.resource_id === slot.resource_id ? "rgba(34,197,94,.16)" : "var(--glass)", border: selected?.starts_at === slot.starts_at && selected?.resource_id === slot.resource_id ? "1px solid var(--green)" : "1px solid var(--line)", color: selected?.starts_at === slot.starts_at && selected?.resource_id === slot.resource_id ? "var(--green)" : "var(--ink)" }}>{hourLabel(slot.starts_at, activeConfig.timezone)}</button>)}</div>
               </>}
             </section>
-          </> : <section>
-            <StepTitle n={1} title="Wybierz okres" />
-            {availabilityLoading ? <Info>Sprawdzam zajęte i zablokowane dni…</Info> : <DailyRangeCalendar
-              minDate={today}
-              maxDate={latest}
-              minUnits={Number(activeConfig.min_units || 1)}
-              maxUnits={Number(activeConfig.max_units || 1)}
-              from={fromDay}
-              to={toDay}
-              unavailableDates={unavailableDays}
-              onChange={setRentalRange}
-            />}
-            {availabilityWarning && <div className="mt-3 rounded-2xl px-4 py-3 text-xs" style={{ background: "rgba(200,150,90,.08)", border: "1px solid rgba(200,150,90,.22)", color: "var(--gold)" }}>{availabilityWarning}</div>}
-            <div className="mt-3 flex flex-wrap items-center justify-between gap-2 text-xs" style={{ color: "var(--mut)" }}>
-              <span>Minimalnie {activeConfig.min_units} dni · maksymalnie {activeConfig.max_units} dni</span>
-              <span>Rezerwacja do {shortDate(latest)}</span>
-            </div>
-            {fromDay && toDay && rentalUnits === 0 && !error && <Info>Sprawdzam cenę i dostępność wybranego okresu…</Info>}
-            {rentalUnits > 0 && <div className="mt-4 rounded-2xl p-4" style={{ background: "var(--glass)", border: "1px solid var(--line)" }}><PriceRow label={`${rentalUnits} ${rentalUnits === 1 ? "dzień" : "dni"}`} value={rentalBase} strong />{fees > 0 && <PriceRow label="Przygotowanie / opłata dodatkowa" value={fees} />}{deposit > 0 && <PriceRow label="Kaucja zabezpieczająca" value={deposit} muted />}</div>}
-          </section>}
+          </> : <>
+            {catalog?.resources?.length ? <section>
+              <StepTitle n={1} title="Wybierz konkretny zasób" optional />
+              <p className="mt-2 text-xs" style={{ color: "var(--mut)" }}>Możesz wybrać konkretny egzemplarz albo zostawić automatyczny przydział pierwszego wolnego przez cały pobyt.</p>
+              <div className="mt-3 flex flex-wrap gap-2">
+                <button type="button" onClick={() => selectRentalResource(null)} className="rounded-xl px-3 py-2 text-sm font-medium" style={{ border: !resourceId ? "1px solid var(--gold)" : "1px solid var(--line)", background: !resourceId ? "rgba(200,150,90,.10)" : "var(--glass)" }}>⚡ Dowolny dostępny</button>
+                {catalog.resources.map((r) => <button key={r.id} type="button" onClick={() => selectRentalResource(r.id)} className="rounded-xl px-3 py-2 text-sm font-medium" style={{ border: resourceId === r.id ? "1px solid var(--gold)" : "1px solid var(--line)", background: resourceId === r.id ? "rgba(200,150,90,.10)" : "var(--glass)" }}>{resourceIcon(r.kind)} {r.name}</button>)}
+              </div>
+            </section> : null}
+
+            <section>
+              <StepTitle n={dailyDateStep} title="Wybierz okres" />
+              {availabilityLoading ? <Info>Sprawdzam zajęte i zablokowane dni{selectedResource ? ` dla ${selectedResource.name}` : ""}…</Info> : <DailyRangeCalendar
+                minDate={today}
+                maxDate={latest}
+                minUnits={Number(activeConfig.min_units || 1)}
+                maxUnits={Number(activeConfig.max_units || 1)}
+                from={fromDay}
+                to={toDay}
+                unavailableDates={unavailableDays}
+                onChange={setRentalRange}
+              />}
+              {availabilityWarning && <div className="mt-3 rounded-2xl px-4 py-3 text-xs" style={{ background: "rgba(200,150,90,.08)", border: "1px solid rgba(200,150,90,.22)", color: "var(--gold)" }}>{availabilityWarning}</div>}
+              <div className="mt-3 flex flex-wrap items-center justify-between gap-2 text-xs" style={{ color: "var(--mut)" }}>
+                <span>Minimalnie {activeConfig.min_units} dni · maksymalnie {activeConfig.max_units} dni</span>
+                <span>Rezerwacja do {shortDate(latest)}</span>
+              </div>
+              {fromDay && toDay && rentalUnits === 0 && !error && <Info>Sprawdzam cenę i dostępność wybranego okresu…</Info>}
+              {rentalUnits > 0 && <div className="mt-4 rounded-2xl p-4" style={{ background: "var(--glass)", border: "1px solid var(--line)" }}><PriceRow label={`${rentalUnits} ${rentalUnits === 1 ? "dzień" : "dni"}`} value={rentalBase} strong />{fees > 0 && <PriceRow label="Przygotowanie / opłata dodatkowa" value={fees} />}{deposit > 0 && <PriceRow label="Kaucja zabezpieczająca" value={deposit} muted />}</div>}
+            </section>
+          </>}
 
           <section>
             <StepTitle n={paymentStep} title="Wybierz płatność" />
@@ -298,6 +322,7 @@ export default function BookingPurchaseModal({ offerId, config, open, onClose }:
                 <SummaryRow label="Obsługa" value={selectedResource?.name || (selected ? "Przydzielona automatycznie" : resourceId ? "Wybrany zasób" : "Dowolny dostępny")} muted={!selectedResource && !selected} />
                 <SummaryRow label="Termin" value={selected ? `${dateLabel(selected.starts_at, activeConfig.timezone)}, ${hourLabel(selected.starts_at, activeConfig.timezone)}` : "Wybierz termin"} muted={!selected} />
               </> : <>
+                {catalog?.resources?.length ? <SummaryRow label="Zasób" value={selectedResource?.name || "Dowolny dostępny · przydzielimy automatycznie"} muted={!selectedResource} /> : null}
                 <SummaryRow label="Od" value={shortDate(fromDay)} muted={!fromDay} />
                 <SummaryRow label="Do" value={shortDate(toDay)} muted={!toDay} />
                 <SummaryRow label="Okres" value={rentalUnits > 0 ? `${rentalUnits} ${rentalUnits === 1 ? "dzień" : "dni"}` : "Wybierz daty"} muted={rentalUnits < 1} />
