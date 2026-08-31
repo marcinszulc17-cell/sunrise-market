@@ -5,6 +5,7 @@ import test from "node:test";
 const seller = await readFile(new URL("../src/pages/SellerBookingsManage.tsx", import.meta.url), "utf8");
 const refundEdge = await readFile(new URL("../supabase/functions/booking-cancel-refund/index.ts", import.meta.url), "utf8");
 const migration = await readFile(new URL("../supabase/migrations/20260831184500_booking_full_refund.sql", import.meta.url), "utf8");
+const readyOutboxPatch = await readFile(new URL("../supabase/migrations/20260831195500_booking_refund_reverse_ready_outbox.sql", import.meta.url), "utf8");
 
 test("paid bookings use refund workflow instead of plain cancellation", () => {
   assert.match(seller, /booking-cancel-refund/);
@@ -31,4 +32,5 @@ test("refund cancels seller settlement and marks ambassador outbox reversal", ()
   assert.match(migration, /seller_settlements set status='cancelled'/);
   assert.match(migration, /ambassador_commission_outbox set status='reversed'/);
   assert.match(migration, /booking_refunds/);
+  assert.match(readyOutboxPatch, /status in \('ready','sent','failed','pending_vat','pending_identity'\)/);
 });
