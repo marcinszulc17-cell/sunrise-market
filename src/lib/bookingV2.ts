@@ -55,6 +55,11 @@ export type BookingSlotV2 = {
   resource_id: string | null;
 };
 
+export type BookingUnavailableDayV2 = {
+  day: string;
+  reason: "booked" | "blocked" | string;
+};
+
 export type BookingHoldV2 = {
   booking_id: string;
   starts_at: string;
@@ -88,6 +93,16 @@ export async function bookingAvailableSlotsV2(
   });
   if (error) throw error;
   return (data ?? []) as BookingSlotV2[];
+}
+
+export async function bookingUnavailableDaysV2(offerId: string, fromDay: string, toDay: string): Promise<BookingUnavailableDayV2[]> {
+  const { data, error } = await supabase.schema("market").rpc("booking_unavailable_days_v2", {
+    p_offer: offerId,
+    p_from: fromDay,
+    p_to: toDay,
+  });
+  if (error) throw error;
+  return (data ?? []) as BookingUnavailableDayV2[];
 }
 
 export async function createBookingHoldV2(params: {
