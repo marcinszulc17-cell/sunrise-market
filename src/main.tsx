@@ -1,6 +1,6 @@
 import React from "react";
 import ReactDOM from "react-dom/client";
-import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate, useLocation } from "react-router-dom";
 import Sso from "./pages/Sso";
 import MarketEnhanced from "./pages/MarketEnhanced";
 import CategoryPortal from "./pages/CategoryPortal";
@@ -45,9 +45,48 @@ if ("serviceWorker" in navigator) {
   });
 }
 
+const NOINDEX_PREFIXES = [
+  "/sprzedawca",
+  "/operator",
+  "/konto",
+  "/portfel",
+  "/koszyk",
+  "/zamowienia",
+  "/rezerwacje",
+  "/login",
+  "/sso",
+  "/verify",
+  "/potwierdz-zakup",
+  "/szukaj",
+  "/porownaj",
+];
+
+function RouteMeta() {
+  const { pathname } = useLocation();
+
+  React.useEffect(() => {
+    const noindex = NOINDEX_PREFIXES.some((prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`));
+    const robots = document.querySelector<HTMLMetaElement>('meta[name="robots"]') ?? document.head.appendChild(document.createElement("meta"));
+    robots.setAttribute("name", "robots");
+    robots.setAttribute("content", noindex ? "noindex, nofollow" : "index, follow");
+
+    const cleanPath = pathname === "/" ? "/" : pathname.replace(/\/+$/, "");
+    const canonicalUrl = `https://sunrisemarket.pl${cleanPath}`;
+    const canonical = document.querySelector<HTMLLinkElement>('link[rel="canonical"]') ?? document.head.appendChild(document.createElement("link"));
+    canonical.setAttribute("rel", "canonical");
+    canonical.setAttribute("href", canonicalUrl);
+
+    const ogUrl = document.querySelector<HTMLMetaElement>('meta[property="og:url"]');
+    if (ogUrl) ogUrl.setAttribute("content", canonicalUrl);
+  }, [pathname]);
+
+  return null;
+}
+
 ReactDOM.createRoot(document.getElementById("root")!).render(
   <React.StrictMode>
     <BrowserRouter>
+      <RouteMeta />
       <Routes>
         <Route path="/" element={<MarketEnhanced />} />
         <Route path="/motoryzacja" element={<CategoryPortal mode="car" />} />
