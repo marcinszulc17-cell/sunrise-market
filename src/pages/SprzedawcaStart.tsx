@@ -22,7 +22,14 @@ type OfferRow = {
   category: string;
 };
 
-type BookingRow = { offer_id: string; status: string };
+type BookingHealthRow = {
+  offer_id: string;
+  booking_type: "appointment" | "daily" | null;
+  active: boolean;
+  availability_count: number;
+  bookings: number;
+  active_bookings: number;
+};
 type BookingHealth = {
   kind: "none" | "setup" | "no_availability" | "active" | "booked";
   label: string;
@@ -43,14 +50,23 @@ const TYPES: OfferType[] = [
   { id: "local", icon: "📍", title: "Ogłoszenie lokalne", description: "Proste ogłoszenie sprzedaży, oddania lub innej oferty w okolicy.", query: "lokalne", mode: "purchase" },
 ];
 
-const ACTIVE_BOOKING_STATUSES = new Set(["held", "pending_payment", "confirmed"]);
-
 function healthStyle(kind: BookingHealth["kind"]): React.CSSProperties {
   if (kind === "booked") return { background: "rgba(56,224,240,.10)", color: "#7debf5", border: "1px solid rgba(56,224,240,.24)" };
   if (kind === "active") return { background: "rgba(34,197,94,.10)", color: "var(--green)", border: "1px solid rgba(34,197,94,.24)" };
   if (kind === "setup") return { background: "rgba(200,150,90,.12)", color: "var(--gold)", border: "1px solid rgba(200,150,90,.28)" };
   if (kind === "no_availability") return { background: "rgba(239,68,68,.10)", color: "#fca5a5", border: "1px solid rgba(239,68,68,.25)" };
   return { background: "var(--header)", color: "var(--mut)", border: "1px solid var(--line)" };
+}
+
+function bookingHealth(row?: BookingHealthRow): BookingHealth {
+  if (!row?.booking_type) return { kind: "none", label: "Bez bookingu", bookings: 0, activeBookings: 0 };
+  const bookings = Number(row.bookings || 0);
+  const activeBookings = Number(row.active_bookings || 0);
+  const bookingType = row.booking_type;
+  if (bookings > 0) return { kind: "booked", label: activeBookings > 0 ? `Ma rezerwacje · ${activeBookings} aktywne` : `Historia rezerwacji · ${bookings}`, bookingType, bookings, activeBookings };
+  if (!row.active) return { kind: "setup", label: "Do konfiguracji", bookingType, bookings: 0, activeBookings: 0 };
+  if (bookingType === "appointment" && Number(row.availability_count || 0) === 0) return { kind: "no_availability", label: "Brak dostępności", bookingType, bookings: 0, activeBookings: 0 };
+  return { kind: "active", label: "Booking aktywny", bookingType, bookings: 0, activeBookings: 0 };
 }
 
 export default function SprzedawcaStart() {
@@ -62,31 +78,15 @@ export default function SprzedawcaStart() {
     async function load() {
       setOffersLoading(true);
       try {
-        const rows = (await myOffers()) as OfferRow[];
-        setOffers(rows ?? []);
-
-        const bookingResult = await supabase.rpc("seller_booking_dashboard");
-        const bookings = (bookingResult.error ? [] : (bookingResult.data ?? [])) as BookingRow[];
-        const byOffer = new Map<string, BookingRow[]>();
-        for (const b of bookings) byOffer.set(b.offer_id, [...(byOffer.get(b.offer_id) ?? []), b]);
-
-        const entries = await Promise.all((rows ?? []).map(async (offer): Promise<[string, BookingHealth]> => {
-          const { data, error } = await supabase.schema("market").rpc("seller_booking_catalog_v2", { p_offer: offer.offer_id });
-          if (error || !data?.config) return [offer.offer_id, { kind: "none", label: "Bez bookingu", bookings: 0, activeBookings: 0 }];
-
-          const config = data.config as any;
-          const offerBookings = byOffer.get(offer.offer_id) ?? [];
-          const activeBookings = offerBookings.filter(b => ACTIVE_BOOKING_STATUSES.has(b.status)).length;
-          const bookingType = config.booking_type as "appointment" | "daily";
-          const active = Boolean(config.active);
-          const weekly = Array.isArray(config.weekly_availability) ? config.weekly_availability : [];
-
-          if (offerBookings.length > 0) return [offer.offer_id, { kind: "booked", label: activeBookings > 0 ? `Ma rezerwacje · ${activeBookings} aktywne` : `Historia rezerwacji · ${offerBookings.length}`, bookingType, bookings: offerBookings.length, activeBookings }];
-          if (!active) return [offer.offer_id, { kind: "setup", label: "Do konfiguracji", bookingType, bookings: 0, activeBookings: 0 }];
-          if (bookingType === "appointment" && weekly.length === 0) return [offer.offer_id, { kind: "no_availability", label: "Brak dostępności", bookingType, bookings: 0, activeBookings: 0 }];
-          return [offer.offer_id, { kind: "active", label: "Booking aktywny", bookingType, bookings: 0, activeBookings: 0 }];
-        }));
-        setHealth(Object.fromEntries(entries));
+        const [offerRows, healthResult] = await Promise.all([
+          myOffers(),
+          supabase.schema("market").rpc("seller_booking_health_bulk"),
+        ]);
+        const rows = (offerRows ?? []) as OfferRow[];
+        setOffers(rows);
+        const healthRows = (healthResult.error ? [] : (healthResult.data ?? [])) as BookingHealthRow[];
+        const byOffer = new Map(healthRows.map((row) => [row.offer_id, row]));
+        setHealth(Object.fromEntries(rows.map((offer) => [offer.offer_id, bookingHealth(byOffer.get(offer.offer_id))])));
       } catch {
         setOffers([]);
         setHealth({});
