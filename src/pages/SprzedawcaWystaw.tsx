@@ -1,4 +1,6 @@
-import { Link, useSearchParams } from "react-router-dom";
+import { useEffect, useState } from "react";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
+import { supabase } from "../lib/supabase";
 import SprzedawcaV2 from "./SprzedawcaV2";
 import DedicatedOfferWizard from "./DedicatedOfferWizard";
 
@@ -30,14 +32,42 @@ const MODES: Array<{ mode: PurchaseMode; icon: string; title: string; descriptio
 
 export default function SprzedawcaWystaw() {
   const [sp] = useSearchParams();
+  const navigate = useNavigate();
+  const [access, setAccess] = useState<"loading" | "ok" | "renewal" | "activate">("loading");
   const type = sp.get("typ");
   const requestedMode = sp.get("mode") as PurchaseMode | null;
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      const { data: auth } = await supabase.auth.getUser();
+      if (!auth.user) {
+        navigate(`/login?next=${encodeURIComponent(window.location.pathname + window.location.search)}`, { replace: true });
+        return;
+      }
+      const { data, error } = await supabase.schema("market").rpc("my_trade_partner_status");
+      if (cancelled) return;
+      if (error) {
+        setAccess("activate");
+        return;
+      }
+      const row = Array.isArray(data) ? data[0] : null;
+      if (!row?.seller_id) setAccess("activate");
+      else if (row.can_sell) setAccess("ok");
+      else if (row.renewal_due) setAccess("renewal");
+      else setAccess("activate");
+    })();
+    return () => { cancelled = true; };
+  }, [navigate]);
+
+  if (access === "loading") return <GateCard title="Sprawdzam dostęp sprzedażowy…" />;
+  if (access === "activate") return <GateCard title="Aktywuj Partnera Handlowego" body="Aby wystawiać własne produkty, usługi lub wynajem, aktywuj dostęp sprzedażowy na swoim koncie MySunrise. Pierwsze 12 miesięcy są bez opłaty rocznej." cta="Aktywuj Partnera Handlowego" to="/sprzedawca/partner" />;
+  if (access === "renewal") return <GateCard title="Odnowienie Partnera Handlowego" body="Twój 12-miesięczny okres startowy minął. Odnów członkostwo, aby dalej wystawiać nowe oferty. Zwykłe konto MySunrise pozostaje aktywne." cta="Przejdź do odnowienia" to="/sprzedawca/partner" />;
 
   if (requestedMode === "purchase" || requestedMode === "appointment" || requestedMode === "daily") {
     return <SprzedawcaV2 />;
   }
 
-  // Zachowujemy stare bezpośrednie linki do specjalistycznych kreatorów.
   if (type && type !== "produkt") return <DedicatedOfferWizard />;
 
   return (
@@ -78,4 +108,8 @@ export default function SprzedawcaWystaw() {
       </div>
     </main>
   );
+}
+
+function GateCard({ title, body, cta, to }: { title: string; body?: string; cta?: string; to?: string }) {
+  return <main className="min-h-screen px-4 py-8 sm:px-6" style={{ background: "var(--bg)", color: "var(--ink)" }}><div className="mx-auto max-w-2xl rounded-3xl p-6 sm:p-8" style={{ background: "var(--glass)", border: "1px solid rgba(200,150,90,.28)" }}><div className="text-xs font-semibold tracking-[.15em]" style={{ color: "var(--gold)" }}>SUNRISE MARKET</div><h1 className="mt-2 text-3xl font-semibold">{title}</h1>{body && <p className="mt-3 text-sm leading-6" style={{ color: "var(--mut)" }}>{body}</p>}{cta && to && <Link to={to} className="mt-5 inline-flex rounded-xl px-5 py-3 font-semibold text-black" style={{ background: "linear-gradient(135deg,#C8965A,#E8C896)" }}>{cta} →</Link>}</div></main>;
 }
