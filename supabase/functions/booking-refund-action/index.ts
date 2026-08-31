@@ -94,11 +94,7 @@ Deno.serve(async (req) => {
     const reversal = await mySunrise("reverse", orderId);
     if (reversal.status !== 200 || reversal.data?.ok !== true) {
       const reason = String(reversal.data?.reason ?? reversal.data?.error ?? "bonus_reversal_failed");
-      await service.from("booking_refunds").update({
-        status: "blocked_bonus",
-        last_error: reason,
-        updated_at: new Date().toISOString(),
-      }).eq("booking_id", bookingId);
+      await service.from("booking_refunds").update({ status: "blocked_bonus", last_error: reason, updated_at: new Date().toISOString() }).eq("booking_id", bookingId);
       if (reason === "points_already_used") {
         return json({ ok: false, error: "points_already_used", message: "Nie można wykonać automatycznego zwrotu, ponieważ punkty z tej rezerwacji zostały już wykorzystane. Wymagane jest rozliczenie operatora." }, 409);
       }
@@ -118,6 +114,7 @@ Deno.serve(async (req) => {
         if (!paymentIntent) throw new Error("Brak płatności Stripe do zwrotu");
         const refund = await stripe.refunds.create({
           payment_intent: paymentIntent,
+          amount: amountGrosz,
           metadata: { booking_id: bookingId, order_id: orderId, kind: "booking_full_refund" },
         }, { idempotencyKey: `booking-refund:${bookingId}` });
         externalRef = refund.id;
