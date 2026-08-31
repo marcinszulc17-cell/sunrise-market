@@ -3,6 +3,7 @@ import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { supabase } from "../lib/supabase";
 import SprzedawcaV2 from "./SprzedawcaV2";
 import DedicatedOfferWizard from "./DedicatedOfferWizard";
+import PrivateOfferWizard from "./PrivateOfferWizard";
 
 type PurchaseMode = "purchase" | "appointment" | "daily";
 
@@ -34,6 +35,7 @@ export default function SprzedawcaWystaw() {
   const [sp] = useSearchParams();
   const navigate = useNavigate();
   const [access, setAccess] = useState<"loading" | "ok" | "renewal" | "activate">("loading");
+  const [sellerType, setSellerType] = useState<string | null>(null);
   const type = sp.get("typ");
   const requestedMode = sp.get("mode") as PurchaseMode | null;
 
@@ -52,6 +54,7 @@ export default function SprzedawcaWystaw() {
         return;
       }
       const row = Array.isArray(data) ? data[0] : null;
+      setSellerType(row?.seller_type ? String(row.seller_type) : null);
       if (!row?.seller_id) setAccess("activate");
       else if (row.can_sell) setAccess("ok");
       else if (row.renewal_due) setAccess("renewal");
@@ -63,6 +66,10 @@ export default function SprzedawcaWystaw() {
   if (access === "loading") return <GateCard title="Sprawdzam dostęp sprzedażowy…" />;
   if (access === "activate") return <GateCard title="Aktywuj Partnera Handlowego" body="Aby wystawiać własne produkty, usługi lub wynajem, aktywuj dostęp sprzedażowy na swoim koncie MySunrise. Pierwsze 12 miesięcy są bez opłaty rocznej." cta="Aktywuj Partnera Handlowego" to="/sprzedawca/partner" />;
   if (access === "renewal") return <GateCard title="Odnowienie Partnera Handlowego" body="Twój 12-miesięczny okres startowy minął. Odnów członkostwo, aby dalej wystawiać nowe oferty. Zwykłe konto MySunrise pozostaje aktywne." cta="Przejdź do odnowienia" to="/sprzedawca/partner" />;
+
+  if (sellerType === "private_partner" && (!requestedMode || requestedMode === "purchase") && (!type || type === "produkt")) {
+    return <PrivateOfferWizard />;
+  }
 
   if (requestedMode === "purchase" || requestedMode === "appointment" || requestedMode === "daily") {
     return <SprzedawcaV2 />;
