@@ -8,6 +8,15 @@ const labels: Record<string, string> = {
   held: "Termin zablokowany", pending_payment: "Oczekuje na płatność",
   confirmed: "Potwierdzona", completed: "Zakończona", cancelled: "Anulowana", expired: "Wygasła",
 };
+const depositLabels: Record<string, string> = {
+  not_charged: "Niepobrana",
+  held: "Pobrana i zabezpieczona",
+  refunding: "Zwrot w toku",
+  refunded: "Zwrócona",
+  retaining: "Rozliczenie w toku",
+  retained: "Zatrzymana",
+  failed: "Wymaga ponownego rozliczenia",
+};
 const requestLabels: Record<string, string> = { pending: "Czeka na sprzedawcę", accepted: "Zaakceptowana", rejected: "Odrzucona", withdrawn: "Wycofana" };
 const bookingLabel = (r: BuyerBooking) => r.status === "pending_payment" && r.paid_at
   ? "Opłacona — czeka na akceptację"
@@ -100,7 +109,13 @@ export default function Rezerwacje() {
           <div className="flex flex-wrap items-start justify-between gap-3"><div><a href={`/produkt/${r.offer_id}`} className="font-semibold hover:underline">{r.title}</a><p className="mt-1 text-sm" style={{ color: "var(--mut)" }}>{r.booking_type === "appointment" ? date(r.starts_at, true) : `${date(r.starts_at, false)} – ${date(r.ends_at, false)} · ${r.units} dni`}</p></div><span className="rounded-full px-3 py-1 text-xs font-semibold" style={{ background: r.status === "confirmed" ? "rgba(34,197,94,.14)" : r.status === "pending_payment" && r.paid_at ? "rgba(200,150,90,.14)" : "var(--header)", border: "1px solid var(--line)" }}>{bookingLabel(r)}</span></div>
           {r.status === "pending_payment" && r.paid_at && <p className="mt-3 rounded-xl px-3 py-2 text-xs" style={{ background: "rgba(200,150,90,.08)", border: "1px solid rgba(200,150,90,.2)", color: "var(--mut)" }}>Płatność jest zaksięgowana, a termin nadal zarezerwowany dla Ciebie. Sprzedawca musi tylko zaakceptować rezerwację.</p>}
           <div className="mt-4 flex items-center justify-between text-sm"><span style={{ color: "var(--mut)" }}>{r.payment_provider === "stripe" ? "Karta / BLIK / P24" : r.payment_provider === "sunrise_pay" ? "Sunrise Pay" : ""}</span><strong>{zl(Number(r.amount_gross))}</strong></div>
-          {Number(r.deposit_gross) > 0 && <div className="mt-2 text-xs" style={{ color: "var(--mut)" }}>Kaucja zabezpieczająca: {zl(Number(r.deposit_gross))} · rozliczana osobno, poza ceną rezerwacji.</div>}
+          {Number(r.deposit_gross) > 0 && <div className="mt-3 rounded-xl px-3 py-3 text-xs" style={{ background: "var(--header)", border: "1px solid var(--line)", color: "var(--mut)" }}>
+            <div className="flex flex-wrap items-center justify-between gap-2"><span>Kaucja zabezpieczająca</span><b style={{ color: "var(--ink)" }}>{zl(Number(r.deposit_gross))}</b></div>
+            <div className="mt-1">Status: <b style={{ color: r.deposit_status === "failed" ? "#fca5a5" : r.deposit_status === "refunded" ? "var(--green)" : "var(--gold)" }}>{depositLabels[r.deposit_status] || r.deposit_status}</b></div>
+            <div className="mt-1">Kaucja została pobrana razem z płatnością za rezerwację, ale jest rozliczana oddzielnie i nie generuje cashbacku.</div>
+            {r.deposit_status === "retained" && <div className="mt-1">Kwota zatrzymana: <b>{zl(Number(r.deposit_retained_gross || r.deposit_gross))}</b>.</div>}
+            {r.deposit_resolution_note && <div className="mt-1">Informacja sprzedawcy: {r.deposit_resolution_note}</div>}
+          </div>}
 
           {request && <div className="mt-4 rounded-2xl p-4 text-sm" style={{ background:"var(--header)", border:"1px solid var(--line)" }}>
             <div className="flex flex-wrap items-center justify-between gap-2"><b>{request.request_type === "cancel" ? "Prośba o anulowanie" : "Prośba o zmianę terminu"}</b><span className="rounded-full px-2.5 py-1 text-xs" style={{ border:"1px solid var(--line)", color: request.status === "accepted" ? "var(--green)" : request.status === "rejected" ? "#fca5a5" : "var(--gold)" }}>{requestLabels[request.status] || request.status}</span></div>
