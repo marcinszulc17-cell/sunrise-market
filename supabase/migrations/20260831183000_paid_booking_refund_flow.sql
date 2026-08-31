@@ -102,3 +102,4 @@ end; $$;
 revoke all on function market.seller_booking_refund_prepare(uuid) from public;
 grant execute on function market.seller_booking_refund_prepare(uuid) to authenticated;
 revoke all on function market.booking_refund_finalize(uuid,text) from public;
+grant execute on function market.booking_refund_finalize(uuid,text) to service_role;
