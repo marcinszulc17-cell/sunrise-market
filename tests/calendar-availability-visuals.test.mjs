@@ -24,5 +24,5 @@ test('resource time off is loaded in one bulk call and rendered in resource colu
 test('overlapping appointment events are assigned visual lanes', () => {
   assert.match(calendar, /layoutTimedEvents/);
   assert.match(calendar, /laneCount/);
-  assert.match(calendar, /width=`calc\(\$\{width\}% - 6px\)`/);
+  assert.match(calendar, /width:`calc\(\$\{width\}% - 6px\)`/);
 });
