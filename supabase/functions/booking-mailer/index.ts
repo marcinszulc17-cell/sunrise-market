@@ -2,10 +2,20 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const json = (body: unknown, status = 200) => new Response(JSON.stringify(body), { status, headers: { "content-type": "application/json", "cache-control": "no-store" } });
 const esc = (v: unknown) => String(v ?? "").replace(/[&<>"']/g, (c) => ({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[c] || c));
-const fmt = (iso: string, withTime = true) => new Intl.DateTimeFormat("pl-PL", { timeZone: "Europe/Warsaw", dateStyle: "long", ...(withTime ? { timeStyle: "short" } : {}) }).format(new Date(iso));
+const safeTimezone = (value: unknown) => {
+  const timezone = typeof value === "string" && value.trim() ? value.trim() : "Europe/Warsaw";
+  try {
+    new Intl.DateTimeFormat("pl-PL", { timeZone: timezone }).format(new Date());
+    return timezone;
+  } catch {
+    return "Europe/Warsaw";
+  }
+};
+const fmt = (iso: string, timezone: string, withTime = true) => new Intl.DateTimeFormat("pl-PL", { timeZone: timezone, dateStyle: "long", ...(withTime ? { timeStyle: "short" } : {}) }).format(new Date(iso));
 
 function copy(event: string, recipient: string, p: any) {
-  const when = p.booking_type === "daily" ? `${fmt(p.starts_at, false)} – ${fmt(p.ends_at, false)}` : fmt(p.starts_at, true);
+  const timezone = safeTimezone(p.timezone);
+  const when = p.booking_type === "daily" ? `${fmt(p.starts_at, timezone, false)} – ${fmt(p.ends_at, timezone, false)}` : fmt(p.starts_at, timezone, true);
   const price = `${Number(p.amount_gross || 0).toLocaleString("pl-PL", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} zł`;
   const seller = recipient === "seller";
   const map: Record<string, [string,string]> = {
@@ -17,7 +27,8 @@ function copy(event: string, recipient: string, p: any) {
     rescheduled: [seller ? "Termin rezerwacji został zmieniony" : "Nowy termin Twojej rezerwacji", seller ? "Termin lub przypisany zasób rezerwacji został zmieniony. Poniżej znajdziesz aktualne dane." : "Termin Twojej rezerwacji został zmieniony. Poniżej znajdziesz aktualne dane."],
   };
   const [subject, lead] = map[event] || ["Aktualizacja rezerwacji Sunrise Market", "Status rezerwacji został zaktualizowany."];
-  const html = `<!doctype html><html><body style="margin:0;background:#07070f;color:#f5f2ea;font-family:Arial,sans-serif"><div style="max-width:620px;margin:auto;padding:32px 20px"><div style="color:#d6aa6d;font-weight:700;letter-spacing:.12em">SUNRISE MARKET</div><h1 style="font-size:26px;margin:16px 0">${esc(subject)}</h1><p style="color:#c9c5bd;line-height:1.6">${esc(lead)}</p><div style="margin:24px 0;padding:20px;border:1px solid #2b2932;border-radius:16px;background:#111018"><div style="font-size:18px;font-weight:700">${esc(p.title)}</div><p style="margin:10px 0 0;color:#c9c5bd"><b>Termin:</b> ${esc(when)}<br><b>Kwota:</b> ${esc(price)}<br><b>Status:</b> ${esc(p.status)}</p></div><a href="https://sunrisemarket.pl/${seller ? "sprzedawca/rezerwacje" : "rezerwacje"}" style="display:inline-block;padding:12px 18px;border-radius:12px;background:#d6aa6d;color:#07070f;text-decoration:none;font-weight:700">Zobacz rezerwację</a><p style="margin-top:28px;font-size:12px;color:#77727e">Wiadomość wysłana automatycznie przez Sunrise Market.</p></div></body></html>`;
+  const resource = p.resource_name ? `<br><b>Pracownik / zasób:</b> ${esc(p.resource_name)}` : "";
+  const html = `<!doctype html><html><body style="margin:0;background:#07070f;color:#f5f2ea;font-family:Arial,sans-serif"><div style="max-width:620px;margin:auto;padding:32px 20px"><div style="color:#d6aa6d;font-weight:700;letter-spacing:.12em">SUNRISE MARKET</div><h1 style="font-size:26px;margin:16px 0">${esc(subject)}</h1><p style="color:#c9c5bd;line-height:1.6">${esc(lead)}</p><div style="margin:24px 0;padding:20px;border:1px solid #2b2932;border-radius:16px;background:#111018"><div style="font-size:18px;font-weight:700">${esc(p.title)}</div><p style="margin:10px 0 0;color:#c9c5bd"><b>Termin:</b> ${esc(when)}${resource}<br><b>Kwota:</b> ${esc(price)}<br><b>Status:</b> ${esc(p.status)}</p></div><a href="https://sunrisemarket.pl/${seller ? "sprzedawca/rezerwacje" : "rezerwacje"}" style="display:inline-block;padding:12px 18px;border-radius:12px;background:#d6aa6d;color:#07070f;text-decoration:none;font-weight:700">Zobacz rezerwację</a><p style="margin-top:28px;font-size:12px;color:#77727e">Wiadomość wysłana automatycznie przez Sunrise Market.</p></div></body></html>`;
   return { subject, html };
 }
 
