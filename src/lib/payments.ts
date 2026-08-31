@@ -15,17 +15,68 @@ export async function topupWallet(amountPln: number, returnTo?: string): Promise
 }
 
 // Zamiana punktów SFC na saldo Sunrise Pay. MySunrise pozostaje jedynym
-// źródłem prawdy o pieniądzach; 1 pkt = 1 zł. Każde żądanie ma własny klucz
-// idempotencji, więc retry po timeoutcie nie może podwójnie zaksięgować konwersji.
+// źródłem prawdy o pieniądzach; 1 pkt = 1 zł. Klucz idempotencji jest trwały
+// dla użytkownika + kwoty aż do potwierdzonego sukcesu. Dzięki temu timeout,
+// odświeżenie strony lub ręczny retry nie może wykonać tej samej konwersji drugi raz.
 export type RedeemResult = { available: boolean; balance?: number; points?: number; converted?: number; error?: string };
+
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+const redeemAttemptStorageKey = (userId: string, amount: number) => `sunrise-market:redeem:${userId}:${amount.toFixed(2)}`;
+
+function getStoredAttempt(key: string): string | null {
+  try {
+    const value = globalThis.localStorage?.getItem(key) ?? null;
+    return value && UUID_RE.test(value) ? value : null;
+  } catch {
+    return null;
+  }
+}
+
+function saveAttempt(key: string, value: string) {
+  try { globalThis.localStorage?.setItem(key, value); } catch { /* storage is optional */ }
+}
+
+function clearAttempt(key: string) {
+  try { globalThis.localStorage?.removeItem(key); } catch { /* storage is optional */ }
+}
+
 export async function redeemPoints(amountPln: number): Promise<RedeemResult> {
-  const idempotencyKey = crypto.randomUUID();
+  const amount = Math.round(Number(amountPln) * 100) / 100;
+  if (!Number.isFinite(amount) || amount <= 0) return { available: true, error: "Nieprawidłowa liczba punktów" };
+
+  const { data: { user } } = await supabase.auth.getUser();
+  const storageKey = redeemAttemptStorageKey(user?.id ?? "anonymous", amount);
+  const idempotencyKey = getStoredAttempt(storageKey) ?? crypto.randomUUID();
+  saveAttempt(storageKey, idempotencyKey);
+
   const { data, error } = await supabase.functions.invoke("wallet-redeem-points", {
-    body: { amount: amountPln, idempotency_key: idempotencyKey },
+    body: { amount, idempotency_key: idempotencyKey },
   });
-  if (data) return data as RedeemResult;
-  if (error) return { available: true, error: error.message || "Nie udało się zamienić punktów" };
-  return { available: false, error: "Nie udało się połączyć z Sunrise Pay" };
+
+  if (data) {
+    clearAttempt(storageKey);
+    return data as RedeemResult;
+  }
+
+  if (error) {
+    let body: any = null;
+    try {
+      const context = (error as any)?.context;
+      if (context?.clone) body = await context.clone().json();
+      else if (context?.json) body = await context.json();
+    } catch { /* keep the same idempotency key for an uncertain retry */ }
+
+    if (body && typeof body === "object") {
+      return {
+        ...body,
+        available: body.available !== false,
+        error: body.error || error.message || "Nie udało się zamienić punktów",
+      } as RedeemResult;
+    }
+    return { available: true, error: error.message || "Nie udało się zamienić punktów" };
+  }
+
+  return { available: true, error: "Nie udało się połączyć z Sunrise Pay" };
 }
 
 // Historia operacji powstałych w Sunrise Market. Nie jest źródłem salda ani
