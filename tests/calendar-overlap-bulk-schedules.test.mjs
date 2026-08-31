@@ -14,12 +14,15 @@ test('seller calendar loads resource schedules in one bulk RPC', () => {
 test('overlapping appointment events are assigned to side-by-side lanes', () => {
   assert.match(calendar, /function layoutTimedEvents/);
   assert.match(calendar, /laneEnds\.findIndex/);
-  assert.match(calendar, /left:`calc\(\$\{lane\*100\/lanes\}% \+ 4px\)`/);
-  assert.match(calendar, /width:`calc\(\$\{100\/lanes\}% - 8px\)`/);
+  assert.match(calendar, /laneCount=Math\.max\(1,laneEnds\.length\)/);
+  assert.match(calendar, /const width=100\/laneCount,left=lane\*width/);
+  assert.match(calendar, /left:`calc\(\$\{left\}% \+ 4px\)`/);
+  assert.match(calendar, /width:`calc\(\$\{width\}% - 6px\)`/);
 });
 
 test('bulk schedule RPC stays authenticated-only', () => {
   assert.match(migration, /seller_booking_resources_schedule_bulk/);
+  assert.match(migration, /if auth\.uid\(\) is null then raise exception 'Brak autoryzacji'/i);
   assert.match(migration, /revoke all on function market\.seller_booking_resources_schedule_bulk\(\) from public/i);
   assert.match(migration, /revoke execute on function market\.seller_booking_resources_schedule_bulk\(\) from anon/i);
   assert.match(migration, /grant execute on function market\.seller_booking_resources_schedule_bulk\(\) to authenticated/i);
