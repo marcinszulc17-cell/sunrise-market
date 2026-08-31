@@ -1,5 +1,6 @@
 import { getOffer } from "./api";
-import { bookingDailyQuoteV2 } from "./bookingV2";
+import { bookingDailyQuoteV2, bookingUnavailableDaysV2 } from "./bookingV2";
+import { cashbackFor, getMarketConfig } from "./marketConfig";
 
 type PurchaseMode = "purchase" | "appointment" | "daily";
 
@@ -82,6 +83,13 @@ function insertQuote(article: HTMLElement, offerId: string) {
   result.innerHTML = '<span style="color:var(--mut)">Wybierz daty</span>';
   wrap.appendChild(result);
 
+  const cashback = document.createElement("div");
+  cashback.className = "mt-2 hidden rounded-xl px-3 py-2 font-semibold";
+  cashback.style.background = "rgba(34,197,94,.08)";
+  cashback.style.border = "1px solid rgba(34,197,94,.18)";
+  cashback.style.color = "var(--green)";
+  wrap.appendChild(cashback);
+
   const link = document.createElement("a");
   link.className = "mt-2 block rounded-xl px-3 py-2 text-center font-semibold";
   link.style.background = "linear-gradient(135deg,#C8965A,#E8C896)";
@@ -101,32 +109,55 @@ function insertQuote(article: HTMLElement, offerId: string) {
     if (fromDay) params.set("from", fromDay);
     if (toDay) params.set("to", toDay);
     link.href = `/produkt/${encodeURIComponent(offerId)}?${params.toString()}`;
+    link.style.pointerEvents = "auto";
+    link.style.opacity = "1";
+    cashback.classList.add("hidden");
 
     if (!fromDay || !toDay || toDay <= fromDay) {
       result.innerHTML = '<span style="color:var(--mut)">Wybierz prawidłowy zakres</span>';
       return;
     }
 
-    result.innerHTML = '<span style="color:var(--mut)">Liczenie ceny…</span>';
+    result.innerHTML = '<span style="color:var(--mut)">Sprawdzam dostępność i cenę…</span>';
     try {
-      const quote = await bookingDailyQuoteV2(offerId, fromDay, toDay);
+      const [quote, unavailable, config] = await Promise.all([
+        bookingDailyQuoteV2(offerId, fromDay, toDay),
+        bookingUnavailableDaysV2(offerId, fromDay, toDay),
+        getMarketConfig(),
+      ]);
       if (current !== request) return;
-      if (quote.days <= 0) {
-        result.innerHTML = '<span style="color:var(--mut)">Termin niedostępny lub poza zakresem</span>';
+
+      const conflict = unavailable.some((row) => row.day >= fromDay && row.day < toDay);
+      if (conflict) {
+        result.innerHTML = '<strong style="color:#fca5a5">Wybrany okres jest już zajęty</strong>';
+        link.textContent = "Wybierz inne daty";
+        link.style.pointerEvents = "none";
+        link.style.opacity = ".55";
         return;
       }
+
+      if (quote.days <= 0) {
+        result.innerHTML = '<span style="color:var(--mut)">Termin niedostępny lub poza zakresem</span>';
+        link.textContent = "Sprawdź w kalendarzu";
+        return;
+      }
+
       result.replaceChildren();
       const days = document.createElement("span");
       days.style.color = "var(--mut)";
-      days.textContent = `${quote.days} ${quote.days === 1 ? "dzień" : "dni"}`;
+      days.textContent = `${quote.days} ${quote.days === 1 ? "dzień" : "dni"} · dostępne`;
       const price = document.createElement("strong");
       price.style.color = "var(--gold)";
       price.textContent = money(quote.base);
       result.append(days, price);
+
+      const cashbackAmount = cashbackFor(quote.base, config.cashbackRate);
+      cashback.textContent = `Cashback ${Math.round(config.cashbackRate * 10000) / 100}% · +${money(cashbackAmount)}`;
+      cashback.classList.remove("hidden");
       link.textContent = `Zarezerwuj · ${money(quote.base)}`;
     } catch {
       if (current !== request) return;
-      result.innerHTML = '<span style="color:var(--mut)">Nie udało się policzyć — sprawdź w kalendarzu</span>';
+      result.innerHTML = '<span style="color:var(--mut)">Nie udało się sprawdzić — zobacz pełny kalendarz</span>';
       link.textContent = "Sprawdź i zarezerwuj";
     }
   };
