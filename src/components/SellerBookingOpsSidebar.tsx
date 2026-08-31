@@ -7,6 +7,7 @@ type Block = { id: string; offer_id: string; title: string; starts_at: string; e
 type Offer = { offer_id: string; title: string; status: string };
 type Resource = { id: string; name: string; kind: string; description: string | null; active: boolean };
 type PaidBooking = { id: string; title: string; buyer_name: string | null; buyer_email: string | null; amount_gross: number; deposit_gross?: number; paid_at: string | null; status: string; payment_provider: string | null };
+type RefundIssue = { booking_id: string; order_id: string; title: string; buyer_email: string | null; refund_status: string; amount_gross: number; payment_provider: string; last_error: string | null; updated_at: string };
 
 type Props = {
   blocks: Block[]; offers: Offer[]; resources: Resource[]; offerId: string; start: string; end: string; reason: string; busy: boolean;
@@ -15,11 +16,13 @@ type Props = {
 };
 
 const resourceKindLabel: Record<string, string> = { staff: "Pracownik", vehicle: "Pojazd", property: "Nieruchomość", room: "Pomieszczenie", equipment: "Sprzęt", other: "Zasób" };
+const refundStatusLabel: Record<string, string> = { preparing: "Zwrot rozpoczęty", blocked_bonus: "Wymaga operatora — bonusy wykorzystane", payment_failed: "Błąd zwrotu płatności", finalize_failed: "Płatność zwrócona — finalizacja statusów" };
 const dt = (iso: string) => new Date(iso).toLocaleString("pl-PL", { dateStyle: "short", timeStyle: "short" });
 const pln = (value: number) => Number(value || 0).toLocaleString("pl-PL", { style: "currency", currency: "PLN" });
 
 export default function SellerBookingOpsSidebar({ blocks, offers, resources, offerId, start, end, reason, busy, onOfferIdChange, onStartChange, onEndChange, onReasonChange, onAddBlock, onDeleteBlock }: Props) {
   const [paidBookings, setPaidBookings] = useState<PaidBooking[]>([]);
+  const [refundIssues, setRefundIssues] = useState<RefundIssue[]>([]);
   const [refundBusyId, setRefundBusyId] = useState<string | null>(null);
   const [refundMsg, setRefundMsg] = useState("");
 
@@ -27,7 +30,13 @@ export default function SellerBookingOpsSidebar({ blocks, offers, resources, off
     const { data, error } = await supabase.rpc("seller_booking_dashboard_v2");
     if (!error) setPaidBookings(((data || []) as PaidBooking[]).filter((r) => !!r.paid_at && ["held", "pending_payment", "confirmed"].includes(r.status)));
   }
-  useEffect(() => { void loadPaidBookings(); }, []);
+
+  async function loadRefundIssues() {
+    const { data, error } = await supabase.rpc("seller_booking_refund_status_dashboard");
+    if (!error) setRefundIssues((data || []) as RefundIssue[]);
+  }
+
+  useEffect(() => { void Promise.all([loadPaidBookings(), loadRefundIssues()]); }, []);
 
   async function cancelAndRefund(r: PaidBooking) {
     const total = Number(r.amount_gross || 0) + Number(r.deposit_gross || 0);
@@ -38,10 +47,12 @@ export default function SellerBookingOpsSidebar({ blocks, offers, resources, off
       if (error) throw error;
       if (!data?.ok) throw new Error(data?.message || data?.error || "Nie udało się wykonać zwrotu");
       setRefundMsg(`Zwrot ${pln(Number(data.refunded ?? total))} wykonany. Rezerwacja została anulowana. ✅`);
-      await loadPaidBookings();
+      await Promise.all([loadPaidBookings(), loadRefundIssues()]);
       window.setTimeout(() => window.location.reload(), 700);
-    } catch (e) { setRefundMsg("Zwrot nie został wykonany: " + (e as Error).message); }
-    finally { setRefundBusyId(null); }
+    } catch (e) {
+      setRefundMsg("Zwrot nie został wykonany: " + (e as Error).message);
+      await loadRefundIssues();
+    } finally { setRefundBusyId(null); }
   }
 
   const activeBlocks = [...blocks].filter((block) => new Date(block.ends_at).getTime() >= Date.now()).sort((a, b) => new Date(a.starts_at).getTime() - new Date(b.starts_at).getTime());
@@ -49,6 +60,20 @@ export default function SellerBookingOpsSidebar({ blocks, offers, resources, off
 
   return <aside className="space-y-5">
     <SellerBookingChangeRequests />
+
+    {refundIssues.length > 0 && <div className="rounded-2xl p-5" style={{ background: "rgba(239,68,68,.08)", border: "1px solid rgba(239,68,68,.45)" }}>
+      <div className="flex items-start justify-between gap-3"><div><div className="text-[10px] font-semibold tracking-[.14em]" style={{ color: "#fca5a5" }}>WYMAGA UWAGI</div><h2 className="mt-1 text-lg font-semibold">Niedokończone zwroty</h2></div><span className="rounded-full px-2.5 py-1 text-xs font-bold" style={{ background: "rgba(239,68,68,.15)", color: "#fca5a5" }}>{refundIssues.length}</span></div>
+      <p className="mt-2 text-xs leading-5" style={{ color: "var(--mut)" }}>Te przypadki nie znikają po odświeżeniu. Nie wykonuj drugiego ręcznego zwrotu, jeśli system informuje, że płatność została już oddana.</p>
+      <div className="mt-3 space-y-2">
+        {refundIssues.map((issue) => <div key={issue.booking_id} className="rounded-xl p-3 text-sm" style={{ background: "var(--header)", border: "1px solid var(--line)" }}>
+          <div className="font-semibold">{issue.title}</div>
+          <div className="mt-1 text-xs font-semibold" style={{ color: issue.refund_status === "finalize_failed" ? "#f59e0b" : "#fca5a5" }}>{refundStatusLabel[issue.refund_status] || issue.refund_status}</div>
+          <div className="mt-1 text-xs" style={{ color: "var(--mut)" }}>{issue.buyer_email || "Klient"} · {pln(issue.amount_gross)} · {issue.payment_provider} · {dt(issue.updated_at)}</div>
+          {issue.last_error && <div className="mt-2 break-words rounded-lg px-2.5 py-2 text-xs" style={{ background: "rgba(239,68,68,.07)", color: "var(--mut)" }}>{issue.last_error}</div>}
+          <Link to={`/sprzedawca/rezerwacje#booking-${issue.booking_id}`} className="mt-2 inline-block text-xs font-semibold" style={{ color: "var(--gold)" }}>Otwórz rezerwację →</Link>
+        </div>)}
+      </div>
+    </div>}
 
     <div className="rounded-2xl p-5" style={{ background: "var(--glass)", border: "1px solid rgba(239,68,68,.25)" }}>
       <div className="text-[10px] font-semibold tracking-[.14em]" style={{ color: "#fca5a5" }}>ZWROTY OPŁACONYCH</div>
