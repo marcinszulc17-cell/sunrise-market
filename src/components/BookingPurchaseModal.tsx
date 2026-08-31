@@ -158,6 +158,7 @@ export default function BookingPurchaseModal({ offerId, config, open, onClose }:
   const total = activeConfig.booking_type === "appointment"
     ? Number(selected?.amount_gross ?? selectedService?.price_gross ?? activeConfig.price_per_unit)
     : rentalBase + fees;
+  const amountDue = total + deposit;
   const cashback = cashbackFor(total, cashbackRate);
   const ready = activeConfig.booking_type === "appointment" ? Boolean(selected) : rentalUnits >= 1;
   const invoiceReady = invoiceComplete(invoice);
@@ -304,7 +305,7 @@ export default function BookingPurchaseModal({ offerId, config, open, onClose }:
                 <span>Rezerwacja do {shortDate(latest)}</span>
               </div>
               {fromDay && toDay && rentalUnits === 0 && !error && <Info>Sprawdzam cenę i dostępność wybranego okresu…</Info>}
-              {rentalUnits > 0 && <div className="mt-4 rounded-2xl p-4" style={{ background: "var(--glass)", border: "1px solid var(--line)" }}><PriceRow label={`${rentalUnits} ${rentalUnits === 1 ? "dzień" : "dni"}`} value={rentalBase} strong />{fees > 0 && <PriceRow label="Przygotowanie / opłata dodatkowa" value={fees} />}{deposit > 0 && <PriceRow label="Kaucja zabezpieczająca" value={deposit} muted />}</div>}
+              {rentalUnits > 0 && <div className="mt-4 rounded-2xl p-4" style={{ background: "var(--glass)", border: "1px solid var(--line)" }}><PriceRow label={`${rentalUnits} ${rentalUnits === 1 ? "dzień" : "dni"}`} value={rentalBase} strong />{fees > 0 && <PriceRow label="Przygotowanie / opłata dodatkowa" value={fees} />}{deposit > 0 && <PriceRow label="Kaucja zabezpieczająca (pobierana teraz)" value={deposit} muted />}</div>}
             </section>
           </>}
 
@@ -335,12 +336,13 @@ export default function BookingPurchaseModal({ offerId, config, open, onClose }:
               </>}
             </div>
             <div className="my-5 border-t" style={{ borderColor: "var(--line)" }} />
-            <div className="flex items-end justify-between gap-3"><span className="text-sm">Do zapłaty</span><strong className="font-display text-3xl" style={{ color: "var(--gold)" }}>{zl(total)}</strong></div>
+            {deposit > 0 && <div className="mb-2 space-y-1 text-xs" style={{ color: "var(--mut)" }}><div className="flex justify-between gap-3"><span>Rezerwacja</span><span>{zl(total)}</span></div><div className="flex justify-between gap-3"><span>Kaucja pobierana teraz</span><span>{zl(deposit)}</span></div></div>}
+            <div className="flex items-end justify-between gap-3"><span className="text-sm">Do zapłaty teraz</span><strong className="font-display text-3xl" style={{ color: "var(--gold)" }}>{zl(amountDue)}</strong></div>
             {cashback > 0 && <div className="mt-3 rounded-xl px-3 py-2 text-sm" style={{ background: "rgba(122,184,154,.12)", color: "var(--green)" }}>+ {zl(cashback)} cashbacku na portfel</div>}
-            {deposit > 0 && <div className="mt-3 text-xs" style={{ color: "var(--mut)" }}>Kaucja {zl(deposit)} stanowi zabezpieczenie i nie jest naliczana do cashbacku.</div>}
+            {deposit > 0 && <div className="mt-3 text-xs" style={{ color: "var(--mut)" }}>Kaucja {zl(deposit)} stanowi zabezpieczenie, jest pobierana razem z płatnością i nie jest naliczana do cashbacku ani prowizji.</div>}
             <InvoiceDetailsFields value={invoice} onChange={setInvoice} compact />
             <div className="mt-5 space-y-2 text-xs" style={{ color: "var(--mut)" }}><div>✓ Bezpieczna płatność</div><div>✓ Termin blokowany na 15 minut</div><div>✓ {activeConfig.instant_booking ? "Potwierdzenie automatycznie po płatności" : "Potwierdzenie po akceptacji sprzedawcy"}</div></div>
-            <button type="button" disabled={busy || total <= 0 || !ready || !invoiceReady} onClick={pay} className="mt-5 w-full rounded-2xl py-3.5 font-bold text-black disabled:opacity-45" style={{ background: "linear-gradient(135deg,#C8965A,#E8C896)" }}>{busy ? "Rezerwuję i przekierowuję…" : !invoiceReady ? "Uzupełnij dane do faktury" : ready ? `Rezerwuję i płacę ${zl(total)}` : activeConfig.booking_type === "appointment" ? "Najpierw wybierz termin" : "Najpierw wybierz daty"}</button>
+            <button type="button" disabled={busy || amountDue <= 0 || !ready || !invoiceReady} onClick={pay} className="mt-5 w-full rounded-2xl py-3.5 font-bold text-black disabled:opacity-45" style={{ background: "linear-gradient(135deg,#C8965A,#E8C896)" }}>{busy ? "Rezerwuję i przekierowuję…" : !invoiceReady ? "Uzupełnij dane do faktury" : ready ? `Rezerwuję i płacę ${zl(amountDue)}` : activeConfig.booking_type === "appointment" ? "Najpierw wybierz termin" : "Najpierw wybierz daty"}</button>
           </div>
         </aside>
       </div>
