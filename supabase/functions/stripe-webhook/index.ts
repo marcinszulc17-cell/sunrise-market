@@ -85,6 +85,51 @@ async function settleSellerPayouts(sb: any, orderId: string) {
     if (!settled) throw new Error(`MySunrise seller credit failed: ${credited.data?.message ?? credited.data?.error ?? credited.status}`);
   }
 }
+async function settleAmbassadorCommission(sb: any, orderId: string, email: string) {
+  try {
+    await sb.rpc("enqueue_ambassador_commission", { p_order: orderId });
+    const { data: outbox, error } = await sb.from("ambassador_commission_outbox")
+      .select("id,status,amount_net,attempts")
+      .eq("order_id", orderId)
+      .maybeSingle();
+    if (error) throw error;
+    if (!outbox || ["sent", "pending_vat", "pending_identity", "reversed"].includes(String(outbox.status))) return;
+
+    const amountNet = Math.round(Math.max(0, Number(outbox.amount_net ?? 0)) * 100) / 100;
+    if (amountNet <= 0) return;
+    const attempts = Number(outbox.attempts ?? 0) + 1;
+    const now = new Date().toISOString();
+    const referral = await pay("mkt-referral", {
+      action: "sale",
+      email,
+      order_id: orderId,
+      amount_net: amountNet,
+      description: "Zakup prowizyjny w Sunrise Market (karta)",
+    });
+    const reason = String(referral.data?.reason ?? referral.data?.error ?? "");
+    const noCommission = referral.status === 200 && referral.data?.ok === false && ["not_referred", "no_user", "zero_amount"].includes(reason);
+    const settled = referral.status === 200 && referral.data?.ok === true;
+
+    await sb.from("ambassador_commission_outbox").update({
+      status: settled || noCommission ? "sent" : "failed",
+      attempts,
+      last_error: settled ? null : noCommission ? `not_applicable:${reason}` : String(referral.data?.error ?? referral.data?.reason ?? referral.status).slice(0, 1000),
+      sent_at: settled || noCommission ? now : null,
+      updated_at: now,
+    }).eq("id", outbox.id).neq("status", "sent");
+  } catch (e) {
+    console.error("ambassador settlement failed", (e as Error).message);
+    try {
+      const { data: outbox } = await sb.from("ambassador_commission_outbox").select("id,attempts,status").eq("order_id", orderId).maybeSingle();
+      if (outbox && outbox.status !== "reversed") await sb.from("ambassador_commission_outbox").update({
+        status: "failed",
+        attempts: Number(outbox.attempts ?? 0) + 1,
+        last_error: String((e as Error).message ?? e).slice(0, 1000),
+        updated_at: new Date().toISOString(),
+      }).eq("id", outbox.id).neq("status", "sent");
+    } catch {}
+  }
+}
 async function creditTopup(sb: any, s: any) {
   const topupId = String(s.metadata?.topup_id ?? "");
   const userId = String(s.metadata?.user_id ?? "");
@@ -175,8 +220,8 @@ async function settleCardOrder(sb: any, s: any, stripe: any) {
       const { error: bookingError } = await sb.rpc("confirm_paid_booking", { p_order_id: orderId, p_payment_provider: "stripe" });
       if (bookingError) throw bookingError;
     }
+    const email = String(s.metadata?.user_email ?? s.customer_details?.email ?? s.customer_email ?? "").trim();
     if (Number(ord.cashback_amount) > 0) {
-      const email = String(s.metadata?.user_email ?? s.customer_details?.email ?? s.customer_email ?? "").trim();
       if (!email) throw new Error("Brak e-maila do naliczenia cashbacku");
       const pointsKey = await uuidv5(`market:points:${orderId}`);
       const points = await pay("pay-credit-points", {
@@ -189,6 +234,7 @@ async function settleCardOrder(sb: any, s: any, stripe: any) {
       if (points.status !== 200 || points.data?.ok !== true) throw new Error(`MySunrise cashback failed: ${points.data?.message ?? points.data?.error ?? points.status}`);
     }
     await settleSellerPayouts(sb, String(orderId));
+    if (email) await settleAmbassadorCommission(sb, String(orderId), email);
     const now = new Date().toISOString();
     const { error: completedError } = await sb.from("orders").update({
       card_settlement_status: "settled",
@@ -207,15 +253,6 @@ async function settleCardOrder(sb: any, s: any, stripe: any) {
     }).eq("id", orderId).eq("card_settlement_status", "processing");
     throw error;
   }
-
-  try {
-    const email = s.metadata?.user_email ?? s.customer_details?.email ?? null;
-    if (email) {
-      const { data: ownItems } = await sb.from("order_items").select("qty,unit_price_gross,offers!inner(fulfillment_provider)").eq("order_id", orderId).eq("offers.fulfillment_provider", "mysunrise");
-      const ownNet = (ownItems ?? []).reduce((a: number, r: any) => a + Number(r.unit_price_gross ?? 0) * Number(r.qty ?? 0), 0);
-      if (ownNet > 0) await pay("mkt-referral", { action: "sale", email, order_id: orderId, amount_net: ownNet, description: "Zakup marki własnej w Sunrise Market (karta)" });
-    }
-  } catch {}
 }
 
 Deno.serve(async (req) => {
