@@ -47,6 +47,11 @@ async function payCredit(userRef: string, amountGrosz: number, orderId: string, 
   return data;
 }
 
+async function abortRefund(service: any, bookingId: string, message: string) {
+  const { error } = await service.rpc("booking_refund_abort", { p_booking: bookingId, p_error: message.slice(0, 1000) });
+  if (error) console.error("booking refund abort failed", error.message);
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: cors });
   if (req.method !== "POST") return json({ ok: false, error: "method_not_allowed" }, 405);
@@ -81,8 +86,11 @@ Deno.serve(async (req) => {
     const reversal = await bridge("reverse", orderId);
     if (!reversal.ok) {
       const reason = String(reversal.data?.reason ?? reversal.data?.error ?? "bonus_reversal_failed");
-      await service.from("booking_refunds").update({ status: reason === "points_already_used" ? "blocked_bonus" : "payment_failed", last_error: reason, updated_at: new Date().toISOString() }).eq("booking_id", bookingId);
-      if (reason === "points_already_used") return json({ ok: false, error: "bonus_points_already_used", message: "Nie można automatycznie anulować tej opłaconej rezerwacji, ponieważ część punktów cashback/prowizji została już wykorzystana. Wymagane jest rozliczenie operatora." }, 409);
+      if (reason === "points_already_used") {
+        await service.from("booking_refunds").update({ status: "blocked_bonus", last_error: reason, updated_at: new Date().toISOString() }).eq("booking_id", bookingId);
+        await abortRefund(service, bookingId, reason);
+        return json({ ok: false, error: "bonus_points_already_used", message: "Nie można automatycznie anulować tej opłaconej rezerwacji, ponieważ część punktów cashback/prowizji została już wykorzystana. Wymagane jest rozliczenie operatora." }, 409);
+      }
       throw new Error(`Nie udało się cofnąć bonusów: ${reason}`);
     }
     bonusesReversed = true;
@@ -105,18 +113,23 @@ Deno.serve(async (req) => {
       const refund = await stripe.refunds.create({ payment_intent: paymentIntent, amount: amountGrosz, metadata: { booking_id: bookingId, order_id: orderId, kind: "booking_full_refund" } }, { idempotencyKey: `booking-full-refund:${bookingId}` });
       externalRef = refund.id;
       paymentRefunded = true;
-    } else throw new Error("Nieobsługiwana metoda płatności");
+    } else {
+      throw new Error("Nieobsługiwana metoda płatności");
+    }
 
     const { data: finalized, error: finalizeError } = await service.rpc("booking_refund_finalize", { p_booking: bookingId, p_external_ref: externalRef });
     if (finalizeError || finalized?.ok !== true) {
       await service.from("booking_refunds").update({ status: "finalize_failed", external_ref: externalRef || null, last_error: String(finalizeError?.message ?? "finalize_failed"), updated_at: new Date().toISOString() }).eq("booking_id", bookingId);
       return json({ ok: false, error: "refund_paid_finalize_pending", message: "Płatność została zwrócona, ale finalizacja statusu rezerwacji wymaga ponowienia. Nie wykonuj drugiego ręcznego zwrotu." }, 500);
     }
+
     return json({ ok: true, booking_id: bookingId, order_id: orderId, refunded: amount, payment_provider: row.payment_provider });
   } catch (error) {
     const message = String((error as Error).message ?? error);
-    if (bonusesReversed && !paymentRefunded && orderId) { try { await bridge("restore", orderId); } catch {} }
-    if (!paymentRefunded) await service.from("booking_refunds").update({ status: "payment_failed", last_error: message.slice(0, 1000), updated_at: new Date().toISOString() }).eq("booking_id", bookingId);
+    if (bonusesReversed && !paymentRefunded && orderId) {
+      try { await bridge("restore", orderId); } catch {}
+    }
+    if (!paymentRefunded) await abortRefund(service, bookingId, message);
     return json({ ok: false, error: message }, 400);
   }
 });
