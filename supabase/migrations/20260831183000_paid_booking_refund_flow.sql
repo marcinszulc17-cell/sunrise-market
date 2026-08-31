@@ -19,7 +19,7 @@ alter table market.ambassador_commission_outbox add constraint ambassador_commis
 
 alter table market.seller_settlements drop constraint if exists seller_settlements_status_check;
 alter table market.seller_settlements add constraint seller_settlements_status_check
-  check (status = any(array['scheduled'::text,'pending'::text,'settled'::text,'failed'::text,'cancelled'::text]));
+  check (status = any(array['scheduled'::text,'pending'::text,'settled'::text,'failed'::text,'refund_pending'::text,'cancelled'::text]));
 
 create or replace function market.seller_booking_set_status(p_booking uuid, p_status text)
 returns text language plpgsql security definer set search_path = '' as $$
@@ -50,7 +50,8 @@ begin
   return p_status;
 end; $$;
 
-create or replace function market.seller_booking_refund_prepare(p_booking uuid)
+drop function if exists market.seller_booking_refund_prepare(uuid);
+create function market.seller_booking_refund_prepare(p_booking uuid)
 returns table(booking_id uuid,order_id uuid,buyer_id uuid,payment_provider text,stripe_session_id text,amount_gross numeric,deposit_gross numeric,already_refunded boolean)
 language plpgsql security definer set search_path='' as $$
 declare v market.bookings%rowtype; o market.orders%rowtype; r market.booking_refunds%rowtype;
@@ -70,11 +71,28 @@ begin
   if exists(select 1 from market.seller_settlements s where s.order_id=o.id and s.status='settled') then raise exception 'Wypłata sprzedawcy została już rozliczona — wymagane rozliczenie operatora'; end if;
   if coalesce(v.deposit_gross,0)>0 and coalesce(v.deposit_status,'not_charged') not in ('held','not_charged') then raise exception 'Kaucja została już osobno rozliczona — wymagane rozliczenie operatora'; end if;
   select * into r from market.booking_refunds where booking_id=p_booking;
-  if r.booking_id is not null and r.status='refunded' then return query select v.id,o.id,o.buyer_id,o.payment_provider,o.stripe_session_id,o.total_gross,coalesce(v.deposit_gross,0),true; return; end if;
+  if r.booking_id is not null and r.status='refunded' then
+    return query select v.id,o.id,o.buyer_id,o.payment_provider::text,o.stripe_session_id::text,o.total_gross,coalesce(v.deposit_gross,0),true;
+    return;
+  end if;
+  update market.seller_settlements set status='refund_pending',last_error=null,updated_at=now() where order_id=o.id and status in ('scheduled','pending','failed');
   insert into market.booking_refunds(booking_id,order_id,status,amount_gross,payment_provider,last_error,updated_at)
   values(v.id,o.id,'preparing',o.total_gross,o.payment_provider,null,now())
   on conflict(booking_id) do update set status='preparing',amount_gross=excluded.amount_gross,payment_provider=excluded.payment_provider,last_error=null,updated_at=now();
-  return query select v.id,o.id,o.buyer_id,o.payment_provider,o.stripe_session_id,o.total_gross,coalesce(v.deposit_gross,0),false;
+  return query select v.id,o.id,o.buyer_id,o.payment_provider::text,o.stripe_session_id::text,o.total_gross,coalesce(v.deposit_gross,0),false;
+end; $$;
+
+create or replace function market.booking_refund_abort(p_booking uuid,p_error text default null)
+returns jsonb language plpgsql security definer set search_path='' as $$
+declare r market.booking_refunds%rowtype;
+begin
+  perform pg_advisory_xact_lock(hashtextextended('booking-refund:'||p_booking::text,42));
+  select * into r from market.booking_refunds where booking_id=p_booking for update;
+  if r.booking_id is null then return jsonb_build_object('ok',true,'already',true); end if;
+  if r.status='refunded' then return jsonb_build_object('ok',false,'reason','already_refunded'); end if;
+  update market.seller_settlements set status=case when available_at is not null then 'scheduled' else 'pending' end,last_error=null,updated_at=now() where order_id=r.order_id and status='refund_pending';
+  update market.booking_refunds set status='payment_failed',last_error=left(coalesce(p_error,'refund_aborted'),1000),updated_at=now() where booking_id=p_booking;
+  return jsonb_build_object('ok',true,'order_id',r.order_id);
 end; $$;
 
 create or replace function market.booking_refund_finalize(p_booking uuid, p_external_ref text default null)
@@ -95,7 +113,7 @@ begin
     deposit_resolution_note=case when coalesce(deposit_gross,0)>0 then 'Zwrot pełnej płatności przy anulowaniu rezerwacji' else deposit_resolution_note end,
     updated_at=now() where id=p_booking;
   update market.orders set status='cancelled' where id=r.order_id and status='paid';
-  update market.seller_settlements set status='cancelled',last_error='Anulowana opłacona rezerwacja — zwrot klientowi',updated_at=now() where order_id=r.order_id and status<>'settled';
+  update market.seller_settlements set status='cancelled',last_error='Anulowana opłacona rezerwacja — zwrot klientowi',updated_at=now() where order_id=r.order_id and status='refund_pending';
   update market.ambassador_commission_outbox set status='reversed',updated_at=now() where order_id=r.order_id and status in ('ready','sent','failed','pending_vat','pending_identity');
   update market.booking_refunds set status='refunded',external_ref=p_external_ref,last_error=null,refunded_at=now(),updated_at=now() where booking_id=p_booking;
   return jsonb_build_object('ok',true,'order_id',r.order_id,'amount_gross',r.amount_gross);
@@ -103,5 +121,7 @@ end; $$;
 
 revoke all on function market.seller_booking_refund_prepare(uuid) from public;
 grant execute on function market.seller_booking_refund_prepare(uuid) to authenticated;
+revoke all on function market.booking_refund_abort(uuid,text) from public;
+grant execute on function market.booking_refund_abort(uuid,text) to service_role;
 revoke all on function market.booking_refund_finalize(uuid,text) from public;
 grant execute on function market.booking_refund_finalize(uuid,text) to service_role;
