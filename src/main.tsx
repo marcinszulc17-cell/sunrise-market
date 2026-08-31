@@ -33,9 +33,11 @@ import Rezerwacje from "./pages/Rezerwacje";
 import PwaInstallPrompt from "./components/PwaInstallPrompt";
 import MobileAppNav from "./components/MobileAppNav";
 import { initTheme } from "./lib/theme";
+import { startMarketBookingAvailability } from "./lib/marketBookingAvailability";
 import "./index.css";
 
 initTheme();
+startMarketBookingAvailability();
 try { const _r = new URLSearchParams(window.location.search).get("ref"); if (_r && _r.trim()) localStorage.setItem("sunrise_ref", _r.trim().slice(0, 64)); } catch { /* ignore */ }
 
 if ("serviceWorker" in navigator) {
