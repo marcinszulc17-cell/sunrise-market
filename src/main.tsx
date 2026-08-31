@@ -13,7 +13,7 @@ import TradePartnerActivate from "./pages/TradePartnerActivate";
 import PartnerDashboard from "./pages/PartnerDashboard";
 import SellerOffersRouter from "./pages/SellerOffersRouter";
 import SellerOfferEdit from "./pages/SellerOfferEdit";
-import SellerOrders from "./pages/SellerOrders";
+import SellerOrdersRouter from "./pages/SellerOrdersRouter";
 import SellerBookingsManage from "./pages/SellerBookingsManage";
 import SellerBookingSetup from "./pages/SellerBookingSetup";
 import SellerResourceSchedules from "./pages/SellerResourceSchedules";
@@ -128,7 +128,7 @@ ReactDOM.createRoot(document.getElementById("root")!).render(
         <Route path="/sprzedawca/partner/pulpit" element={<PartnerDashboard />} />
         <Route path="/sprzedawca/oferty" element={<SellerOffersRouter />} />
         <Route path="/sprzedawca/oferty/:offerId/edytuj" element={<SellerOfferEdit />} />
-        <Route path="/sprzedawca/zamowienia" element={<SellerOrders />} />
+        <Route path="/sprzedawca/zamowienia" element={<SellerOrdersRouter />} />
         <Route path="/sprzedawca/rezerwacje" element={<SellerBookingsManage />} />
         <Route path="/sprzedawca/rezerwacje/operacje" element={<SellerResourceOperationsPage />} />
         <Route path="/sprzedawca/rezerwacje/grafiki" element={<SellerResourceSchedules />} />
