@@ -1,5 +1,5 @@
 import { getOffer } from "./api";
-import { bookingDailyQuoteV2, bookingUnavailableDaysV2 } from "./bookingV2";
+import { bookingDailyQuoteV2, bookingPublicCatalogV2, bookingUnavailableDaysV2, type BookingResourceV2 } from "./bookingV2";
 import { cashbackFor, getMarketConfig } from "./marketConfig";
 
 type PurchaseMode = "purchase" | "appointment" | "daily";
@@ -31,6 +31,22 @@ function todayKey(offsetDays = 0) {
 
 function money(value: number) {
   return `${value.toLocaleString("pl-PL", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} zł`;
+}
+
+function hasConflict(rows: Array<{ day: string }>, fromDay: string, toDay: string) {
+  return rows.some((row) => row.day >= fromDay && row.day < toDay);
+}
+
+async function availableResources(offerId: string, resources: BookingResourceV2[], fromDay: string, toDay: string) {
+  const checks = await Promise.all(resources.map(async (resource) => {
+    try {
+      const rows = await bookingUnavailableDaysV2(offerId, fromDay, toDay, resource.id);
+      return hasConflict(rows, fromDay, toDay) ? null : resource;
+    } catch {
+      return null;
+    }
+  }));
+  return checks.filter(Boolean) as BookingResourceV2[];
 }
 
 function insertQuote(article: HTMLElement, offerId: string) {
@@ -76,6 +92,27 @@ function insertQuote(article: HTMLElement, offerId: string) {
   fields.append(from, to);
   wrap.appendChild(fields);
 
+  const resourceWrap = document.createElement("div");
+  resourceWrap.className = "mt-2 hidden";
+  const resourceLabel = document.createElement("div");
+  resourceLabel.className = "mb-1 font-semibold";
+  resourceLabel.style.color = "var(--mut)";
+  resourceLabel.textContent = "Konkretny egzemplarz";
+  const resourceSelect = document.createElement("select");
+  resourceSelect.className = "w-full rounded-xl px-2 py-2 text-xs";
+  resourceSelect.style.background = "var(--bg)";
+  resourceSelect.style.border = "1px solid var(--line)";
+  resourceSelect.style.color = "var(--ink)";
+  resourceWrap.append(resourceLabel, resourceSelect);
+  wrap.appendChild(resourceWrap);
+
+  const resourceStatus = document.createElement("div");
+  resourceStatus.className = "mt-2 hidden rounded-xl px-3 py-2 font-semibold";
+  resourceStatus.style.background = "rgba(56,224,240,.07)";
+  resourceStatus.style.border = "1px solid rgba(56,224,240,.18)";
+  resourceStatus.style.color = "var(--ink)";
+  wrap.appendChild(resourceStatus);
+
   const result = document.createElement("div");
   result.className = "mt-2 flex min-h-[34px] items-center justify-between gap-2 rounded-xl px-3 py-2";
   result.style.background = "var(--glass)";
@@ -98,17 +135,41 @@ function insertQuote(article: HTMLElement, offerId: string) {
   link.textContent = "Sprawdź i zarezerwuj";
   wrap.appendChild(link);
 
+  let resources: BookingResourceV2[] = [];
   let request = 0;
+
+  const updateResourceOptions = (available: BookingResourceV2[], selectedId: string) => {
+    if (!resources.length) {
+      resourceWrap.classList.add("hidden");
+      resourceStatus.classList.add("hidden");
+      return;
+    }
+    resourceWrap.classList.remove("hidden");
+    resourceStatus.classList.remove("hidden");
+    resourceStatus.textContent = `${available.length} z ${resources.length} dostępne w tym terminie`;
+    resourceStatus.style.color = available.length ? "var(--ink)" : "#fca5a5";
+
+    resourceSelect.replaceChildren();
+    const automatic = document.createElement("option");
+    automatic.value = "";
+    automatic.textContent = available.length ? `Dowolny dostępny (${available.length})` : "Brak wolnych egzemplarzy";
+    resourceSelect.appendChild(automatic);
+    for (const resource of available) {
+      const option = document.createElement("option");
+      option.value = resource.id;
+      option.textContent = resource.name;
+      resourceSelect.appendChild(option);
+    }
+    resourceSelect.value = available.some((r) => r.id === selectedId) ? selectedId : "";
+  };
+
   const refresh = async () => {
     const current = ++request;
     const fromDay = from.value;
     const toDay = to.value;
+    const selectedId = resourceSelect.value || null;
     to.min = fromDay || todayKey(0);
 
-    const params = new URLSearchParams({ booking: "1" });
-    if (fromDay) params.set("from", fromDay);
-    if (toDay) params.set("to", toDay);
-    link.href = `/produkt/${encodeURIComponent(offerId)}?${params.toString()}`;
     link.style.pointerEvents = "auto";
     link.style.opacity = "1";
     cashback.classList.add("hidden");
@@ -120,17 +181,38 @@ function insertQuote(article: HTMLElement, offerId: string) {
 
     result.innerHTML = '<span style="color:var(--mut)">Sprawdzam dostępność i cenę…</span>';
     try {
+      if (!resources.length) {
+        const catalog = await bookingPublicCatalogV2(offerId);
+        if (current !== request) return;
+        resources = catalog?.resources ?? [];
+      }
+
+      const available = resources.length ? await availableResources(offerId, resources, fromDay, toDay) : [];
+      if (current !== request) return;
+      updateResourceOptions(available, selectedId || "");
+
+      const effectiveResourceId = resourceSelect.value || null;
+      const selectedResource = resources.find((r) => r.id === effectiveResourceId) ?? null;
+
+      if (resources.length && available.length === 0) {
+        result.innerHTML = '<strong style="color:#fca5a5">Brak wolnych egzemplarzy w tym okresie</strong>';
+        link.textContent = "Wybierz inne daty";
+        link.style.pointerEvents = "none";
+        link.style.opacity = ".55";
+        return;
+      }
+
       const [quote, unavailable, config] = await Promise.all([
-        bookingDailyQuoteV2(offerId, fromDay, toDay),
-        bookingUnavailableDaysV2(offerId, fromDay, toDay),
+        bookingDailyQuoteV2(offerId, fromDay, toDay, effectiveResourceId),
+        bookingUnavailableDaysV2(offerId, fromDay, toDay, effectiveResourceId),
         getMarketConfig(),
       ]);
       if (current !== request) return;
 
-      const conflict = unavailable.some((row) => row.day >= fromDay && row.day < toDay);
+      const conflict = hasConflict(unavailable, fromDay, toDay);
       if (conflict) {
-        result.innerHTML = '<strong style="color:#fca5a5">Wybrany okres jest już zajęty</strong>';
-        link.textContent = "Wybierz inne daty";
+        result.innerHTML = '<strong style="color:#fca5a5">Wybrany egzemplarz jest już zajęty</strong>';
+        link.textContent = "Wybierz inny egzemplarz";
         link.style.pointerEvents = "none";
         link.style.opacity = ".55";
         return;
@@ -145,7 +227,7 @@ function insertQuote(article: HTMLElement, offerId: string) {
       result.replaceChildren();
       const days = document.createElement("span");
       days.style.color = "var(--mut)";
-      days.textContent = `${quote.days} ${quote.days === 1 ? "dzień" : "dni"} · dostępne`;
+      days.textContent = `${quote.days} ${quote.days === 1 ? "dzień" : "dni"}${selectedResource ? ` · ${selectedResource.name}` : ""}`;
       const price = document.createElement("strong");
       price.style.color = "var(--gold)";
       price.textContent = money(quote.base);
@@ -154,6 +236,10 @@ function insertQuote(article: HTMLElement, offerId: string) {
       const cashbackAmount = cashbackFor(quote.base, config.cashbackRate);
       cashback.textContent = `Cashback ${Math.round(config.cashbackRate * 10000) / 100}% · +${money(cashbackAmount)}`;
       cashback.classList.remove("hidden");
+
+      const params = new URLSearchParams({ booking: "1", from: fromDay, to: toDay });
+      if (selectedResource) params.set("resource", selectedResource.name);
+      link.href = `/produkt/${encodeURIComponent(offerId)}?${params.toString()}`;
       link.textContent = `Zarezerwuj · ${money(quote.base)}`;
     } catch {
       if (current !== request) return;
@@ -164,6 +250,7 @@ function insertQuote(article: HTMLElement, offerId: string) {
 
   from.addEventListener("change", refresh);
   to.addEventListener("change", refresh);
+  resourceSelect.addEventListener("change", refresh);
 
   if (actions) body.insertBefore(wrap, actions);
   else body.appendChild(wrap);
