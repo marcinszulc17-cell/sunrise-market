@@ -1,17 +1,30 @@
-function quickMode() {
+function params() {
   try {
-    const params = new URLSearchParams(window.location.search);
-    if (params.get("booking") !== "1") return null;
-    return params.get("quick");
+    return new URLSearchParams(window.location.search);
   } catch {
-    return null;
+    return new URLSearchParams();
   }
 }
 
-function clearQuickParam() {
+function quickMode() {
+  const p = params();
+  if (p.get("booking") !== "1") return null;
+  return p.get("quick");
+}
+
+function rentalRange() {
+  const p = params();
+  if (p.get("booking") !== "1") return null;
+  const from = p.get("from");
+  const to = p.get("to");
+  if (!from || !to || to <= from) return null;
+  return { from, to };
+}
+
+function clearParams(...names: string[]) {
   try {
     const url = new URL(window.location.href);
-    url.searchParams.delete("quick");
+    for (const name of names) url.searchParams.delete(name);
     window.history.replaceState(window.history.state, "", `${url.pathname}${url.search}${url.hash}`);
   } catch { /* ignore */ }
 }
@@ -25,7 +38,7 @@ function clickNearestIfReady() {
   if (button.dataset.quickBookingClicked === "1") return true;
   button.dataset.quickBookingClicked = "1";
   button.click();
-  clearQuickParam();
+  clearParams("quick");
   return true;
 }
 
@@ -43,17 +56,49 @@ function clickExactSlotIfReady() {
   if (button.dataset.quickBookingClicked === "1") return true;
   button.dataset.quickBookingClicked = "1";
   button.click();
-  clearQuickParam();
+  clearParams("quick");
+  return true;
+}
+
+function plDateLabel(day: string) {
+  const d = new Date(`${day}T12:00:00`);
+  return d.toLocaleDateString("pl-PL");
+}
+
+function clickRentalRangeIfReady() {
+  const range = rentalRange();
+  if (!range) return false;
+
+  const buttons = Array.from(document.querySelectorAll("button[aria-label]")) as HTMLButtonElement[];
+  const fromLabel = plDateLabel(range.from);
+  const toLabel = plDateLabel(range.to);
+  const fromButton = buttons.find((b) => (b.getAttribute("aria-label") || "").startsWith(fromLabel));
+  if (!fromButton || fromButton.disabled) return false;
+
+  if (fromButton.dataset.quickRentalClicked !== "1") {
+    fromButton.dataset.quickRentalClicked = "1";
+    fromButton.click();
+    return false;
+  }
+
+  const refreshed = Array.from(document.querySelectorAll("button[aria-label]")) as HTMLButtonElement[];
+  const toButton = refreshed.find((b) => (b.getAttribute("aria-label") || "").startsWith(toLabel));
+  if (!toButton || toButton.disabled) return false;
+  if (toButton.dataset.quickRentalClicked !== "1") {
+    toButton.dataset.quickRentalClicked = "1";
+    toButton.click();
+  }
+  clearParams("from", "to");
   return true;
 }
 
 function clickQuickIfReady() {
-  return clickNearestIfReady() || clickExactSlotIfReady();
+  return clickNearestIfReady() || clickExactSlotIfReady() || clickRentalRangeIfReady();
 }
 
 export function startQuickBookingDeepLink() {
   if (typeof window === "undefined" || typeof document === "undefined") return () => {};
-  if (!quickMode()) return () => {};
+  if (!quickMode() && !rentalRange()) return () => {};
 
   let done = clickQuickIfReady();
   if (done) return () => {};
