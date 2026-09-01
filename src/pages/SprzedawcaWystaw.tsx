@@ -4,6 +4,7 @@ import { supabase } from "../lib/supabase";
 import SprzedawcaV2 from "./SprzedawcaV2";
 import DedicatedOfferWizard from "./DedicatedOfferWizard";
 import PrivateOfferWizard from "./PrivateOfferWizard";
+import PrivateBookingOfferWizard from "./PrivateBookingOfferWizard";
 
 type PurchaseMode = "purchase" | "appointment" | "daily";
 
@@ -67,8 +68,8 @@ export default function SprzedawcaWystaw() {
   if (access === "activate") return <GateCard title="Aktywuj Partnera Handlowego" body="Aby wystawiać własne produkty, usługi lub wynajem, aktywuj dostęp sprzedażowy na swoim koncie MySunrise. Pierwsze 12 miesięcy są bez opłaty rocznej." cta="Aktywuj Partnera Handlowego" to="/sprzedawca/partner" />;
   if (access === "renewal") return <GateCard title="Odnowienie Partnera Handlowego" body="Twój 12-miesięczny okres startowy minął. Odnów członkostwo, aby dalej wystawiać nowe oferty. Zwykłe konto MySunrise pozostaje aktywne." cta="Przejdź do odnowienia" to="/sprzedawca/partner" />;
 
-  if (sellerType === "private_partner" && (requestedMode === "purchase" || requestedMode === "appointment" || requestedMode === "daily")) {
-    return <PrivateOfferWizard />;
+  if (sellerType === "private_partner" && (requestedMode === "appointment" || requestedMode === "daily")) {
+    return <PrivateBookingOfferWizard />;
   }
 
   if (sellerType === "private_partner" && (!requestedMode || requestedMode === "purchase") && (!type || type === "produkt")) {
