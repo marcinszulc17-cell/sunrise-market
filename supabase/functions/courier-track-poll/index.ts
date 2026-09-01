@@ -26,15 +26,36 @@ async function gkToken(): Promise<string> {
   return token;
 }
 
+function normalizeStatus(value: string): string {
+  return value
+    .trim()
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[._-]+/g, " ")
+    .replace(/\s+/g, " ");
+}
+
 function hasDeliveredStatus(value: unknown): boolean {
-  const delivered = ["delivered", "doręczono", "doreczono", "doręczona", "doreczona", "doręczone", "doreczone"];
-  const walk = (x: unknown): boolean => {
+  const delivered = new Set([
+    "delivered",
+    "doreczono",
+    "doreczona",
+    "doreczone",
+    "przesylka doreczona",
+    "paczka doreczona",
+  ]);
+  const statusKeys = new Set(["status", "state", "trackingstatus", "tracking_status", "shipmentstatus", "shipment_status", "orderstatus", "order_status"]);
+
+  const walk = (x: unknown, key?: string): boolean => {
     if (typeof x === "string") {
-      const s = x.trim().toLowerCase();
-      return delivered.some(v => s.includes(v));
+      if (key && !statusKeys.has(key.toLowerCase())) return false;
+      return delivered.has(normalizeStatus(x));
     }
-    if (Array.isArray(x)) return x.some(walk);
-    if (x && typeof x === "object") return Object.values(x as Record<string, unknown>).some(walk);
+    if (Array.isArray(x)) return x.some(item => walk(item));
+    if (x && typeof x === "object") {
+      return Object.entries(x as Record<string, unknown>).some(([k, v]) => walk(v, k));
+    }
     return false;
   };
   return walk(value);
