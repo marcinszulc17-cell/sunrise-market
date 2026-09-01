@@ -1,55 +1,11 @@
-import { bookingAvailableSlots, getOffer } from "./api";
+import { ensureMarketDiscovery, marketDiscoveryFor, type MarketDiscoverySummary } from "./marketDiscoveryBatch";
 
-type AvailabilityFilter = "any" | "today" | "tomorrow" | "weekend";
-type PurchaseMode = "purchase" | "appointment" | "daily";
+type AvailabilityFilter = "any" | "today" | "weekend";
+type ModeFilter = "all" | "purchase" | "appointment" | "daily";
 
-let active: AvailabilityFilter = "any";
-const offerCache = new Map<string, any>();
-const matchCache = new Map<string, boolean>();
-const inflight = new Set<string>();
-
-function purchaseMode(offer: any): PurchaseMode {
-  const mode = String(offer?.attributes?.purchase_mode || "purchase");
-  return mode === "appointment" || mode === "daily" ? mode : "purchase";
-}
-
-function startOfLocalDay(date: Date) {
-  const d = new Date(date);
-  d.setHours(0, 0, 0, 0);
-  return d;
-}
-
-function rangeFor(filter: Exclude<AvailabilityFilter, "any">): { from: Date; to: Date } {
-  const now = new Date();
-  if (filter === "today") {
-    const from = now;
-    const to = startOfLocalDay(now);
-    to.setDate(to.getDate() + 1);
-    return { from, to };
-  }
-  if (filter === "tomorrow") {
-    const from = startOfLocalDay(now);
-    from.setDate(from.getDate() + 1);
-    const to = new Date(from);
-    to.setDate(to.getDate() + 1);
-    return { from, to };
-  }
-
-  const day = now.getDay();
-  const from = startOfLocalDay(now);
-  if (day === 6) {
-    // Saturday: current weekend starts now.
-  } else if (day === 0) {
-    from.setDate(from.getDate() - 1);
-  } else {
-    from.setDate(from.getDate() + (6 - day));
-  }
-  if (from < now) from.setTime(now.getTime());
-  const to = startOfLocalDay(from);
-  const fromDay = from.getDay();
-  to.setDate(to.getDate() + (fromDay === 0 ? 1 : 2));
-  return { from, to };
-}
+let activeAvailability: AvailabilityFilter = "any";
+let activeMode: ModeFilter = "all";
+let applying = false;
 
 function offerIdFor(article: HTMLElement): string | null {
   const link = article.querySelector('a[href^="/produkt/"]') as HTMLAnchorElement | null;
@@ -58,140 +14,140 @@ function offerIdFor(article: HTMLElement): string | null {
 }
 
 function showArticle(article: HTMLElement, show: boolean) {
-  if (show) {
-    if (article.dataset.availabilityHidden === "1") {
-      article.style.display = "";
-      delete article.dataset.availabilityHidden;
-    }
-    return;
-  }
-  article.dataset.availabilityHidden = "1";
-  article.style.display = "none";
+  article.style.display = show ? "" : "none";
+  if (show) delete article.dataset.marketDiscoveryHidden;
+  else article.dataset.marketDiscoveryHidden = "1";
 }
 
-async function matches(offerId: string, filter: Exclude<AvailabilityFilter, "any">): Promise<boolean> {
-  const key = `${offerId}:${filter}`;
-  if (matchCache.has(key)) return matchCache.get(key)!;
-
-  let offer = offerCache.get(offerId);
-  if (!offer) {
-    offer = await getOffer(offerId);
-    offerCache.set(offerId, offer);
-  }
-
-  if (!offer || purchaseMode(offer) === "purchase") {
-    matchCache.set(key, false);
-    return false;
-  }
-
-  const { from, to } = rangeFor(filter);
-  const slots = await bookingAvailableSlots(offerId, from, to);
-  const result = slots.length > 0;
-  matchCache.set(key, result);
-  return result;
+function matches(summary: MarketDiscoverySummary | null | undefined) {
+  if (!summary) return activeMode === "all" && activeAvailability === "any";
+  if (activeMode !== "all" && summary.booking_type !== activeMode) return false;
+  if (activeAvailability === "today" && !summary.available_today) return false;
+  if (activeAvailability === "weekend" && !summary.available_this_weekend) return false;
+  return true;
 }
 
-function resetCards() {
-  for (const article of Array.from(document.querySelectorAll("article")) as HTMLElement[]) showArticle(article, true);
-}
+async function scanCards() {
+  if (window.location.pathname !== "/" || applying) return;
+  const pairs = (Array.from(document.querySelectorAll("article")) as HTMLElement[])
+    .map((article) => ({ article, offerId: offerIdFor(article) }))
+    .filter((x): x is { article: HTMLElement; offerId: string } => Boolean(x.offerId));
+  if (!pairs.length) return;
 
-async function applyToCard(article: HTMLElement) {
-  if (active === "any") {
-    showArticle(article, true);
-    return;
-  }
-
-  const offerId = offerIdFor(article);
-  if (!offerId || inflight.has(offerId)) return;
-  inflight.add(offerId);
+  applying = true;
   try {
-    const current = active;
-    const ok = await matches(offerId, current);
-    if (active === current) showArticle(article, ok);
+    await ensureMarketDiscovery([...new Set(pairs.map((x) => x.offerId))]);
+    for (const { article, offerId } of pairs) showArticle(article, matches(marketDiscoveryFor(offerId)));
   } catch {
-    // On API failure do not hide an offer by mistake.
-    showArticle(article, true);
+    for (const { article } of pairs) showArticle(article, true);
   } finally {
-    inflight.delete(offerId);
+    applying = false;
   }
 }
 
-function scanCards() {
-  if (window.location.pathname !== "/") return;
-  for (const article of Array.from(document.querySelectorAll("article")) as HTMLElement[]) void applyToCard(article);
-}
-
-function setActive(next: AvailabilityFilter, buttons: HTMLButtonElement[]) {
-  active = next;
-  matchCache.clear();
+function styleButtons(buttons: HTMLButtonElement[], key: "mode" | "availability") {
   for (const button of buttons) {
-    const selected = button.dataset.availabilityFilter === active;
+    const selected = key === "mode"
+      ? button.dataset.marketMode === activeMode
+      : button.dataset.availabilityFilter === activeAvailability;
     button.style.background = selected ? "linear-gradient(135deg,#C8965A,#E8C896)" : "var(--bg)";
     button.style.color = selected ? "#000" : "var(--ink)";
     button.style.border = selected ? "1px solid transparent" : "1px solid var(--line)";
     button.setAttribute("aria-pressed", selected ? "true" : "false");
   }
-  if (active === "any") resetCards();
-  else scanCards();
 }
 
 function injectControls() {
-  if (window.location.pathname !== "/" || document.querySelector('[data-market-availability-filter="1"]')) return;
-
+  if (window.location.pathname !== "/" || document.querySelector('[data-market-discovery-filters="1"]')) return;
   const heading = Array.from(document.querySelectorAll("div")).find((el) => (el.textContent || "").trim() === "Filtry ofert") as HTMLElement | undefined;
   const panel = heading?.closest(".rounded-2xl") as HTMLElement | null;
   if (!panel) return;
 
   const wrap = document.createElement("div");
-  wrap.dataset.marketAvailabilityFilter = "1";
-  wrap.className = "mt-4 border-t pt-4";
+  wrap.dataset.marketDiscoveryFilters = "1";
+  wrap.className = "mt-4 space-y-4 border-t pt-4";
   wrap.style.borderColor = "var(--line)";
 
-  const label = document.createElement("div");
-  label.className = "mb-2 text-xs font-semibold";
-  label.style.color = "var(--mut)";
-  label.textContent = "Dostępność rezerwacji";
-  wrap.appendChild(label);
+  const modeBlock = document.createElement("div");
+  const modeLabel = document.createElement("div");
+  modeLabel.className = "mb-2 text-xs font-semibold";
+  modeLabel.style.color = "var(--mut)";
+  modeLabel.textContent = "Rodzaj oferty";
+  const modeRow = document.createElement("div");
+  modeRow.className = "flex flex-wrap gap-2";
+  const modeDefs: Array<[ModeFilter, string]> = [
+    ["all", "Wszystkie"],
+    ["purchase", "Kup teraz"],
+    ["appointment", "Usługi"],
+    ["daily", "Wynajem"],
+  ];
+  const modeButtons = modeDefs.map(([value, text]) => {
+    const button = document.createElement("button");
+    button.type = "button";
+    button.dataset.marketMode = value;
+    button.className = "rounded-xl px-3 py-2 text-xs font-semibold";
+    button.textContent = text;
+    button.onclick = () => {
+      activeMode = value;
+      if (value === "purchase") activeAvailability = "any";
+      styleButtons(modeButtons, "mode");
+      styleButtons(availabilityButtons, "availability");
+      void scanCards();
+    };
+    modeRow.appendChild(button);
+    return button;
+  });
+  modeBlock.append(modeLabel, modeRow);
 
-  const row = document.createElement("div");
-  row.className = "flex flex-wrap gap-2";
-  wrap.appendChild(row);
-
-  const defs: Array<[AvailabilityFilter, string]> = [
+  const availabilityBlock = document.createElement("div");
+  const availabilityLabel = document.createElement("div");
+  availabilityLabel.className = "mb-2 text-xs font-semibold";
+  availabilityLabel.style.color = "var(--mut)";
+  availabilityLabel.textContent = "Dostępność rezerwacji";
+  const availabilityRow = document.createElement("div");
+  availabilityRow.className = "flex flex-wrap gap-2";
+  const availabilityDefs: Array<[AvailabilityFilter, string]> = [
     ["any", "Dowolny termin"],
-    ["today", "Dostępne dzisiaj"],
-    ["tomorrow", "Dostępne jutro"],
+    ["today", "Dostępne dziś"],
     ["weekend", "Ten weekend"],
   ];
-
-  const buttons = defs.map(([value, text]) => {
+  const availabilityButtons = availabilityDefs.map(([value, text]) => {
     const button = document.createElement("button");
     button.type = "button";
     button.dataset.availabilityFilter = value;
     button.className = "rounded-xl px-3 py-2 text-xs font-semibold";
     button.textContent = text;
-    button.onclick = () => setActive(value, buttons);
-    row.appendChild(button);
+    button.onclick = () => {
+      activeAvailability = value;
+      if (value !== "any" && activeMode === "purchase") activeMode = "all";
+      styleButtons(modeButtons, "mode");
+      styleButtons(availabilityButtons, "availability");
+      void scanCards();
+    };
+    availabilityRow.appendChild(button);
     return button;
   });
+  availabilityBlock.append(availabilityLabel, availabilityRow);
 
+  wrap.append(modeBlock, availabilityBlock);
   panel.appendChild(wrap);
-  setActive(active, buttons);
+  styleButtons(modeButtons, "mode");
+  styleButtons(availabilityButtons, "availability");
 }
 
 export function startMarketAvailabilityFilter() {
   if (typeof window === "undefined" || typeof document === "undefined") return () => {};
   const scan = () => {
     injectControls();
-    if (active !== "any") scanCards();
+    void scanCards();
   };
   scan();
   const observer = new MutationObserver(scan);
   observer.observe(document.body, { childList: true, subtree: true });
-  const timer = window.setInterval(scan, 1200);
+  const timer = window.setInterval(scan, 1500);
   return () => {
     observer.disconnect();
     window.clearInterval(timer);
-    resetCards();
+    for (const article of Array.from(document.querySelectorAll("article")) as HTMLElement[]) showArticle(article, true);
   };
 }
