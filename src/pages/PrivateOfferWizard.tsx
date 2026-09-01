@@ -54,11 +54,11 @@ export default function PrivateOfferWizard() {
     };
     if (mode === "daily") return {
       title: "Wystaw wynajem",
-      subtitle: "Klient wybierze termin od–do i zapłaci za cały okres.",
+      subtitle: "Klient wybierze daty od–do, zobaczy czynsz za cały okres i od razu zapłaci.",
       itemLabel: "Co wynajmujesz?",
       placeholder: rentalKind === "car" ? "Np. Toyota Corolla Hybrid" : rentalKind === "property" ? "Np. Apartament nad morzem" : "Np. agregat, kamera, rower elektryczny",
-      priceLabel: "Cena za dzień",
-      publishLabel: "Dalej: ustaw kalendarz",
+      priceLabel: "Cena za dobę",
+      publishLabel: "Dalej: ustaw kalendarz i kaucję",
     };
     return {
       title: "Wystaw przedmiot",
@@ -226,7 +226,7 @@ export default function PrivateOfferWizard() {
             ? "Sprzedajesz jako osoba prywatna. Oferta ma stałą cenę, bez negocjacji, i jest dostępna przez „Kup teraz”."
             : mode === "appointment"
               ? "Po utworzeniu usługi ustawisz długość wizyty, godziny dostępności i kalendarz. Termin zostanie zablokowany podczas płatności."
-              : "Po utworzeniu wynajmu ustawisz dostępność, zasoby i kalendarz. Klient wybierze okres, zobaczy cenę i opłaci rezerwację."}
+              : "Po utworzeniu wynajmu ustawisz dostępność, zasoby i kalendarz oraz opcjonalną kaucję dla auta lub sprzętu. Klient wybierze daty od–do, zobaczy czynsz za cały okres i od razu opłaci rezerwację."}
         </div>
 
         <button type="button" disabled={busy || uploading} onClick={publish} className="w-full rounded-2xl px-5 py-4 text-lg font-bold text-black disabled:opacity-50" style={{ background: "linear-gradient(135deg,#C8965A,#E8C896)" }}>{busy ? "Tworzę ofertę…" : copy.publishLabel}</button>
