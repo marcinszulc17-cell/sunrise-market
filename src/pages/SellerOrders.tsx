@@ -47,8 +47,8 @@ export default function SellerOrders() {
       <div className="mb-6 flex flex-wrap items-start justify-between gap-4">
         <div>
           <Link to="/sprzedawca" className="text-sm underline" style={{ color: "var(--mut)" }}>← Centrum sprzedawcy</Link>
-          <h1 className="mt-2 font-display text-3xl font-semibold">Zamówienia i faktury</h1>
-          <p className="mt-1 text-sm" style={{ color: "var(--mut)" }}>Widzisz wyłącznie zamówienia zawierające Twoje pozycje. Dane faktury są historycznym snapshotem z chwili zakupu.</p>
+          <h1 className="mt-2 font-display text-3xl font-semibold">Zamówienia i dane do faktury</h1>
+          <p className="mt-1 text-sm" style={{ color: "var(--mut)" }}>Widzisz wyłącznie zamówienia zawierające Twoje pozycje. Jeśli klient podał dane do faktury, są zapisane jako historyczny snapshot z chwili zakupu. Sam dokument faktury nie jest jeszcze generowany w Sunrise Market.</p>
         </div>
         <Link to="/sprzedawca/rozliczenia" className="rounded-xl px-4 py-2 text-sm font-semibold" style={{ border: "1px solid var(--line)" }}>Rozliczenia →</Link>
       </div>
@@ -58,7 +58,7 @@ export default function SellerOrders() {
 
       {authed && <div className="mb-6 grid gap-3 sm:grid-cols-3">
         <Stat label="Zamówienia" value={String(rows.length)} />
-        <Stat label="Z fakturą VAT" value={String(invoiceCount)} accent={invoiceCount > 0} />
+        <Stat label="Z danymi do faktury" value={String(invoiceCount)} accent={invoiceCount > 0} />
         <Stat label="Twoje wpływy" value={zl(rows.reduce((sum, row) => sum + Number(row.my_total || 0), 0))} />
       </div>}
 
