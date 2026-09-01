@@ -72,6 +72,7 @@ type ReschedulePricePreview = {
 
 const pln = (v: number) => Number(v || 0).toLocaleString("pl-PL", { style: "currency", currency: "PLN" });
 const dt = (iso: string, time = true) => new Date(iso).toLocaleString("pl-PL", time ? { dateStyle: "medium", timeStyle: "short" } : { dateStyle: "medium" });
+const rentalUnitsLabel = (units: number) => units === 1 ? "1 doba" : units >= 2 && units <= 4 ? `${units} doby` : `${units} dób`;
 const localInput = (d: Date) => {
   const pad = (n: number) => String(n).padStart(2, "0");
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
@@ -431,7 +432,7 @@ export default function SellerBookingsManage() {
                 <div className="flex flex-wrap items-start justify-between gap-4">
                   <div>
                     <Link to={`/produkt/${r.offer_id}`} className="font-semibold hover:underline">{r.title}</Link>
-                    <div className="mt-1 text-sm" style={{ color: "var(--mut)" }}>{r.booking_type === "daily" ? `${dt(r.starts_at, false)} – ${dt(r.ends_at, false)} · ${r.units} dni` : dt(r.starts_at, true)}</div>
+                    <div className="mt-1 text-sm" style={{ color: "var(--mut)" }}>{r.booking_type === "daily" ? `${dt(r.starts_at, false)} – ${dt(r.ends_at, false)} · ${rentalUnitsLabel(r.units)}` : dt(r.starts_at, true)}</div>
                     {r.resource_name && (r.resource_id ? <Link to={`/sprzedawca/rezerwacje/grafiki?resource=${encodeURIComponent(r.resource_id)}`} className="mt-1 inline-block text-xs hover:underline" style={{ color: "var(--gold)" }}>{resourceKindLabel[r.resource_kind || ""] || "Zasób"}: {r.resource_name} · otwórz grafik</Link> : <div className="mt-1 text-xs" style={{ color: "var(--gold)" }}>{resourceKindLabel[r.resource_kind || ""] || "Zasób"}: {r.resource_name}</div>)}
                   </div>
                   <span className="rounded-full px-3 py-1 text-xs font-semibold" style={{ background: r.status === "confirmed" ? "rgba(34,197,94,.12)" : paidAwaitingApproval ? "rgba(200,150,90,.14)" : "var(--header)", border: "1px solid var(--line)", color: paidAwaitingApproval ? "var(--gold)" : undefined }}>{bookingStatusLabel(r)}</span>
@@ -440,15 +441,15 @@ export default function SellerBookingsManage() {
                 <div className={`mt-4 grid gap-2 text-sm ${hasDeposit ? "sm:grid-cols-4" : "sm:grid-cols-3"}`}>
                   <div><span style={{ color: "var(--mut)" }}>Klient</span><div>{r.buyer_name || r.buyer_email || "—"}</div></div>
                   <div><span style={{ color: "var(--mut)" }}>Płatność</span><div>{r.paid_at ? `Opłacono · ${r.payment_provider || ""}` : "Nieopłacona"}</div></div>
-                  <div><span style={{ color: "var(--mut)" }}>Kwota</span><div className="font-semibold">{pln(r.amount_gross)}</div></div>
-                  {hasDeposit && <div><span style={{ color: "var(--mut)" }}>Kaucja</span><div className="font-semibold">{pln(Number(r.deposit_gross || 0))}</div><div className="text-xs" style={{ color: r.deposit_status === "failed" ? "#fca5a5" : "var(--mut)" }}>{depositStatusLabel[r.deposit_status || ""] || r.deposit_status || "—"}</div></div>}
+                  <div><span style={{ color: "var(--mut)" }}>{r.booking_type === "daily" ? "Czynsz" : "Cena usługi"}</span><div className="font-semibold">{pln(r.amount_gross)}</div></div>
+                  {hasDeposit && <div><span style={{ color: "var(--mut)" }}>Kaucja zwrotna</span><div className="font-semibold">{pln(Number(r.deposit_gross || 0))}</div><div className="text-xs" style={{ color: r.deposit_status === "failed" ? "#fca5a5" : "var(--mut)" }}>{depositStatusLabel[r.deposit_status || ""] || r.deposit_status || "—"}</div></div>}
                 </div>
 
                 {hasDeposit && <div className="mt-4 rounded-2xl p-4" style={{ background: "var(--header)", border: "1px solid rgba(200,150,90,.22)" }}>
                   <div className="flex flex-wrap items-center justify-between gap-3">
                     <div>
                       <div className="font-semibold">🔐 Rozliczenie kaucji</div>
-                      <div className="mt-1 text-xs" style={{ color: "var(--mut)" }}>Kaucja jest rozliczana osobno od ceny wynajmu i nie generuje cashbacku ani prowizji Ambassador Club.</div>
+                      <div className="mt-1 text-xs" style={{ color: "var(--mut)" }}>Kaucja jest rozliczana osobno od czynszu za najem i nie generuje cashbacku ani prowizji Ambassador Club.</div>
                       {r.deposit_resolution_note && <div className="mt-1 text-xs" style={{ color: "var(--mut)" }}>Notatka: {r.deposit_resolution_note}</div>}
                     </div>
                     <div className="flex flex-wrap gap-2">
@@ -472,7 +473,7 @@ export default function SellerBookingsManage() {
 
                 {r.status === "confirmed" && rescheduleId === r.id && <div className="mt-4 rounded-2xl p-4" style={{ background: "rgba(200,150,90,.07)", border: "1px solid rgba(200,150,90,.25)" }}>
                   <div className="font-semibold">Przenieś rezerwację</div>
-                  <div className="mt-1 text-xs" style={{ color: "var(--mut)" }}>{r.booking_type === "daily" ? `Okres: ${r.units} dni.` : `Czas: ${durationMinutes} min.`} Cena rezerwacji {pln(r.amount_gross)} jest zablokowana od momentu zakupu.</div>
+                  <div className="mt-1 text-xs" style={{ color: "var(--mut)" }}>{r.booking_type === "daily" ? `Okres: ${rentalUnitsLabel(r.units)}.` : `Czas: ${durationMinutes} min.`} {r.booking_type === "daily" ? "Czynsz" : "Cena usługi"} {pln(r.amount_gross)} jest zablokowany od momentu zakupu.</div>
 
                   {r.booking_type === "appointment" && <div className="mt-3">
                     <div className="mb-1.5 text-sm" style={{ color: "var(--mut)" }}>Pracownik / zasób</div>
@@ -492,19 +493,19 @@ export default function SellerBookingsManage() {
 
                   <div className="mt-3 rounded-2xl p-4" style={{ background: "var(--header)", border: "1px solid var(--line)" }}>
                     <div className="flex flex-wrap items-center justify-between gap-2">
-                      <div className="font-semibold">🔒 Cena rezerwacji pozostaje zablokowana</div>
+                      <div className="font-semibold">🔒 {r.booking_type === "daily" ? "Czynsz najmu pozostaje zablokowany" : "Cena usługi pozostaje zablokowana"}</div>
                       <div className="font-semibold" style={{ color: "var(--gold)" }}>{pln(r.amount_gross)}</div>
                     </div>
                     {pricePreviewLoading && <div className="mt-2 text-xs" style={{ color: "var(--mut)" }}>Sprawdzam aktualną cenę nowego terminu…</div>}
                     {!pricePreviewLoading && pricePreview && <div className="mt-3 space-y-2 text-sm">
-                      <div className="flex justify-between gap-3"><span style={{ color: "var(--mut)" }}>Aktualna cena wg cennika dla nowego terminu</span><b>{pln(pricePreview.reference_amount_gross)}</b></div>
+                      <div className="flex justify-between gap-3"><span style={{ color: "var(--mut)" }}>{r.booking_type === "daily" ? "Aktualny czynsz wg cennika dla nowego okresu" : "Aktualna cena wg cennika dla nowego terminu"}</span><b>{pln(pricePreview.reference_amount_gross)}</b></div>
                       <div className="flex justify-between gap-3"><span style={{ color: "var(--mut)" }}>Różnica informacyjna</span><b style={{ color: priceDifference > 0 ? "#f59e0b" : priceDifference < 0 ? "var(--green)" : "var(--mut)" }}>{priceDifference > 0 ? "+" : ""}{pln(priceDifference)}</b></div>
                       {r.booking_type === "daily" && Number(pricePreview.reference_deposit_gross || 0) !== Number(pricePreview.locked_deposit_gross || 0) && <div className="flex justify-between gap-3 text-xs"><span style={{ color: "var(--mut)" }}>Kaucja: w rezerwacji {pln(pricePreview.locked_deposit_gross)}, obecnie wg ustawień {pln(pricePreview.reference_deposit_gross)}</span><span>bez zmiany</span></div>}
                       <div className="rounded-xl px-3 py-2.5 text-xs leading-5" style={{ background: "rgba(122,184,154,.08)", border: "1px solid rgba(122,184,154,.20)", color: "var(--mut)" }}>
                         {pricePreview.paid ? "Rezerwacja jest opłacona. Zmiana terminu nie pobierze dopłaty i nie wykona zwrotu automatycznie — klient zachowuje warunki finansowe z momentu zakupu." : "Ta rezerwacja zachowuje warunki finansowe z momentu utworzenia. Aktualny cennik jest pokazany wyłącznie informacyjnie."}
                       </div>
                     </div>}
-                    {!pricePreviewLoading && pricePreviewError && <div className="mt-2 text-xs" style={{ color: "#fca5a5" }}>Nie udało się pobrać ceny referencyjnej: {pricePreviewError}. Nadal możesz zmienić termin — cena rezerwacji pozostanie bez zmian.</div>}
+                    {!pricePreviewLoading && pricePreviewError && <div className="mt-2 text-xs" style={{ color: "#fca5a5" }}>Nie udało się pobrać ceny referencyjnej: {pricePreviewError}. Nadal możesz zmienić termin — warunki finansowe rezerwacji pozostaną bez zmian.</div>}
                   </div>
 
                   <div className="mt-3 grid gap-2 sm:grid-cols-2">
