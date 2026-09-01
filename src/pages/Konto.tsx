@@ -187,8 +187,8 @@ function Ustawienia({ email, seller, isOp, onLogout }: { email: string; seller: 
 }
 
 function PolecajPV() {
-  const [r, setR] = useState<EnergyReferral | null>(null); const [busy, setBusy] = useState(false); const [msg, setMsg] = useState("");
-  useEffect(() => { energyReferral("status").then(setR).catch(() => {}); }, []);
-  async function create() { setBusy(true); try { const x = await energyReferral("create"); setR(x); setMsg("Link utworzony."); } catch (e: any) { setMsg(e?.message ?? "Błąd"); } finally { setBusy(false); } }
-  return <Card><div className="font-semibold">Polecaj Sunrise Energy</div><div className="text-sm mt-1" style={{ color: "var(--mut)" }}>Polecaj fotowoltaikę i rozwiązania energetyczne. Twój link zapisuje polecenie do programu Sunrise.</div>{r?.referral_code ? <div className="mt-3 flex gap-2"><input readOnly value={`https://sunriseenergy.pl/?ref=${r.referral_code}`} className="flex-1 rounded-lg px-3 py-2 text-sm" style={{ background: "var(--glass)", border: "1px solid var(--line)" }} /><button onClick={() => navigator.clipboard.writeText(`https://sunriseenergy.pl/?ref=${r.referral_code}`)} className="px-3 py-2 rounded-lg text-sm" style={{ background: "var(--gold)", color: "#000" }}>Kopiuj</button></div> : <button disabled={busy} onClick={create} className="mt-3 px-3 py-2 rounded-lg text-sm" style={{ background: "var(--gold)", color: "#000" }}>{busy ? "Tworzę…" : "Utwórz link"}</button>}{msg && <div className="text-xs mt-2" style={{ color: "var(--mut)" }}>{msg}</div>}</Card>;
+  const [r, setR] = useState<EnergyReferral | null>(null);
+  useEffect(() => { energyReferral().then(setR).catch(() => {}); }, []);
+  const link = r?.link || (r?.code ? `https://sunriseenergy.pl/?ref=${r.code}` : "");
+  return <Card><div className="font-semibold">Polecaj Sunrise Energy</div><div className="text-sm mt-1" style={{ color: "var(--mut)" }}>Polecaj fotowoltaikę i rozwiązania energetyczne. Twój link zapisuje polecenie do programu Sunrise.</div>{link ? <div className="mt-3 flex gap-2"><input readOnly value={link} className="flex-1 rounded-lg px-3 py-2 text-sm" style={{ background: "var(--glass)", border: "1px solid var(--line)" }} /><button onClick={() => navigator.clipboard.writeText(link)} className="px-3 py-2 rounded-lg text-sm" style={{ background: "var(--gold)", color: "#000" }}>Kopiuj</button></div> : <div className="mt-3 text-xs" style={{ color: "var(--mut)" }}>{r?.available === false ? "Program poleceń jest chwilowo niedostępny." : "Ładowanie linku polecającego…"}</div>}</Card>;
 }
