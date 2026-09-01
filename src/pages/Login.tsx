@@ -10,7 +10,11 @@ function safeNext() {
 export default function Login() {
   useEffect(() => {
     const next = safeNext();
-    const target = `${MYSUNRISE_URL}/market?return=${encodeURIComponent(next)}`;
+    const params = new URLSearchParams({
+      return: next,
+      origin: window.location.origin,
+    });
+    const target = `${MYSUNRISE_URL}/market?${params.toString()}`;
     window.location.replace(target);
   }, []);
 
