@@ -1,6 +1,6 @@
 import { useEffect } from "react";
 
-const MYSUNRISE_URL = "https://mysunrise.pl";
+const MYSUNRISE_URL = "https://app.mysunrise.pl";
 
 function safeNext() {
   const value = new URLSearchParams(window.location.search).get("next") || "/";
