@@ -81,6 +81,7 @@ function injectControls() {
     ["appointment", "Usługi"],
     ["daily", "Wynajem"],
   ];
+  let availabilityButtons: HTMLButtonElement[] = [];
   const modeButtons = modeDefs.map(([value, text]) => {
     const button = document.createElement("button");
     button.type = "button";
@@ -111,7 +112,7 @@ function injectControls() {
     ["today", "Dostępne dziś"],
     ["weekend", "Ten weekend"],
   ];
-  const availabilityButtons = availabilityDefs.map(([value, text]) => {
+  availabilityButtons = availabilityDefs.map(([value, text]) => {
     const button = document.createElement("button");
     button.type = "button";
     button.dataset.availabilityFilter = value;
