@@ -27,6 +27,7 @@ const shortDate = (value: string) =>
   value ? new Date(`${value}T12:00:00`).toLocaleDateString("pl-PL", { day: "numeric", month: "short", year: "numeric" }) : "—";
 const dateAtNoonUtc = (value: string) => new Date(`${value}T12:00:00Z`);
 const resourceIcon = (kind: string) => kind === "staff" ? "👤" : kind === "vehicle" ? "🚗" : kind === "property" ? "🏠" : kind === "room" ? "🛏️" : kind === "equipment" ? "🧰" : "◉";
+const rentalUnitsLabel = (units: number) => units === 1 ? "1 doba" : units >= 2 && units <= 4 ? `${units} doby` : `${units} dób`;
 
 export default function BookingPurchaseModal({ offerId, config, open, onClose }: Props) {
   const [catalog, setCatalog] = useState<BookingCatalogV2 | null>(null);
@@ -139,7 +140,7 @@ export default function BookingPurchaseModal({ offerId, config, open, onClose }:
       .catch((e) => {
         setRentalBase(0);
         setRentalUnits(0);
-        setError(e?.message || "Nie udało się policzyć ceny");
+        setError(e?.message || "Nie udało się obliczyć czynszu za wybrany okres");
       });
   }, [open, offerId, activeConfig.booking_type, fromDay, toDay, resourceId]);
 
@@ -207,8 +208,8 @@ export default function BookingPurchaseModal({ offerId, config, open, onClose }:
         });
       } else {
         if (!fromDay || !toDay || rentalUnits < 1) throw new Error("Wybierz prawidłowy okres rezerwacji");
-        if (rentalUnits < Number(activeConfig.min_units || 1)) throw new Error(`Minimalny okres to ${activeConfig.min_units} dni`);
-        if (rentalUnits > activeConfig.max_units) throw new Error(`Maksymalny okres to ${activeConfig.max_units} dni`);
+        if (rentalUnits < Number(activeConfig.min_units || 1)) throw new Error(`Minimalny okres to ${activeConfig.min_units} dób`);
+        if (rentalUnits > activeConfig.max_units) throw new Error(`Maksymalny okres to ${activeConfig.max_units} dób`);
         hold = await createBookingHoldV2({ offerId, startsAt: dateAtNoonUtc(fromDay), endsAt: dateAtNoonUtc(toDay), resourceId });
       }
       const result = await checkoutWithInvoice({ booking_id: hold.booking_id, payment_method: payment }, invoice);
@@ -242,9 +243,9 @@ export default function BookingPurchaseModal({ offerId, config, open, onClose }:
     <div className="flex h-full w-full flex-col overflow-hidden sm:h-auto sm:max-h-[92vh] sm:max-w-5xl sm:rounded-3xl" onMouseDown={(e) => e.stopPropagation()} style={{ background: "var(--header)", border: "1px solid var(--line)" }}>
       <header className="flex items-start justify-between gap-4 border-b px-5 py-4 sm:px-7" style={{ borderColor: "var(--line)" }}>
         <div>
-          <div className="text-[11px] font-semibold tracking-[.16em]" style={{ color: "var(--gold)" }}>{activeConfig.booking_type === "appointment" ? "REZERWACJA TERMINU" : "REZERWACJA ONLINE"}</div>
-          <h2 className="mt-1 font-display text-2xl font-semibold">{activeConfig.booking_type === "appointment" ? "Wybierz usługę i termin" : catalog?.resources?.length ? "Wybierz zasób i daty wynajmu" : "Wybierz daty wynajmu"}</h2>
-          <p className="mt-1 text-sm" style={{ color: "var(--mut)" }}>Po wyborze blokujemy termin na 15 minut na czas płatności.</p>
+          <div className="text-[11px] font-semibold tracking-[.16em]" style={{ color: "var(--gold)" }}>{activeConfig.booking_type === "appointment" ? "REZERWACJA TERMINU" : "REZERWACJA WYNAJMU"}</div>
+          <h2 className="mt-1 font-display text-2xl font-semibold">{activeConfig.booking_type === "appointment" ? "Wybierz usługę i termin" : catalog?.resources?.length ? "Wybierz egzemplarz i daty" : "Wybierz daty wynajmu"}</h2>
+          <p className="mt-1 text-sm" style={{ color: "var(--mut)" }}>{activeConfig.booking_type === "appointment" ? "Po wyborze blokujemy termin na 15 minut na czas płatności." : `Cena bazowa: ${zl(Number(activeConfig.price_per_unit || 0))} / dobę. Po wyborze dat zobaczysz czynsz za cały okres${Number(activeConfig.deposit_gross || 0) > 0 ? " oraz kaucję" : ""}.`}</p>
         </div>
         <button type="button" onClick={onClose} className="rounded-xl px-3 py-2 text-lg" style={{ background: "var(--glass)", border: "1px solid var(--line)" }} aria-label="Zamknij">✕</button>
       </header>
@@ -279,8 +280,8 @@ export default function BookingPurchaseModal({ offerId, config, open, onClose }:
             </section>
           </> : <>
             {catalog?.resources?.length ? <section>
-              <StepTitle n={1} title="Wybierz konkretny zasób" optional />
-              <p className="mt-2 text-xs" style={{ color: "var(--mut)" }}>Możesz wybrać konkretny egzemplarz albo zostawić automatyczny przydział pierwszego wolnego przez cały pobyt.</p>
+              <StepTitle n={1} title="Wybierz konkretny egzemplarz" optional />
+              <p className="mt-2 text-xs" style={{ color: "var(--mut)" }}>Możesz wybrać konkretny egzemplarz albo zostawić automatyczny przydział jednego wolnego przez cały okres.</p>
               <div className="mt-3 flex flex-wrap gap-2">
                 <button type="button" onClick={() => selectRentalResource(null)} className="rounded-xl px-3 py-2 text-sm font-medium" style={{ border: !resourceId ? "1px solid var(--gold)" : "1px solid var(--line)", background: !resourceId ? "rgba(200,150,90,.10)" : "var(--glass)" }}>⚡ Dowolny dostępny</button>
                 {catalog.resources.map((r) => <button key={r.id} type="button" onClick={() => selectRentalResource(r.id)} className="rounded-xl px-3 py-2 text-sm font-medium" style={{ border: resourceId === r.id ? "1px solid var(--gold)" : "1px solid var(--line)", background: resourceId === r.id ? "rgba(200,150,90,.10)" : "var(--glass)" }}>{resourceIcon(r.kind)} {r.name}</button>)}
@@ -288,7 +289,7 @@ export default function BookingPurchaseModal({ offerId, config, open, onClose }:
             </section> : null}
 
             <section>
-              <StepTitle n={dailyDateStep} title="Wybierz okres" />
+              <StepTitle n={dailyDateStep} title="Wybierz daty od–do" />
               {availabilityLoading ? <Info>Sprawdzam zajęte i zablokowane dni{selectedResource ? ` dla ${selectedResource.name}` : ""}…</Info> : <DailyRangeCalendar
                 minDate={today}
                 maxDate={latest}
@@ -301,11 +302,11 @@ export default function BookingPurchaseModal({ offerId, config, open, onClose }:
               />}
               {availabilityWarning && <div className="mt-3 rounded-2xl px-4 py-3 text-xs" style={{ background: "rgba(200,150,90,.08)", border: "1px solid rgba(200,150,90,.22)", color: "var(--gold)" }}>{availabilityWarning}</div>}
               <div className="mt-3 flex flex-wrap items-center justify-between gap-2 text-xs" style={{ color: "var(--mut)" }}>
-                <span>Minimalnie {activeConfig.min_units} dni · maksymalnie {activeConfig.max_units} dni</span>
+                <span>Minimalnie {activeConfig.min_units} dób · maksymalnie {activeConfig.max_units} dób</span>
                 <span>Rezerwacja do {shortDate(latest)}</span>
               </div>
-              {fromDay && toDay && rentalUnits === 0 && !error && <Info>Sprawdzam cenę i dostępność wybranego okresu…</Info>}
-              {rentalUnits > 0 && <div className="mt-4 rounded-2xl p-4" style={{ background: "var(--glass)", border: "1px solid var(--line)" }}><PriceRow label={`${rentalUnits} ${rentalUnits === 1 ? "dzień" : "dni"}`} value={rentalBase} strong />{fees > 0 && <PriceRow label="Przygotowanie / opłata dodatkowa" value={fees} />}{deposit > 0 && <PriceRow label="Kaucja zabezpieczająca" value={deposit} muted />}</div>}
+              {fromDay && toDay && rentalUnits === 0 && !error && <Info>Sprawdzam dostępność i obliczam czynsz za wybrany okres…</Info>}
+              {rentalUnits > 0 && <div className="mt-4 rounded-2xl p-4" style={{ background: "var(--glass)", border: "1px solid var(--line)" }}><PriceRow label={`Czynsz za najem · ${rentalUnitsLabel(rentalUnits)}`} value={rentalBase} strong />{fees > 0 && <PriceRow label="Opłata dodatkowa" value={fees} />}{deposit > 0 && <PriceRow label="Kaucja zwrotna" value={deposit} muted />}</div>}
             </section>
           </>}
 
@@ -329,18 +330,20 @@ export default function BookingPurchaseModal({ offerId, config, open, onClose }:
                 <SummaryRow label="Obsługa" value={selectedResource?.name || (selected ? "Przydzielona automatycznie" : resourceId ? "Wybrany zasób" : "Dowolny dostępny")} muted={!selectedResource && !selected} />
                 <SummaryRow label="Termin" value={selected ? `${dateLabel(selected.starts_at, activeConfig.timezone)}, ${hourLabel(selected.starts_at, activeConfig.timezone)}` : "Wybierz termin"} muted={!selected} />
               </> : <>
-                {catalog?.resources?.length ? <SummaryRow label="Zasób" value={selectedResource?.name || "Dowolny dostępny · przydzielimy automatycznie"} muted={!selectedResource} /> : null}
+                {catalog?.resources?.length ? <SummaryRow label="Egzemplarz" value={selectedResource?.name || "Dowolny dostępny · przydzielimy automatycznie"} muted={!selectedResource} /> : null}
                 <SummaryRow label="Od" value={shortDate(fromDay)} muted={!fromDay} />
                 <SummaryRow label="Do" value={shortDate(toDay)} muted={!toDay} />
-                <SummaryRow label="Okres" value={rentalUnits > 0 ? `${rentalUnits} ${rentalUnits === 1 ? "dzień" : "dni"}` : "Wybierz daty"} muted={rentalUnits < 1} />
+                <SummaryRow label="Okres" value={rentalUnits > 0 ? rentalUnitsLabel(rentalUnits) : "Wybierz daty"} muted={rentalUnits < 1} />
+                {rentalUnits > 0 && <SummaryRow label="Czynsz" value={zl(rentalBase + fees)} />}
+                {deposit > 0 && <SummaryRow label="Kaucja" value={zl(deposit)} />}
               </>}
             </div>
             <div className="my-5 border-t" style={{ borderColor: "var(--line)" }} />
-            <div className="flex items-end justify-between gap-3"><span className="text-sm">Do zapłaty</span><strong className="font-display text-3xl" style={{ color: "var(--gold)" }}>{zl(paymentTotal)}</strong></div>
+            <div className="flex items-end justify-between gap-3"><span className="text-sm">Do zapłaty teraz</span><strong className="font-display text-3xl" style={{ color: "var(--gold)" }}>{zl(paymentTotal)}</strong></div>
             {cashback > 0 && <div className="mt-3 rounded-xl px-3 py-2 text-sm" style={{ background: "rgba(122,184,154,.12)", color: "var(--green)" }}>+ {zl(cashback)} cashbacku na portfel</div>}
-            {deposit > 0 && <div className="mt-3 rounded-xl px-3 py-2 text-xs" style={{ background: "rgba(200,150,90,.08)", border: "1px solid rgba(200,150,90,.20)", color: "var(--mut)" }}>Kaucja {zl(deposit)} jest wliczona w kwotę płatności. Nie podlega cashbackowi ani prowizjom i po zakończeniu rezerwacji podlega zwrotowi albo rozliczeniu przez sprzedawcę.</div>}
+            {deposit > 0 && <div className="mt-3 rounded-xl px-3 py-2 text-xs" style={{ background: "rgba(200,150,90,.08)", border: "1px solid rgba(200,150,90,.20)", color: "var(--mut)" }}>Kaucja {zl(deposit)} jest pobierana razem z czynszem. Nie podlega cashbackowi ani prowizjom. Po zakończeniu najmu sprzedawca zwraca ją albo rozlicza zgodnie ze stanem przedmiotu/pojazdu.</div>}
             <InvoiceDetailsFields value={invoice} onChange={setInvoice} compact />
-            <div className="mt-5 space-y-2 text-xs" style={{ color: "var(--mut)" }}><div>✓ Bezpieczna płatność</div><div>✓ Termin blokowany na 15 minut</div><div>✓ {activeConfig.instant_booking ? "Potwierdzenie automatycznie po płatności" : "Potwierdzenie po akceptacji sprzedawcy"}</div></div>
+            <div className="mt-5 space-y-2 text-xs" style={{ color: "var(--mut)" }}><div>✓ Bezpieczna płatność</div><div>✓ Termin blokowany na 15 minut</div><div>✓ {activeConfig.instant_booking ? "Rezerwacja potwierdzona automatycznie po płatności" : "Rezerwacja potwierdzona po akceptacji sprzedawcy"}</div></div>
             <button type="button" disabled={busy || paymentTotal <= 0 || !ready || !invoiceReady} onClick={pay} className="mt-5 w-full rounded-2xl py-3.5 font-bold text-black disabled:opacity-45" style={{ background: "linear-gradient(135deg,#C8965A,#E8C896)" }}>{busy ? "Rezerwuję i przekierowuję…" : !invoiceReady ? "Uzupełnij dane do faktury" : ready ? `Rezerwuję i płacę ${zl(paymentTotal)}` : activeConfig.booking_type === "appointment" ? "Najpierw wybierz termin" : "Najpierw wybierz daty"}</button>
           </div>
         </aside>
