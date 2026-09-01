@@ -19,7 +19,7 @@ const MODES: Array<{ mode: PurchaseMode; icon: string; title: string; descriptio
     mode: "appointment",
     icon: "📅",
     title: "Usługa na termin",
-    description: "Klient wybiera dzień i godzinę, a potem płaci. Dla usług, wizyt, sprzętu i rezerwacji godzinowych.",
+    description: "Klient wybiera dzień i godzinę, a potem płaci. Dla usług, wizyt i rezerwacji godzinowych.",
     cta: "Wystaw z kalendarzem",
   },
   {
@@ -67,6 +67,10 @@ export default function SprzedawcaWystaw() {
   if (access === "activate") return <GateCard title="Aktywuj Partnera Handlowego" body="Aby wystawiać własne produkty, usługi lub wynajem, aktywuj dostęp sprzedażowy na swoim koncie MySunrise. Pierwsze 12 miesięcy są bez opłaty rocznej." cta="Aktywuj Partnera Handlowego" to="/sprzedawca/partner" />;
   if (access === "renewal") return <GateCard title="Odnowienie Partnera Handlowego" body="Twój 12-miesięczny okres startowy minął. Odnów członkostwo, aby dalej wystawiać nowe oferty. Zwykłe konto MySunrise pozostaje aktywne." cta="Przejdź do odnowienia" to="/sprzedawca/partner" />;
 
+  if (sellerType === "private_partner" && (requestedMode === "purchase" || requestedMode === "appointment" || requestedMode === "daily")) {
+    return <PrivateOfferWizard />;
+  }
+
   if (sellerType === "private_partner" && (!requestedMode || requestedMode === "purchase") && (!type || type === "produkt")) {
     return <PrivateOfferWizard />;
   }
@@ -110,7 +114,7 @@ export default function SprzedawcaWystaw() {
         </div>
 
         <div className="mt-6 rounded-2xl p-4 text-sm" style={{ background: "rgba(122,184,154,.08)", border: "1px solid rgba(122,184,154,.22)", color: "var(--mut)" }}>
-          Nie musisz wybierać osobno „samochód”, „nieruchomość” czy „sprzęt”. Po wyborze trybu kreator pokaże wszystkie kategorie i dopasuje właściwe pola oraz booking.
+          Nie musisz wybierać osobno „samochód”, „nieruchomość” czy „sprzęt” na starcie. Po wyborze trybu kreator dopasuje kategorię i właściwy booking.
         </div>
       </div>
     </main>
