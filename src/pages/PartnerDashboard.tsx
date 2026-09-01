@@ -161,10 +161,11 @@ export default function PartnerDashboard() {
 
     <section className="rounded-3xl p-5" style={{ background: "var(--glass)", border: "1px solid var(--line)" }}>
       <div className="font-semibold">Szybkie akcje</div>
-      <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-        <Quick to="/sprzedawca/wystaw" icon="➕" title="Wystaw produkt" text="Sprzedaż, usługa lub wynajem" />
+      <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
+        <Quick to="/sprzedawca/wystaw" icon="➕" title="Wystaw ofertę" text="Sprzedaż, usługa lub wynajem" />
         <Quick to="/sprzedawca/oferty" icon="🖼️" title="Moje oferty" text="Zdjęcia, ceny i ustawienia" />
         <Quick to="/sprzedawca/zamowienia" icon="🛍️" title="Moje sprzedaże" text={attention.pending_fulfillment > 0 ? `${attention.pending_fulfillment} do realizacji` : "Sprzedaże i realizacja"} />
+        <Quick to="/sprzedawca/rezerwacje" icon="📅" title="Moje rezerwacje" text="Terminy usług i wynajmu" />
         <a href="https://mysunrise.pl/mme/linki" className="rounded-2xl p-4" style={{ background: "var(--header)", border: "1px solid var(--line)" }}><div className="text-2xl">🔗</div><div className="mt-2 font-semibold">Linki polecające</div><div className="mt-1 text-xs" style={{ color: "var(--mut)" }}>Promuj i zarabiaj prowizje</div></a>
       </div>
     </section>
