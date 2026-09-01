@@ -107,6 +107,16 @@ Deno.serve(async (req) => {
       return json({ ok: true, protocol: protocol ?? null, photos: photos ?? [], can_edit: access.seller, can_respond: access.buyer });
     }
 
+    if (action === "photo_url") {
+      if (!photoId) return json({ ok: false, error: "missing_photo" }, 400);
+      const { data: photo, error } = await sb.from("booking_protocol_photos").select("id,booking_id,storage_path").eq("id", photoId).eq("booking_id", bookingId).maybeSingle();
+      if (error) throw error;
+      if (!photo) return json({ ok: false, error: "not_found" }, 404);
+      const { data: signed, error: signedError } = await sb.storage.from(BUCKET).createSignedUrl(photo.storage_path, 120);
+      if (signedError) throw signedError;
+      return json({ ok: true, url: signed.signedUrl, expires_in: 120 });
+    }
+
     if (action === "buyer_respond") {
       if (!access.buyer) return json({ ok: false, error: "buyer_only" }, 403);
       if (access.booking.booking_type !== "daily") return json({ ok: false, error: "rental_only" }, 400);
@@ -162,11 +172,29 @@ Deno.serve(async (req) => {
       return created;
     }
 
+    async function prepareSellerRevision(protocol: Record<string, unknown>, revisionPhase: "handover" | "return") {
+      const statusField = revisionPhase === "handover" ? "handover_buyer_status" : "return_buyer_status";
+      const respondedByField = revisionPhase === "handover" ? "handover_buyer_responded_by" : "return_buyer_responded_by";
+      const current = String(protocol[statusField] ?? "pending");
+      if (current === "acknowledged") return false;
+      if (current === "disputed") {
+        const { error } = await sb.from("booking_handover_protocols").update({
+          [statusField]: "pending",
+          [respondedByField]: null,
+          updated_by: user.id,
+          updated_at: new Date().toISOString(),
+        }).eq("id", String(protocol.id));
+        if (error) throw error;
+        protocol[statusField] = "pending";
+      }
+      return true;
+    }
+
     if (action === "save_handover" || action === "save_return") {
       const protocol = await ensureProtocol();
       const isHandover = action === "save_handover";
-      const buyerResponse = isHandover ? protocol.handover_buyer_status : protocol.return_buyer_status;
-      if (buyerResponse && buyerResponse !== "pending") return json({ ok: false, error: "buyer_response_locked" }, 409);
+      const revisionPhase = isHandover ? "handover" : "return";
+      if (!await prepareSellerRevision(protocol, revisionPhase)) return json({ ok: false, error: "buyer_confirmed_locked" }, 409);
       const patch: Record<string, unknown> = {
         updated_by: user.id,
         updated_at: new Date().toISOString(),
@@ -220,8 +248,7 @@ Deno.serve(async (req) => {
       if (file.size > MAX_BYTES) return json({ ok: false, error: "file_too_large" }, 400);
       if (!["handover", "return"].includes(phase)) return json({ ok: false, error: "invalid_phase" }, 400);
       const protocol = await ensureProtocol();
-      const buyerResponse = phase === "handover" ? protocol.handover_buyer_status : protocol.return_buyer_status;
-      if (buyerResponse && buyerResponse !== "pending") return json({ ok: false, error: "buyer_response_locked" }, 409);
+      if (!await prepareSellerRevision(protocol, phase as "handover" | "return")) return json({ ok: false, error: "buyer_confirmed_locked" }, 409);
       const id = crypto.randomUUID();
       const ext = (safeName(file.name).split(".").pop() || "jpg").toLowerCase();
       const path = `${access.booking.seller_id}/${bookingId}/${phase}/${id}.${ext}`;
@@ -244,24 +271,13 @@ Deno.serve(async (req) => {
       return json({ ok: true, photo: data });
     }
 
-    if (action === "photo_url") {
-      if (!photoId) return json({ ok: false, error: "missing_photo" }, 400);
-      const { data: photo, error } = await sb.from("booking_protocol_photos").select("id,booking_id,storage_path").eq("id", photoId).eq("booking_id", bookingId).maybeSingle();
-      if (error) throw error;
-      if (!photo) return json({ ok: false, error: "not_found" }, 404);
-      const { data: signed, error: signedError } = await sb.storage.from(BUCKET).createSignedUrl(photo.storage_path, 120);
-      if (signedError) throw signedError;
-      return json({ ok: true, url: signed.signedUrl, expires_in: 120 });
-    }
-
     if (action === "delete_photo") {
       if (!photoId) return json({ ok: false, error: "missing_photo" }, 400);
       const { data: photo, error } = await sb.from("booking_protocol_photos").select("id,booking_id,storage_path,phase").eq("id", photoId).eq("booking_id", bookingId).maybeSingle();
       if (error) throw error;
       if (!photo) return json({ ok: true });
       const protocol = await ensureProtocol();
-      const buyerResponse = photo.phase === "handover" ? protocol.handover_buyer_status : protocol.return_buyer_status;
-      if (buyerResponse && buyerResponse !== "pending") return json({ ok: false, error: "buyer_response_locked" }, 409);
+      if (!await prepareSellerRevision(protocol, photo.phase as "handover" | "return")) return json({ ok: false, error: "buyer_confirmed_locked" }, 409);
       await sb.storage.from(BUCKET).remove([photo.storage_path]);
       const { error: deleteError } = await sb.from("booking_protocol_photos").delete().eq("id", photoId);
       if (deleteError) throw deleteError;
