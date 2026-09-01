@@ -163,7 +163,7 @@ export default function PrivateOfferWizard() {
           slotIntervalMinutes: 30,
           minNoticeHours: 2,
           maxAdvanceDays: 365,
-          maxUnits: 1,
+          maxUnits: mode === "daily" ? 60 : 1,
           pricePerUnit: Number(price),
           active: false,
         });
