@@ -28,8 +28,17 @@ const localInput = (iso: string) => {
   const d = new Date(iso); const p = (n: number) => String(n).padStart(2, "0");
   return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}T${p(d.getHours())}:${p(d.getMinutes())}`;
 };
+const isHistory = (r: BuyerBooking) => ["completed", "cancelled", "expired"].includes(r.status) || new Date(r.ends_at).getTime() < Date.now();
+const progressStep = (r: BuyerBooking) => {
+  if (["cancelled", "expired"].includes(r.status)) return 0;
+  if (r.status === "completed") return 4;
+  if (r.status === "confirmed") return new Date(r.ends_at).getTime() < Date.now() ? 4 : 3;
+  if (r.paid_at) return 2;
+  return 1;
+};
 
 type ChangeRequest = { id:string; booking_id:string; request_type:"cancel"|"reschedule"; requested_starts_at:string|null; message:string|null; status:string; seller_note:string|null; created_at:string; handled_at:string|null };
+type View = "upcoming" | "history" | "all";
 
 export default function Rezerwacje() {
   useSeo("Moje rezerwacje", "Opłacone usługi i wynajem w Sunrise Market.", "/rezerwacje");
@@ -43,6 +52,7 @@ export default function Rezerwacje() {
   const [message, setMessage] = useState("");
   const [busy, setBusy] = useState(false);
   const [notice, setNotice] = useState("");
+  const [view, setView] = useState<View>("upcoming");
   const params = new URLSearchParams(window.location.search);
   const paid = params.get("paid") === "success" || params.get("card") === "success";
   const cancelled = params.get("card") === "cancel";
@@ -93,6 +103,10 @@ export default function Rezerwacje() {
     setBusy(false);
   }
 
+  const upcomingCount = rows.filter((r) => !isHistory(r)).length;
+  const historyCount = rows.filter(isHistory).length;
+  const visibleRows = rows.filter((r) => view === "all" || (view === "history" ? isHistory(r) : !isHistory(r)));
+
   return <main className="min-h-screen px-4 py-8" style={{ background: "var(--bg)", color: "var(--ink)" }}>
     <div className="mx-auto max-w-4xl">
       <div className="mb-7 flex items-center justify-between gap-3"><div><a href="/konto" className="text-sm" style={{ color: "var(--mut)" }}>← Moje konto</a><h1 className="mt-2 font-display text-3xl font-semibold">Moje rezerwacje</h1></div><a href="/" className="rounded-xl px-4 py-2 text-sm" style={{ border: "1px solid var(--line)" }}>Sklep</a></div>
@@ -101,19 +115,31 @@ export default function Rezerwacje() {
       {notice && <p className="mb-5 rounded-2xl p-4 text-sm" style={{ background: "rgba(200,150,90,.10)", border: "1px solid rgba(200,150,90,.25)", color: "var(--gold)" }}>{notice}</p>}
       {!authed && <p>Zaloguj się, aby zobaczyć rezerwacje. <a className="underline" href={`/login?next=${encodeURIComponent("/rezerwacje")}`}>Logowanie</a></p>}
       {loading && <p style={{ color: "var(--mut)" }}>Ładowanie rezerwacji…</p>}
+      {!loading && authed && rows.length > 0 && <div className="mb-5 grid grid-cols-3 gap-2 rounded-2xl p-2" style={{ background: "var(--glass)", border: "1px solid var(--line)" }}>
+        {(["upcoming", "history", "all"] as View[]).map((key) => <button key={key} onClick={() => setView(key)} className="rounded-xl px-3 py-2.5 text-sm font-semibold" style={{ background: view === key ? "var(--header)" : "transparent", border: view === key ? "1px solid var(--gold)" : "1px solid transparent", color: view === key ? "var(--gold)" : "var(--mut)" }}>{key === "upcoming" ? `Nadchodzące (${upcomingCount})` : key === "history" ? `Historia (${historyCount})` : `Wszystkie (${rows.length})`}</button>)}
+      </div>}
       {!loading && authed && rows.length === 0 && <div className="rounded-2xl p-6" style={{ background: "var(--glass)", border: "1px solid var(--line)" }}><p className="font-semibold">Nie masz jeszcze rezerwacji.</p><p className="mt-1 text-sm" style={{ color: "var(--mut)" }}>W ofertach z bookingiem wybierzesz usługę lub okres wynajmu i zapłacisz od razu.</p></div>}
-      <div className="grid gap-3">{rows.map((r) => {
+      {!loading && authed && rows.length > 0 && visibleRows.length === 0 && <div className="rounded-2xl p-6" style={{ background: "var(--glass)", border: "1px solid var(--line)" }}><p className="font-semibold">Brak rezerwacji w tej sekcji.</p></div>}
+      <div className="grid gap-3">{visibleRows.map((r) => {
         const request = requests.find((x) => x.booking_id === r.id && x.status === "pending") || requests.find((x) => x.booking_id === r.id);
         const canRequest = r.status === "confirmed" && new Date(r.starts_at).getTime() > Date.now();
         const deposit = Number(r.deposit_gross || 0);
         const bookingPrice = Number(r.amount_gross || 0);
+        const step = progressStep(r);
+        const steps = r.booking_type === "appointment" ? ["Termin", "Płatność", "Potwierdzenie", "Realizacja"] : ["Termin", "Płatność", "Potwierdzenie", "Zakończenie"];
         return <article key={r.id} className="rounded-2xl p-5" style={{ background: "var(--glass)", border: "1px solid var(--line)" }}>
           <div className="flex flex-wrap items-start justify-between gap-3"><div><a href={`/produkt/${r.offer_id}`} className="font-semibold hover:underline">{r.title}</a><p className="mt-1 text-sm" style={{ color: "var(--mut)" }}>{r.booking_type === "appointment" ? date(r.starts_at, true) : `${date(r.starts_at, false)} – ${date(r.ends_at, false)} · ${r.units} dni`}</p></div><span className="rounded-full px-3 py-1 text-xs font-semibold" style={{ background: r.status === "confirmed" ? "rgba(34,197,94,.14)" : r.status === "pending_payment" && r.paid_at ? "rgba(200,150,90,.14)" : "var(--header)", border: "1px solid var(--line)" }}>{bookingLabel(r)}</span></div>
+          {!["cancelled", "expired"].includes(r.status) && <div className="mt-4 grid grid-cols-4 gap-2">{steps.map((label, index) => <div key={label}><div className="h-1.5 rounded-full" style={{ background: index < step ? "var(--gold)" : "var(--line)" }} /><div className="mt-1 text-[10px] sm:text-xs" style={{ color: index < step ? "var(--ink)" : "var(--mut)" }}>{label}</div></div>)}</div>}
           {r.status === "pending_payment" && r.paid_at && <p className="mt-3 rounded-xl px-3 py-2 text-xs" style={{ background: "rgba(200,150,90,.08)", border: "1px solid rgba(200,150,90,.2)", color: "var(--mut)" }}>Płatność jest zaksięgowana, a termin nadal zarezerwowany dla Ciebie. Sprzedawca musi tylko zaakceptować rezerwację.</p>}
+          <div className="mt-4 grid gap-2 rounded-xl p-3 text-sm sm:grid-cols-2" style={{ background: "var(--header)", border: "1px solid var(--line)" }}>
+            <div><span className="block text-xs" style={{ color: "var(--mut)" }}>Płatność</span><strong>{r.paid_at ? "Opłacona" : "Nieopłacona"}</strong></div>
+            <div><span className="block text-xs" style={{ color: "var(--mut)" }}>Typ</span><strong>{r.booking_type === "appointment" ? "Usługa na termin" : "Wynajem"}</strong></div>
+            {r.order_id && <div><span className="block text-xs" style={{ color: "var(--mut)" }}>Numer rezerwacji</span><strong className="font-mono text-xs">{r.id.slice(0, 8).toUpperCase()}</strong></div>}
+            <div><span className="block text-xs" style={{ color: "var(--mut)" }}>Metoda płatności</span><strong>{r.payment_provider === "stripe" ? "Karta / BLIK / P24" : r.payment_provider === "sunrise_pay" ? "Sunrise Pay" : "—"}</strong></div>
+          </div>
           <div className="mt-4 flex items-center justify-between text-sm"><span style={{ color: "var(--mut)" }}>Cena rezerwacji</span><strong>{zl(bookingPrice)}</strong></div>
           {deposit > 0 && <div className="mt-2 rounded-xl px-3 py-2 text-xs" style={{ background: "rgba(200,150,90,.08)", border: "1px solid rgba(200,150,90,.18)", color: "var(--mut)" }}>Kaucja zabezpieczająca: {zl(deposit)} · {depositLabels[r.deposit_status] ?? r.deposit_status}. Kaucja została pobrana razem z płatnością za rezerwację, ale nie podlega cashbackowi ani prowizji.</div>}
           {deposit > 0 && r.paid_at && <div className="mt-2 flex items-center justify-between text-sm"><span style={{ color: "var(--mut)" }}>Łącznie pobrano</span><strong>{zl(bookingPrice + deposit)}</strong></div>}
-          <div className="mt-2 text-xs" style={{ color: "var(--mut)" }}>{r.payment_provider === "stripe" ? "Karta / BLIK / P24" : r.payment_provider === "sunrise_pay" ? "Sunrise Pay" : ""}</div>
 
           {request && <div className="mt-4 rounded-2xl p-4 text-sm" style={{ background:"var(--header)", border:"1px solid var(--line)" }}>
             <div className="flex flex-wrap items-center justify-between gap-2"><b>{request.request_type === "cancel" ? "Prośba o anulowanie" : "Prośba o zmianę terminu"}</b><span className="rounded-full px-2.5 py-1 text-xs" style={{ border:"1px solid var(--line)", color: request.status === "accepted" ? "var(--green)" : request.status === "rejected" ? "#fca5a5" : "var(--gold)" }}>{requestLabels[request.status] || request.status}</span></div>
