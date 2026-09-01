@@ -22,6 +22,7 @@ type Props = {
   orderId: string;
   mode: "seller" | "buyer";
   invoiceRequested?: boolean;
+  allowUpload?: boolean;
 };
 
 const typeLabel: Record<string, string> = {
@@ -38,7 +39,7 @@ const sourceLabel: Record<string, string> = {
   external: "system zewnętrzny",
 };
 
-export default function SalesDocumentsPanel({ orderId, mode, invoiceRequested = false }: Props) {
+export default function SalesDocumentsPanel({ orderId, mode, invoiceRequested = false, allowUpload = true }: Props) {
   const [open, setOpen] = useState(false);
   const [loaded, setLoaded] = useState(false);
   const [documents, setDocuments] = useState<SalesDocument[]>([]);
@@ -77,6 +78,7 @@ export default function SalesDocumentsPanel({ orderId, mode, invoiceRequested = 
   }
 
   async function upload() {
+    if (!allowUpload) { setMessage("Sprzedaż prywatna nie korzysta z modułu faktur."); return; }
     if (!file) { setMessage("Wybierz plik PDF."); return; }
     if (file.type !== "application/pdf" && !file.name.toLowerCase().endsWith(".pdf")) { setMessage("Dozwolone są tylko pliki PDF."); return; }
     if (file.size > 10 * 1024 * 1024) { setMessage("Plik może mieć maksymalnie 10 MB."); return; }
@@ -125,9 +127,11 @@ export default function SalesDocumentsPanel({ orderId, mode, invoiceRequested = 
         <div className="font-semibold">📄 Dokumenty sprzedaży</div>
         <div className="mt-1 text-xs" style={{ color: "var(--mut)" }}>
           {mode === "seller"
-            ? invoiceRequested
-              ? "Klient podał dane do faktury. Wystaw dokument w swoim programie i dodaj tutaj gotowy PDF."
-              : "Sunrise Market nie wystawia dokumentów za Ciebie. Możesz przekazać klientowi gotowy dokument PDF."
+            ? allowUpload
+              ? invoiceRequested
+                ? "Klient podał dane do faktury. Wystaw dokument w swoim programie i dodaj tutaj gotowy PDF."
+                : "Sunrise Market nie wystawia dokumentów za Ciebie. Możesz przekazać klientowi gotowy dokument PDF."
+              : "To sprzedaż prywatna. Sunrise Market nie wymaga od Ciebie wystawienia faktury."
             : invoiceRequested
               ? "Jeśli sprzedawca wystawi dokument, będzie dostępny tutaj."
               : "Tutaj pojawią się dokumenty przekazane przez sprzedawcę."}
@@ -139,13 +143,13 @@ export default function SalesDocumentsPanel({ orderId, mode, invoiceRequested = 
     {open && <div className="mt-4">
       {message && <div className="mb-3 text-xs" style={{ color: message.startsWith("Dokument został") ? "var(--green)" : "#fca5a5" }}>{message}</div>}
 
-      {mode === "seller" && <div className="mb-3 flex justify-end">
+      {mode === "seller" && allowUpload && <div className="mb-3 flex justify-end">
         <button type="button" onClick={() => setAdding(v => !v)} className="rounded-xl px-3 py-2 text-xs font-semibold" style={{ border: "1px solid var(--line)", background: "var(--glass)" }}>
           {adding ? "Anuluj" : "+ Dodaj dokument PDF"}
         </button>
       </div>}
 
-      {mode === "seller" && adding && <div className="mb-4 grid gap-3 rounded-xl p-4 sm:grid-cols-2" style={{ background: "var(--glass)", border: "1px solid var(--line)" }}>
+      {mode === "seller" && allowUpload && adding && <div className="mb-4 grid gap-3 rounded-xl p-4 sm:grid-cols-2" style={{ background: "var(--glass)", border: "1px solid var(--line)" }}>
         <label className="text-xs">Typ dokumentu
           <select value={documentType} onChange={e => setDocumentType(e.target.value)} className="mt-1 w-full rounded-lg px-3 py-2 text-sm" style={{ background: "var(--bg)", border: "1px solid var(--line)", color: "var(--ink)" }}>
             <option value="invoice">Faktura</option>
@@ -176,7 +180,7 @@ export default function SalesDocumentsPanel({ orderId, mode, invoiceRequested = 
 
       <div className="space-y-2">
         {loading && <div className="text-xs" style={{ color: "var(--mut)" }}>Ładowanie dokumentów…</div>}
-        {!loading && loaded && documents.length === 0 && <div className="text-xs" style={{ color: "var(--mut)" }}>{invoiceRequested ? "Dokument nie został jeszcze dodany." : "Brak dokumentów przy tym zamówieniu."}</div>}
+        {!loading && loaded && documents.length === 0 && <div className="text-xs" style={{ color: "var(--mut)" }}>{allowUpload && invoiceRequested ? "Dokument nie został jeszcze dodany." : "Brak dokumentów przy tym zamówieniu."}</div>}
         {documents.map(doc => <div key={doc.id} className="flex flex-wrap items-center justify-between gap-3 rounded-lg p-3" style={{ background: "var(--glass)", border: "1px solid var(--line)" }}>
           <div className="min-w-0">
             <div className="text-sm font-semibold">{typeLabel[doc.document_type] ?? "Dokument"}{doc.document_number ? ` · ${doc.document_number}` : ""}</div>
