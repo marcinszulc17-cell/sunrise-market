@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { supabase } from "../lib/supabase";
 import SellerBookingChangeRequests from "./SellerBookingChangeRequests";
+import SellerBookingTodayPanel from "./SellerBookingTodayPanel";
 
 type Block = { id: string; offer_id: string; title: string; starts_at: string; ends_at: string; reason: string | null };
 type Offer = { offer_id: string; title: string; status: string };
@@ -59,6 +60,7 @@ export default function SellerBookingOpsSidebar({ blocks, offers, resources, off
   const selectedOffer = offers.find((offer) => offer.offer_id === offerId) ?? null;
 
   return <aside className="space-y-5">
+    <SellerBookingTodayPanel />
     <SellerBookingChangeRequests />
 
     {refundIssues.length > 0 && <div className="rounded-2xl p-5" style={{ background: "rgba(239,68,68,.08)", border: "1px solid rgba(239,68,68,.45)" }}>
