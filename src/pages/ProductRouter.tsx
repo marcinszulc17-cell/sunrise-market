@@ -27,15 +27,17 @@ export default function ProductRouter() {
     if (!id) return;
     getOffer(id).then((o: any) => {
       const slug = String(o?.category_slug || "");
-      const isPrivate = o?.attributes?.private_listing === true || o?.attributes?.buy_now_only === true;
-      const special = slug.includes("motoryzacja-samochody-osobowe") || slug.startsWith("nieruchomosci-") || slug.startsWith("uslugi-") || slug.startsWith("ogloszenia-lokalne-");
       const rawMode=String(o?.attributes?.purchase_mode||"purchase");
-      setPurchaseMode(rawMode==="appointment"||rawMode==="daily"?rawMode:"purchase");
+      const mode:PurchaseMode=rawMode==="appointment"||rawMode==="daily"?rawMode:"purchase";
+      const isPrivateListing = o?.attributes?.private_listing === true;
+      const isPrivateBuyNow = mode === "purchase" && (isPrivateListing || o?.attributes?.buy_now_only === true);
+      const special = slug.includes("motoryzacja-samochody-osobowe") || slug.startsWith("nieruchomosci-") || slug.startsWith("uslugi-") || slug.startsWith("ogloszenia-lokalne-");
+      setPurchaseMode(mode);
       setCategorySlug(slug);
       const p=Number(o?.price_gross ?? o?.price ?? 0); setPriceGross(Number.isFinite(p)&&p>0?p:null);
       setSeoOffer(o as SeoOffer);
-      setKind(isPrivate ? "private" : special ? "special" : "generic");
-      setVerifyKind(isPrivate?null:slug.includes("motoryzacja-samochody-osobowe")?"vehicle":slug.startsWith("nieruchomosci-")?"property":null);
+      setKind(isPrivateBuyNow ? "private" : special ? "special" : "generic");
+      setVerifyKind(isPrivateListing?null:slug.includes("motoryzacja-samochody-osobowe")?"vehicle":slug.startsWith("nieruchomosci-")?"property":null);
     }).catch(() => setKind("generic"));
   }, [id]);
 
