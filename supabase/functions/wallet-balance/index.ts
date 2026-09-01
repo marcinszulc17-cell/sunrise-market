@@ -4,16 +4,30 @@ const cors = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
-const PAY_BASE = (Deno.env.get("MYSUNRISE_PAY_BASE_URL") ?? "https://lvmrhgpxhqvfuoftblky.supabase.co/functions/v1").replace(/\/$/, "");
-const PAY_TOKEN = Deno.env.get("SUNRISE_MARKET_SERVICE_TOKEN");
+const HUB_BASE = (Deno.env.get("MYSUNRISE_PAY_BASE_URL") ?? "https://lvmrhgpxhqvfuoftblky.supabase.co/functions/v1").replace(/\/$/, "");
+const SERVICE_TOKEN = Deno.env.get("SUNRISE_MARKET_SERVICE_TOKEN");
 
 function json(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), { status, headers: { ...cors, "Content-Type": "application/json" } });
 }
 
+async function servicePost(path: string, body: unknown) {
+  const response = await fetch(`${HUB_BASE}/${path}`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "X-Sunrise-Service-Token": SERVICE_TOKEN ?? "",
+    },
+    body: JSON.stringify(body),
+  });
+  const data = await response.json().catch(() => ({}));
+  return { response, data };
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: cors });
-  if (!PAY_TOKEN) return json({ error: "Brak konfiguracji Sunrise Pay" }, 503);
+  if (!SERVICE_TOKEN) return json({ error: "Brak konfiguracji Sunrise Pay" }, 503);
+
   try {
     const auth = req.headers.get("Authorization") ?? "";
     const userClient = createClient(
@@ -24,25 +38,44 @@ Deno.serve(async (req) => {
     const { data: { user }, error: userError } = await userClient.auth.getUser();
     if (userError || !user?.email) return json({ error: "Brak autoryzacji" }, 401);
 
-    const response = await fetch(`${PAY_BASE}/pay-balance`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json", "X-Sunrise-Service-Token": PAY_TOKEN },
-      body: JSON.stringify({ user_ref: user.email }),
-    });
-    const data = await response.json().catch(() => ({}));
-    if (response.ok && data?.ok) {
-      return json({
-        linked: true,
-        balance: Number(data.balance_grosz ?? 0) / 100,
-        points: Number(data.points ?? 0),
-        gold: data.gold_pay_units != null ? Number(data.gold_pay_units) : null,
-        currency: data.currency ?? "PLN",
-      });
+    const email = user.email.trim().toLowerCase();
+
+    // Najpierw ustalamy kanoniczny identyfikator konta Sunrise. Market ma własny
+    // auth, więc lokalny UUID nie może służyć do rozpoznawania portfela.
+    let canonicalRef = "";
+    try {
+      const access = await servicePost("market-customer-access", { email });
+      if (access.response.ok && access.data?.ok && access.data?.registered && access.data?.user_id) {
+        canonicalRef = String(access.data.user_id);
+      }
+    } catch {
+      // Fallback po e-mailu zachowuje kompatybilność podczas chwilowej awarii bridge'a.
     }
-    if (data?.error === "user_not_found") {
-      return json({ linked: false, balance: 0, points: 0, gold: null, currency: "PLN", reason: "user_not_found" });
+
+    const refs = Array.from(new Set([canonicalRef, email].filter(Boolean)));
+    let lastData: any = null;
+    let lastStatus = 502;
+
+    for (const userRef of refs) {
+      const { response, data } = await servicePost("pay-balance", { user_ref: userRef });
+      lastData = data;
+      lastStatus = response.status;
+      if (response.ok && data?.ok) {
+        return json({
+          linked: true,
+          balance: Number(data.balance_grosz ?? 0) / 100,
+          points: Number(data.points ?? 0),
+          gold: data.gold_pay_units != null ? Number(data.gold_pay_units) : null,
+          currency: data.currency ?? "PLN",
+        });
+      }
+      if (data?.error !== "user_not_found") break;
     }
-    return json({ error: data?.message ?? data?.error ?? `MySunrise ${response.status}` }, 502);
+
+    if (lastData?.error === "user_not_found") {
+      return json({ linked: false, balance: 0, points: 0, gold: null, currency: "PLN", reason: "account_not_resolved" });
+    }
+    return json({ error: lastData?.message ?? lastData?.error ?? `Sunrise Pay ${lastStatus}` }, 502);
   } catch (error) {
     return json({ error: String((error as Error).message ?? error) }, 500);
   }
