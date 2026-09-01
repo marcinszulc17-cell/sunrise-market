@@ -1,6 +1,6 @@
 import { useMemo } from "react";
 
-const MYSUNRISE_URL = "https://app.mysunrise.pl";
+const ACCOUNT_HUB_URL = "https://app.mysunrise.pl";
 
 function safeNext() {
   const value = new URLSearchParams(window.location.search).get("next") || "/";
@@ -11,17 +11,16 @@ export default function Login() {
   const target = useMemo(() => {
     const params = new URLSearchParams({
       return: safeNext(),
-      origin: window.location.origin,
+      origin: "https://app.sunrisemarket.pl",
     });
-    return `${MYSUNRISE_URL}/market?${params.toString()}`;
+    return `${ACCOUNT_HUB_URL}/market?${params.toString()}`;
   }, []);
 
   return (
     <main
       className="min-h-screen flex items-center justify-center px-5 py-10"
       style={{
-        background:
-          "radial-gradient(circle at 50% 0%, rgba(200,150,90,.16), transparent 34%), var(--bg)",
+        background: "radial-gradient(circle at 50% 0%, rgba(200,150,90,.16), transparent 34%), var(--bg)",
         color: "var(--ink)",
       }}
     >
@@ -43,7 +42,7 @@ export default function Login() {
           </div>
           <h1 className="mt-2 font-display text-3xl font-semibold">Zaloguj się</h1>
           <p className="mt-3 text-sm leading-6" style={{ color: "var(--mut)" }}>
-            Użyj swojego konta MySunrise. To samo konto daje dostęp do całego ekosystemu Sunrise.
+            Jedno konto Sunrise daje dostęp do zakupów, sprzedaży, rezerwacji i Twojego portfela.
           </p>
         </div>
 
@@ -52,7 +51,7 @@ export default function Login() {
           className="mt-7 flex w-full items-center justify-center rounded-2xl px-4 py-3.5 text-sm font-bold text-black transition-transform hover:scale-[1.01] active:scale-[.99]"
           style={{ background: "linear-gradient(135deg,#C8965A,#E8C896)" }}
         >
-          Zaloguj się kontem MySunrise
+          Zaloguj się do Sunrise Market
         </a>
 
         <div className="mt-5 text-center text-xs leading-5" style={{ color: "var(--mut)" }}>
