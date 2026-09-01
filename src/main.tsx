@@ -6,7 +6,7 @@ import MarketEnhanced from "./pages/MarketEnhanced";
 import CategoryPortal from "./pages/CategoryPortal";
 import Portfel from "./pages/Portfel";
 import Rozliczenia from "./pages/Rozliczenia";
-import Sprzedawca from "./pages/Sprzedawca";
+import LegacySellerGate from "./pages/LegacySellerGate";
 import SellerHome from "./pages/SellerHome";
 import SprzedawcaWystaw from "./pages/SprzedawcaWystaw";
 import TradePartnerActivate from "./pages/TradePartnerActivate";
@@ -136,7 +136,7 @@ ReactDOM.createRoot(document.getElementById("root")!).render(
         <Route path="/sprzedawca/wystaw" element={<SprzedawcaWystaw />} />
         <Route path="/sprzedawca/zapytania" element={<SellerLeads />} />
         <Route path="/potwierdz-zakup/:token" element={<SaleConfirmation />} />
-        <Route path="/sprzedawca-klasyczny" element={<Sprzedawca />} />
+        <Route path="/sprzedawca-klasyczny" element={<LegacySellerGate />} />
         <Route path="/sprzedawca/rozliczenia" element={<Rozliczenia />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
