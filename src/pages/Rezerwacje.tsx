@@ -3,6 +3,7 @@ import { myBookingsV2, type BuyerBooking } from "../lib/buyerBookings";
 import { supabase } from "../lib/supabase";
 import { zl } from "../lib/money";
 import { useSeo } from "../lib/seo";
+import BuyerRentalProtocolCard from "../components/BuyerRentalProtocolCard";
 
 const labels: Record<string, string> = {
   held: "Termin zablokowany", pending_payment: "Oczekuje na płatność",
@@ -141,6 +142,8 @@ export default function Rezerwacje() {
           <div className="mt-4 flex items-center justify-between text-sm"><span style={{ color: "var(--mut)" }}>{r.booking_type === "daily" ? "Czynsz za najem" : "Cena usługi"}</span><strong>{zl(bookingPrice)}</strong></div>
           {deposit > 0 && <div className="mt-2 rounded-xl px-3 py-2 text-xs" style={{ background: "rgba(200,150,90,.08)", border: "1px solid rgba(200,150,90,.18)", color: "var(--mut)" }}>Kaucja zwrotna: {zl(deposit)} · {depositLabels[r.deposit_status] ?? r.deposit_status}. Kaucja została pobrana razem z płatnością za najem, ale nie podlega cashbackowi ani prowizji.</div>}
           {deposit > 0 && r.paid_at && <div className="mt-2 flex items-center justify-between text-sm"><span style={{ color: "var(--mut)" }}>Łącznie pobrano</span><strong>{zl(bookingPrice + deposit)}</strong></div>}
+
+          {r.booking_type === "daily" && r.paid_at && <BuyerRentalProtocolCard bookingId={r.id} depositGross={deposit} depositStatus={r.deposit_status} depositRetainedGross={Number(r.deposit_retained_gross || 0)} />}
 
           {request && <div className="mt-4 rounded-2xl p-4 text-sm" style={{ background:"var(--header)", border:"1px solid var(--line)" }}>
             <div className="flex flex-wrap items-center justify-between gap-2"><b>{request.request_type === "cancel" ? "Prośba o anulowanie" : "Prośba o zmianę terminu"}</b><span className="rounded-full px-2.5 py-1 text-xs" style={{ border:"1px solid var(--line)", color: request.status === "accepted" ? "var(--green)" : request.status === "rejected" ? "#fca5a5" : "var(--gold)" }}>{requestLabels[request.status] || request.status}</span></div>
