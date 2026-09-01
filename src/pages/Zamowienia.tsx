@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { supabase } from "../lib/supabase";
 import { myOrders, openReturn, myReturns } from "../lib/api";
 import InvoiceSnapshotCard, { type InvoiceSnapshot } from "../components/InvoiceSnapshotCard";
+import SalesDocumentsPanel from "../components/SalesDocumentsPanel";
 import { zl } from "../lib/money";
 
 type Item = { offer_id: string; title: string; qty: number; price: number };
@@ -146,10 +147,11 @@ export default function Zamowienia() {
                 </div>
               )}
               {o.invoice?.requested && <div className="mb-3"><InvoiceSnapshotCard invoice={o.invoice} compact /></div>}
+              <SalesDocumentsPanel orderId={o.order_id} mode="buyer" invoiceRequested={Boolean(o.invoice?.requested)} />
               {returns[o.order_id]
-                ? <div className="mb-3 text-sm" style={{ color: "var(--gold)" }}>{retLabel[returns[o.order_id]] ?? returns[o.order_id]}</div>
+                ? <div className="mb-3 mt-3 text-sm" style={{ color: "var(--gold)" }}>{retLabel[returns[o.order_id]] ?? returns[o.order_id]}</div>
                 : (["paid", "shipped", "delivered"].includes(o.status) &&
-                    <button onClick={() => onReturn(o.order_id)} className="mb-3 text-sm px-4 py-2 rounded-xl"
+                    <button onClick={() => onReturn(o.order_id)} className="mb-3 mt-3 text-sm px-4 py-2 rounded-xl"
                             style={{ background: "var(--glass)", border: "1px solid var(--line)" }}>Zwróć / reklamuj</button>)}
 
               <div className="mb-3 border-t pt-3" style={{ borderColor: "var(--line)" }}>
