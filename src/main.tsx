@@ -39,7 +39,6 @@ import { initTheme } from "./lib/theme";
 import { startMarketBookingAvailability } from "./lib/marketBookingAvailability";
 import { startMarketAvailabilityFilter } from "./lib/marketAvailabilityFilter";
 import { startQuickBookingDeepLink } from "./lib/quickBookingDeepLink";
-import { startMarketRentalQuickQuote } from "./lib/marketRentalQuickQuote";
 import { startSellerResourceOperationalStatus } from "./lib/sellerResourceOperationalStatus";
 import { startSellerResourceOperationsNav } from "./lib/sellerResourceOperationsNav";
 import "./index.css";
@@ -48,7 +47,6 @@ initTheme();
 startMarketBookingAvailability();
 startMarketAvailabilityFilter();
 startQuickBookingDeepLink();
-startMarketRentalQuickQuote();
 startSellerResourceOperationalStatus();
 startSellerResourceOperationsNav();
 try { const _r = new URLSearchParams(window.location.search).get("ref"); if (_r && _r.trim()) localStorage.setItem("sunrise_ref", _r.trim().slice(0, 64)); } catch { /* ignore */ }
