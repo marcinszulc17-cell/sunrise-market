@@ -35,6 +35,7 @@ import Konto from "./pages/Konto";
 import Rezerwacje from "./pages/Rezerwacje";
 import PwaInstallPrompt from "./components/PwaInstallPrompt";
 import MobileAppNav from "./components/MobileAppNav";
+import { supabase } from "./lib/supabase";
 import { initTheme } from "./lib/theme";
 import { startMarketBookingAvailability } from "./lib/marketBookingAvailability";
 import { startMarketAvailabilityFilter } from "./lib/marketAvailabilityFilter";
@@ -98,12 +99,55 @@ function RouteMeta() {
   return null;
 }
 
+function RootEntry() {
+  const isAppDomain = window.location.hostname.toLowerCase() === "app.sunrisemarket.pl";
+  const [state, setState] = React.useState<"loading" | "authed" | "guest">(isAppDomain ? "loading" : "authed");
+
+  React.useEffect(() => {
+    if (!isAppDomain) return;
+    let alive = true;
+    supabase.auth.getSession().then(({ data }) => {
+      if (!alive) return;
+      setState(data.session ? "authed" : "guest");
+    }).catch(() => {
+      if (alive) setState("guest");
+    });
+    return () => { alive = false; };
+  }, [isAppDomain]);
+
+  if (!isAppDomain) return <MarketEnhanced />;
+  if (state === "guest") return <Navigate to="/login" replace />;
+  if (state === "loading") {
+    return (
+      <main className="min-h-[100dvh] grid place-items-center" style={{ background: "#080c12", color: "#EDE7D6" }}>
+        <div className="text-center">
+          <img src="/logo-sunrise-market.png" alt="Sunrise Market" className="mx-auto h-14 w-auto rounded-2xl bg-white p-2" />
+          <div className="mt-4 text-sm" style={{ color: "var(--mut)" }}>Uruchamiam Sunrise Market…</div>
+        </div>
+      </main>
+    );
+  }
+  return <MarketEnhanced />;
+}
+
+function AppChrome() {
+  const { pathname } = useLocation();
+  const authScreen = pathname === "/login" || pathname === "/sso";
+  if (authScreen) return null;
+  return (
+    <>
+      <MobileAppNav />
+      <PwaInstallPrompt />
+    </>
+  );
+}
+
 ReactDOM.createRoot(document.getElementById("root")!).render(
   <React.StrictMode>
     <BrowserRouter>
       <RouteMeta />
       <Routes>
-        <Route path="/" element={<MarketEnhanced />} />
+        <Route path="/" element={<RootEntry />} />
         <Route path="/motoryzacja" element={<CategoryPortal mode="car" />} />
         <Route path="/nieruchomosci" element={<CategoryPortal mode="property" />} />
         <Route path="/szukaj" element={<AdvancedSearchUniversal />} />
@@ -138,8 +182,7 @@ ReactDOM.createRoot(document.getElementById("root")!).render(
         <Route path="/sprzedawca/rozliczenia" element={<Rozliczenia />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
-      <MobileAppNav />
-      <PwaInstallPrompt />
+      <AppChrome />
     </BrowserRouter>
   </React.StrictMode>,
 );
