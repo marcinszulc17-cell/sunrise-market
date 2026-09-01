@@ -4,6 +4,7 @@ import { sellerOrders } from "../lib/api";
 import { supabase } from "../lib/supabase";
 import { zl } from "../lib/money";
 import InvoiceSnapshotCard, { type InvoiceSnapshot } from "../components/InvoiceSnapshotCard";
+import SalesDocumentsPanel from "../components/SalesDocumentsPanel";
 
 type SellerOrderItem = { title: string; qty: number; payout: number };
 type SellerOrder = {
@@ -47,8 +48,8 @@ export default function SellerOrders() {
       <div className="mb-6 flex flex-wrap items-start justify-between gap-4">
         <div>
           <Link to="/sprzedawca" className="text-sm underline" style={{ color: "var(--mut)" }}>← Centrum sprzedawcy</Link>
-          <h1 className="mt-2 font-display text-3xl font-semibold">Zamówienia i dane do faktury</h1>
-          <p className="mt-1 text-sm" style={{ color: "var(--mut)" }}>Widzisz wyłącznie zamówienia zawierające Twoje pozycje. Jeśli klient podał dane do faktury, są zapisane jako historyczny snapshot z chwili zakupu. Sam dokument faktury nie jest jeszcze generowany w Sunrise Market.</p>
+          <h1 className="mt-2 font-display text-3xl font-semibold">Zamówienia i dokumenty sprzedaży</h1>
+          <p className="mt-1 text-sm" style={{ color: "var(--mut)" }}>Sunrise Market nie wystawia faktur za sprzedawcę. Jeśli klient podał dane do faktury, widzisz ich snapshot z chwili zakupu, a gotowy dokument z własnego programu możesz dołączyć bezpośrednio do zamówienia.</p>
         </div>
         <Link to="/sprzedawca/rozliczenia" className="rounded-xl px-4 py-2 text-sm font-semibold" style={{ border: "1px solid var(--line)" }}>Rozliczenia →</Link>
       </div>
@@ -84,6 +85,8 @@ export default function SellerOrders() {
           <div className="mt-4">
             <InvoiceSnapshotCard invoice={order.invoice} showNoInvoice />
           </div>
+
+          <SalesDocumentsPanel orderId={order.order_id} mode="seller" invoiceRequested={Boolean(order.invoice?.requested)} />
         </article>)}
       </div>
     </div>
