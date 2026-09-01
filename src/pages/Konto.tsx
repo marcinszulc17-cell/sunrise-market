@@ -84,7 +84,7 @@ function Przeglad({ w, ms, seller, isOp, onLogout, goTab }: { w: WalletLive | nu
   return (
     <div className="flex flex-col gap-4">
       <ClubCard w={w} ms={ms} goTab={goTab} />
-      {w && !w.linked && <Card className="!p-4"><span className="text-sm" style={{ color: "#8fe3ef" }}>Portfel niepołączony z MySunrise. Aktywuj Sunrise Pay w aplikacji MySunrise na ten sam e‑mail, aby płacić.</span></Card>}
+      {w && !w.linked && <Card className="!p-4"><span className="text-sm" style={{ color: "#8fe3ef" }}>Nie udało się jeszcze odczytać portfela Sunrise. Odśwież stronę za chwilę.</span></Card>}
       <PolecajPV />
       <div className="grid gap-3 sm:grid-cols-2">
         <button onClick={() => goTab("zamowienia")} className="text-left"><Card><div className="text-lg mb-1">📦 Moje zamówienia</div><div className="text-xs" style={{ color: "var(--mut)" }}>Status, dostawa, zwroty</div></Card></button>
@@ -114,7 +114,7 @@ function ClubCard({ w, ms, goTab }: { w: WalletLive | null; ms: MemberStatus | n
             <div style={{ fontSize: 12.5, color: "rgba(237,231,214,.6)" }}>{sub}</div>
           </div>
         </div>
-        <a href="https://mysunrise.com.pl" target="_blank" rel="noopener" style={{ fontSize: 13, fontWeight: 700, padding: "8px 14px", borderRadius: 10, background: "rgba(232,200,150,.14)", border: "1px solid rgba(232,200,150,.32)", color: "#E8C896" }}>Moje MySunrise →</a>
+        <a href="https://app.sunrisewallet.pl/wallet" target="_blank" rel="noopener" style={{ fontSize: 13, fontWeight: 700, padding: "8px 14px", borderRadius: 10, background: "rgba(232,200,150,.14)", border: "1px solid rgba(232,200,150,.32)", color: "#E8C896" }}>Otwórz Sunrise Wallet →</a>
       </div>
       <div className="grid gap-3 sm:grid-cols-2 mt-4">
         <div style={{ background: "rgba(232,200,150,.07)", borderRadius: 14, padding: "12px 15px", border: "1px solid rgba(232,200,150,.14)" }}>
@@ -158,99 +158,6 @@ function AmbLink({ code, tier }: { code: string; tier?: string }) {
           );
         })}
       </div>
-      <div style={{ fontSize: 11, color: "rgba(237,231,214,.45)", marginTop: 6 }}>Wyższą rangę zdobywasz w programie MySunrise. Dodatkowo prowizje sieciowe: 5% / 3% / 2% z niższych poziomów struktury.</div>
-    </div>
-  );
-}
-
-function PolecajPV() {
-  const [r, setR] = useState<EnergyReferral | null>(null);
-  const [ms, setMs] = useState<MemberStatus | null>(null);
-  const [copied, setCopied] = useState(false);
-  useEffect(() => { energyReferral().then(setR).catch(() => setR({ available: false })); }, []);
-  useEffect(() => { memberStatus().then(setMs).catch(() => {}); }, []);
-  // Prowizja wg realnego statusu z MySunrise (Family Club 5% ... Diamond 22%), nie sztywne 5%.
-  const TIER_RATE: Record<string, number> = { ambassador: 5, basic: 5, silver: 10, gold: 15, platinum: 20, diamond: 22 };
-  const tierRate = TIER_RATE[String(ms?.tier || "").toLowerCase()] ?? null;
-  const rewardPct = tierRate ?? r?.reward_pct ?? 5;
-  const link = r?.link ?? "";
-  async function copy() {
-    try { await navigator.clipboard.writeText(link); setCopied(true); setTimeout(() => setCopied(false), 2000); } catch { /* ignore */ }
-  }
-  return (
-    <div className="rounded-2xl p-5" style={{ background: "linear-gradient(135deg, rgba(200,150,90,.12), rgba(56,224,240,.08))", border: "1px solid rgba(200,150,90,.3)" }}>
-      <div className="flex items-center gap-2 mb-1">
-        <span className="text-lg">☀️</span>
-        <span className="font-display text-lg font-semibold">Poleć fotowoltaikę — zgarnij do portfela</span>
-      </div>
-      <p className="text-sm mb-3" style={{ color: "var(--mut)" }}>
-        Poleć znajomego na instalację Sunrise Energy. Gdy podpisze umowę, <b style={{ color: "var(--gold)" }}>{rewardPct}% wartości</b> trafia na Twój portfel Sunrise Pay — do wydania w Markecie. Zasila portfel bez opłat.
-      </p>
-      {r && r.available ? (
-        <>
-          <div className="flex flex-wrap items-center gap-2 mb-3">
-            <input readOnly value={link} className="flex-1 min-w-[200px] rounded-lg px-3 py-2 text-sm outline-none" style={{ background: "var(--glass)", border: "1px solid var(--line)", color: "var(--ink)" }} />
-            <button onClick={copy} className="rounded-lg px-4 py-2 text-sm font-semibold text-black" style={{ background: "linear-gradient(135deg,#C8965A,#E8C896)" }}>{copied ? "Skopiowano ✓" : "Kopiuj link"}</button>
-          </div>
-          <div className="flex flex-wrap gap-4 text-xs" style={{ color: "var(--mut)" }}>
-            <span>W toku: <b style={{ color: "var(--ink)" }}>{r.pending ?? 0}</b></span>
-            <span>Umowy: <b style={{ color: "var(--green)" }}>{r.converted ?? 0}</b></span>
-            <span>Na portfelu: <b style={{ color: "var(--gold)" }}>{zl(r.credited ?? 0)}</b></span>
-          </div>
-        </>
-      ) : (
-        <a href="https://mysunrise.com.pl" target="_blank" rel="noopener" className="inline-block rounded-lg px-4 py-2 text-sm font-semibold text-black" style={{ background: "linear-gradient(135deg,#C8965A,#E8C896)" }}>Poleć przez MySunrise →</a>
-      )}
-    </div>
-  );
-}
-
-function Zamowienia() {
-  const [orders, setOrders] = useState<any[]>([]);
-  const [returns, setReturns] = useState<Record<string, string>>({});
-  const [loading, setLoading] = useState(true);
-  async function load() {
-    setLoading(true);
-    try {
-      setOrders((await myOrders()) as any[]);
-      const r = (await myReturns()) as { order_id: string; status: string }[];
-      setReturns(Object.fromEntries(r.map((x) => [x.order_id, x.status])));
-    } finally { setLoading(false); }
-  }
-  useEffect(() => { load(); }, []);
-  async function onConfirm(id: string) { await confirmDelivery(id); await load(); }
-  async function onReturn(id: string) { const reason = window.prompt("Powód zwrotu / reklamacji:"); if (reason === null) return; try { await openReturn(id, reason); await load(); } catch (e) { alert((e as Error).message); } }
-  const retLabel: Record<string, string> = { requested: "Zwrot: w trakcie", approved: "Zwrot: zaakceptowany", refunded: "Zwrot: zwrócono na portfel", rejected: "Zwrot: odrzucony" };
-
-  if (loading) return <p style={{ color: "var(--mut)" }}>Ładowanie…</p>;
-  if (orders.length === 0) return <p style={{ color: "var(--mut)" }}>Brak zamówień. <a href="/" className="text-amber-400 underline">Zacznij zakupy</a>.</p>;
-  return (
-    <div className="flex flex-col gap-3">
-      {orders.map((o) => (
-        <Card key={o.order_id}>
-          <div className="flex items-center justify-between mb-2">
-            <div className="text-xs" style={{ color: "var(--mut)" }}>{dt(o.created_at)} · nr {String(o.order_id).slice(0, 8)}</div>
-            <span className="text-xs font-semibold px-3 py-1 rounded-full" style={{ background: "var(--glass)", border: "1px solid var(--line)" }}>{statusLabel[o.status] ?? o.status}</span>
-          </div>
-          <div className="flex flex-col gap-1 mb-2">
-            {(o.items ?? []).map((it: any, i: number) => (
-              <div key={i} className="flex justify-between text-sm">
-                <a href={`/produkt/${it.offer_id}`} className="hover:text-amber-300">{it.title} × {it.qty}</a>
-                <span style={{ color: "var(--mut)" }}>{zl(it.price * it.qty)}</span>
-              </div>
-            ))}
-          </div>
-          {(o.shipping_method || o.tracking_no) && <div className="text-xs mb-2" style={{ color: "var(--mut)" }}>🚚 {o.shipping_method ?? "—"}{o.tracking_no ? ` · ${o.tracking_no}` : ""}</div>}
-          <div className="flex items-center gap-2">
-            {o.status === "shipped" && <button onClick={() => onConfirm(o.order_id)} className="text-sm font-semibold px-4 py-2 rounded-xl text-black" style={{ background: "linear-gradient(135deg,#7AB89A,#38E0F0)" }}>Potwierdź odbiór</button>}
-            {returns[o.order_id]
-              ? <span className="text-sm" style={{ color: "var(--gold)" }}>{retLabel[returns[o.order_id]] ?? returns[o.order_id]}</span>
-              : (["paid", "shipped", "delivered"].includes(o.status) && <button onClick={() => onReturn(o.order_id)} className="text-sm px-4 py-2 rounded-xl" style={{ background: "var(--glass)", border: "1px solid var(--line)" }}>Zwróć / reklamuj</button>)}
-            <div className="ml-auto text-xs" style={{ color: "var(--green)" }}>+{Math.round(o.cashback).toLocaleString("pl-PL")} pkt</div>
-            <div className="font-display text-lg font-semibold">{zl(o.total)}</div>
-          </div>
-        </Card>
-      ))}
     </div>
   );
 }
@@ -258,84 +165,30 @@ function Zamowienia() {
 function Portfel({ w }: { w: WalletLive | null }) {
   const [ops, setOps] = useState<any[]>([]);
   useEffect(() => { walletHistory().then(setOps).catch(() => {}); }, []);
-  return (
-    <div className="flex flex-col gap-4">
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-        <Card className="ring-1 ring-amber-500/20"><div className="text-sm" style={{ color: "var(--mut)" }}>Saldo Sunrise Pay</div><div className="text-3xl font-extrabold" style={{ color: "var(--gold)" }}>{zl(w?.balance ?? 0)}</div></Card>
-        <Card className="ring-1 ring-emerald-500/20"><div className="text-sm" style={{ color: "var(--mut)" }}>Punkty (cashback)</div><div className="text-3xl font-extrabold" style={{ color: "var(--green)" }}>{pkt(w?.points ?? 0)} <span className="text-lg">pkt</span></div></Card>
-        {w?.gold != null && <Card className="ring-1 ring-yellow-500/20"><div className="text-sm" style={{ color: "var(--mut)" }}>Gold Pay</div><div className="text-3xl font-extrabold" style={{ color: "#E8C896" }}>{w.gold.toLocaleString("pl-PL")} <span className="text-lg">g</span></div></Card>}
-      </div>
-      <Card>
-        <div className="text-sm mb-2" style={{ color: "var(--mut)" }}>Doładowanie robisz w MySunrise — to ten sam portfel Sunrise Pay, środki od razu są tutaj.</div>
-        <a href="https://mysunrise.com.pl" target="_blank" rel="noopener" className="inline-block rounded-xl px-5 py-2.5 font-semibold text-black" style={{ background: "linear-gradient(135deg,#C8965A,#E8C896)" }}>Doładuj w MySunrise →</a>
-        <p className="text-xs mt-3" style={{ color: "var(--mut)" }}>Wkrótce doładujesz też bezpośrednio tutaj (przelew) — gdy MySunrise uruchomi tę opcję.</p>
-      </Card>
-      <div>
-        <h2 className="font-semibold mb-2">Historia</h2>
-        <div className="flex flex-col">
-          {ops.map((o, i) => (
-            <div key={i} className="flex justify-between py-2 text-sm" style={{ borderBottom: "1px solid var(--line)" }}>
-              <span style={{ color: "var(--mut)" }}>{opLabel[o.type] ?? o.type} · {dt(o.created_at)}</span>
-              <span style={{ color: Number(o.amount) >= 0 ? "var(--green)" : "#F8A8D2" }}>{Number(o.amount) >= 0 ? "+" : ""}{zl(o.amount)}</span>
-            </div>
-          ))}
-          {ops.length === 0 && <p className="py-2 text-sm" style={{ color: "var(--mut)" }}>Brak operacji.</p>}
-        </div>
-      </div>
-    </div>
-  );
+  return <div className="space-y-4"><Card><div className="text-sm" style={{ color: "var(--mut)" }}>Saldo Sunrise Pay</div><div className="text-3xl font-bold mt-1">{zl(w?.balance ?? 0)}</div><div className="text-sm mt-2" style={{ color: "var(--mut)" }}>Punkty: {pkt(w?.points ?? 0)} pkt{w?.gold != null ? ` · Gold: ${w.gold.toLocaleString("pl-PL")} g` : ""}</div></Card><Card><h2 className="font-semibold mb-3">Historia</h2>{ops.length === 0 ? <p className="text-sm" style={{ color: "var(--mut)" }}>Brak operacji.</p> : <div className="space-y-2">{ops.map((o) => <div key={o.id} className="flex justify-between gap-3 text-sm"><span>{opLabel[o.type] ?? o.type}</span><span className="font-semibold">{zl(Number(o.amount))}</span></div>)}</div>}</Card></div>;
+}
+
+function Zamowienia() {
+  const [orders, setOrders] = useState<any[]>([]); const [returns, setReturns] = useState<any[]>([]);
+  useEffect(() => { myOrders().then(setOrders).catch(() => {}); myReturns().then(setReturns).catch(() => {}); }, []);
+  if (!orders.length) return <p style={{ color: "var(--mut)" }}>Nie masz jeszcze zamówień.</p>;
+  return <div className="space-y-3">{orders.map((o) => <Card key={o.id}><div className="flex justify-between gap-3"><div><div className="font-semibold">Zamówienie {String(o.id).slice(0,8)}</div><div className="text-xs" style={{ color: "var(--mut)" }}>{dt(o.created_at)}</div></div><span className="text-sm">{statusLabel[o.status] ?? o.status}</span></div><div className="mt-2 font-semibold">{zl(Number(o.total))}</div>{o.status === "shipped" && <button onClick={() => confirmDelivery(o.id).then(() => location.reload())} className="mt-3 text-sm px-3 py-2 rounded-lg" style={{ background: "var(--gold)", color: "#000" }}>Potwierdź odbiór</button>}{["delivered","completed"].includes(o.status) && !returns.some((r) => r.order_id === o.id) && <button onClick={() => { const reason = prompt("Powód zwrotu:"); if (reason) openReturn(o.id, reason).then(() => location.reload()); }} className="mt-3 ml-2 text-sm px-3 py-2 rounded-lg" style={{ border: "1px solid var(--line)" }}>Zgłoś zwrot</button>}</Card>)}</div>;
 }
 
 function Zyczenia() {
-  const [rows, setRows] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
-  async function load() { setLoading(true); try { setRows(await myWatchlist()); } finally { setLoading(false); } }
-  useEffect(() => { load(); }, []);
-  async function onRemove(id: string) { try { await toggleWatch(id); await load(); } catch { /* ignore */ } }
-  if (loading) return <p style={{ color: "var(--mut)" }}>Ładowanie…</p>;
-  if (rows.length === 0) return <p style={{ color: "var(--mut)" }}>Lista życzeń pusta. Kliknij ♡ na produkcie, aby dodać.</p>;
-  return (
-    <div className="grid gap-3" style={{ gridTemplateColumns: "repeat(auto-fill,minmax(240px,1fr))" }}>
-      {rows.map((o) => (
-        <Card key={o.offer_id}>
-          <a href={`/produkt/${o.offer_id}`} className="font-medium hover:text-amber-300">{o.title}</a>
-          <div className="text-xs mb-2" style={{ color: "var(--mut)" }}>{o.seller} · {o.category}</div>
-          <div className="flex items-center justify-between">
-            <span className="font-display text-xl font-semibold">{zl(o.price_gross)}</span>
-            {o.price_dropped && <span className="text-xs px-2 py-0.5 rounded-full" style={{ background: "rgba(122,184,154,.14)", color: "var(--green)" }}>Cena spadła</span>}
-          </div>
-          <div className="flex gap-2 mt-3">
-            <a href={`/produkt/${o.offer_id}`} className="flex-1 text-center text-sm font-semibold py-2 rounded-xl text-black" style={{ background: "linear-gradient(135deg,#C8965A,#E8C896)" }}>Zobacz</a>
-            <button onClick={() => onRemove(o.offer_id)} className="text-sm px-3 py-2 rounded-xl" style={{ background: "var(--glass)", border: "1px solid var(--line)" }}>♥</button>
-          </div>
-        </Card>
-      ))}
-    </div>
-  );
+  const [items, setItems] = useState<any[]>([]);
+  useEffect(() => { myWatchlist().then(setItems).catch(() => {}); }, []);
+  if (!items.length) return <p style={{ color: "var(--mut)" }}>Lista życzeń jest pusta.</p>;
+  return <div className="grid gap-3 sm:grid-cols-2">{items.map((x) => <Card key={x.id}><a href={`/produkt/${x.product_id}`} className="font-semibold">{x.product_name ?? "Produkt"}</a><button onClick={() => toggleWatch(x.product_id).then(() => setItems((v) => v.filter((i) => i.product_id !== x.product_id)))} className="block mt-2 text-xs" style={{ color: "var(--mut)" }}>Usuń z listy</button></Card>)}</div>;
 }
 
 function Ustawienia({ email, seller, isOp, onLogout }: { email: string; seller: any; isOp: boolean; onLogout: () => void }) {
-  return (
-    <div className="flex flex-col gap-4">
-      <Card>
-        <div className="text-sm mb-1" style={{ color: "var(--mut)" }}>E‑mail konta</div>
-        <div className="font-medium">{email}</div>
-      </Card>
-      <Card>
-        <div className="text-sm mb-3" style={{ color: "var(--mut)" }}>Role i panele</div>
-        <div className="flex flex-wrap gap-2">
-          <a href="/" className="text-sm px-4 py-2 rounded-xl" style={{ background: "var(--glass)", border: "1px solid var(--line)" }}>🛍️ Konto klienta</a>
-          {seller
-            ? <a href="/sprzedawca" onClick={() => setMode("seller")} className="text-sm px-4 py-2 rounded-xl" style={{ background: "var(--glass)", border: "1px solid var(--line)" }}>🏪 Panel sprzedawcy</a>
-            : <a href="/sprzedawca" className="text-sm px-4 py-2 rounded-xl" style={{ background: "var(--glass)", border: "1px solid var(--line)" }}>🏪 Zostań sprzedawcą</a>}
-          {isOp && <a href="/operator" className="text-sm px-4 py-2 rounded-xl" style={{ background: "var(--glass)", border: "1px solid var(--line)" }}>🛡️ Back-office</a>}
-        </div>
-      </Card>
-      <Card>
-        <div className="text-sm mb-2" style={{ color: "var(--mut)" }}>Płatności</div>
-        <p className="text-xs" style={{ color: "var(--mut)" }}>Zakupy opłacasz wyłącznie z portfela Sunrise Pay. Po zakupie 3% wraca jako punkty. Portfel jest wspólny z aplikacją MySunrise (wiązany po e‑mailu).</p>
-      </Card>
-      <button onClick={onLogout} className="self-start text-sm px-4 py-2 rounded-xl" style={{ background: "var(--glass)", border: "1px solid var(--line)" }}>Wyloguj</button>
-    </div>
-  );
+  return <div className="space-y-4"><Card><div className="text-sm" style={{ color: "var(--mut)" }}>E-mail</div><div className="font-semibold mt-1">{email}</div></Card><Card><div className="text-sm" style={{ color: "var(--mut)" }}>Rola</div><div className="font-semibold mt-1">{isOp ? "Operator" : seller ? "Partner Handlowy" : "Klient"}</div></Card><button onClick={onLogout} className="text-sm px-4 py-2 rounded-xl" style={{ background: "var(--glass)", border: "1px solid var(--line)" }}>Wyloguj</button></div>;
+}
+
+function PolecajPV() {
+  const [r, setR] = useState<EnergyReferral | null>(null); const [busy, setBusy] = useState(false); const [msg, setMsg] = useState("");
+  useEffect(() => { energyReferral("status").then(setR).catch(() => {}); }, []);
+  async function create() { setBusy(true); try { const x = await energyReferral("create"); setR(x); setMsg("Link utworzony."); } catch (e: any) { setMsg(e?.message ?? "Błąd"); } finally { setBusy(false); } }
+  return <Card><div className="font-semibold">Polecaj Sunrise Energy</div><div className="text-sm mt-1" style={{ color: "var(--mut)" }}>Polecaj fotowoltaikę i rozwiązania energetyczne. Twój link zapisuje polecenie do programu Sunrise.</div>{r?.referral_code ? <div className="mt-3 flex gap-2"><input readOnly value={`https://sunriseenergy.pl/?ref=${r.referral_code}`} className="flex-1 rounded-lg px-3 py-2 text-sm" style={{ background: "var(--glass)", border: "1px solid var(--line)" }} /><button onClick={() => navigator.clipboard.writeText(`https://sunriseenergy.pl/?ref=${r.referral_code}`)} className="px-3 py-2 rounded-lg text-sm" style={{ background: "var(--gold)", color: "#000" }}>Kopiuj</button></div> : <button disabled={busy} onClick={create} className="mt-3 px-3 py-2 rounded-lg text-sm" style={{ background: "var(--gold)", color: "#000" }}>{busy ? "Tworzę…" : "Utwórz link"}</button>}{msg && <div className="text-xs mt-2" style={{ color: "var(--mut)" }}>{msg}</div>}</Card>;
 }
