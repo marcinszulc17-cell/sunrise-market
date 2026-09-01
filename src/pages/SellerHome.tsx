@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "../lib/supabase";
 import PartnerDashboard from "./PartnerDashboard";
-import SprzedawcaStart from "./SprzedawcaStart";
+import SellerBusinessDashboard from "./SellerBusinessDashboard";
 
 export default function SellerHome() {
   const navigate = useNavigate();
@@ -33,5 +33,5 @@ export default function SellerHome() {
     return <main className="min-h-screen px-4 py-8 sm:px-6" style={{ background: "var(--bg)", color: "var(--ink)" }}><div className="mx-auto max-w-6xl rounded-2xl p-6" style={{ background: "var(--glass)", border: "1px solid var(--line)", color: "var(--mut)" }}>Otwieram centrum sprzedaży…</div></main>;
   }
   if (mode === "partner" || mode === "none") return <PartnerDashboard />;
-  return <SprzedawcaStart />;
+  return <SellerBusinessDashboard />;
 }
