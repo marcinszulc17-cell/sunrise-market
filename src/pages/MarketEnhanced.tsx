@@ -76,7 +76,7 @@ function addBookingPriceUnit(price: HTMLElement | undefined, mode: "purchase" | 
   unit.dataset.bookingPriceUnit = "1";
   unit.className = "ml-1 text-sm font-medium";
   unit.style.color = "var(--mut)";
-  unit.textContent = mode === "daily" ? "/ dzień" : "/ termin";
+  unit.textContent = mode === "daily" ? "/ dobę" : "/ termin";
   price.appendChild(unit);
 }
 
