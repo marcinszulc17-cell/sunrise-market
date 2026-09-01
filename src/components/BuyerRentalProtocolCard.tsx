@@ -37,14 +37,15 @@ type Props = { bookingId: string; depositGross?: number; depositStatus?: string;
 const dt = (iso: string) => new Date(iso).toLocaleString("pl-PL", { dateStyle: "short", timeStyle: "short" });
 const responseLabel = (status: BuyerStatus) => status === "acknowledged" ? "Potwierdzono" : status === "disputed" ? "Zgłoszono zastrzeżenie" : "Czeka na Twoją odpowiedź";
 const decisionLabel = (decision: Protocol["deposit_decision"]) => decision === "refund" ? "Zwrot całej kaucji" : decision === "partial" ? "Częściowe potrącenie" : decision === "retain" ? "Zatrzymanie kaucji" : "Do rozliczenia";
-const errorLabel = (code: string) => ({
+const errorLabels: Record<string, string> = {
   already_responded: "Odpowiedź do tego etapu została już zapisana.",
   dispute_note_required: "Opisz krótko, czego dotyczy zastrzeżenie.",
   protocol_not_ready: "Protokół nie jest jeszcze gotowy.",
   phase_not_ready: "Ten etap protokołu nie jest jeszcze gotowy.",
   buyer_only: "Tylko klient tej rezerwacji może odpowiedzieć na protokół.",
   rental_only: "Potwierdzenie protokołu dotyczy wynajmu.",
-})(code as never) || code;
+};
+const errorLabel = (code: string) => errorLabels[code] || code;
 
 export default function BuyerRentalProtocolCard({ bookingId, depositGross = 0, depositStatus, depositRetainedGross = 0 }: Props) {
   const [protocol, setProtocol] = useState<Protocol | null>(null);
