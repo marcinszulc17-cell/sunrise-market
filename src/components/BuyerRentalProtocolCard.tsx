@@ -37,6 +37,14 @@ type Props = { bookingId: string; depositGross?: number; depositStatus?: string;
 const dt = (iso: string) => new Date(iso).toLocaleString("pl-PL", { dateStyle: "short", timeStyle: "short" });
 const responseLabel = (status: BuyerStatus) => status === "acknowledged" ? "Potwierdzono" : status === "disputed" ? "Zgłoszono zastrzeżenie" : "Czeka na Twoją odpowiedź";
 const decisionLabel = (decision: Protocol["deposit_decision"]) => decision === "refund" ? "Zwrot całej kaucji" : decision === "partial" ? "Częściowe potrącenie" : decision === "retain" ? "Zatrzymanie kaucji" : "Do rozliczenia";
+const errorLabel = (code: string) => ({
+  already_responded: "Odpowiedź do tego etapu została już zapisana.",
+  dispute_note_required: "Opisz krótko, czego dotyczy zastrzeżenie.",
+  protocol_not_ready: "Protokół nie jest jeszcze gotowy.",
+  phase_not_ready: "Ten etap protokołu nie jest jeszcze gotowy.",
+  buyer_only: "Tylko klient tej rezerwacji może odpowiedzieć na protokół.",
+  rental_only: "Potwierdzenie protokołu dotyczy wynajmu.",
+})(code as never) || code;
 
 export default function BuyerRentalProtocolCard({ bookingId, depositGross = 0, depositStatus, depositRetainedGross = 0 }: Props) {
   const [protocol, setProtocol] = useState<Protocol | null>(null);
@@ -50,7 +58,7 @@ export default function BuyerRentalProtocolCard({ bookingId, depositGross = 0, d
   async function load() {
     const { data, error } = await supabase.functions.invoke("booking-protocol", { body: { action: "get", booking_id: bookingId } });
     if (error || !data?.ok) {
-      setMsg(data?.error || error?.message || "Nie udało się pobrać protokołu");
+      setMsg(errorLabel(data?.error || error?.message || "Nie udało się pobrać protokołu"));
       setLoading(false);
       return;
     }
@@ -63,8 +71,8 @@ export default function BuyerRentalProtocolCard({ bookingId, depositGross = 0, d
 
   const handoverPhotos = useMemo(() => photos.filter((p) => p.phase === "handover"), [photos]);
   const returnPhotos = useMemo(() => photos.filter((p) => p.phase === "return"), [photos]);
-  const isVehicle = protocol?.resource_kind === "vehicle";
-  const isEquipment = protocol?.resource_kind === "equipment";
+  const hasVehicleData = protocol?.resource_kind === "vehicle" || protocol?.handover_odometer != null || protocol?.return_odometer != null || protocol?.handover_fuel_percent != null || protocol?.return_fuel_percent != null;
+  const hasKitData = protocol?.resource_kind === "equipment" || protocol?.handover_kit_complete != null || protocol?.return_kit_complete != null;
 
   async function respond(phase: "handover" | "return", status: "acknowledged" | "disputed") {
     if (status === "disputed" && note.trim().length < 3) { setMsg("Opisz krótko, czego dotyczy zastrzeżenie."); return; }
@@ -74,8 +82,7 @@ export default function BuyerRentalProtocolCard({ bookingId, depositGross = 0, d
       body: { action: "buyer_respond", booking_id: bookingId, phase, payload: { status, note: status === "disputed" ? note.trim() : null } },
     });
     if (error || !data?.ok) {
-      const code = data?.error || error?.message || "Nie udało się zapisać odpowiedzi";
-      setMsg(code === "already_responded" ? "Odpowiedź do tego etapu została już zapisana." : code);
+      setMsg(errorLabel(data?.error || error?.message || "Nie udało się zapisać odpowiedzi"));
     } else {
       setProtocol(data.protocol as Protocol);
       setDisputePhase(null); setNote("");
@@ -86,7 +93,7 @@ export default function BuyerRentalProtocolCard({ bookingId, depositGross = 0, d
 
   async function openPhoto(photo: Photo) {
     const { data, error } = await supabase.functions.invoke("booking-protocol", { body: { action: "photo_url", booking_id: bookingId, photo_id: photo.id } });
-    if (error || !data?.ok || !data.url) { setMsg(data?.error || error?.message || "Nie udało się otworzyć zdjęcia"); return; }
+    if (error || !data?.ok || !data.url) { setMsg(errorLabel(data?.error || error?.message || "Nie udało się otworzyć zdjęcia")); return; }
     window.open(String(data.url), "_blank", "noopener,noreferrer");
   }
 
@@ -111,9 +118,9 @@ export default function BuyerRentalProtocolCard({ bookingId, depositGross = 0, d
       </div>
       <div className="mt-2 text-xs" style={{ color: "var(--mut)" }}>Zapisano: {dt(at)}</div>
       <div className="mt-3 grid gap-2 text-sm sm:grid-cols-2">
-        {isVehicle && odometer != null && <div><span style={{ color: "var(--mut)" }}>Przebieg: </span><b>{odometer.toLocaleString("pl-PL")} km</b></div>}
-        {isVehicle && fuel != null && <div><span style={{ color: "var(--mut)" }}>Paliwo / bateria: </span><b>{fuel}%</b></div>}
-        {isEquipment && kit != null && <div><span style={{ color: "var(--mut)" }}>Komplet wyposażenia: </span><b>{kit ? "tak" : "nie"}</b></div>}
+        {hasVehicleData && odometer != null && <div><span style={{ color: "var(--mut)" }}>Przebieg: </span><b>{odometer.toLocaleString("pl-PL")} km</b></div>}
+        {hasVehicleData && fuel != null && <div><span style={{ color: "var(--mut)" }}>Paliwo / bateria: </span><b>{fuel}%</b></div>}
+        {hasKitData && kit != null && <div><span style={{ color: "var(--mut)" }}>Komplet wyposażenia: </span><b>{kit ? "tak" : "nie"}</b></div>}
         {condition && <div className="sm:col-span-2"><span style={{ color: "var(--mut)" }}>Stan: </span>{condition}</div>}
         {notes && <div className="sm:col-span-2"><span style={{ color: "var(--mut)" }}>Uwagi: </span>{notes}</div>}
         {!isHandover && protocol.damage_found && <div className="sm:col-span-2 rounded-lg p-2" style={{ background: "rgba(239,68,68,.08)", border: "1px solid rgba(239,68,68,.2)" }}><b>Zapisano uszkodzenie / brak</b>{protocol.damage_note && <div className="mt-1">{protocol.damage_note}</div>}</div>}
