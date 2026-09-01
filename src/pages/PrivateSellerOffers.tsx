@@ -112,9 +112,12 @@ export default function PrivateSellerOffers() {
         <div>
           <Link to="/sprzedawca" className="text-sm" style={{ color: "var(--mut)" }}>← Panel Partnera Handlowego</Link>
           <h1 className="mt-2 font-display text-3xl font-semibold">Moje ogłoszenia</h1>
-          <p className="mt-1 text-sm" style={{ color: "var(--mut)" }}>Twoje prywatne oferty w jednym miejscu. Bez skomplikowanego panelu sklepowego.</p>
+          <p className="mt-1 text-sm" style={{ color: "var(--mut)" }}>Sprzedaż, usługi i wynajem w jednym miejscu. Zwykłe ogłoszenia pozostają proste i bez negocjacji ceny.</p>
         </div>
-        <Link to="/sprzedawca/wystaw" className="rounded-xl px-4 py-2 font-semibold text-black" style={{ background: "linear-gradient(135deg,#C8965A,#E8C896)" }}>+ Dodaj ogłoszenie</Link>
+        <div className="flex flex-wrap gap-2">
+          <Link to="/sprzedawca/rezerwacje" className="rounded-xl px-4 py-2 font-semibold" style={{ border: "1px solid var(--gold)", color: "var(--gold)" }}>📅 Rezerwacje i kalendarz</Link>
+          <Link to="/sprzedawca/wystaw" className="rounded-xl px-4 py-2 font-semibold text-black" style={{ background: "linear-gradient(135deg,#C8965A,#E8C896)" }}>+ Dodaj ofertę</Link>
+        </div>
       </div>
 
       {msg && <div className="mb-5 rounded-xl px-4 py-3 text-sm" style={{ background: "rgba(200,150,90,.12)", border: "1px solid rgba(200,150,90,.25)", color: "var(--gold)" }}>{msg}</div>}
@@ -128,7 +131,7 @@ export default function PrivateSellerOffers() {
         <button disabled={saving} onClick={saveQuickEdit} className="mt-4 rounded-xl px-5 py-2.5 font-semibold text-black disabled:opacity-50" style={{ background: "linear-gradient(135deg,#C8965A,#E8C896)" }}>{saving ? "Zapisuję…" : "Zapisz cenę i zdjęcia"}</button>
       </section>}
 
-      {loading ? <p>Ładowanie ogłoszeń…</p> : rows.length === 0 ? <div className="rounded-2xl p-8 text-center" style={{ background: "var(--glass)", border: "1px solid var(--line)" }}><div className="text-4xl mb-3">📦</div><h2 className="text-xl font-semibold">Nie masz jeszcze ogłoszeń</h2><p className="mt-2 text-sm" style={{ color: "var(--mut)" }}>Dodaj pierwszy produkt — zdjęcia, cena, dostawa i gotowe.</p><Link to="/sprzedawca/wystaw" className="mt-4 inline-block rounded-xl px-5 py-2.5 font-semibold text-black" style={{ background: "linear-gradient(135deg,#C8965A,#E8C896)" }}>Wystaw pierwszy produkt</Link></div> : <div className="grid gap-4 md:grid-cols-2">
+      {loading ? <p>Ładowanie ogłoszeń…</p> : rows.length === 0 ? <div className="rounded-2xl p-8 text-center" style={{ background: "var(--glass)", border: "1px solid var(--line)" }}><div className="text-4xl mb-3">📦</div><h2 className="text-xl font-semibold">Nie masz jeszcze ofert</h2><p className="mt-2 text-sm" style={{ color: "var(--mut)" }}>Możesz sprzedać produkt, dodać usługę na termin albo wynajem z kalendarzem.</p><Link to="/sprzedawca/wystaw" className="mt-4 inline-block rounded-xl px-5 py-2.5 font-semibold text-black" style={{ background: "linear-gradient(135deg,#C8965A,#E8C896)" }}>Dodaj pierwszą ofertę</Link></div> : <div className="grid gap-4 md:grid-cols-2">
         {rows.map(row => {
           const st = STATUS[row.display_status] ?? { label: row.display_status, icon: "•" };
           const canRelist = ['sold','sold_out'].includes(row.display_status);
