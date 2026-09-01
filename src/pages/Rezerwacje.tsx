@@ -28,6 +28,7 @@ const localInput = (iso: string) => {
   const d = new Date(iso); const p = (n: number) => String(n).padStart(2, "0");
   return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}T${p(d.getHours())}:${p(d.getMinutes())}`;
 };
+const rentalUnitsLabel = (units: number) => units === 1 ? "1 doba" : units >= 2 && units <= 4 ? `${units} doby` : `${units} dób`;
 const isHistory = (r: BuyerBooking) => ["completed", "cancelled", "expired"].includes(r.status) || new Date(r.ends_at).getTime() < Date.now();
 const progressStep = (r: BuyerBooking) => {
   if (["cancelled", "expired"].includes(r.status)) return 0;
@@ -128,7 +129,7 @@ export default function Rezerwacje() {
         const step = progressStep(r);
         const steps = r.booking_type === "appointment" ? ["Termin", "Płatność", "Potwierdzenie", "Realizacja"] : ["Termin", "Płatność", "Potwierdzenie", "Zakończenie"];
         return <article key={r.id} className="rounded-2xl p-5" style={{ background: "var(--glass)", border: "1px solid var(--line)" }}>
-          <div className="flex flex-wrap items-start justify-between gap-3"><div><a href={`/produkt/${r.offer_id}`} className="font-semibold hover:underline">{r.title}</a><p className="mt-1 text-sm" style={{ color: "var(--mut)" }}>{r.booking_type === "appointment" ? date(r.starts_at, true) : `${date(r.starts_at, false)} – ${date(r.ends_at, false)} · ${r.units} dni`}</p></div><span className="rounded-full px-3 py-1 text-xs font-semibold" style={{ background: r.status === "confirmed" ? "rgba(34,197,94,.14)" : r.status === "pending_payment" && r.paid_at ? "rgba(200,150,90,.14)" : "var(--header)", border: "1px solid var(--line)" }}>{bookingLabel(r)}</span></div>
+          <div className="flex flex-wrap items-start justify-between gap-3"><div><a href={`/produkt/${r.offer_id}`} className="font-semibold hover:underline">{r.title}</a><p className="mt-1 text-sm" style={{ color: "var(--mut)" }}>{r.booking_type === "appointment" ? date(r.starts_at, true) : `${date(r.starts_at, false)} – ${date(r.ends_at, false)} · ${rentalUnitsLabel(r.units)}`}</p></div><span className="rounded-full px-3 py-1 text-xs font-semibold" style={{ background: r.status === "confirmed" ? "rgba(34,197,94,.14)" : r.status === "pending_payment" && r.paid_at ? "rgba(200,150,90,.14)" : "var(--header)", border: "1px solid var(--line)" }}>{bookingLabel(r)}</span></div>
           {!["cancelled", "expired"].includes(r.status) && <div className="mt-4 grid grid-cols-4 gap-2">{steps.map((label, index) => <div key={label}><div className="h-1.5 rounded-full" style={{ background: index < step ? "var(--gold)" : "var(--line)" }} /><div className="mt-1 text-[10px] sm:text-xs" style={{ color: index < step ? "var(--ink)" : "var(--mut)" }}>{label}</div></div>)}</div>}
           {r.status === "pending_payment" && r.paid_at && <p className="mt-3 rounded-xl px-3 py-2 text-xs" style={{ background: "rgba(200,150,90,.08)", border: "1px solid rgba(200,150,90,.2)", color: "var(--mut)" }}>Płatność jest zaksięgowana, a termin nadal zarezerwowany dla Ciebie. Sprzedawca musi tylko zaakceptować rezerwację.</p>}
           <div className="mt-4 grid gap-2 rounded-xl p-3 text-sm sm:grid-cols-2" style={{ background: "var(--header)", border: "1px solid var(--line)" }}>
@@ -137,8 +138,8 @@ export default function Rezerwacje() {
             {r.order_id && <div><span className="block text-xs" style={{ color: "var(--mut)" }}>Numer rezerwacji</span><strong className="font-mono text-xs">{r.id.slice(0, 8).toUpperCase()}</strong></div>}
             <div><span className="block text-xs" style={{ color: "var(--mut)" }}>Metoda płatności</span><strong>{r.payment_provider === "stripe" ? "Karta / BLIK / P24" : r.payment_provider === "sunrise_pay" ? "Sunrise Pay" : "—"}</strong></div>
           </div>
-          <div className="mt-4 flex items-center justify-between text-sm"><span style={{ color: "var(--mut)" }}>Cena rezerwacji</span><strong>{zl(bookingPrice)}</strong></div>
-          {deposit > 0 && <div className="mt-2 rounded-xl px-3 py-2 text-xs" style={{ background: "rgba(200,150,90,.08)", border: "1px solid rgba(200,150,90,.18)", color: "var(--mut)" }}>Kaucja zabezpieczająca: {zl(deposit)} · {depositLabels[r.deposit_status] ?? r.deposit_status}. Kaucja została pobrana razem z płatnością za rezerwację, ale nie podlega cashbackowi ani prowizji.</div>}
+          <div className="mt-4 flex items-center justify-between text-sm"><span style={{ color: "var(--mut)" }}>{r.booking_type === "daily" ? "Czynsz za najem" : "Cena usługi"}</span><strong>{zl(bookingPrice)}</strong></div>
+          {deposit > 0 && <div className="mt-2 rounded-xl px-3 py-2 text-xs" style={{ background: "rgba(200,150,90,.08)", border: "1px solid rgba(200,150,90,.18)", color: "var(--mut)" }}>Kaucja zwrotna: {zl(deposit)} · {depositLabels[r.deposit_status] ?? r.deposit_status}. Kaucja została pobrana razem z płatnością za najem, ale nie podlega cashbackowi ani prowizji.</div>}
           {deposit > 0 && r.paid_at && <div className="mt-2 flex items-center justify-between text-sm"><span style={{ color: "var(--mut)" }}>Łącznie pobrano</span><strong>{zl(bookingPrice + deposit)}</strong></div>}
 
           {request && <div className="mt-4 rounded-2xl p-4 text-sm" style={{ background:"var(--header)", border:"1px solid var(--line)" }}>
