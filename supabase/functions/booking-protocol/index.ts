@@ -7,6 +7,14 @@ const cors = {
 const BUCKET = "booking-protocols";
 const MAX_BYTES = 10 * 1024 * 1024;
 const ALLOWED = new Set(["image/jpeg", "image/png", "image/webp", "image/heic", "image/heif"]);
+const BUYER_FIELDS = [
+  "id", "status", "resource_kind",
+  "handover_at", "handover_odometer", "handover_fuel_percent", "handover_condition", "handover_notes", "handover_kit_complete",
+  "return_at", "return_odometer", "return_fuel_percent", "return_condition", "return_notes", "return_kit_complete",
+  "damage_found", "damage_note", "deposit_decision", "deposit_retained_requested_gross", "deposit_decision_note",
+  "handover_buyer_status", "handover_buyer_responded_at", "handover_buyer_note",
+  "return_buyer_status", "return_buyer_responded_at", "return_buyer_note",
+].join(",");
 
 function json(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), { status, headers: { ...cors, "Content-Type": "application/json" } });
@@ -51,8 +59,13 @@ Deno.serve(async (req) => {
   async function bookingAccess(bookingId: string) {
     const sellerId = await getSeller();
     const { data: booking } = await sb.from("bookings").select("id,seller_id,buyer_id,resource_id,booking_type,status,deposit_gross,deposit_status,ends_at").eq("id", bookingId).maybeSingle();
-    if (!booking) return { booking: null, sellerId, seller: false, buyer: false };
-    return { booking, sellerId, seller: !!sellerId && booking.seller_id === sellerId, buyer: booking.buyer_id === user.id };
+    if (!booking) return { booking: null, sellerId, seller: false, buyer: false, resourceKind: null as string | null };
+    let resourceKind: string | null = null;
+    if (booking.resource_id) {
+      const { data: resource } = await sb.from("booking_resources").select("kind").eq("id", booking.resource_id).maybeSingle();
+      resourceKind = (resource?.kind as string | undefined) ?? null;
+    }
+    return { booking, sellerId, seller: !!sellerId && booking.seller_id === sellerId, buyer: booking.buyer_id === user.id, resourceKind };
   }
 
   try {
@@ -85,11 +98,50 @@ Deno.serve(async (req) => {
     if (!access.booking || (!access.seller && !access.buyer)) return json({ ok: false, error: "forbidden" }, 403);
 
     if (action === "get") {
-      const { data: protocol, error: protocolError } = await sb.from("booking_handover_protocols").select("*").eq("booking_id", bookingId).maybeSingle();
+      const selectFields = access.seller ? "*" : BUYER_FIELDS;
+      const { data: protocol, error: protocolError } = await sb.from("booking_handover_protocols").select(selectFields).eq("booking_id", bookingId).maybeSingle();
       if (protocolError) throw protocolError;
+      if (protocol && !protocol.resource_kind && access.resourceKind) protocol.resource_kind = access.resourceKind;
       const { data: photos, error: photosError } = await sb.from("booking_protocol_photos").select("id,phase,file_name,mime_type,created_at").eq("booking_id", bookingId).order("created_at");
       if (photosError) throw photosError;
-      return json({ ok: true, protocol: protocol ?? null, photos: photos ?? [], can_edit: access.seller });
+      return json({ ok: true, protocol: protocol ?? null, photos: photos ?? [], can_edit: access.seller, can_respond: access.buyer });
+    }
+
+    if (action === "buyer_respond") {
+      if (!access.buyer) return json({ ok: false, error: "buyer_only" }, 403);
+      if (access.booking.booking_type !== "daily") return json({ ok: false, error: "rental_only" }, 400);
+      if (!["handover", "return"].includes(phase)) return json({ ok: false, error: "invalid_phase" }, 400);
+      const response = String(payload.status ?? "");
+      if (!["acknowledged", "disputed"].includes(response)) return json({ ok: false, error: "invalid_response" }, 400);
+      const note = String(payload.note ?? "").trim().slice(0, 2000);
+      if (response === "disputed" && note.length < 3) return json({ ok: false, error: "dispute_note_required" }, 400);
+
+      const { data: protocol, error: protocolError } = await sb.from("booking_handover_protocols").select("id,handover_at,return_at,handover_buyer_status,return_buyer_status").eq("booking_id", bookingId).maybeSingle();
+      if (protocolError) throw protocolError;
+      if (!protocol) return json({ ok: false, error: "protocol_not_ready" }, 409);
+      const phaseAt = phase === "handover" ? protocol.handover_at : protocol.return_at;
+      const current = phase === "handover" ? protocol.handover_buyer_status : protocol.return_buyer_status;
+      if (!phaseAt) return json({ ok: false, error: "phase_not_ready" }, 409);
+      if (current !== "pending") return json({ ok: false, error: "already_responded" }, 409);
+
+      const now = new Date().toISOString();
+      const patch = phase === "handover" ? {
+        handover_buyer_status: response,
+        handover_buyer_responded_at: now,
+        handover_buyer_responded_by: user.id,
+        handover_buyer_note: note || null,
+        updated_at: now,
+      } : {
+        return_buyer_status: response,
+        return_buyer_responded_at: now,
+        return_buyer_responded_by: user.id,
+        return_buyer_note: note || null,
+        updated_at: now,
+      };
+      const { data, error } = await sb.from("booking_handover_protocols").update(patch).eq("id", protocol.id).select(BUYER_FIELDS).single();
+      if (error) throw error;
+      if (data && !data.resource_kind && access.resourceKind) data.resource_kind = access.resourceKind;
+      return json({ ok: true, protocol: data });
     }
 
     if (!access.seller) return json({ ok: false, error: "seller_only" }, 403);
@@ -102,7 +154,7 @@ Deno.serve(async (req) => {
         seller_id: access.booking!.seller_id,
         buyer_id: access.booking!.buyer_id,
         resource_id: access.booking!.resource_id,
-        resource_kind: null,
+        resource_kind: access.resourceKind,
         created_by: user.id,
         updated_by: user.id,
       }).select("*").single();
@@ -113,9 +165,12 @@ Deno.serve(async (req) => {
     if (action === "save_handover" || action === "save_return") {
       const protocol = await ensureProtocol();
       const isHandover = action === "save_handover";
+      const buyerResponse = isHandover ? protocol.handover_buyer_status : protocol.return_buyer_status;
+      if (buyerResponse && buyerResponse !== "pending") return json({ ok: false, error: "buyer_response_locked" }, 409);
       const patch: Record<string, unknown> = {
         updated_by: user.id,
         updated_at: new Date().toISOString(),
+        resource_kind: protocol.resource_kind ?? access.resourceKind,
       };
       if (isHandover) {
         patch.status = protocol.status === "draft" ? "issued" : protocol.status;
@@ -165,6 +220,8 @@ Deno.serve(async (req) => {
       if (file.size > MAX_BYTES) return json({ ok: false, error: "file_too_large" }, 400);
       if (!["handover", "return"].includes(phase)) return json({ ok: false, error: "invalid_phase" }, 400);
       const protocol = await ensureProtocol();
+      const buyerResponse = phase === "handover" ? protocol.handover_buyer_status : protocol.return_buyer_status;
+      if (buyerResponse && buyerResponse !== "pending") return json({ ok: false, error: "buyer_response_locked" }, 409);
       const id = crypto.randomUUID();
       const ext = (safeName(file.name).split(".").pop() || "jpg").toLowerCase();
       const path = `${access.booking.seller_id}/${bookingId}/${phase}/${id}.${ext}`;
@@ -199,9 +256,12 @@ Deno.serve(async (req) => {
 
     if (action === "delete_photo") {
       if (!photoId) return json({ ok: false, error: "missing_photo" }, 400);
-      const { data: photo, error } = await sb.from("booking_protocol_photos").select("id,booking_id,storage_path").eq("id", photoId).eq("booking_id", bookingId).maybeSingle();
+      const { data: photo, error } = await sb.from("booking_protocol_photos").select("id,booking_id,storage_path,phase").eq("id", photoId).eq("booking_id", bookingId).maybeSingle();
       if (error) throw error;
       if (!photo) return json({ ok: true });
+      const protocol = await ensureProtocol();
+      const buyerResponse = photo.phase === "handover" ? protocol.handover_buyer_status : protocol.return_buyer_status;
+      if (buyerResponse && buyerResponse !== "pending") return json({ ok: false, error: "buyer_response_locked" }, 409);
       await sb.storage.from(BUCKET).remove([photo.storage_path]);
       const { error: deleteError } = await sb.from("booking_protocol_photos").delete().eq("id", photoId);
       if (deleteError) throw deleteError;
