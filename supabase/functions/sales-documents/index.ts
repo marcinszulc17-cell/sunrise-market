@@ -32,12 +32,28 @@ Deno.serve(async (req) => {
     if (userError || !user) return json({ error: "Brak autoryzacji" }, 401);
 
     const sb = createClient(url, service, { db: { schema: "market" } });
-    const { data: seller } = await sb.from("sellers")
+    let seller: { id: string; seller_type: string; legal_name: string } | null = null;
+
+    const { data: sellerByUser, error: sellerByUserError } = await sb.from("sellers")
       .select("id,seller_type,legal_name")
       .eq("auth_user_id", user.id)
       .order("created_at", { ascending: false })
       .limit(1)
       .maybeSingle();
+    if (sellerByUserError) throw sellerByUserError;
+    seller = sellerByUser;
+
+    if (!seller && user.email) {
+      const { data: sellerByEmail, error: sellerByEmailError } = await sb.from("sellers")
+        .select("id,seller_type,legal_name")
+        .is("auth_user_id", null)
+        .ilike("email", user.email)
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      if (sellerByEmailError) throw sellerByEmailError;
+      seller = sellerByEmail;
+    }
 
     const contentType = req.headers.get("content-type") ?? "";
     let action = "list";
@@ -144,7 +160,7 @@ Deno.serve(async (req) => {
         .eq("id", documentId)
         .maybeSingle();
       if (docError) throw docError;
-      if (!doc || doc.status !== "available") return json({ error: "Dokument niedostępny" }, 404);
+      if (!doc || doc.status !== "available" || !doc.storage_path || !doc.file_name) return json({ error: "Dokument niedostępny" }, 404);
       const access = await orderAccess(doc.order_id);
       if (!access.buyer && !(access.seller && seller?.id === doc.seller_id)) return json({ error: "Brak dostępu do dokumentu" }, 403);
       const { data: signed, error: signedError } = await sb.storage.from(BUCKET).createSignedUrl(doc.storage_path, 120, { download: doc.file_name });
