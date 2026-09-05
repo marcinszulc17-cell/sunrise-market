@@ -21,6 +21,10 @@ export const PHOTO_ERRORS: Record<string, string> = {
   invalid_file_type: "Dozwolone są tylko zdjęcia (JPG, PNG, WebP, HEIC).",
   file_too_large: "Zdjęcie jest za duże (maks. 10 MB).",
   rental_only: "Protokół dotyczy tylko wynajmu na dni.",
+  code_no_code: "Najpierw wyślij kod do klienta.",
+  code_expired: "Kod wygasł (ważny 15 min). Wyślij nowy.",
+  code_too_many_attempts: "Za dużo błędnych prób. Wyślij nowy kod.",
+  code_wrong_code: "Nieprawidłowy kod — poproś klienta o odczytanie go z aplikacji lub e-maila.",
 };
 
 const dt = (iso: string) => new Date(iso).toLocaleString("pl-PL", { dateStyle: "short", timeStyle: "medium" });
@@ -110,5 +114,48 @@ export function RentalAgreementBadge({ bookingId, showRenter }: { bookingId: str
     {row.agreement_text && <button type="button" onClick={() => setOpen((v) => !v)} className="ml-2 underline" style={{ color: "var(--gold)" }}>{open ? "zwiń" : "pokaż treść"}</button>}
     {open && row.agreement_text && <pre className="mt-2 max-h-72 overflow-auto whitespace-pre-wrap rounded-lg p-2 text-[11px] leading-4" style={{ background: "var(--bg)", border: "1px solid var(--line)", color: "var(--mut)" }}>{row.agreement_text}</pre>}
     {showRenter && <div className="mt-1" style={{ color: "var(--mut)" }}>Najemca: {r.full_name || "—"} · tel. {r.phone || "—"} · {r.doc_type || "dokument"} {r.doc_number || "—"}{r.license_number ? ` · prawo jazdy ${r.license_number} (od ${r.license_since_year || "—"})` : ""}{r.address ? ` · ${r.address}` : ""}</div>}
+  </div>;
+}
+
+/** Sprzedawca: „podpis kodem” — wysyła kod klientowi i wpisuje go z jego ust. */
+export function HandoverCodePanel({ bookingId, phase, verifiedAt, disabled, onChange }: { bookingId: string; phase: "handover" | "return"; verifiedAt?: string | null; disabled?: boolean; onChange: (msg: string) => void }) {
+  const [code, setCode] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [sent, setSent] = useState(false);
+  const label = phase === "handover" ? "wydania" : "zwrotu";
+  async function call(action: "issue_code" | "verify_code") {
+    setBusy(true);
+    const { data, error } = await supabase.functions.invoke("booking-protocol", { body: { action, booking_id: bookingId, phase, payload: { code } } });
+    setBusy(false);
+    if (error || !data?.ok) { onChange(PHOTO_ERRORS[String(data?.error)] || data?.error || error?.message || "Błąd kodu"); return; }
+    if (action === "issue_code") { setSent(true); onChange("Kod wysłany do klienta (aplikacja + e-mail). Poproś o odczytanie 6 cyfr."); }
+    else { setCode(""); onChange(`Tożsamość klienta przy ${label} potwierdzona kodem ✅`); }
+  }
+  if (verifiedAt) return <div className="mt-3 rounded-lg px-3 py-2 text-[11px]" style={{ border: "1px solid rgba(34,197,94,.3)", background: "rgba(34,197,94,.06)" }}>✓ Klient potwierdził {label} kodem {dt(verifiedAt)}</div>;
+  return <div className="mt-3 rounded-lg p-2.5" style={{ border: "1px solid var(--line)" }}>
+    <div className="text-[11px] font-semibold">Podpis kodem — klient stoi obok?</div>
+    <div className="mt-2 grid grid-cols-[auto_1fr_auto] gap-2">
+      <button type="button" disabled={disabled || busy} onClick={() => void call("issue_code")} className="rounded-lg px-3 py-2 text-[11px] font-semibold disabled:opacity-50" style={{ border: "1px solid var(--gold)", color: "var(--gold)" }}>{sent ? "Wyślij ponownie" : "Wyślij kod klientowi"}</button>
+      <input inputMode="numeric" maxLength={6} value={code} onChange={(e) => setCode(e.target.value.replace(/\D/g, "").slice(0, 6))} placeholder="6 cyfr od klienta" className="rounded-lg px-3 py-2 text-sm outline-none" style={{ background: "var(--bg)", border: "1px solid var(--line)", color: "var(--ink)" }} />
+      <button type="button" disabled={disabled || busy || code.length !== 6} onClick={() => void call("verify_code")} className="rounded-lg px-3 py-2 text-[11px] font-semibold text-black disabled:opacity-50" style={{ background: "linear-gradient(135deg,#E8891A,#F5A623)" }}>Potwierdź</button>
+    </div>
+    <div className="mt-1 text-[10px]" style={{ color: "var(--mut)" }}>Klient dostaje kod w aplikacji i e-mailem (SMS po podłączeniu bramki). Ważny 15 min, 5 prób.</div>
+  </div>;
+}
+
+/** Klient: pokazuje aktywny kod do podania sprzedawcy. */
+export function BuyerHandoverCode({ bookingId, phase }: { bookingId: string; phase: "handover" | "return" }) {
+  const [row, setRow] = useState<{ code: string; expires_at: string } | null>(null);
+  useEffect(() => {
+    let alive = true;
+    const load = () => supabase.rpc("active_handover_code", { p_booking: bookingId, p_phase: phase }).then(({ data }) => { if (alive) setRow((data && data[0]) || null); });
+    void load(); const t = setInterval(load, 20000);
+    return () => { alive = false; clearInterval(t); };
+  }, [bookingId, phase]);
+  if (!row) return null;
+  return <div className="mt-3 rounded-xl p-3 text-center" style={{ border: "1px solid var(--gold)", background: "rgba(232,137,26,.08)" }}>
+    <div className="text-[11px]" style={{ color: "var(--mut)" }}>Twój kod potwierdzenia {phase === "handover" ? "odbioru" : "zwrotu"} — podaj sprzedawcy</div>
+    <div className="mt-1 font-mono text-3xl font-bold tracking-[.3em]" style={{ color: "var(--gold)" }}>{row.code}</div>
+    <div className="text-[10px]" style={{ color: "var(--mut)" }}>ważny do {new Date(row.expires_at).toLocaleTimeString("pl-PL", { timeStyle: "short" })}</div>
   </div>;
 }

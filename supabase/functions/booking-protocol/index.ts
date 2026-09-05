@@ -14,6 +14,7 @@ const BUYER_FIELDS = [
   "damage_found", "damage_note", "deposit_decision", "deposit_retained_requested_gross", "deposit_decision_note",
   "handover_buyer_status", "handover_buyer_responded_at", "handover_buyer_note",
   "return_buyer_status", "return_buyer_responded_at", "return_buyer_note",
+  "handover_code_verified_at", "return_code_verified_at",
 ].join(",");
 
 function json(body: unknown, status = 200) {
@@ -350,6 +351,22 @@ Deno.serve(async (req) => {
       }
       await protocolEvent(bookingId, isHandover ? "handover_saved" : "return_saved");
       return json({ ok: true, protocol: data });
+    }
+
+    // „Podpis kodem”: sprzedawca prosi o kod → klient dostaje 6 cyfr (in-app + e-mail) → sprzedawca wpisuje kod
+    if (action === "issue_code" || action === "verify_code") {
+      if (access.booking.booking_type !== "daily") return json({ ok: false, error: "rental_only" }, 400);
+      if (!["handover", "return"].includes(phase)) return json({ ok: false, error: "invalid_phase" }, 400);
+      await ensureProtocol();
+      if (action === "issue_code") {
+        const { error } = await sb.rpc("issue_handover_code", { p_booking: bookingId, p_phase: phase });
+        if (error) throw error;
+        return json({ ok: true, issued: true });
+      }
+      const { data: result, error } = await sb.rpc("verify_handover_code", { p_booking: bookingId, p_phase: phase, p_code: String(payload.code ?? "") });
+      if (error) throw error;
+      if (result !== "ok") return json({ ok: false, error: `code_${result}` }, 409);
+      return json({ ok: true, verified: true });
     }
 
     if (action === "save_deposit_decision") {

@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { supabase } from "../lib/supabase";
-import { CameraButton, PhotoProofList, PHOTO_ERRORS, RentalAgreementBadge, type ProtocolPhoto, type PhotoWindow } from "./ProtocolPhotos";
+import { CameraButton, PhotoProofList, PHOTO_ERRORS, RentalAgreementBadge, HandoverCodePanel, type ProtocolPhoto, type PhotoWindow } from "./ProtocolPhotos";
 
 type Booking = {
   id: string;
@@ -40,6 +40,8 @@ type Protocol = {
   deposit_decision_note: string | null;
   handover_buyer_status?: "pending" | "acknowledged" | "disputed";
   return_buyer_status?: "pending" | "acknowledged" | "disputed";
+  handover_code_verified_at?: string | null;
+  return_code_verified_at?: string | null;
 };
 type Photo = ProtocolPhoto;
 type FormState = {
@@ -207,6 +209,7 @@ export default function SellerRentalProtocolPanel() {
         </div>
         <PhotoProofList bookingId={selected.id} photos={handoverPhotos} onError={setMsg} onDelete={protocol?.handover_buyer_status === "acknowledged" ? undefined : deletePhoto}/>
         <CameraButton bookingId={selected.id} phase="handover" label="Zrób zdjęcia przy wydaniu (teraz)" window={windows?.handover} disabled={busy} onDone={afterPhotos}/>
+        <HandoverCodePanel bookingId={selected.id} phase="handover" verifiedAt={protocol?.handover_code_verified_at} disabled={busy} onChange={(m) => { setMsg(m); void loadProtocol(selected.id); }}/>
         <button disabled={busy} onClick={() => void savePhase("handover")} className="mt-2 w-full rounded-xl py-2.5 text-sm font-semibold text-black disabled:opacity-50" style={{ background: "linear-gradient(135deg,#E8891A,#F5A623)" }}>Zapisz wydanie</button>
       </section>
 
@@ -222,6 +225,7 @@ export default function SellerRentalProtocolPanel() {
         </div>
         <PhotoProofList bookingId={selected.id} photos={returnPhotos} onError={setMsg} onDelete={protocol?.return_buyer_status === "acknowledged" ? undefined : deletePhoto}/>
         <CameraButton bookingId={selected.id} phase="return" label="Zrób zdjęcia przy zwrocie (teraz)" window={windows?.return} disabled={busy} onDone={afterPhotos}/>
+        <HandoverCodePanel bookingId={selected.id} phase="return" verifiedAt={protocol?.return_code_verified_at} disabled={busy} onChange={(m) => { setMsg(m); void loadProtocol(selected.id); }}/>
         <button disabled={busy} onClick={() => void savePhase("return")} className="mt-2 w-full rounded-xl py-2.5 text-sm font-semibold disabled:opacity-50" style={{ border: "1px solid var(--gold)", color: "var(--gold)" }}>Zapisz zwrot i zakończ najem</button>
       </section>
 

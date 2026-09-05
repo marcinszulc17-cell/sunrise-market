@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { supabase } from "../lib/supabase";
 import { zl } from "../lib/money";
-import { CameraButton, PhotoProofList, PHOTO_ERRORS, RentalAgreementBadge, type ProtocolPhoto, type PhotoWindow } from "./ProtocolPhotos";
+import { CameraButton, PhotoProofList, PHOTO_ERRORS, RentalAgreementBadge, BuyerHandoverCode, type ProtocolPhoto, type PhotoWindow } from "./ProtocolPhotos";
 
 type BuyerStatus = "pending" | "acknowledged" | "disputed";
 type Protocol = {
@@ -140,6 +140,8 @@ export default function BuyerRentalProtocolCard({ bookingId, depositGross = 0, d
     <div className="mt-1 font-semibold">Wydanie, zwrot i stan przedmiotu</div>
     {msg && <div className="mt-3 rounded-xl p-3 text-xs" style={{ background: "var(--header)", border: "1px solid var(--line)" }}>{msg}</div>}
     <RentalAgreementBadge bookingId={bookingId} showRenter />
+    <BuyerHandoverCode bookingId={bookingId} phase="handover" />
+    <BuyerHandoverCode bookingId={bookingId} phase="return" />
     {!protocol?.handover_at && <div className="mt-2"><p className="text-xs leading-5" style={{ color: "var(--mut)" }}>Protokół wydania pojawi się tutaj po przekazaniu auta, sprzętu lub innego przedmiotu najmu. Przy odbiorze zrób własne zdjęcia — dostaną pieczęć czasu serwera.</p>{handoverPhotos.length > 0 && <PhotoProofList bookingId={bookingId} photos={handoverPhotos} onError={setMsg}/>}<CameraButton bookingId={bookingId} phase="handover" label="Zrób zdjęcia przy odbiorze (teraz)" window={windows?.handover} disabled={busy} onDone={(err) => { if (err) setMsg(err); else { setMsg("Twoje zdjęcia zarejestrowane z pieczęcią czasu ✅"); void load(); } }}/></div>}
     {protocol && <div className="mt-3 grid gap-3">{phase("handover")}{phase("return")}
       {depositGross > 0 && <div className="rounded-xl p-3 text-xs" style={{ background: "var(--header)", border: "1px solid var(--line)" }}><div className="flex items-center justify-between gap-3"><span>Kaucja zwrotna</span><b>{zl(depositGross)}</b></div><div className="mt-1" style={{ color: "var(--mut)" }}>Status: {depositStatus || "—"}</div>{protocol.deposit_decision !== "pending" && <div className="mt-2"><b>{decisionLabel(protocol.deposit_decision)}</b>{protocol.deposit_decision === "partial" && <span> · planowane potrącenie {zl(Number(protocol.deposit_retained_requested_gross || 0))}</span>}{protocol.deposit_decision_note && <div className="mt-1" style={{ color: "var(--mut)" }}>Uzasadnienie: {protocol.deposit_decision_note}</div>}</div>}{depositRetainedGross > 0 && <div className="mt-1">Faktycznie zatrzymano: <b>{zl(depositRetainedGross)}</b></div>}</div>}
