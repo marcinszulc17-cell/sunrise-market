@@ -95,3 +95,6 @@ pierwszeństwo przy każdej zmianie kodu. Nie wolno ich naruszać ani obchodzić
   Subskrypcje `market.push_subscriptions` (RPC `save_push_subscription` / `remove_push_subscription`, klucz publiczny `push_public_key()`),
   włączanie w Moje konto → Ustawienia (`PushToggle`). Każdy wpis `market.notifications` (channel `app`) wysyła edge fn
   `send-web-push` (cron `market-send-web-push` co minutę, znacznik `notifications.push_sent_at`, zaległe >24 h pomijane).
+- **Limity doładowania portfela**: `platform_config.topup_min_pln` / `topup_max_pln` (10 / 25 000 zł), publikowane
+  przez `public_market_config`. Gdy brak w portfelu przekracza limit, koszyk pokazuje od razu płatność kartą (Stripe).
+  `wallet-topup` honoruje `return_to` (koszyk wraca do `/koszyk?topup=success` i sam kończy zakup).

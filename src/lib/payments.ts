@@ -9,7 +9,11 @@ export async function topupWallet(amountPln: number, returnTo?: string): Promise
   const { data, error } = await supabase.functions.invoke("wallet-topup", {
     body: { amount: amountPln, return_to: returnTo ?? null },
   });
-  if (error) throw error;
+  if (error) {
+    let body: any = null;
+    try { const ctx = (error as any)?.context; body = ctx?.clone ? await ctx.clone().json() : ctx?.json ? await ctx.json() : null; } catch { /* brak JSON */ }
+    throw new Error(body?.error ?? "Nie udało się rozpocząć doładowania — spróbuj ponownie lub zapłać kartą.");
+  }
   if (!data?.url) throw new Error(data?.error ?? "Nie udało się utworzyć płatności");
   window.location.href = data.url as string;
 }

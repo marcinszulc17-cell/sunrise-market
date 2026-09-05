@@ -22,8 +22,15 @@ const cors = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 const SERVICE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? Deno.env.get("SUPABASE_SERVICE_KEY");
-const MIN = Number(Deno.env.get("TOPUP_MIN_PLN") ?? "10");
-const MAX = Number(Deno.env.get("TOPUP_MAX_PLN") ?? "5000");
+// Limity doładowania: market.platform_config (topup_min_pln / topup_max_pln), fallback env, potem 10–25 000 zł.
+async function topupLimits(sb: ReturnType<typeof createClient>): Promise<{ min: number; max: number }> {
+  let min = Number(Deno.env.get("TOPUP_MIN_PLN") ?? "10"), max = Number(Deno.env.get("TOPUP_MAX_PLN") ?? "25000");
+  try {
+    const { data } = await sb.from("platform_config").select("key,value").in("key", ["topup_min_pln", "topup_max_pln"]);
+    for (const r of (data ?? []) as { key: string; value: string }[]) { const v = Number(r.value); if (Number.isFinite(v) && v > 0) { if (r.key === "topup_min_pln") min = v; else max = v; } }
+  } catch { /* fallback */ }
+  return { min, max };
+}
 
 function json(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), { status, headers: { ...cors, "Content-Type": "application/json" } });
@@ -42,15 +49,18 @@ Deno.serve(async (req) => {
     if (userError || !user) return json({ error: "Brak autoryzacji" }, 401);
     if (!user.email) return json({ error: "Konto bez adresu e-mail" }, 400);
 
-    const { amount } = await req.json();
+    const { amount, return_to } = await req.json();
+    // Powrót po doładowaniu: koszyk przekazuje return_to (np. /koszyk?topup=success), żeby dokończyć zakup; tylko ścieżki względne.
+    const backTo = typeof return_to === "string" && /^\/[^\/\\]/.test(return_to) ? return_to : "/portfel?topup=success";
     const amountGrosz = Math.round(Number(amount) * 100);
     const value = amountGrosz / 100;
-    if (!Number.isInteger(amountGrosz) || value < MIN || value > MAX) {
-      return json({ error: `Kwota poza zakresem ${MIN}-${MAX} zł` }, 400);
-    }
     if (!SERVICE_KEY) return json({ error: "Brak konfiguracji usługi" }, 500);
-
     const sb = createClient(Deno.env.get("SUPABASE_URL")!, SERVICE_KEY, { db: { schema: "market" } });
+    const { min: MIN, max: MAX } = await topupLimits(sb);
+    if (!Number.isInteger(amountGrosz) || value < MIN || value > MAX) {
+      return json({ error: `Jednorazowe doładowanie portfela: od ${MIN} zł do ${MAX.toLocaleString("pl-PL")} zł. Większe zakupy opłać kartą bezpośrednio w koszyku.`, code: "topup_out_of_range", min: MIN, max: MAX }, 400);
+    }
+
     const { data: topup, error: topupError } = await sb.from("wallet_topups")
       .insert({ user_id: user.id, amount: value, currency: "pln", status: "pending" })
       .select("id").single();
@@ -75,7 +85,7 @@ Deno.serve(async (req) => {
       }],
       metadata: { topup_id: topup.id, user_id: user.id, user_email: user.email },
       customer_email: user.email,
-      success_url: `${origin}/portfel?topup=success`,
+      success_url: `${origin}${backTo}`,
       cancel_url: `${origin}/portfel?topup=cancel`,
     });
     const { error: sessionError } = await sb.from("wallet_topups")
