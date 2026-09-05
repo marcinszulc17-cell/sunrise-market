@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { supabase } from "../lib/supabase";
+import { CameraButton, PhotoProofList, PHOTO_ERRORS, RentalAgreementBadge, type ProtocolPhoto, type PhotoWindow } from "./ProtocolPhotos";
 
 type Booking = {
   id: string;
@@ -37,8 +38,10 @@ type Protocol = {
   deposit_decision: "pending" | "refund" | "partial" | "retain";
   deposit_retained_requested_gross: number;
   deposit_decision_note: string | null;
+  handover_buyer_status?: "pending" | "acknowledged" | "disputed";
+  return_buyer_status?: "pending" | "acknowledged" | "disputed";
 };
-type Photo = { id: string; phase: "handover" | "return"; file_name: string; mime_type: string; created_at: string };
+type Photo = ProtocolPhoto;
 type FormState = {
   handover_odometer: string;
   handover_fuel_percent: string;
@@ -68,6 +71,7 @@ export default function SellerRentalProtocolPanel() {
   const [selectedId, setSelectedId] = useState("");
   const [protocol, setProtocol] = useState<Protocol | null>(null);
   const [photos, setPhotos] = useState<Photo[]>([]);
+  const [windows, setWindows] = useState<{ handover: PhotoWindow; return: PhotoWindow } | null>(null);
   const [form, setForm] = useState<FormState>(emptyForm);
   const [partialAmount, setPartialAmount] = useState("");
   const [depositNote, setDepositNote] = useState("");
@@ -92,6 +96,7 @@ export default function SellerRentalProtocolPanel() {
     const p = (data.protocol || null) as Protocol | null;
     setProtocol(p);
     setPhotos((data.photos || []) as Photo[]);
+    setWindows(data.windows || null);
     setForm({
       handover_odometer: p?.handover_odometer == null ? "" : String(p.handover_odometer),
       handover_fuel_percent: p?.handover_fuel_percent == null ? "" : String(p.handover_fuel_percent),
@@ -142,38 +147,21 @@ export default function SellerRentalProtocolPanel() {
         damage_note: form.damage_note,
       };
       const { data, error } = await supabase.functions.invoke("booking-protocol", { body: { action: phase === "handover" ? "save_handover" : "save_return", booking_id: selected.id, payload } });
-      if (error || !data?.ok) throw new Error(data?.error || error?.message || "Nie udało się zapisać protokołu");
-      if (phase === "return" && selected.status === "confirmed") {
-        const { error: statusError } = await supabase.rpc("seller_booking_set_status", { p_booking: selected.id, p_status: "completed" });
-        if (statusError) throw statusError;
-      }
+      if (error || !data?.ok) throw new Error(PHOTO_ERRORS[String(data?.error)] || data?.error || error?.message || "Nie udało się zapisać protokołu");
       await Promise.all([loadRows(), loadProtocol(selected.id)]);
       setMsg(phase === "handover" ? "Protokół wydania zapisany ✅" : "Protokół zwrotu zapisany, a najem zakończony ✅");
     } catch (e) { setMsg((e as Error).message); }
     finally { setBusy(false); }
   }
 
-  async function uploadPhoto(phase: "handover" | "return", files: FileList | null) {
-    if (!selected || !files?.length) return;
+  async function deletePhoto(photo: Photo) {
+    if (!selected || !window.confirm("Usunąć to zdjęcie z protokołu?")) return;
     setBusy(true); setMsg("");
-    try {
-      for (const file of Array.from(files).slice(0, 8)) {
-        const body = new FormData();
-        body.append("action", "upload_photo"); body.append("booking_id", selected.id); body.append("phase", phase); body.append("file", file);
-        const { data, error } = await supabase.functions.invoke("booking-protocol", { body });
-        if (error || !data?.ok) throw new Error(data?.error || error?.message || "Nie udało się dodać zdjęcia");
-      }
-      await loadProtocol(selected.id); setMsg("Zdjęcia dodane ✅");
-    } catch (e) { setMsg((e as Error).message); }
-    finally { setBusy(false); }
+    const { data, error } = await supabase.functions.invoke("booking-protocol", { body: { action: "delete_photo", booking_id: selected.id, photo_id: photo.id } });
+    if (error || !data?.ok) setMsg(PHOTO_ERRORS[String(data?.error)] || data?.error || error?.message || "Nie udało się usunąć zdjęcia");
+    await loadProtocol(selected.id); setBusy(false);
   }
-
-  async function openPhoto(photo: Photo) {
-    if (!selected) return;
-    const { data, error } = await supabase.functions.invoke("booking-protocol", { body: { action: "photo_url", booking_id: selected.id, photo_id: photo.id } });
-    if (error || !data?.ok || !data.url) { setMsg(data?.error || error?.message || "Nie udało się otworzyć zdjęcia"); return; }
-    window.open(String(data.url), "_blank", "noopener,noreferrer");
-  }
+  function afterPhotos(err: string | null) { if (err) setMsg(err); else { setMsg("Zdjęcia zarejestrowane z pieczęcią czasu ✅"); if (selected) void loadProtocol(selected.id); } }
 
   async function settleDeposit(action: "refund" | "partial" | "retain") {
     if (!selected || !depositReady) return;
@@ -199,7 +187,7 @@ export default function SellerRentalProtocolPanel() {
   return <div className="rounded-2xl p-5" style={{ background: "var(--glass)", border: "1px solid rgba(232,137,26,.28)" }}>
     <div className="text-[10px] font-semibold tracking-[.14em]" style={{ color: "var(--gold)" }}>WYNAJEM · OPERACJE</div>
     <h2 className="mt-1 text-lg font-semibold">Wydania i zwroty</h2>
-    <p className="mt-1 text-xs leading-5" style={{ color: "var(--mut)" }}>Protokół, zdjęcia, stan auta/sprzętu i rozliczenie kaucji w jednym miejscu.</p>
+    <p className="mt-1 text-xs leading-5" style={{ color: "var(--mut)" }}>Zdjęcia robisz aparatem w chwili wydania i zwrotu — serwer nadaje im czas i odcisk, których nie da się podrobić. Bez zdjęć protokół nie zapisze się.</p>
     {msg && <div className="mt-3 rounded-xl p-3 text-xs" style={{ background: "var(--header)", border: "1px solid var(--line)" }}>{msg}</div>}
 
     <select value={selectedId} onChange={(e) => setSelectedId(e.target.value)} className="mt-4 w-full rounded-xl px-3 py-2.5 text-sm" style={style}>
@@ -207,7 +195,7 @@ export default function SellerRentalProtocolPanel() {
     </select>
 
     {selected && <div className="mt-4 space-y-4">
-      <div className="rounded-xl p-3 text-xs" style={{ background: "var(--header)", border: "1px solid var(--line)" }}><b>{selected.resource_name || selected.title}</b><div className="mt-1" style={{ color: "var(--mut)" }}>{selected.buyer_name || selected.buyer_email || "Klient"} · {dt(selected.starts_at)} → {dt(selected.ends_at)}</div>{deposit > 0 && <div className="mt-1">Kaucja: <b>{pln(deposit)}</b> · {selected.deposit_status || "—"}</div>}</div>
+      <div className="rounded-xl p-3 text-xs" style={{ background: "var(--header)", border: "1px solid var(--line)" }}><b>{selected.resource_name || selected.title}</b><div className="mt-1" style={{ color: "var(--mut)" }}>{selected.buyer_name || selected.buyer_email || "Klient"} · {dt(selected.starts_at)} → {dt(selected.ends_at)}</div>{deposit > 0 && <div className="mt-1">Kaucja: <b>{pln(deposit)}</b> · {selected.deposit_status || "—"}</div>}<RentalAgreementBadge bookingId={selected.id} showRenter /></div>
 
       <section className="rounded-xl p-3" style={{ border: "1px solid var(--line)" }}>
         <div className="flex items-center justify-between gap-2"><b>1. Wydanie</b><span className="text-xs" style={{ color: protocol?.handover_at ? "var(--green)" : "var(--mut)" }}>{protocol?.handover_at ? "✓ zapisane" : "do uzupełnienia"}</span></div>
@@ -217,8 +205,8 @@ export default function SellerRentalProtocolPanel() {
           <textarea rows={2} className={`${input} sm:col-span-2`} style={style} placeholder="Uwagi do wydania" value={form.handover_notes} onChange={(e) => setForm({ ...form, handover_notes: e.target.value })}/>
           {isEquipment && <label className="sm:col-span-2 flex items-center gap-2 text-xs"><input type="checkbox" checked={form.handover_kit_complete} onChange={(e) => setForm({ ...form, handover_kit_complete: e.target.checked })}/> Zestaw kompletny przy wydaniu</label>}
         </div>
-        <PhotoStrip photos={handoverPhotos} onOpen={openPhoto}/>
-        <label className="mt-3 block cursor-pointer rounded-xl px-3 py-2 text-center text-xs font-semibold" style={{ border: "1px dashed var(--line)" }}>+ Zdjęcia przy wydaniu<input type="file" accept="image/jpeg,image/png,image/webp,image/heic,image/heif" multiple className="hidden" onChange={(e) => void uploadPhoto("handover", e.target.files)}/></label>
+        <PhotoProofList bookingId={selected.id} photos={handoverPhotos} onError={setMsg} onDelete={protocol?.handover_buyer_status === "acknowledged" ? undefined : deletePhoto}/>
+        <CameraButton bookingId={selected.id} phase="handover" label="Zrób zdjęcia przy wydaniu (teraz)" window={windows?.handover} disabled={busy} onDone={afterPhotos}/>
         <button disabled={busy} onClick={() => void savePhase("handover")} className="mt-2 w-full rounded-xl py-2.5 text-sm font-semibold text-black disabled:opacity-50" style={{ background: "linear-gradient(135deg,#E8891A,#F5A623)" }}>Zapisz wydanie</button>
       </section>
 
@@ -232,8 +220,8 @@ export default function SellerRentalProtocolPanel() {
           <label className="sm:col-span-2 flex items-center gap-2 text-xs"><input type="checkbox" checked={form.damage_found} onChange={(e) => setForm({ ...form, damage_found: e.target.checked })}/> Stwierdzono nowe uszkodzenie / brak</label>
           {form.damage_found && <textarea rows={2} className={`${input} sm:col-span-2`} style={style} placeholder="Opisz uszkodzenie lub brak" value={form.damage_note} onChange={(e) => setForm({ ...form, damage_note: e.target.value })}/>} 
         </div>
-        <PhotoStrip photos={returnPhotos} onOpen={openPhoto}/>
-        <label className="mt-3 block cursor-pointer rounded-xl px-3 py-2 text-center text-xs font-semibold" style={{ border: "1px dashed var(--line)" }}>+ Zdjęcia przy zwrocie<input type="file" accept="image/jpeg,image/png,image/webp,image/heic,image/heif" multiple className="hidden" onChange={(e) => void uploadPhoto("return", e.target.files)}/></label>
+        <PhotoProofList bookingId={selected.id} photos={returnPhotos} onError={setMsg} onDelete={protocol?.return_buyer_status === "acknowledged" ? undefined : deletePhoto}/>
+        <CameraButton bookingId={selected.id} phase="return" label="Zrób zdjęcia przy zwrocie (teraz)" window={windows?.return} disabled={busy} onDone={afterPhotos}/>
         <button disabled={busy} onClick={() => void savePhase("return")} className="mt-2 w-full rounded-xl py-2.5 text-sm font-semibold disabled:opacity-50" style={{ border: "1px solid var(--gold)", color: "var(--gold)" }}>Zapisz zwrot i zakończ najem</button>
       </section>
 
@@ -247,9 +235,4 @@ export default function SellerRentalProtocolPanel() {
       </section>}
     </div>}
   </div>;
-}
-
-function PhotoStrip({ photos, onOpen }: { photos: Photo[]; onOpen: (photo: Photo) => void }) {
-  if (!photos.length) return <div className="mt-3 text-[11px]" style={{ color: "var(--mut)" }}>Brak zdjęć.</div>;
-  return <div className="mt-3 flex flex-wrap gap-2">{photos.map((photo, i) => <button key={photo.id} type="button" onClick={() => onOpen(photo)} className="rounded-lg px-2.5 py-1.5 text-[11px]" style={{ border: "1px solid var(--line)" }}>📷 {i + 1}. {photo.file_name.slice(0, 18)}</button>)}</div>;
 }

@@ -238,6 +238,14 @@ Deno.serve(async (req) => {
     if (!bookingId && (!Array.isArray(items) || items.length === 0)) return json({ error: "Pusty koszyk" }, 400);
     const payMethod = payment_method === "card" ? "card" : "wallet";
     const sb = createClient(Deno.env.get("SUPABASE_URL")!, SERVICE_KEY!, { db: { schema: "market" } });
+    if (bookingId) {
+      // Wynajem na dni: umowa najmu musi być zaakceptowana PRZED zapłatą (razem z kaucją) — decyzja właściciela 2026-09-06
+      const { data: bk } = await sb.from("bookings").select("booking_type,buyer_id").eq("id", bookingId).maybeSingle();
+      if (bk?.booking_type === "daily") {
+        const { data: agr } = await sb.from("booking_agreements").select("booking_id").eq("booking_id", bookingId).eq("buyer_id", user.id).maybeSingle();
+        if (!agr) return json({ error: "Najpierw zaakceptuj umowę najmu — bez niej nie można opłacić rezerwacji" }, 400);
+      }
+    }
     const { data: orderId, error: e1 } = bookingId
       ? await sb.rpc("checkout_booking", { p_buyer_id: user.id, p_booking_id: bookingId })
       : await sb.rpc("checkout", { p_buyer_id: user.id, p_items: items });

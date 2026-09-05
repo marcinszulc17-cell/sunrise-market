@@ -1,5 +1,7 @@
 import { useEffect, useMemo, useState, type ReactNode } from "react";
-import { type BookingConfig } from "../lib/api";
+import { getOffer, type BookingConfig } from "../lib/api";
+import { supabase } from "../lib/supabase";
+import { EMPTY_RENTER, RENTAL_AGREEMENT_VERSION, rentalAgreementText, sha256Text, type RenterData } from "../lib/rentalAgreement";
 import {
   bookingAvailableSlotsV2,
   bookingDailyQuoteV2,
@@ -49,6 +51,15 @@ export default function BookingPurchaseModal({ offerId, config, open, onClose }:
   const [busy, setBusy] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // Umowa najmu (wynajem na dni): dane najemcy + akceptacja przed zapłatą (decyzja właściciela 2026-09-06)
+  const [renter, setRenter] = useState<RenterData>(() => ({ ...EMPTY_RENTER }));
+  const [agreementAccepted, setAgreementAccepted] = useState(false);
+  const [agreementOpen, setAgreementOpen] = useState(false);
+  const [offerFacts, setOfferFacts] = useState<{ title: string; seller: string; attributes: Record<string, unknown> } | null>(null);
+  useEffect(() => {
+    if (!open || config.booking_type !== "daily") return;
+    getOffer(offerId).then((o: any) => o && setOfferFacts({ title: String(o.title || ""), seller: String(o.seller_name || o.seller || ""), attributes: (o.attributes || {}) as Record<string, unknown> })).catch(() => {});
+  }, [open, offerId, config.booking_type]);
 
   const activeConfig = catalog?.config ?? {
     offer_id: config.offer_id,
@@ -163,6 +174,16 @@ export default function BookingPurchaseModal({ offerId, config, open, onClose }:
   const cashback = cashbackFor(total, cashbackRate);
   const ready = activeConfig.booking_type === "appointment" ? Boolean(selected) : rentalUnits >= 1;
   const invoiceReady = invoiceComplete(invoice);
+  const isDaily = activeConfig.booking_type === "daily";
+  const isVehicle = isDaily && (selectedResource?.kind === "vehicle" || ["samochod", "car"].includes(String(offerFacts?.attributes?.offer_type || "")) || String(offerFacts?.attributes?.brand || "") !== "");
+  const renterReady = !isDaily || (renter.full_name.trim().length >= 3 && renter.phone.trim().length >= 7 && renter.doc_number.trim().length >= 4 && (!isVehicle || (renter.license_number.trim().length >= 4 && /^\d{4}$/.test(renter.license_since_year.trim()))));
+  const agreementText = isDaily ? rentalAgreementText({
+    item: offerFacts?.title || "Przedmiot najmu", sellerName: offerFacts?.seller || "Wynajmujący", from: shortDate(fromDay), to: shortDate(toDay), units: rentalUnits,
+    rent: rentalBase, deposit, fees, isVehicle,
+    kmLimitPerDay: Number(offerFacts?.attributes?.km_limit_per_day || offerFacts?.attributes?.mileage_limit || 0) || null,
+    minDriverAge: Number(offerFacts?.attributes?.min_driver_age || 0) || null,
+    pickupLocation: String(offerFacts?.attributes?.pickup_location || offerFacts?.attributes?.location || "") || null,
+  }, renter) : "";
 
   function pickNearest() {
     const first = slots[0];
@@ -210,7 +231,11 @@ export default function BookingPurchaseModal({ offerId, config, open, onClose }:
         if (!fromDay || !toDay || rentalUnits < 1) throw new Error("Wybierz prawidłowy okres rezerwacji");
         if (rentalUnits < Number(activeConfig.min_units || 1)) throw new Error(`Minimalny okres to ${activeConfig.min_units} dób`);
         if (rentalUnits > activeConfig.max_units) throw new Error(`Maksymalny okres to ${activeConfig.max_units} dób`);
+        if (!renterReady) throw new Error("Uzupełnij dane najemcy (imię i nazwisko, telefon, dokument" + (isVehicle ? ", prawo jazdy" : "") + ")");
+        if (!agreementAccepted) throw new Error("Zaakceptuj umowę najmu — bez tego nie można opłacić rezerwacji");
         hold = await createBookingHoldV2({ offerId, startsAt: dateAtNoonUtc(fromDay), endsAt: dateAtNoonUtc(toDay), resourceId });
+        const { error: agreementError } = await supabase.rpc("accept_rental_agreement", { p_booking: hold.booking_id, p_version: RENTAL_AGREEMENT_VERSION, p_sha256: await sha256Text(agreementText), p_renter: renter, p_user_agent: navigator.userAgent });
+        if (agreementError) throw new Error(agreementError.message);
       }
       const result = await checkoutWithInvoice({ booking_id: hold.booking_id, payment_method: payment }, invoice);
       if (result.url) {
@@ -342,9 +367,22 @@ export default function BookingPurchaseModal({ offerId, config, open, onClose }:
             <div className="flex items-end justify-between gap-3"><span className="text-sm">Do zapłaty teraz</span><strong className="font-display text-3xl" style={{ color: "var(--gold)" }}>{zl(paymentTotal)}</strong></div>
             {cashback > 0 && <div className="mt-3 rounded-xl px-3 py-2 text-sm" style={{ background: "rgba(122,184,154,.12)", color: "var(--green)" }}>+ {zl(cashback)} cashbacku na portfel</div>}
             {deposit > 0 && <div className="mt-3 rounded-xl px-3 py-2 text-xs" style={{ background: "rgba(232,137,26,.08)", border: "1px solid rgba(232,137,26,.20)", color: "var(--mut)" }}>Kaucja {zl(deposit)} jest pobierana razem z czynszem. Nie podlega cashbackowi ani prowizjom. Po zakończeniu najmu sprzedawca zwraca ją albo rozlicza zgodnie ze stanem przedmiotu/pojazdu.</div>}
+            {isDaily && rentalUnits > 0 && <div className="mt-4 rounded-2xl p-3" style={{ border: "1px solid rgba(232,137,26,.28)", background: "rgba(232,137,26,.05)" }}>
+              <div className="text-[10px] font-semibold tracking-[.14em]" style={{ color: "var(--gold)" }}>UMOWA NAJMU · DANE NAJEMCY</div>
+              <div className="mt-2 grid gap-2">
+                <input className="w-full rounded-xl px-3 py-2 text-sm" style={{ background: "var(--bg)", border: "1px solid var(--line)" }} placeholder="Imię i nazwisko *" value={renter.full_name} onChange={(e) => setRenter({ ...renter, full_name: e.target.value })} autoComplete="name" />
+                <input className="w-full rounded-xl px-3 py-2 text-sm" style={{ background: "var(--bg)", border: "1px solid var(--line)" }} placeholder="Telefon *" value={renter.phone} onChange={(e) => setRenter({ ...renter, phone: e.target.value })} autoComplete="tel" inputMode="tel" />
+                <div className="grid grid-cols-[auto_1fr] gap-2"><select className="rounded-xl px-2 py-2 text-sm" style={{ background: "var(--bg)", border: "1px solid var(--line)" }} value={renter.doc_type} onChange={(e) => setRenter({ ...renter, doc_type: e.target.value as RenterData["doc_type"] })}><option>dowód osobisty</option><option>paszport</option></select><input className="w-full rounded-xl px-3 py-2 text-sm" style={{ background: "var(--bg)", border: "1px solid var(--line)" }} placeholder="Numer dokumentu *" value={renter.doc_number} onChange={(e) => setRenter({ ...renter, doc_number: e.target.value })} /></div>
+                {isVehicle && <div className="grid grid-cols-[1fr_auto] gap-2"><input className="w-full rounded-xl px-3 py-2 text-sm" style={{ background: "var(--bg)", border: "1px solid var(--line)" }} placeholder="Nr prawa jazdy *" value={renter.license_number} onChange={(e) => setRenter({ ...renter, license_number: e.target.value })} /><input className="w-24 rounded-xl px-3 py-2 text-sm" style={{ background: "var(--bg)", border: "1px solid var(--line)" }} placeholder="od roku *" inputMode="numeric" maxLength={4} value={renter.license_since_year} onChange={(e) => setRenter({ ...renter, license_since_year: e.target.value.replace(/\D/g, "") })} /></div>}
+                <input className="w-full rounded-xl px-3 py-2 text-sm" style={{ background: "var(--bg)", border: "1px solid var(--line)" }} placeholder="Adres (opcjonalnie)" value={renter.address} onChange={(e) => setRenter({ ...renter, address: e.target.value })} autoComplete="street-address" />
+              </div>
+              <button type="button" onClick={() => setAgreementOpen((v) => !v)} className="mt-2 text-xs font-semibold underline" style={{ color: "var(--gold)" }}>{agreementOpen ? "Zwiń umowę" : "Przeczytaj umowę najmu (wersja " + RENTAL_AGREEMENT_VERSION + ")"}</button>
+              {agreementOpen && <pre className="mt-2 max-h-64 overflow-auto whitespace-pre-wrap rounded-xl p-3 text-[11px] leading-4" style={{ background: "var(--bg)", border: "1px solid var(--line)", color: "var(--mut)" }}>{agreementText}</pre>}
+              <label className="mt-2 flex items-start gap-2 text-xs"><input type="checkbox" className="mt-0.5" checked={agreementAccepted} onChange={(e) => setAgreementAccepted(e.target.checked)} /><span>Akceptuję umowę najmu i potwierdzam, że podane dane są prawdziwe. Kaucja {zl(deposit)} jest pobierana teraz razem z czynszem i rozliczana po protokole zwrotu.</span></label>
+            </div>}
             <InvoiceDetailsFields value={invoice} onChange={setInvoice} compact />
             <div className="mt-5 space-y-2 text-xs" style={{ color: "var(--mut)" }}><div>✓ Bezpieczna płatność</div><div>✓ Termin blokowany na 15 minut</div><div>✓ {activeConfig.instant_booking ? "Rezerwacja potwierdzona automatycznie po płatności" : "Rezerwacja potwierdzona po akceptacji sprzedawcy"}</div></div>
-            <button type="button" disabled={busy || paymentTotal <= 0 || !ready || !invoiceReady} onClick={pay} className="mt-5 w-full rounded-2xl py-3.5 font-bold text-black disabled:opacity-45" style={{ background: "linear-gradient(135deg,#E8891A,#F5A623)" }}>{busy ? "Rezerwuję i przekierowuję…" : !invoiceReady ? "Uzupełnij dane do faktury" : ready ? `Rezerwuję i płacę ${zl(paymentTotal)}` : activeConfig.booking_type === "appointment" ? "Najpierw wybierz termin" : "Najpierw wybierz daty"}</button>
+            <button type="button" disabled={busy || paymentTotal <= 0 || !ready || !invoiceReady || !renterReady || (isDaily && !agreementAccepted)} onClick={pay} className="mt-5 w-full rounded-2xl py-3.5 font-bold text-black disabled:opacity-45" style={{ background: "linear-gradient(135deg,#E8891A,#F5A623)" }}>{busy ? "Rezerwuję i przekierowuję…" : !invoiceReady ? "Uzupełnij dane do faktury" : isDaily && ready && !renterReady ? "Uzupełnij dane najemcy" : isDaily && ready && !agreementAccepted ? "Zaakceptuj umowę najmu" : ready ? `Rezerwuję i płacę ${zl(paymentTotal)}` : activeConfig.booking_type === "appointment" ? "Najpierw wybierz termin" : "Najpierw wybierz daty"}</button>
           </div>
         </aside>
       </div>

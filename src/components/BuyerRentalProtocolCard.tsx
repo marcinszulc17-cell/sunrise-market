@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { supabase } from "../lib/supabase";
 import { zl } from "../lib/money";
+import { CameraButton, PhotoProofList, PHOTO_ERRORS, RentalAgreementBadge, type ProtocolPhoto, type PhotoWindow } from "./ProtocolPhotos";
 
 type BuyerStatus = "pending" | "acknowledged" | "disputed";
 type Protocol = {
@@ -31,7 +32,7 @@ type Protocol = {
   return_buyer_responded_at: string | null;
   return_buyer_note: string | null;
 };
-type Photo = { id: string; phase: "handover" | "return"; file_name: string; mime_type: string; created_at: string };
+type Photo = ProtocolPhoto;
 type Props = { bookingId: string; depositGross?: number; depositStatus?: string; depositRetainedGross?: number };
 
 const dt = (iso: string) => new Date(iso).toLocaleString("pl-PL", { dateStyle: "short", timeStyle: "short" });
@@ -45,11 +46,12 @@ const errorLabels: Record<string, string> = {
   buyer_only: "Tylko klient tej rezerwacji może odpowiedzieć na protokół.",
   rental_only: "Potwierdzenie protokołu dotyczy wynajmu.",
 };
-const errorLabel = (code: string) => errorLabels[code] || code;
+const errorLabel = (code: string) => errorLabels[code] || PHOTO_ERRORS[code] || code;
 
 export default function BuyerRentalProtocolCard({ bookingId, depositGross = 0, depositStatus, depositRetainedGross = 0 }: Props) {
   const [protocol, setProtocol] = useState<Protocol | null>(null);
   const [photos, setPhotos] = useState<Photo[]>([]);
+  const [windows, setWindows] = useState<{ handover: PhotoWindow; return: PhotoWindow } | null>(null);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState("");
@@ -65,6 +67,7 @@ export default function BuyerRentalProtocolCard({ bookingId, depositGross = 0, d
     }
     setProtocol((data.protocol || null) as Protocol | null);
     setPhotos((data.photos || []) as Photo[]);
+    setWindows(data.windows || null);
     setLoading(false);
   }
 
@@ -90,12 +93,6 @@ export default function BuyerRentalProtocolCard({ bookingId, depositGross = 0, d
       setMsg(status === "acknowledged" ? "Stan potwierdzony ✅" : "Zastrzeżenie zapisane ✅");
     }
     setBusy(false);
-  }
-
-  async function openPhoto(photo: Photo) {
-    const { data, error } = await supabase.functions.invoke("booking-protocol", { body: { action: "photo_url", booking_id: bookingId, photo_id: photo.id } });
-    if (error || !data?.ok || !data.url) { setMsg(errorLabel(data?.error || error?.message || "Nie udało się otworzyć zdjęcia")); return; }
-    window.open(String(data.url), "_blank", "noopener,noreferrer");
   }
 
   const phase = (kind: "handover" | "return") => {
@@ -126,7 +123,8 @@ export default function BuyerRentalProtocolCard({ bookingId, depositGross = 0, d
         {notes && <div className="sm:col-span-2"><span style={{ color: "var(--mut)" }}>Uwagi: </span>{notes}</div>}
         {!isHandover && protocol.damage_found && <div className="sm:col-span-2 rounded-lg p-2" style={{ background: "rgba(239,68,68,.08)", border: "1px solid rgba(239,68,68,.2)" }}><b>Zapisano uszkodzenie / brak</b>{protocol.damage_note && <div className="mt-1">{protocol.damage_note}</div>}</div>}
       </div>
-      {phasePhotos.length > 0 && <div className="mt-3"><div className="text-xs font-semibold">Zdjęcia protokołu</div><div className="mt-2 flex flex-wrap gap-2">{phasePhotos.map((photo) => <button key={photo.id} onClick={() => void openPhoto(photo)} className="rounded-lg px-3 py-2 text-xs" style={{ border: "1px solid var(--line)" }}>📷 {photo.file_name}</button>)}</div></div>}
+      <div className="mt-3"><div className="text-xs font-semibold">Zdjęcia protokołu (sprzedawca i Ty)</div><PhotoProofList bookingId={bookingId} photos={phasePhotos} onError={setMsg}/></div>
+      {status === "pending" && <CameraButton bookingId={bookingId} phase={kind} label={isHandover ? "Zrób własne zdjęcia przy odbiorze (teraz)" : "Zrób własne zdjęcia przy zwrocie (teraz)"} window={isHandover ? windows?.handover : windows?.return} disabled={busy} onDone={(err) => { if (err) setMsg(err); else { setMsg("Twoje zdjęcia zarejestrowane z pieczęcią czasu ✅"); void load(); } }}/>}
       {status === "pending" && <div className="mt-3">
         <div className="grid gap-2 sm:grid-cols-2"><button disabled={busy} onClick={() => void respond(kind, "acknowledged")} className="rounded-xl px-3 py-2.5 text-sm font-semibold text-black disabled:opacity-50" style={{ background: "linear-gradient(135deg,#E8891A,#F5A623)" }}>Potwierdzam stan</button><button disabled={busy} onClick={() => { setDisputePhase(kind); setNote(""); }} className="rounded-xl px-3 py-2.5 text-sm font-semibold disabled:opacity-50" style={{ border: "1px solid var(--line)" }}>Mam zastrzeżenie</button></div>
         {disputePhase === kind && <div className="mt-3 rounded-xl p-3" style={{ border: "1px solid rgba(239,68,68,.24)" }}><textarea value={note} onChange={(e) => setNote(e.target.value.slice(0, 2000))} rows={3} className="w-full rounded-xl px-3 py-2.5 text-sm" style={{ background: "var(--bg)", border: "1px solid var(--line)" }} placeholder="Opisz różnicę, uszkodzenie albo brakujący element…"/><div className="mt-2 flex gap-2"><button disabled={busy || note.trim().length < 3} onClick={() => void respond(kind, "disputed")} className="rounded-lg px-3 py-2 text-xs font-semibold disabled:opacity-50" style={{ border: "1px solid rgba(239,68,68,.35)" }}>Wyślij zastrzeżenie</button><button disabled={busy} onClick={() => { setDisputePhase(null); setNote(""); }} className="rounded-lg px-3 py-2 text-xs" style={{ border: "1px solid var(--line)" }}>Anuluj</button></div></div>}
@@ -141,8 +139,9 @@ export default function BuyerRentalProtocolCard({ bookingId, depositGross = 0, d
     <div className="text-[10px] font-semibold tracking-[.14em]" style={{ color: "var(--gold)" }}>WYNAJEM · PROTOKÓŁ</div>
     <div className="mt-1 font-semibold">Wydanie, zwrot i stan przedmiotu</div>
     {msg && <div className="mt-3 rounded-xl p-3 text-xs" style={{ background: "var(--header)", border: "1px solid var(--line)" }}>{msg}</div>}
-    {!protocol && <p className="mt-2 text-xs leading-5" style={{ color: "var(--mut)" }}>Protokół wydania pojawi się tutaj po przekazaniu auta, sprzętu lub innego przedmiotu najmu.</p>}
-    {protocol && <div className="mt-3 grid gap-3">{phase("handover")}{phase("return")}{!protocol.handover_at && <p className="text-xs" style={{ color: "var(--mut)" }}>Sprzedawca nie zapisał jeszcze protokołu wydania.</p>}
+    <RentalAgreementBadge bookingId={bookingId} showRenter />
+    {!protocol?.handover_at && <div className="mt-2"><p className="text-xs leading-5" style={{ color: "var(--mut)" }}>Protokół wydania pojawi się tutaj po przekazaniu auta, sprzętu lub innego przedmiotu najmu. Przy odbiorze zrób własne zdjęcia — dostaną pieczęć czasu serwera.</p>{handoverPhotos.length > 0 && <PhotoProofList bookingId={bookingId} photos={handoverPhotos} onError={setMsg}/>}<CameraButton bookingId={bookingId} phase="handover" label="Zrób zdjęcia przy odbiorze (teraz)" window={windows?.handover} disabled={busy} onDone={(err) => { if (err) setMsg(err); else { setMsg("Twoje zdjęcia zarejestrowane z pieczęcią czasu ✅"); void load(); } }}/></div>}
+    {protocol && <div className="mt-3 grid gap-3">{phase("handover")}{phase("return")}
       {depositGross > 0 && <div className="rounded-xl p-3 text-xs" style={{ background: "var(--header)", border: "1px solid var(--line)" }}><div className="flex items-center justify-between gap-3"><span>Kaucja zwrotna</span><b>{zl(depositGross)}</b></div><div className="mt-1" style={{ color: "var(--mut)" }}>Status: {depositStatus || "—"}</div>{protocol.deposit_decision !== "pending" && <div className="mt-2"><b>{decisionLabel(protocol.deposit_decision)}</b>{protocol.deposit_decision === "partial" && <span> · planowane potrącenie {zl(Number(protocol.deposit_retained_requested_gross || 0))}</span>}{protocol.deposit_decision_note && <div className="mt-1" style={{ color: "var(--mut)" }}>Uzasadnienie: {protocol.deposit_decision_note}</div>}</div>}{depositRetainedGross > 0 && <div className="mt-1">Faktycznie zatrzymano: <b>{zl(depositRetainedGross)}</b></div>}</div>}
     </div>}
   </div>;
