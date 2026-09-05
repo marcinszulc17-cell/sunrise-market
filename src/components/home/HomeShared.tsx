@@ -157,7 +157,16 @@ export function RecoCard({ o, fav, onFav, rate, compact = false, className = "",
   </article>;
 }
 
-/** Zwięzła stopka (wg wzoru): logo, O nas, strony prawne, Pomoc, Kontakt. Bez social — brak profili. */
+/** Profile social ekosystemu Sunrise (potwierdzone przez właściciela 2026-09-06; źródło: mysunrise-source/public/sunrise-thermo.html). */
+export const SOCIAL_LINKS = [
+  { name: "Facebook", href: "https://www.facebook.com/p/Sunrise-Energy-100063872239386/", icon: "M14 8h2V5h-2c-2.2 0-3.5 1.4-3.5 3.6V10H8v3h2.5v7h3v-7H16l.5-3h-3V8.9c0-.6.3-.9.5-.9z" },
+  { name: "Instagram", href: "https://www.instagram.com/sunriseenergy.pl/", icon: "M7 3h10a4 4 0 0 1 4 4v10a4 4 0 0 1-4 4H7a4 4 0 0 1-4-4V7a4 4 0 0 1 4-4zm5 5.5a3.5 3.5 0 1 0 0 7 3.5 3.5 0 0 0 0-7zM17.5 6a1 1 0 1 0 0 2 1 1 0 0 0 0-2z" },
+];
+export function SocialLinks({ size = 18 }: { size?: number }) {
+  return <span className="flex items-center gap-2">{SOCIAL_LINKS.map((s) => <a key={s.name} href={s.href} target="_blank" rel="noopener noreferrer" aria-label={`Sunrise na ${s.name}`} title={s.name} className="grid h-9 w-9 place-items-center rounded-lg" style={{ border: "1px solid var(--line)", color: "var(--ink)" }}><svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d={s.icon} /></svg></a>)}</span>;
+}
+
+/** Zwięzła stopka (wg wzoru): logo, O nas, strony prawne, Pomoc, Kontakt, social. */
 export function HomeFooter() {
   return <footer className="mt-12" style={{ borderTop: "1px solid var(--line)", background: "var(--header)" }}>
     <div className="mx-auto flex max-w-[1440px] flex-wrap items-center gap-x-6 gap-y-3 px-6 py-6 text-sm xl:px-10" style={{ color: "var(--mut)" }}>
@@ -169,6 +178,7 @@ export function HomeFooter() {
       <a href="/legal/zwroty.html" className="navlink">Zwroty</a>
       <Link to="/pomoc" className="navlink">Pomoc</Link>
       <a href="/legal/kontakt.html" className="navlink">Kontakt</a>
+      <SocialLinks />
       <span className="ml-auto text-xs">Bliżej ludzi. Bliżej możliwości. · © {new Date().getFullYear()} Sunrise Market</span>
     </div>
     <div className="mx-auto flex max-w-[1440px] flex-wrap items-center gap-x-3 gap-y-1 px-6 pb-6 text-xs xl:px-10" style={{ color: "var(--mut)" }}>

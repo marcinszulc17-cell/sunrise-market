@@ -42,6 +42,7 @@ export type BookingCatalogV2 = {
     cleaning_fee_gross: number;
     deposit_gross: number;
     instant_booking: boolean;
+    length_discounts?: Array<{ min_days: number; pct: number }>;
   };
   services: BookingServiceV2[];
   resources: BookingResourceV2[];

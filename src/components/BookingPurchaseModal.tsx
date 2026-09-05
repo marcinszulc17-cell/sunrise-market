@@ -175,6 +175,8 @@ export default function BookingPurchaseModal({ offerId, config, open, onClose }:
   const ready = activeConfig.booking_type === "appointment" ? Boolean(selected) : rentalUnits >= 1;
   const invoiceReady = invoiceComplete(invoice);
   const isDaily = activeConfig.booking_type === "daily";
+  const lengthDiscounts = ((catalog?.config as any)?.length_discounts as Array<{ min_days: number; pct: number }> | undefined)?.filter((d) => d.pct > 0).sort((a, b) => a.min_days - b.min_days) ?? [];
+  const appliedDiscount = lengthDiscounts.filter((d) => rentalUnits >= d.min_days).reduce((m, d) => Math.max(m, d.pct), 0);
   const isVehicle = isDaily && (selectedResource?.kind === "vehicle" || ["samochod", "car"].includes(String(offerFacts?.attributes?.offer_type || "")) || String(offerFacts?.attributes?.brand || "") !== "");
   const minLicenseYears = isVehicle ? Number((offerFacts?.attributes?.rental_operations as any)?.min_license_years ?? 2) || 0 : 0;
   const licenseYearOk = /^\d{4}$/.test(renter.license_since_year.trim()) && Number(renter.license_since_year) <= new Date().getFullYear() - minLicenseYears && Number(renter.license_since_year) >= 1950;
@@ -335,7 +337,8 @@ export default function BookingPurchaseModal({ offerId, config, open, onClose }:
                 <span>Rezerwacja do {shortDate(latest)}</span>
               </div>
               {fromDay && toDay && rentalUnits === 0 && !error && <Info>Sprawdzam dostępność i obliczam czynsz za wybrany okres…</Info>}
-              {rentalUnits > 0 && <div className="mt-4 rounded-2xl p-4" style={{ background: "var(--glass)", border: "1px solid var(--line)" }}><PriceRow label={`Czynsz za najem · ${rentalUnitsLabel(rentalUnits)}`} value={rentalBase} strong />{fees > 0 && <PriceRow label="Opłata dodatkowa" value={fees} />}{deposit > 0 && <PriceRow label="Kaucja zwrotna" value={deposit} muted />}</div>}
+              {lengthDiscounts.length > 0 && <div className="mt-3 text-xs" style={{ color: "var(--green)" }}>Rabat za dłuższy najem: {lengthDiscounts.map((d) => `od ${d.min_days} dni −${d.pct}%`).join(" · ")}</div>}
+              {rentalUnits > 0 && <div className="mt-4 rounded-2xl p-4" style={{ background: "var(--glass)", border: "1px solid var(--line)" }}><PriceRow label={`Czynsz za najem · ${rentalUnitsLabel(rentalUnits)}${appliedDiscount ? ` · rabat −${appliedDiscount}%` : ""}`} value={rentalBase} strong />{fees > 0 && <PriceRow label="Opłata dodatkowa" value={fees} />}{deposit > 0 && <PriceRow label="Kaucja zwrotna" value={deposit} muted />}</div>}
             </section>
           </>}
 
