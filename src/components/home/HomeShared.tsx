@@ -139,15 +139,17 @@ export function RecoCard({ o, fav, onFav, rate, compact = false, className = "",
   </article>;
 }
 
-/** Zwięzła stopka strony głównej (wg wzoru): logo, istniejące strony prawne, kontakt. Bez „O nas”/„Pomoc”/social — takich stron nie ma. */
+/** Zwięzła stopka (wg wzoru): logo, O nas, strony prawne, Pomoc, Kontakt. Bez social — brak profili. */
 export function HomeFooter() {
   return <footer className="mt-12" style={{ borderTop: "1px solid var(--line)", background: "var(--header)" }}>
     <div className="mx-auto flex max-w-[1440px] flex-wrap items-center gap-x-6 gap-y-3 px-6 py-6 text-sm xl:px-10" style={{ color: "var(--mut)" }}>
       <a href="/" className="mr-2 flex items-center"><img src="/logo-sunrise-market-light.png" alt="Sunrise Market" className="brand-logo h-9 w-auto" /></a>
+      <Link to="/o-nas" className="navlink">O nas</Link>
       <a href="/legal/regulamin.html" className="navlink">Regulamin</a>
       <a href="/legal/prywatnosc.html" className="navlink">Polityka prywatności</a>
       <a href="/legal/ochrona-kupujacego.html" className="navlink">Ochrona Kupujących</a>
       <a href="/legal/zwroty.html" className="navlink">Zwroty</a>
+      <Link to="/pomoc" className="navlink">Pomoc</Link>
       <a href="/legal/kontakt.html" className="navlink">Kontakt</a>
       <span className="ml-auto text-xs">Bliżej ludzi. Bliżej możliwości. · © {new Date().getFullYear()} Sunrise Market</span>
     </div>

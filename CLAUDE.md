@@ -120,6 +120,7 @@ pierwszeństwo przy każdej zmianie kodu. Nie wolno ich naruszać ani obchodzić
   `?kat=oze-i-energia`), poziomy carousel „Dla Ciebie” (zalogowany, `recommended_offers`) / „Polecane” (gość: `home_promoted`
   → `search_offers_v2`) z ♡, chipy „Popularne” (kategorie z ofertami), karta Rezerwacje (`/szukaj?tryb=appointment`, `/rezerwacje`),
   widget cashback ze stawką z `public_market_config`, wejście „Sprzedawaj na Sunrise Market”.
+- Strony `/o-nas` (`ONas.tsx`) i `/pomoc` (`Pomoc.tsx`, FAQ z wyszukiwarką) — treść tylko z obowiązujących zasad; linki w pasku działów (Pomoc), stopce i stronach legal.
 - Wspólna „rama” stron w `src/components/home/SiteChrome.tsx`: `SiteHeader` (duży ekran: logo · wyszukiwarka · Moje konto · Ulubione ·
   Dodaj ogłoszenie + pasek działów z podświetleniem `active`; telefon: niski pasek logo · dzwonek · koszyk · konto), `Breadcrumbs`,
   `SectionTitle` (pomarańczowa belka), `SideNav`. Używają jej: Home, Ulubione (`/obserwowane`), `/szukaj` (filtry w lewej kolumnie),

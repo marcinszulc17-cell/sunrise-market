@@ -1,6 +1,6 @@
 // Wspólna „rama” strony (wg wzoru właściciela 2026-09-05): nagłówek z wyszukiwarką i paskiem działów na dużym ekranie,
 // niski pasek (logo · dzwonek · koszyk · konto) na telefonie, okruszki, tytuły sekcji z pomarańczową belką, stopka.
-// Tylko istniejące trasy — bez lokalizacji, „Porad”, „Pomocy”, „O nas” i social (takich stron nie ma).
+// Tylko istniejące trasy — bez lokalizacji, „Porad i artykułów” i social (takich stron nie ma).
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import ThemeToggle from "../ThemeToggle";
@@ -60,6 +60,7 @@ export function SiteHeader({ active, compact = false }: { active?: string; compa
         {MENU.map((m) => { const on = m.key === active; return <Link key={m.key} to={m.to} aria-current={on ? "page" : undefined} className="flex h-11 items-center gap-1.5 whitespace-nowrap px-3 font-medium transition hover:text-[var(--ink)]" style={{ color: on ? "var(--gold)" : "var(--mut)", boxShadow: on ? "inset 0 -2px 0 var(--gold)" : "none" }}>{m.key === "home" && <Ico name="home" size={16} />}{m.label}</Link>; })}
       </nav>
       <nav className="ml-auto hidden items-center gap-1 text-sm lg:flex" aria-label="Więcej">
+        <Link to="/pomoc" className="flex h-11 items-center px-3 font-medium navlink">Pomoc</Link>
         <Link to="/sprzedawca/dolacz" className="flex h-11 items-center px-3 font-medium navlink">Dla firm</Link>
         <a href="/legal/kontakt.html" className="flex h-11 items-center px-3 font-medium navlink">Kontakt</a>
       </nav>
