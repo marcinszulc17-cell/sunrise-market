@@ -1,6 +1,26 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import Stripe from "https://esm.sh/stripe@16.12.0?target=deno";
 
+// Klucz Stripe: najpierw sekret środowiskowy, potem market.internal_secrets.
+async function readInternalSecret(key: string): Promise<string> {
+  try {
+    const url = Deno.env.get("SUPABASE_URL") ?? ""; const k = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
+    const r = await fetch(`${url}/rest/v1/internal_secrets?select=value&key=eq.${key}`, { headers: { apikey: k, Authorization: `Bearer ${k}`, "Accept-Profile": "market" } });
+    const rows = await r.json().catch(() => []); return String(rows?.[0]?.value ?? "");
+  } catch { return ""; }
+}
+// STRIPE_SECRET_KEY w env bywa błędny (2026-09-05: zawierał URL) — właściwy klucz jest w market.internal_secrets.
+async function resolveStripeKey(): Promise<string> {
+  const env = Deno.env.get("STRIPE_SECRET_KEY") ?? "";
+  if (/^(sk|rk)_/.test(env)) return env;
+  return await readInternalSecret("stripe_secret_key");
+}
+async function resolveStripeWebhookSecret(): Promise<string> {
+  const env = Deno.env.get("STRIPE_WEBHOOK_SECRET") ?? Deno.env.get("STRIPE_WEBHOOK_SECRE") ?? "";
+  if (/^whsec_/.test(env)) return env;
+  return await readInternalSecret("stripe_webhook_secret");
+}
+
 const SERVICE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? Deno.env.get("SUPABASE_SERVICE_KEY");
 const PAY_BASE = (Deno.env.get("MYSUNRISE_PAY_BASE_URL") ?? "https://lvmrhgpxhqvfuoftblky.supabase.co/functions/v1").replace(/\/$/, "");
 // Token serwisowy Sunrise Pay: najpierw sekret środowiskowy, potem market.internal_secrets.
@@ -276,11 +296,11 @@ Deno.serve(async (req) => {
   if (req.method !== "POST") return new Response("Method not allowed", { status: 405 });
   const sig = req.headers.get("stripe-signature");
   if (!sig) return new Response("Brak podpisu", { status: 400 });
-  const whsec = Deno.env.get("STRIPE_WEBHOOK_SECRET") ?? Deno.env.get("STRIPE_WEBHOOK_SECRE");
+  const whsec = await resolveStripeWebhookSecret();
   if (!whsec) return new Response("Brak konfiguracji Stripe webhook", { status: 400 });
 
   const raw = await req.text();
-  const stripe = new Stripe(Deno.env.get("STRIPE_SECRET_KEY")!, { apiVersion: "2024-06-20", httpClient: Stripe.createFetchHttpClient() });
+  const stripe = new Stripe(await resolveStripeKey(), { apiVersion: "2024-06-20", httpClient: Stripe.createFetchHttpClient() });
   let event: any;
   try { event = await stripe.webhooks.constructEventAsync(raw, sig, whsec); }
   catch (err) { return new Response(`Nieprawidłowy podpis: ${(err as Error).message}`, { status: 400 }); }

@@ -1,5 +1,20 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import Stripe from "https://esm.sh/stripe@16.12.0?target=deno";
+
+// Klucz Stripe: najpierw sekret środowiskowy, potem market.internal_secrets.
+async function readInternalSecret(key: string): Promise<string> {
+  try {
+    const url = Deno.env.get("SUPABASE_URL") ?? ""; const k = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
+    const r = await fetch(`${url}/rest/v1/internal_secrets?select=value&key=eq.${key}`, { headers: { apikey: k, Authorization: `Bearer ${k}`, "Accept-Profile": "market" } });
+    const rows = await r.json().catch(() => []); return String(rows?.[0]?.value ?? "");
+  } catch { return ""; }
+}
+// STRIPE_SECRET_KEY w env bywa błędny (2026-09-05: zawierał URL) — właściwy klucz jest w market.internal_secrets.
+async function resolveStripeKey(): Promise<string> {
+  const env = Deno.env.get("STRIPE_SECRET_KEY") ?? "";
+  if (/^(sk|rk)_/.test(env)) return env;
+  return await readInternalSecret("stripe_secret_key");
+}
 const cors = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
@@ -263,7 +278,7 @@ Deno.serve(async (req) => {
     const amountGrosz = Math.round(finalTotal * 100);
 
     if (payMethod === "card") {
-      const stripe = new Stripe(Deno.env.get("STRIPE_SECRET_KEY")!, { apiVersion: "2024-06-20", httpClient: Stripe.createFetchHttpClient() });
+      const stripe = new Stripe(await resolveStripeKey(), { apiVersion: "2024-06-20", httpClient: Stripe.createFetchHttpClient() });
       const origin = Deno.env.get("PUBLIC_WEB_URL") ?? req.headers.get("origin") ?? "";
       const successUrl = bookingId ? `${origin}/rezerwacje?card=success&booking=${bookingId}&order=${orderId}` : `${origin}/koszyk?card=success&order=${orderId}&paid=${finalTotal}`;
       const cancelUrl = bookingId ? `${origin}/rezerwacje?card=cancel&booking=${bookingId}&order=${orderId}` : `${origin}/koszyk?card=cancel&order=${orderId}`;

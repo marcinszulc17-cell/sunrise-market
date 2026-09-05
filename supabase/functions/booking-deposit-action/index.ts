@@ -1,6 +1,21 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import Stripe from "https://esm.sh/stripe@16.12.0?target=deno";
 
+// Klucz Stripe: najpierw sekret środowiskowy, potem market.internal_secrets.
+async function readInternalSecret(key: string): Promise<string> {
+  try {
+    const url = Deno.env.get("SUPABASE_URL") ?? ""; const k = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
+    const r = await fetch(`${url}/rest/v1/internal_secrets?select=value&key=eq.${key}`, { headers: { apikey: k, Authorization: `Bearer ${k}`, "Accept-Profile": "market" } });
+    const rows = await r.json().catch(() => []); return String(rows?.[0]?.value ?? "");
+  } catch { return ""; }
+}
+// STRIPE_SECRET_KEY w env bywa błędny (2026-09-05: zawierał URL) — właściwy klucz jest w market.internal_secrets.
+async function resolveStripeKey(): Promise<string> {
+  const env = Deno.env.get("STRIPE_SECRET_KEY") ?? "";
+  if (/^(sk|rk)_/.test(env)) return env;
+  return await readInternalSecret("stripe_secret_key");
+}
+
 const cors={"Access-Control-Allow-Origin":"*","Access-Control-Allow-Headers":"authorization, x-client-info, apikey, content-type"};
 const PAY_BASE=(Deno.env.get("MYSUNRISE_PAY_BASE_URL")??"https://lvmrhgpxhqvfuoftblky.supabase.co/functions/v1").replace(/\/$/,"");
 // Token serwisowy Sunrise Pay: najpierw sekret środowiskowy, potem market.internal_secrets.
@@ -48,7 +63,7 @@ Deno.serve(async(req)=>{
     await payCredit(String(row.buyer_email),refundGrosz,action==="partial"?"Częściowy zwrot kaucji Sunrise Market":"Zwrot kaucji Sunrise Market",String(row.order_id),`booking-deposit-refund:${bookingId}:${refundGrosz}`);
    }else if(row.payment_provider==="stripe"){
     if(!row.stripe_session_id)throw new Error("Brak sesji Stripe dla tej rezerwacji");
-    const stripe=new Stripe(Deno.env.get("STRIPE_SECRET_KEY")!,{apiVersion:"2024-06-20",httpClient:Stripe.createFetchHttpClient()});
+    const stripe=new Stripe(await resolveStripeKey(),{apiVersion:"2024-06-20",httpClient:Stripe.createFetchHttpClient()});
     const session=await stripe.checkout.sessions.retrieve(String(row.stripe_session_id));const paymentIntent=typeof session.payment_intent==="string"?session.payment_intent:session.payment_intent?.id;if(!paymentIntent)throw new Error("Brak płatności Stripe do zwrotu kaucji");
     await stripe.refunds.create({payment_intent:paymentIntent,amount:refundGrosz,metadata:{booking_id:bookingId,kind:action==="partial"?"deposit_partial_refund":"deposit_refund"}},{idempotencyKey:`booking-deposit-refund:${bookingId}:${refundGrosz}`});
    }else throw new Error("Nieobsługiwana metoda płatności kaucji");
