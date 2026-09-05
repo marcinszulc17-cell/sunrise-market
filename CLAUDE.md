@@ -85,3 +85,12 @@ pierwszeństwo przy każdej zmianie kodu. Nie wolno ich naruszać ani obchodzić
   (`reply_review(p_review, p_text)` → `reviews.seller_reply`), nie edytuje i nie usuwa opinii.
   Nowa opinia → powiadomienie in-app sprzedawcy (`trg_notify_seller_new_review`).
 - Odznaki z widoku `seller_reputation`: Aktywny (>0), Zaufany (≥10 opinii, śr. ≥4,5), Super Sprzedawca (≥50, ≥4,8).
+
+## 7. Aplikacja i powiadomienia push (2026-09-05)
+
+- **Podpowiedź „Zapisz aplikację”** tylko na `app.sunrisemarket.pl` (`PwaInstallPrompt`): pasek u dołu, znika
+  na stałe po instalacji (`appinstalled` / standalone) i na 7 dni po „Nie teraz”; iOS — instrukcja Udostępnij → Do ekranu początkowego.
+- **Web push (VAPID)**: klucze w `market.internal_secrets` (`vapid_public_key`, `vapid_private_key`, `vapid_subject`) — nigdy w repo.
+  Subskrypcje `market.push_subscriptions` (RPC `save_push_subscription` / `remove_push_subscription`, klucz publiczny `push_public_key()`),
+  włączanie w Moje konto → Ustawienia (`PushToggle`). Każdy wpis `market.notifications` (channel `app`) wysyła edge fn
+  `send-web-push` (cron `market-send-web-push` co minutę, znacznik `notifications.push_sent_at`, zaległe >24 h pomijane).

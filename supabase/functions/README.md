@@ -27,7 +27,6 @@ Legenda wywołania: **front** = `supabase.functions.invoke` z `src/`, **cron** =
 | `courier-track-poll` | Cykliczne odpytywanie GlobKurier o doręczenia (`x-cron-secret`). | false | cron |
 | `customer-access` | Cache dostępu klienta (`customer_access_cache`). | true | front |
 | `customer-consents` | Zgody klienta pobierane z MySunrise + akceptacja regulaminu sprzedawcy. | true | front |
-| `diag-env-names` * | Stub 410 `gone` — zakończona diagnostyka. | true | 410 |
 | `energy-referral` | Link polecający Sunrise Energy (kod ambasadora / Family Club). | true | front |
 | `enrich-descriptions` * | Polska nazwa + długi opis (Claude) dla ofert first-party; RPC `claim_enrich_batch`. | false | wewn. (`x-bridge-token`) |
 | `eprolo-forward-order` * | Przekazuje opłacone zamówienie do Eprolo (`add_order.html`). | true | op |
@@ -60,6 +59,7 @@ Legenda wywołania: **front** = `supabase.functions.invoke` z `src/`, **cron** =
 | `verify-run` * | Worker weryfikacji pojazdu/nieruchomości (NHTSA, CEPiK, GUGiK). | true | wewn. (`verify-sweeper`) / front |
 | `verify-status` | Status żądania weryfikacji, odpala `verify-run`. | true | front |
 | `verify-sweeper` | Zamiata opłacone weryfikacje i uruchamia `verify-run`. | false | cron |
+| `send-web-push` | Wysyła web push (VAPID) dla nowych `market.notifications`; klucze w `internal_secrets`. | false | cron `market-send-web-push` |
 | `wallet-balance` | Saldo portfela Sunrise Pay klienta. | true | front |
 | `wallet-redeem-points` | Wymiana punktów na saldo (`pay-convert-points`). | true | front |
 | `wallet-seller-balance` | Saldo sprzedawcy (`pay-seller-balance`). | true | front |

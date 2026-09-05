@@ -1,21 +1,71 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 
 /**
- * PWA stays installable, but Sunrise Market must never block the user with an
- * automatic install overlay. We suppress the browser auto prompt and leave
- * installation as an explicit browser/menu action.
+ * Podpowiedź „Zapisz aplikację” — TYLKO na app.sunrisemarket.pl (decyzja właściciela 2026-09-05).
+ * Nie blokuje ekranu: mały pasek u dołu. Znika na stałe po zainstalowaniu (event `appinstalled`,
+ * tryb standalone) i na 7 dni po „Nie teraz”. Android/Chrome: natywny dialog z `beforeinstallprompt`;
+ * iPhone/iPad (Safari): krótka instrukcja Udostępnij → „Do ekranu początkowego”.
  */
-export default function PwaInstallPrompt() {
-  useEffect(() => {
-    const onPrompt = (event: Event) => {
-      event.preventDefault();
-    };
+type BIP = Event & { prompt: () => Promise<void>; userChoice: Promise<{ outcome: "accepted" | "dismissed" }> };
+const SNOOZE_KEY = "sm:pwa-install-snooze";
+const DONE_KEY = "sm:pwa-installed";
+const SNOOZE_MS = 7 * 24 * 3600 * 1000;
 
-    window.addEventListener("beforeinstallprompt", onPrompt as EventListener);
-    return () => {
-      window.removeEventListener("beforeinstallprompt", onPrompt as EventListener);
-    };
+function isStandalone() {
+  return window.matchMedia?.("(display-mode: standalone)").matches || (navigator as any).standalone === true;
+}
+function isIos() { return /iphone|ipad|ipod/i.test(navigator.userAgent) && !(window as any).MSStream; }
+function read(key: string) { try { return localStorage.getItem(key); } catch { return null; } }
+function write(key: string, v: string) { try { localStorage.setItem(key, v); } catch { /* prywatny tryb */ } }
+
+export default function PwaInstallPrompt() {
+  const isAppDomain = window.location.hostname.toLowerCase() === "app.sunrisemarket.pl";
+  const [deferred, setDeferred] = useState<BIP | null>(null);
+  const [visible, setVisible] = useState(false);
+  const [iosHelp, setIosHelp] = useState(false);
+
+  useEffect(() => {
+    const onPrompt = (e: Event) => { e.preventDefault(); setDeferred(e as BIP); };
+    const onInstalled = () => { write(DONE_KEY, "1"); setVisible(false); setDeferred(null); };
+    window.addEventListener("beforeinstallprompt", onPrompt);
+    window.addEventListener("appinstalled", onInstalled);
+    return () => { window.removeEventListener("beforeinstallprompt", onPrompt); window.removeEventListener("appinstalled", onInstalled); };
   }, []);
 
-  return null;
+  useEffect(() => {
+    if (!isAppDomain || isStandalone() || read(DONE_KEY) === "1") { setVisible(false); return; }
+    const snooze = Number(read(SNOOZE_KEY) || 0);
+    if (snooze && Date.now() - snooze < SNOOZE_MS) { setVisible(false); return; }
+    // Android/Chrome: pokazujemy, gdy przeglądarka zgłosi gotowość; iOS: od razu (brak beforeinstallprompt).
+    if (deferred || isIos()) { const t = setTimeout(() => setVisible(true), 1500); return () => clearTimeout(t); }
+    setVisible(false);
+  }, [isAppDomain, deferred]);
+
+  if (!isAppDomain || !visible) return null;
+
+  async function install() {
+    if (deferred) {
+      try { await deferred.prompt(); const { outcome } = await deferred.userChoice; if (outcome === "accepted") { write(DONE_KEY, "1"); setVisible(false); } else { write(SNOOZE_KEY, String(Date.now())); setVisible(false); } } catch { setVisible(false); }
+      setDeferred(null); return;
+    }
+    setIosHelp(true);
+  }
+  function later() { write(SNOOZE_KEY, String(Date.now())); setVisible(false); }
+
+  return <div role="dialog" aria-label="Zapisz aplikację Sunrise Market" className="fixed inset-x-3 z-[60] rounded-2xl p-4 shadow-2xl sm:left-auto sm:right-4 sm:w-[380px]" style={{ bottom: "calc(env(safe-area-inset-bottom, 0px) + 76px)", background: "var(--header)", border: "1px solid rgba(232,200,150,.35)", color: "var(--ink)" }}>
+    <div className="flex items-start gap-3">
+      <img src="/icon-192x192.png" alt="" className="h-11 w-11 rounded-xl" />
+      <div className="min-w-0 flex-1">
+        <div className="font-semibold">Zapisz Sunrise Market jako aplikację</div>
+        {iosHelp
+          ? <p className="mt-1 text-sm leading-5" style={{ color: "var(--mut)" }}>W Safari dotknij <b>Udostępnij</b> (ikona kwadratu ze strzałką), a potem <b>„Do ekranu początkowego”</b>. Ikona pojawi się obok innych aplikacji.</p>
+          : <p className="mt-1 text-sm leading-5" style={{ color: "var(--mut)" }}>Szybszy dostęp z ekranu głównego, pełny ekran i powiadomienia o zamówieniach.</p>}
+        <div className="mt-3 flex gap-2">
+          {!iosHelp && <button type="button" onClick={install} className="rounded-xl px-4 py-2 text-sm font-semibold" style={{ background: "linear-gradient(135deg,#C8965A,#E8C896)", color: "#0E1729" }}>{deferred ? "Zainstaluj" : "Jak zapisać?"}</button>}
+          <button type="button" onClick={later} className="rounded-xl px-4 py-2 text-sm" style={{ background: "var(--glass)", border: "1px solid var(--line)" }}>{iosHelp ? "Rozumiem" : "Nie teraz"}</button>
+        </div>
+      </div>
+      <button type="button" onClick={later} aria-label="Zamknij" className="text-lg leading-none" style={{ color: "var(--mut)" }}>×</button>
+    </div>
+  </div>;
 }
