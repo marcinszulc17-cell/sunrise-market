@@ -3,7 +3,7 @@ import { useLocation } from "react-router-dom";
 const items = [
   { href: "/", label: "Start", icon: "⌂" },
   { href: "/szukaj", label: "Szukaj", icon: "⌕" },
-  { href: "/porownaj", label: "Obserwuj", icon: "♡" },
+  { href: "/obserwowane", label: "Obserwuj", icon: "♡" },
   { href: "/rezerwacje", label: "Rezerwacje", icon: "▣" },
   { href: "/konto", label: "Konto", icon: "●" },
 ];

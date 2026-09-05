@@ -185,8 +185,8 @@ function Zamowienia() {
 function Zyczenia() {
   const [items, setItems] = useState<any[]>([]);
   useEffect(() => { myWatchlist().then(setItems).catch(() => {}); }, []);
-  if (!items.length) return <p style={{ color: "var(--mut)" }}>Lista życzeń jest pusta.</p>;
-  return <div className="grid gap-3 sm:grid-cols-2">{items.map((x) => <Card key={x.id}><a href={`/produkt/${x.product_id}`} className="font-semibold">{x.product_name ?? "Produkt"}</a><button onClick={() => toggleWatch(x.product_id).then(() => setItems((v) => v.filter((i) => i.product_id !== x.product_id)))} className="block mt-2 text-xs" style={{ color: "var(--mut)" }}>Usuń z listy</button></Card>)}</div>;
+  if (!items.length) return <p style={{ color: "var(--mut)" }}>Nie obserwujesz jeszcze żadnej oferty — dotknij ♡ na karcie oferty.</p>;
+  return <div className="grid gap-3 sm:grid-cols-2">{items.map((x) => <Card key={x.offer_id}><a href={`/produkt/${x.offer_id}`} className="font-semibold">{x.title ?? "Oferta"}</a><div className="mt-1 text-sm" style={{ color: "var(--gold)" }}>{zl(x.price_gross)}{x.price_dropped ? <span className="ml-2 text-xs" style={{ color: "var(--green)" }}>↓ taniej o {zl(x.price_drop_amount)}</span> : null}</div><button onClick={() => toggleWatch(x.offer_id).then(() => setItems((v) => v.filter((i) => i.offer_id !== x.offer_id)))} className="block mt-2 text-xs" style={{ color: "var(--mut)" }}>Przestań obserwować</button></Card>)}<a href="/obserwowane" className="text-sm font-semibold" style={{ color: "var(--gold)" }}>Wszystkie obserwowane →</a></div>;
 }
 
 type Consent = { channel: string; purpose: string; basis?: string | null; text?: string | null; since?: string | null; verified?: boolean };
