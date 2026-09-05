@@ -110,7 +110,7 @@ export default function Product() {
   function openBooking() { window.dispatchEvent(new Event("sunrise-open-booking")); }
 
   return <div className="min-h-screen" style={{ background: "var(--bg)", color: "var(--ink)" }}>
-    <SiteHeader active={o?.category_slug?.startsWith("oze") ? "energy" : o?.category_slug?.startsWith("uslugi") ? "services" : "shop"} />
+    <SiteHeader back active={o?.category_slug?.startsWith("oze") ? "energy" : o?.category_slug?.startsWith("uslugi") ? "services" : "shop"} />
 
     <main className="mx-auto max-w-[1440px] px-4 py-5 sm:px-6 xl:px-10">
       {loading && <p style={{ color: "var(--mut)" }}>Ładowanie…</p>}

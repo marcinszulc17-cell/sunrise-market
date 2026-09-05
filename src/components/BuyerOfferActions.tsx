@@ -111,11 +111,6 @@ export default function BuyerOfferActions({ offerId, categorySlug="", purchaseMo
     setStatus(ids.includes(offerId) ? `Dodano do porównania (${ids.length}/4).` : "Usunięto z porównania.");
   }
 
-  function goBack() {
-    if (window.history.length > 1) window.history.back();
-    else window.location.href = "/";
-  }
-
   function primaryAction(){
     if(isBooking){
       if(!bookingChecked){setStatus("Sprawdzam dostępność kalendarza…");return;}
@@ -141,7 +136,6 @@ export default function BuyerOfferActions({ offerId, categorySlug="", purchaseMo
   }
 
   return <>
-    <button onClick={goBack} className="fixed left-3 top-[calc(env(safe-area-inset-top)+10px)] z-50 rounded-full px-3 py-2 text-sm font-semibold shadow-lg backdrop-blur-md sm:hidden" style={{ background: "color-mix(in srgb, var(--header) 94%, transparent)", border: "1px solid var(--line)" }} aria-label="Wróć do poprzedniej strony">← Wróć</button>
 
     <div className="fixed bottom-0 left-0 right-0 z-40 flex gap-2 overflow-x-auto p-2 pb-[max(.5rem,env(safe-area-inset-bottom))] shadow-2xl backdrop-blur-md sm:bottom-4 sm:left-auto sm:right-4 sm:top-auto sm:max-w-[calc(100vw-32px)] sm:flex-wrap sm:justify-end sm:rounded-2xl sm:p-2 sm:shadow-xl" style={{ background: "color-mix(in srgb, var(--header) 96%, transparent)", borderTop: "1px solid var(--line)", border: "1px solid var(--line)" }}>
       <button disabled={busy} onClick={watch} className="shrink-0 rounded-xl px-3 py-2 text-xs font-semibold sm:text-sm" style={{ border: "1px solid var(--line)", background: watched ? "rgba(232,137,26,.18)" : "var(--glass)" }}>{watched ? "♥ Obserwujesz" : "♡ Obserwuj"}</button>

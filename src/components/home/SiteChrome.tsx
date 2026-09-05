@@ -27,7 +27,7 @@ export function readRegion(): string { try { return localStorage.getItem(REGION_
 const navBtn = "flex h-11 items-center gap-2 rounded-xl px-3 text-sm font-medium transition hover:opacity-90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#F5A623]";
 
 /** Nagłówek serwisu. `active` = klucz pozycji paska działów do podświetlenia. */
-export function SiteHeader({ active, compact = false }: { active?: string; compact?: boolean }) {
+export function SiteHeader({ active, compact = false, back = false }: { active?: string; compact?: boolean; back?: boolean }) {
   const navigate = useNavigate();
   const cart = useCart();
   const cartN = cart.reduce((n, x) => n + x.qty, 0);
@@ -43,7 +43,8 @@ export function SiteHeader({ active, compact = false }: { active?: string; compa
   return <header className="sticky top-0 z-30 backdrop-blur" style={{ background: "var(--header)", borderBottom: "1px solid var(--line)" }}>
     {/* Telefon: niski pasek */}
     <div className="mx-auto flex max-w-3xl items-center gap-2 px-4 py-2 sm:hidden">
-      <a href="/" className="flex items-center" aria-label="Sunrise Market — strona główna"><img src="/logo-sunrise-market-light.png" alt="Sunrise Market" className="brand-logo h-10 w-auto" /></a>
+      {back && <button type="button" onClick={() => { if (window.history.length > 1) window.history.back(); else window.location.href = "/"; }} aria-label="Wróć do poprzedniej strony" className="grid h-11 w-11 shrink-0 place-items-center rounded-xl text-xl" style={CARD}>←</button>}
+      <a href="/" className="flex items-center" aria-label="Sunrise Market — strona główna"><img src="/logo-sunrise-market-light.png" alt="Sunrise Market" className={`brand-logo w-auto ${back ? "h-8" : "h-10"}`} /></a>
       <div className="flex-1" />
       <NotificationsBell />
       <Link to="/wiadomosci" aria-label="Wiadomości" className="relative grid h-11 w-11 place-items-center rounded-xl" style={CARD}><Ico name="mail" size={20} />{mailBadge}</Link>
@@ -85,7 +86,7 @@ export function SiteHeader({ active, compact = false }: { active?: string; compa
 /** Okruszki: [{label, to?}] — ostatni element bez linku. */
 export function Breadcrumbs({ items, back }: { items: { label: string; to?: string }[]; back?: string }) {
   return <nav aria-label="Okruszki" className="flex flex-wrap items-center gap-x-2 gap-y-1 text-sm" style={{ color: "var(--mut)" }}>
-    {back && <Link to={back} className="mr-2 flex h-9 items-center gap-1 rounded-lg px-3 text-xs font-semibold" style={CARD}>← Wróć</Link>}
+    {back && <Link to={back} className="mr-2 hidden h-9 items-center gap-1 rounded-lg px-3 text-xs font-semibold sm:flex" style={CARD}>← Wróć</Link>}
     {items.map((it, i) => <span key={i} className="flex items-center gap-2">{i > 0 && <span aria-hidden="true">›</span>}{it.to ? <Link to={it.to} className="navlink">{it.label}</Link> : <span style={{ color: "var(--ink)" }}>{it.label}</span>}</span>)}
   </nav>;
 }

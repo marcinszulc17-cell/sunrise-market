@@ -65,7 +65,7 @@ export default function PrivateProduct(){
   const A=offer.attributes||{};
   const main=imgs[active]||offer.image_url;
   return <div className="min-h-screen" style={{background:"var(--bg)",color:"var(--ink)"}}>
-    <SiteHeader />
+    <SiteHeader back />
     <main className="mx-auto max-w-5xl px-4 py-6 sm:py-8">
       <div className="grid gap-7 md:grid-cols-2">
         <div>
