@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
-import { getOffer } from "../lib/api";
+import { getOffer, countOfferView } from "../lib/api";
 import Product from "./Product";
 import PrivateProduct from "./PrivateProduct";
 import SpecializedProduct from "./SpecializedProduct";
@@ -26,6 +26,7 @@ export default function ProductRouter() {
 
   useEffect(() => {
     if (!id) return;
+    countOfferView(id);
     getOffer(id).then((o: any) => {
       const slug = String(o?.category_slug || "");
       const rawMode=String(o?.attributes?.purchase_mode||"purchase");

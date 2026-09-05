@@ -27,6 +27,10 @@ export const ICONS = {
   home: <><path d="M3 11l9-7 9 7" /><path d="M5 10v10h14V10" /></>,
   sun: <><circle cx="12" cy="12" r="4" /><path d="M12 2v2M12 20v2M2 12h2M20 12h2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4" /></>,
   shield: <path d="M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6l8-3z" />,
+  mail: <><rect x="3" y="5" width="18" height="14" rx="2" /><path d="M3 7l9 6 9-6" /></>,
+  send: <path d="M22 2L11 13M22 2l-7 20-4-9-9-4 20-7z" />,
+  phone: <path d="M5 4h4l2 5-2.5 1.5a11 11 0 0 0 5 5L15 13l5 2v4a2 2 0 0 1-2 2A16 16 0 0 1 3 6a2 2 0 0 1 2-2z" />,
+  pin: <><path d="M12 22s7-6.2 7-12a7 7 0 1 0-14 0c0 5.8 7 12 7 12z" /><circle cx="12" cy="10" r="2.5" /></>,
 } as const;
 export type IconName = keyof typeof ICONS;
 
@@ -64,11 +68,24 @@ export const SECTIONS: Section[] = [
   { to: "/szukaj?kat=oze-i-energia", icon: "bolt", tint: "amber", title: "OZE i Energia", short: "PV, pompy ciepła", desc: "Fotowoltaika, Pompy ciepła, Magazyny energii", cta: "Sprawdź oferty" },
 ];
 
-export type FeedOffer = { offer_id: string; title: string; price_gross: number; image_url: string | null; category: string | null; seller: string | null; rating?: number; reviews?: number; location?: string | null };
+export type FeedOffer = { offer_id: string; title: string; price_gross: number; image_url: string | null; category: string | null; seller: string | null; rating?: number; reviews?: number; location?: string | null; created_at?: string | null; views?: number };
+
+/** „2 godz. temu” / „3 dni temu” — z daty utworzenia ogłoszenia. */
+export function timeAgo(iso?: string | null): string | null {
+  if (!iso) return null;
+  const t = new Date(iso).getTime(); if (!Number.isFinite(t)) return null;
+  const s = Math.max(0, (Date.now() - t) / 1000);
+  if (s < 3600) return "przed chwilą";
+  const h = Math.floor(s / 3600); if (h < 24) return `${h} ${h === 1 ? "godz." : "godz."} temu`;
+  const d = Math.floor(h / 24); if (d < 7) return `${d} ${d === 1 ? "dzień" : "dni"} temu`;
+  const w = Math.floor(d / 7); if (w < 5) return `${w} ${w === 1 ? "tydzień" : "tyg."} temu`;
+  const m = Math.floor(d / 30); if (m < 12) return `${m} ${m === 1 ? "mies." : "mies."} temu`;
+  const y = Math.floor(d / 365); return `${y} ${y === 1 ? "rok" : "lat"} temu`;
+}
 
 function normalize(r: any): FeedOffer {
   const loc = r.location ?? r.city ?? (r.attributes && typeof r.attributes === "object" ? (r.attributes as any).location : null);
-  return { offer_id: r.offer_id, title: r.title, price_gross: Number(r.price_gross), image_url: r.image_url ?? null, category: r.category ?? null, seller: r.seller ?? null, rating: r.rating, reviews: r.reviews, location: typeof loc === "string" && loc.trim() ? loc.trim() : null };
+  return { offer_id: r.offer_id, title: r.title, price_gross: Number(r.price_gross), image_url: r.image_url ?? null, category: r.category ?? null, seller: r.seller ?? null, rating: r.rating, reviews: r.reviews, location: typeof loc === "string" && loc.trim() ? loc.trim() : null, created_at: r.created_at ?? null, views: r.views };
 }
 
 /** Polecane oferty + obserwowane. `personalized` = lista pochodzi z recommended_offers (zalogowany). */
@@ -128,12 +145,12 @@ export function RecoCard({ o, fav, onFav, rate, compact = false, className = "",
     <Link to={href} className={`block w-full overflow-hidden ${compact ? "aspect-square" : "aspect-[4/3]"}`} style={{ background: "var(--header)" }} tabIndex={-1} aria-hidden="true">{o.image_url ? <img src={o.image_url} alt="" loading="lazy" decoding="async" className={`h-full w-full object-cover ${compact ? "" : "transition duration-500 group-hover:scale-[1.04]"}`} /> : <div className="grid h-full place-items-center text-3xl">🛍️</div>}</Link>
     <button type="button" onClick={() => onFav(o.offer_id)} aria-pressed={fav} aria-label={fav ? "Usuń z ulubionych" : "Dodaj do ulubionych"} className="absolute right-2 top-2 grid h-11 w-11 place-items-center rounded-full backdrop-blur transition hover:scale-105 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#F5A623]" style={{ background: "rgba(10,18,36,.7)", border: "1px solid rgba(237,231,214,.15)", color: fav ? "#F25CB0" : "#EDE7D6" }}><svg width="20" height="20" viewBox="0 0 24 24" fill={fav ? "currentColor" : "none"} stroke="currentColor" strokeWidth="1.8" strokeLinejoin="round" aria-hidden="true">{ICONS.heart}</svg></button>
     <div className={compact ? "p-3" : "p-4"}>
-      <div className={`font-bold ${compact ? "text-base" : "text-lg"}`} style={{ color: "var(--gold)" }}>{zl(o.price_gross)}</div>
+      <div className="flex items-baseline justify-between gap-2"><div className={`font-bold ${compact ? "text-base" : "text-lg"}`} style={{ color: "var(--gold)" }}>{zl(o.price_gross)}</div>{!compact && <span className="text-[11px]" style={{ color: "var(--mut)" }}>+{cashbackFor(o.price_gross, rate).toLocaleString("pl-PL", { maximumFractionDigits: 2 })} pkt</span>}</div>
       <Link to={href} className="mt-0.5 line-clamp-2 text-sm font-semibold leading-5 focus-visible:underline">{o.title}</Link>
       <div className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-[11px]" style={{ color: "var(--mut)" }}>
         {o.category && <span className="truncate rounded-md px-2 py-0.5" style={{ background: "rgba(255,255,255,.06)", border: "1px solid var(--line)", color: "var(--ink)" }}>{o.category}</span>}
         <span className="truncate">{o.location ? `📍 ${o.location}` : o.seller ?? ""}</span>
-        {!compact && <span className="ml-auto shrink-0">+{cashbackFor(o.price_gross, rate).toLocaleString("pl-PL", { maximumFractionDigits: 2 })} pkt</span>}
+        {timeAgo(o.created_at) && <span className="ml-auto shrink-0">🕒 {timeAgo(o.created_at)}</span>}
       </div>
     </div>
   </article>;

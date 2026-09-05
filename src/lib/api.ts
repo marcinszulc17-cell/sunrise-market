@@ -41,6 +41,13 @@ export async function categoryCounts(): Promise<{ byId: Record<string, number>; 
   return { byId, total };
 }
 // Personalizacja: zapis obejrzenia, rekomendacje „dla Ciebie", podobne produkty
+// Licznik wyświetleń ogłoszenia (także goście) — market.count_offer_view; raz na wejście na stronę oferty.
+export async function countOfferView(offerId: string) {
+  try { await supabase.rpc("count_offer_view", { p_offer: offerId }); } catch { /* licznik nie jest krytyczny */ }
+}
+export async function sellerOfferStats() {
+  const { data, error } = await supabase.rpc("seller_offer_stats"); if (error) throw error; return (data as any[]) ?? [];
+}
 export async function trackView(offerId: string) {
   try { await supabase.rpc("track_view", { p_offer: offerId }); } catch { /* niezalogowany — pomiń */ }
 }
@@ -566,4 +573,23 @@ export async function sponsoredOffers(placement = "search", category: string | n
 export async function genDescription(title: string, category?: string, mode?: string): Promise<string> {
   const { data, error } = await supabase.functions.invoke("gen-description", { body: { title, category, mode } });
   if (error) throw error; return (data as any)?.description ?? "";
+}
+
+// ── Wiadomości kupujący ↔ sprzedawca (market.conversations / messages) ──
+export type Conversation = { conversation_id: string; role: "buyer" | "seller"; offer_id: string; offer_title: string; offer_image: string | null; offer_price: number; counterpart: string; last_preview: string | null; last_message_at: string; unread: number };
+export type Message = { id: string; sender_role: "buyer" | "seller"; mine: boolean; body: string; created_at: string };
+export async function startConversation(offerId: string, body: string): Promise<string> {
+  const { data, error } = await supabase.rpc("start_conversation", { p_offer: offerId, p_body: body }); if (error) throw error; return String(data);
+}
+export async function sendMessage(conversationId: string, body: string): Promise<string> {
+  const { data, error } = await supabase.rpc("send_message", { p_conv: conversationId, p_body: body }); if (error) throw error; return String(data);
+}
+export async function myConversations(): Promise<Conversation[]> {
+  const { data, error } = await supabase.rpc("my_conversations"); if (error) throw error; return (data as Conversation[]) ?? [];
+}
+export async function conversationMessages(conversationId: string): Promise<Message[]> {
+  const { data, error } = await supabase.rpc("conversation_messages", { p_conv: conversationId }); if (error) throw error; return (data as Message[]) ?? [];
+}
+export async function unreadMessagesCount(): Promise<number> {
+  const { data, error } = await supabase.rpc("unread_messages_count"); if (error) return 0; return Number(data || 0);
 }

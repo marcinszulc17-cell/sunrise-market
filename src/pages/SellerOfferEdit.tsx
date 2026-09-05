@@ -195,6 +195,7 @@ export default function SellerOfferEdit() {
         <h2 className="text-xl font-semibold">Treść oferty</h2>
         <div className="mt-4 space-y-4">
           <label className="text-sm"><span className="mb-1 block" style={{ color: "var(--mut)" }}>Tytuł</span><input className={inputClass} style={inputStyle} value={offer.title} onChange={(e) => setOffer({ ...offer, title: e.target.value })} /></label>
+          <label className="text-sm"><span className="mb-1 block" style={{ color: "var(--mut)" }}>Miejscowość</span><input className={inputClass} style={inputStyle} value={String(offer.attributes?.location ?? "")} onChange={(e) => setOffer({ ...offer, attributes: { ...(offer.attributes ?? {}), location: e.target.value } })} placeholder="np. Nowy Tomyśl, wielkopolskie" /></label>
           <OfferDescriptionEditor value={offer.description ?? ""} onChange={(description) => setOffer({ ...offer, description })} title={offer.title} category={offer.category} />
           <div className="grid gap-3 sm:grid-cols-2">
             <label className="text-sm"><span className="mb-1 block" style={{ color: "var(--mut)" }}>{isDaily ? "Cena za dobę" : "Cena brutto"}</span><input type="number" min="0" step="0.01" className={inputClass} style={inputStyle} value={offer.price_gross} onChange={(e) => setOffer({ ...offer, price_gross: Number(e.target.value) })} /></label>

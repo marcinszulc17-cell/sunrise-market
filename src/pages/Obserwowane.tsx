@@ -7,10 +7,10 @@ import { Link } from "react-router-dom";
 import { myWatchlist, toggleWatch } from "../lib/api";
 import { supabase } from "../lib/supabase";
 import { zl } from "../lib/money";
-import { Ico, GOLD_GRAD, CARD, HomeFooter } from "../components/home/HomeShared";
+import { Ico, GOLD_GRAD, CARD, HomeFooter, timeAgo } from "../components/home/HomeShared";
 import { SiteHeader, Breadcrumbs, SideNav } from "../components/home/SiteChrome";
 
-type Row = { offer_id: string; title: string; price_gross: number; image_url: string | null; category: string | null; seller: string | null; price_at_add: number | null; price_dropped: boolean; price_drop_amount: number; rating: number; reviews: number };
+type Row = { offer_id: string; title: string; price_gross: number; image_url: string | null; category: string | null; seller: string | null; price_at_add: number | null; price_dropped: boolean; price_drop_amount: number; rating: number; reviews: number; created_at?: string | null; location?: string | null };
 const COMPARE_KEY = "sunrise_compare_ids";
 type Sort = "added" | "price_asc" | "price_desc" | "drop";
 
@@ -19,6 +19,7 @@ function readCompare(): string[] { try { return JSON.parse(localStorage.getItem(
 export const ACCOUNT_NAV = (fav: number) => [
   { to: "/konto", label: "Profil", icon: <Ico name="user" size={18} /> },
   { to: "/obserwowane", label: "Ulubione", icon: <Ico name="heart" size={18} />, badge: fav || undefined },
+  { to: "/wiadomosci", label: "Wiadomości", icon: <Ico name="mail" size={18} /> },
   { to: "/zamowienia", label: "Moje zakupy", icon: <Ico name="bag" size={18} /> },
   { to: "/rezerwacje", label: "Moje rezerwacje", icon: <Ico name="calendar" size={18} /> },
   { to: "/portfel", label: "Portfel Sunrise Pay", icon: <Ico name="sun" size={18} /> },
@@ -105,7 +106,7 @@ export default function Obserwowane() {
                 <Link to={`/produkt/${x.offer_id}`} className="mt-0.5 line-clamp-2 text-sm font-semibold leading-5">{x.title}</Link>
                 <div className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-[11px]" style={{ color: "var(--mut)" }}>
                   {x.category && <span className="rounded-md px-2 py-0.5" style={{ background: "rgba(255,255,255,.06)", border: "1px solid var(--line)", color: "var(--ink)" }}>{x.category}</span>}
-                  <span className="truncate">{x.seller}</span>{x.reviews > 0 && <span className="ml-auto shrink-0">{Number(x.rating).toFixed(1)} ★ ({x.reviews})</span>}
+                  <span className="truncate">{x.location ? `📍 ${x.location}` : x.seller}</span>{timeAgo(x.created_at) && <span className="ml-auto shrink-0">🕒 {timeAgo(x.created_at)}</span>}
                 </div>
                 <div className="mt-auto flex gap-2 pt-3 text-xs">
                   <button type="button" onClick={() => toggleCompare(x.offer_id)} className="h-9 flex-1 rounded-lg font-semibold" style={compare.includes(x.offer_id) ? { background: "rgba(122,184,154,.14)", color: "var(--green)", border: "1px solid rgba(122,184,154,.3)" } : { background: "rgba(255,255,255,.05)", border: "1px solid var(--line)", color: "var(--gold)" }}>{compare.includes(x.offer_id) ? "✓ W porównaniu" : "+ Porównaj"}</button>

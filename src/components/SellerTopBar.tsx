@@ -9,6 +9,7 @@ const SECTIONS: { href: string; label: string }[] = [
   { href: "/sprzedawca/zamowienia", label: "Zamówienia" },
   { href: "/sprzedawca/rezerwacje", label: "Rezerwacje" },
   { href: "/sprzedawca/rozliczenia", label: "Rozliczenia" },
+  { href: "/wiadomosci", label: "Wiadomości" },
   { href: "/sprzedawca/zapytania", label: "Zapytania" },
 ];
 

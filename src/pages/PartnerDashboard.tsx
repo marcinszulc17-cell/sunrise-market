@@ -1,6 +1,8 @@
 import { useEffect, useState } from "react";
 import { Link, Navigate } from "react-router-dom";
 import { supabase } from "../lib/supabase";
+import { sellerOfferStats, unreadMessagesCount } from "../lib/api";
+import { zl } from "../lib/money";
 import { SideNav } from "../components/home/SiteChrome";
 import { Ico, TINTS, type Tint, GOLD_GRAD, CARD } from "../components/home/HomeShared";
 
@@ -33,7 +35,9 @@ type DashboardData = {
   } | null;
 };
 
-type Attention = { pending_fulfillment: number; unread_new_sales: number };
+type Attention = { pending_fulfillment: number; unread_new_sales: number; unread_messages?: number };
+type OfferStat = { offer_id: string; title: string; image_url: string | null; category: string; price_gross: number; status: string; views: number; favorites: number; created_at: string; purchase_mode: string };
+const STATUS: Record<string, { label: string; color: string }> = { active: { label: "Aktywne", color: "#5CD39A" }, paused: { label: "Wstrzymane", color: "#F5A623" }, draft: { label: "Szkic", color: "#A1A1AA" }, sold_out: { label: "Wyprzedane", color: "#A1A1AA" }, blocked: { label: "Zablokowane", color: "#f87171" }, archived: { label: "Zakończone", color: "#A1A1AA" } };
 
 const pln = (n: number | undefined) => `${Number(n || 0).toLocaleString("pl-PL", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} zł`;
 const date = (s?: string | null) => s ? new Date(`${s}T00:00:00`).toLocaleDateString("pl-PL") : "—";
@@ -43,6 +47,9 @@ export default function PartnerDashboard() {
   const [attention, setAttention] = useState<Attention>({ pending_fulfillment: 0, unread_new_sales: 0 });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [offers, setOffers] = useState<OfferStat[] | null>(null);
+  const [tab, setTab] = useState<"all" | "active" | "paused" | "done">("all");
+  const [oq, setOq] = useState("");
 
   useEffect(() => {
     (async () => {
@@ -54,6 +61,8 @@ export default function PartnerDashboard() {
         if (e) throw e;
         if (result?.error) throw new Error(result.error);
         setData(result as DashboardData);
+        sellerOfferStats().then((r) => setOffers(r as OfferStat[])).catch(() => setOffers([]));
+        unreadMessagesCount().then((n) => setAttention((prev) => ({ ...prev, unread_messages: n }))).catch(() => {});
         const a = (attentionResult.data as Attention[] | null)?.[0];
         if (!attentionResult.error && a) setAttention(a);
       } catch (e) {
@@ -109,6 +118,31 @@ export default function PartnerDashboard() {
       </div>
     </Link>}
 
+    {/* Twoje ogłoszenia — tabela wg wzoru (seller_offer_stats: wyświetlenia, ulubione, status) */}
+    {(() => { const all = offers ?? []; const byTab = all.filter((o) => tab === "all" ? true : tab === "active" ? o.status === "active" : tab === "paused" ? (o.status === "paused" || o.status === "draft") : (o.status === "archived" || o.status === "sold_out" || o.status === "blocked")); const list = byTab.filter((o) => !oq.trim() || o.title.toLowerCase().includes(oq.trim().toLowerCase())); const cnt = (f: (o: OfferStat) => boolean) => all.filter(f).length;
+    return <section className="mb-5 rounded-2xl" style={CARD}>
+      <div className="flex flex-wrap items-end justify-between gap-3 p-5 pb-3">
+        <div className="border-l-4 pl-4" style={{ borderColor: "var(--gold)" }}><h2 className="text-xl font-bold">Twoje ogłoszenia</h2><p className="text-sm" style={{ color: "var(--mut)" }}>Zarządzaj ofertami, sprawdzaj wyświetlenia i ulubione.</p></div>
+        <Link to="/sprzedawca/wystaw" className="flex h-11 items-center gap-2 rounded-xl px-4 text-sm font-bold" style={{ background: GOLD_GRAD, color: "#101012" }}><Ico name="plus" size={16} strokeWidth={2.4} />Dodaj ogłoszenie</Link>
+      </div>
+      <div className="flex flex-wrap items-center gap-3 px-5 pb-3">
+        <div className="flex gap-1 overflow-x-auto text-sm">{([["all", "Wszystkie", () => true], ["active", "Aktywne", (o: OfferStat) => o.status === "active"], ["paused", "Wstrzymane", (o: OfferStat) => o.status === "paused" || o.status === "draft"], ["done", "Zakończone", (o: OfferStat) => o.status === "archived" || o.status === "sold_out" || o.status === "blocked"]] as const).map(([id, label, f]) => <button key={id} type="button" onClick={() => setTab(id)} className="h-10 whitespace-nowrap px-3 font-medium" style={{ color: tab === id ? "var(--gold)" : "var(--mut)", boxShadow: tab === id ? "inset 0 -2px 0 var(--gold)" : "none" }}>{label} ({cnt(f)})</button>)}</div>
+        <label className="ml-auto flex h-10 min-w-[220px] items-center gap-2 rounded-xl px-3 text-sm" style={{ background: "rgba(255,255,255,.05)", border: "1px solid var(--line)" }}><Ico name="search" size={16} /><input value={oq} onChange={(e) => setOq(e.target.value)} placeholder="Szukaj w Twoich ogłoszeniach…" className="min-w-0 flex-1 bg-transparent outline-none" aria-label="Szukaj w ogłoszeniach" /></label>
+      </div>
+      {offers === null ? <div className="px-5 pb-5 text-sm" style={{ color: "var(--mut)" }}>Wczytuję ogłoszenia…</div>
+      : list.length === 0 ? <div className="px-5 pb-5 text-sm" style={{ color: "var(--mut)" }}>{all.length === 0 ? "Nie masz jeszcze ogłoszeń — dodaj pierwsze." : "Brak ogłoszeń w tej zakładce."}</div>
+      : <div className="overflow-x-auto"><table className="w-full text-sm"><thead><tr className="text-left text-xs" style={{ color: "var(--mut)", background: "rgba(255,255,255,.03)" }}><th className="px-5 py-2 font-medium">Ogłoszenie</th><th className="px-3 py-2 font-medium">Kategoria</th><th className="px-3 py-2 font-medium">Cena</th><th className="px-3 py-2 font-medium">Wyświetlenia</th><th className="px-3 py-2 font-medium">Ulubione</th><th className="px-3 py-2 font-medium">Status</th><th className="px-5 py-2 text-right font-medium">Akcje</th></tr></thead>
+        <tbody>{list.map((o) => { const st = STATUS[o.status] || { label: o.status, color: "var(--mut)" }; return <tr key={o.offer_id} style={{ borderTop: "1px solid var(--line)" }}>
+          <td className="px-5 py-3"><div className="flex items-center gap-3"><div className="h-12 w-16 shrink-0 overflow-hidden rounded-lg" style={{ background: "var(--header)" }}>{o.image_url && <img src={o.image_url} alt="" className="h-full w-full object-cover" loading="lazy" />}</div><div className="min-w-0"><Link to={`/produkt/${o.offer_id}`} className="line-clamp-1 font-semibold">{o.title}</Link><div className="text-[11px]" style={{ color: "var(--mut)" }}>{o.purchase_mode === "appointment" ? "Usługa na termin" : o.purchase_mode === "daily" ? "Wynajem" : "Sprzedaż"} · {new Date(o.created_at).toLocaleDateString("pl-PL")}</div></div></div></td>
+          <td className="px-3 py-3 whitespace-nowrap" style={{ color: "var(--mut)" }}>{o.category}</td>
+          <td className="px-3 py-3 whitespace-nowrap font-bold" style={{ color: "var(--gold)" }}>{zl(o.price_gross)}</td>
+          <td className="px-3 py-3 whitespace-nowrap">👁 {o.views.toLocaleString("pl-PL")}</td>
+          <td className="px-3 py-3 whitespace-nowrap">♡ {o.favorites}</td>
+          <td className="px-3 py-3 whitespace-nowrap"><span className="inline-flex items-center gap-1.5 font-semibold" style={{ color: st.color }}><span className="h-2 w-2 rounded-full" style={{ background: st.color }} />{st.label}</span></td>
+          <td className="px-5 py-3 text-right whitespace-nowrap"><Link to={`/sprzedawca/oferty/${o.offer_id}/edytuj`} className="inline-flex h-9 items-center rounded-lg px-3 text-xs font-semibold" style={{ background: "rgba(255,255,255,.05)", border: "1px solid var(--line)" }}>Edytuj</Link></td>
+        </tr>; })}</tbody></table></div>}
+    </section>; })()}
+
     <div className="mb-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
       <Kpi icon="🛍️" label="Z własnej sprzedaży" value={pln(data.sales?.earned_all)} sub={`Ten miesiąc: ${pln(data.sales?.earned_month)}`} />
       <Kpi icon="🤝" label="Z poleceń" value={pln(referralEarnings)} sub={amb?.tier ? `Ambassador Club · ${amb.tier}` : "Sunrise Ambassador Club"} />
@@ -154,7 +188,7 @@ export default function PartnerDashboard() {
         <Quick to="/sprzedawca/zamowienia" icon="🛍️" title="Moje sprzedaże" text={attention.pending_fulfillment > 0 ? `${attention.pending_fulfillment} do realizacji` : "Sprzedaże i realizacja"} />
         <Quick to="/sprzedawca/rezerwacje" icon="📅" title="Moje rezerwacje" text="Terminy usług i wynajmu" />
         <Quick to="/sprzedawca/opinie" icon="⭐" title="Opinie" text="Oceny kupujących i odpowiedzi" />
-        <Quick to="/sprzedawca/odbior" icon="🏪" title="Odbiór osobisty" text="Punkt odbioru dla klientów" />
+        <Quick to="/sprzedawca/odbior" icon="🏪" title="Odbiór i kontakt" text="Punkt odbioru, telefon w ogłoszeniach" />
         <a href="https://mysunrise.pl/mme/linki" className="rounded-2xl p-4" style={{ background: "var(--header)", border: "1px solid var(--line)" }}><div className="text-2xl">🔗</div><div className="mt-2 font-semibold">Linki polecające</div><div className="mt-1 text-xs" style={{ color: "var(--mut)" }}>Promuj i zarabiaj prowizje</div></a>
       </div>
     </section>
@@ -178,9 +212,10 @@ const SELLER_NAV = (a: Attention) => [
   { to: "/sprzedawca/oferty", label: "Moje ogłoszenia", icon: <Ico name="bag" size={18} /> },
   { to: "/sprzedawca/zamowienia", label: "Zamówienia", icon: <Ico name="cart" size={18} />, badge: a.pending_fulfillment || undefined },
   { to: "/sprzedawca/rezerwacje", label: "Rezerwacje", icon: <Ico name="calendar" size={18} /> },
+  { to: "/wiadomosci", label: "Wiadomości", icon: <Ico name="mail" size={18} />, badge: a.unread_messages || undefined },
   { to: "/sprzedawca/zapytania", label: "Zapytania", icon: <Ico name="user" size={18} /> },
   { to: "/sprzedawca/opinie", label: "Opinie", icon: <Ico name="heart" size={18} /> },
-  { to: "/sprzedawca/odbior", label: "Odbiór osobisty", icon: <Ico name="house" size={18} /> },
+  { to: "/sprzedawca/odbior", label: "Odbiór i kontakt", icon: <Ico name="house" size={18} /> },
   { to: "/sprzedawca/rozliczenia", label: "Rozliczenia", icon: <Ico name="sun" size={18} /> },
   { to: "/sprzedawca/partner", label: "Ustawienia partnera", icon: <Ico name="wrench" size={18} /> },
 ];

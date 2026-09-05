@@ -15,6 +15,7 @@ const GROUPS: Group[] = [
     { q: "Jak mogę zapłacić?", a: "Portfelem Sunrise Pay (metoda promowana — główny przycisk w koszyku) albo kartą, BLIK-iem lub P24 przez Stripe. Subskrypcje (np. Protect Plus) rozliczamy wyłącznie kartą, co miesiąc z góry." },
     { q: "Co jeśli w portfelu brakuje środków?", a: "Koszyk zaproponuje doładowanie (od 10 zł do 25 000 zł) i sam dokończy zakup po powrocie, albo od razu pokaże płatność kartą, gdy brakująca kwota przekracza limit doładowania." },
     { q: "Czy dostanę fakturę?", a: "Partnerzy Handlowi (firmy z NIP) wystawiają faktury z panelu sprzedawcy; przy ofertach oznaczonych „Pełna faktura VAT” dokument otrzymasz do zamówienia. Sprzedawcy prywatni wystawiają dowód sprzedaży." },
+    { q: "Jak skontaktować się ze sprzedawcą?", a: <>Na stronie oferty kliknij <b>Napisz do sprzedawcy</b> — rozmowa trafia do <Link to="/wiadomosci" style={{ color: "var(--gold)" }}>Wiadomości</Link>, a sprzedawca dostaje powiadomienie. Jeśli sprzedawca udostępnił numer, zalogowani zobaczą przycisk <b>Pokaż numer</b>. Przy autach i nieruchomościach jest też <b>Umów oględziny / prezentację</b> z wyborem terminu.</> },
     { q: "Ile kosztuje dostawa?", a: "Zależy od sprzedawcy i metody: Paczkomat InPost, kurier InPost lub DPD. Przy ofertach z odbiorem osobistym wybierzesz w koszyku „Odbiór osobisty u sprzedawcy” za 0 zł." },
   ] },
   { id: "cashback", icon: "sun", tint: "orange", title: "Cashback i portfel Sunrise Pay", items: [
@@ -42,6 +43,7 @@ const GROUPS: Group[] = [
     { q: "Jak wystawić ogłoszenie?", a: <>Kliknij <Link to="/sprzedawca/wystaw" style={{ color: "var(--gold)" }}>Dodaj ogłoszenie</Link> i wybierz typ: produkt, usługa z terminarzem, wynajem, samochód lub nieruchomość. Kreator poprowadzi Cię przez zdjęcia, cenę, dostawę i szczegóły kategorii.</> },
     { q: "Kiedy dostanę pieniądze za sprzedaż?", a: "Po potwierdzeniu odbioru przez kupującego, doręczeniu przez kuriera albo automatycznie po 14 dniach (Ochrona Kupujących). Sprzedawca prywatny dostaje wypłatę na prywatny portfel Sunrise Pay, Partner Handlowy — na saldo firmowe." },
     { q: "Czy mogę odpowiadać na opinie?", a: <>Tak — w <Link to="/sprzedawca/opinie" style={{ color: "var(--gold)" }}>Centrum sprzedaży → Opinie</Link> odpowiadasz publicznie. Opinie wystawiają wyłącznie klienci po opłaconym zakupie; nie da się ich edytować ani usunąć.</> },
+    { q: "Jak odpowiadać na wiadomości i pokazać numer telefonu?", a: <>Wiadomości od kupujących znajdziesz w <Link to="/wiadomosci" style={{ color: "var(--gold)" }}>Wiadomościach</Link> (także w Panelu Partnera). Numer telefonu włączysz w <Link to="/sprzedawca/odbior" style={{ color: "var(--gold)" }}>Centrum sprzedaży → Odbiór i kontakt</Link> — zobaczą go tylko zalogowani po kliknięciu „Pokaż numer”.</> },
     { q: "Co to Sunrise Verify?", a: "Dodatkowa weryfikacja danych pojazdu lub nieruchomości przed zakupem, zamawiana przy ofercie. Numer VIN nigdy nie jest publikowany w ogłoszeniu." },
   ] },
   { id: "konto", icon: "user", tint: "violet", title: "Konto, aplikacja i powiadomienia", items: [

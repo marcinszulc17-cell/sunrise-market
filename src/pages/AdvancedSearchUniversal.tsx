@@ -2,10 +2,10 @@ import { FormEvent, useEffect, useMemo, useState } from "react";
 import { offerDetailHref } from "../lib/bookingLink";
 import { supabase } from "../lib/supabase";
 import { zl } from "../lib/money";
-import { Ico, HomeFooter } from "../components/home/HomeShared";
-import { SiteHeader } from "../components/home/SiteChrome";
+import { Ico, HomeFooter, timeAgo } from "../components/home/HomeShared";
+import { SiteHeader, REGIONS, readRegion } from "../components/home/SiteChrome";
 
-type Offer = { offer_id:string; title:string; price_gross:number; category:string; category_slug:string; seller:string; image_url:string|null; attributes:Record<string,any> };
+type Offer = { offer_id:string; title:string; price_gross:number; category:string; category_slug:string; seller:string; image_url:string|null; attributes:Record<string,any>; created_at?:string|null; views?:number };
 type Category = { id:string; slug:string; name:string; parent_id:string|null; sort_order?:number|null };
 type AttrDef = { key:string; label:string; data_type:"text"|"number"|"bool"|"enum"; options:any };
 type PurchaseModeFilter = "" | "purchase" | "appointment" | "daily";
@@ -66,13 +66,15 @@ export default function AdvancedSearchUniversal(){
   const [busy,setBusy]=useState(false);
   const [loadingFilters,setLoadingFilters]=useState(false);
   const [msg,setMsg]=useState<string|null>(null);
-  const [showFilters,setShowFilters]=useState(false); // telefon: filtry zwijane, wyniki od razu
+  const [showFilters,setShowFilters]=useState(false);
+  const [loc,setLoc]=useState(""); // lokalizacja: ?lok= z nagłówka (województwo) albo wpisana w filtrach — attributes.location ilike // telefon: filtry zwijane, wyniki od razu
 
   // Parametry z adresu (ekran startowy / linki): ?q=… ?kat=slug ?tryb=appointment|daily — po wczytaniu od razu szukamy.
   const [autoRun,setAutoRun]=useState(false);
   useEffect(()=>{
     const sp=new URLSearchParams(window.location.search);
-    const pq=sp.get("q")||"", pk=sp.get("kat")||"", pm=sp.get("tryb")||"";
+    const pq=sp.get("q")||"", pk=sp.get("kat")||"", pm=sp.get("tryb")||"", pl=sp.get("lok")||readRegion();
+    if(pl) setLoc(pl);
     if(pq) setQ(pq); if(pk) setSelected(pk); if(pm==="appointment"||pm==="daily"||pm==="purchase") setMode(pm as PurchaseModeFilter);
     if(pq||pk||pm) setAutoRun(true);
     supabase.from("categories").select("id,slug,name,parent_id,sort_order").order("sort_order").order("name")
@@ -100,6 +102,7 @@ export default function AdvancedSearchUniversal(){
     const rpcFilters:Record<string,string|boolean>={};
     for(const [k,v] of Object.entries(filters)) if(v!==""&&v!==false) rpcFilters[k]=v;
     if(mode) rpcFilters.purchase_mode=mode;
+    if(loc.trim()) rpcFilters.location=loc.trim();
     const {data,error}=await supabase.rpc("search_offers_v2",{
       p_query:q.trim()||null,
       p_category_slug:selected||null,
@@ -115,7 +118,7 @@ export default function AdvancedSearchUniversal(){
     if(!found.length)setMsg("Brak ofert spełniających wybrane kryteria.");
   }
 
-  function reset(){setQ("");setPriceMin("");setPriceMax("");setSort("trafnosc");setSelected("");setMode("");setFilters({});setDefs([]);setRows([]);setMsg(null);}
+  function reset(){setQ("");setLoc("");setPriceMin("");setPriceMax("");setSort("trafnosc");setSelected("");setMode("");setFilters({});setDefs([]);setRows([]);setMsg(null);}
 
   const title=mode==="appointment"?"Rezerwacje":mode==="daily"?"Wynajem":selectedCategory?selectedCategory.name:"Wyszukiwarka";
   const subtitle=mode==="appointment"?"Usługi z terminarzem — wybierz dzień i godzinę, zapłać od razu.":mode==="daily"?"Wynajem na dni — wybierz okres od–do.":"Produkty, usługi, rezerwacje, wynajem, samochody i nieruchomości w jednym miejscu.";
@@ -135,6 +138,7 @@ export default function AdvancedSearchUniversal(){
             <div className="grid max-h-72 gap-1 overflow-y-auto pr-1">{roots.map(r=><div key={r.id}><button type="button" onClick={()=>setSelected(selected===r.slug?"":r.slug)} className="flex min-h-[40px] w-full items-center gap-2 rounded-lg px-2 text-left text-sm" style={chip(selected===r.slug||selectedCategory?.parent_id===r.id)}><span>{emoji(r.name)}</span><span className="truncate">{r.name}</span></button>
               {(selected===r.slug||selectedCategory?.parent_id===r.id)&&children(r.id).length>0&&<div className="ml-6 mt-1 grid gap-0.5">{children(r.id).map(c=><button type="button" key={c.id} onClick={()=>setSelected(c.slug)} className="min-h-[36px] rounded-lg px-2 text-left text-xs" style={{color:selected===c.slug?"var(--gold)":"var(--mut)",background:selected===c.slug?"rgba(245,166,35,.1)":"transparent"}}>{c.name}</button>)}</div>}</div>)}</div>
           </div>
+          <div><div className="mb-2 text-sm font-semibold">Lokalizacja</div><input list="sm-regions" value={loc} onChange={e=>setLoc(e.target.value)} placeholder="Miasto lub województwo" className="min-h-[44px] w-full rounded-xl px-3 text-sm outline-none" style={{border:"1px solid var(--line)",background:"rgba(255,255,255,.04)",color:"var(--ink)"}} aria-label="Lokalizacja"/><datalist id="sm-regions">{REGIONS.map(r=><option key={r} value={r}/>)}</datalist></div>
           <div><div className="mb-2 text-sm font-semibold">Cena</div><div className="grid grid-cols-2 gap-2"><Field label="Od"><input type="number" min="0" value={priceMin} onChange={e=>setPriceMin(e.target.value)} placeholder="zł"/></Field><Field label="Do"><input type="number" min="0" value={priceMax} onChange={e=>setPriceMax(e.target.value)} placeholder="zł"/></Field></div></div>
           {defs.length>0&&<div><div className="mb-2 text-sm font-semibold">Szczegóły</div><div className="grid gap-2">{defs.map(d=><DynamicField key={d.key} def={d} value={filters[d.key]??""} onChange={v=>setFilter(d.key,v)}/>)}</div></div>}
           {loadingFilters&&<div className="text-xs" style={{color:"var(--mut)"}}>Pobieram filtry dla tej kategorii…</div>}
@@ -146,13 +150,13 @@ export default function AdvancedSearchUniversal(){
       <section className="min-w-0">
         <div className="flex flex-wrap items-end justify-between gap-3">
           <div><h1 className="text-3xl font-bold">{title}</h1><p className="mt-1 text-sm" style={{color:"var(--mut)"}}>{subtitle}</p></div>
-          <div className="flex items-center gap-2"><button type="button" onClick={()=>{setShowFilters(v=>!v); if(!showFilters) setTimeout(()=>document.getElementById("filtry")?.scrollIntoView({behavior:"smooth",block:"start"}),50);}} className="flex h-11 items-center gap-2 rounded-xl px-3 text-sm font-semibold lg:hidden" style={box} aria-expanded={showFilters} aria-controls="filtry">☰ Filtry</button><label className="flex h-11 items-center gap-2 rounded-xl px-3 text-sm" style={box}><span style={{color:"var(--mut)"}}>Sortowanie</span><select value={sort} onChange={e=>setSort(e.target.value)} className="bg-transparent font-semibold outline-none" style={{color:"var(--ink)"}}><option value="trafnosc">Najtrafniejsze</option><option value="najnowsze">Najnowsze</option><option value="cena_rosnaco">Cena: rosnąco</option><option value="cena_malejaco">Cena: malejąco</option></select></label></div>
+          <div className="flex items-center gap-2"><button type="button" onClick={()=>{setShowFilters(v=>!v); if(!showFilters) setTimeout(()=>document.getElementById("filtry")?.scrollIntoView({behavior:"smooth",block:"start"}),50);}} className="flex h-11 items-center gap-2 rounded-xl px-3 text-sm font-semibold lg:hidden" style={box} aria-expanded={showFilters} aria-controls="filtry">☰ Filtry</button><label className="flex h-11 items-center gap-2 rounded-xl px-3 text-sm" style={box}><span style={{color:"var(--mut)"}}>Sortowanie</span><select value={sort} onChange={e=>setSort(e.target.value)} className="bg-transparent font-semibold outline-none" style={{color:"var(--ink)"}}><option value="trafnosc">Najtrafniejsze</option><option value="najnowsze">Najnowsze</option><option value="popularne">Najczęściej oglądane</option><option value="cena_rosnaco">Cena: rosnąco</option><option value="cena_malejaco">Cena: malejąco</option></select></label></div>
         </div>
         {rows.length>0&&<div className="mt-4 text-sm" style={{color:"var(--mut)"}}>Znaleziono <b style={{color:"var(--ink)"}}>{rows.length}</b> {rows.length===1?"ofertę":rows.length<5?"oferty":"ofert"}</div>}
         {msg&&<div className="mt-5 rounded-2xl p-6 text-sm" style={{...box,color:"var(--mut)"}}>{msg}</div>}
         {rows.length===0&&!msg&&!busy&&<div className="mt-5 rounded-2xl p-6 text-sm" style={{...box,color:"var(--mut)"}}>Ustaw filtry po lewej i kliknij <b style={{color:"var(--ink)"}}>Pokaż oferty</b> — albo wpisz frazę w wyszukiwarce u góry.</div>}
         {busy&&rows.length===0&&<div className="mt-5 grid gap-4 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">{[0,1,2,3].map(i=><div key={i} className="aspect-[4/5] animate-pulse rounded-2xl" style={box}/>)}</div>}
-        {rows.length>0&&<div className="mt-4 grid gap-4 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">{rows.map(o=>{const action=resultMode(o);const href=action.booking?offerDetailHref(o.offer_id,true):`/produkt/${o.offer_id}`;const loc=typeof o.attributes?.location==="string"?o.attributes.location:null;const pm=String(o.attributes?.purchase_mode||"");return <a href={href} key={o.offer_id} className="group flex flex-col overflow-hidden rounded-2xl transition hover:-translate-y-0.5" style={box}><div className="relative aspect-[4/3] overflow-hidden" style={{background:"var(--header)"}}>{o.image_url?<img src={o.image_url} alt="" loading="lazy" className="h-full w-full object-cover transition duration-500 group-hover:scale-[1.04]"/>:<div className="grid h-full place-items-center text-5xl">{emoji(o.category||o.category_slug||"")}</div>}{action.booking&&<span className="absolute left-3 top-3 rounded-lg px-2 py-1 text-[11px] font-semibold backdrop-blur" style={{background:"rgba(11,11,13,.75)",border:"1px solid rgba(255,255,255,.15)",color:"#fff"}}>{action.label}</span>}</div><div className="flex flex-1 flex-col p-4"><div className="text-lg font-bold" style={{color:"var(--gold)"}}>{zl(o.price_gross)}{pm==="daily"&&<span className="text-xs font-medium" style={{color:"var(--mut)"}}> / dobę</span>}{pm==="appointment"&&<span className="text-xs font-medium" style={{color:"var(--mut)"}}> / termin</span>}</div><div className="mt-0.5 line-clamp-2 text-sm font-semibold leading-5">{o.title}</div><div className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-[11px]" style={{color:"var(--mut)"}}>{o.category&&<span className="rounded-md px-2 py-0.5" style={{background:"rgba(255,255,255,.06)",border:"1px solid var(--line)",color:"var(--ink)"}}>{o.category}</span>}<span className="truncate">{loc?`📍 ${loc}`:o.seller}</span></div><div className="mt-auto pt-3"><div className="flex h-10 items-center justify-center rounded-xl text-sm font-semibold" style={action.booking?{background:"linear-gradient(135deg,#E8891A,#F5A623)",color:"#101012"}:{border:"1px solid var(--line)",color:"var(--ink)"}}>{action.cta} →</div></div></div></a>;})}</div>}
+        {rows.length>0&&<div className="mt-4 grid gap-4 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">{rows.map(o=>{const action=resultMode(o);const href=action.booking?offerDetailHref(o.offer_id,true):`/produkt/${o.offer_id}`;const loc=typeof o.attributes?.location==="string"?o.attributes.location:null;const pm=String(o.attributes?.purchase_mode||"");return <a href={href} key={o.offer_id} className="group flex flex-col overflow-hidden rounded-2xl transition hover:-translate-y-0.5" style={box}><div className="relative aspect-[4/3] overflow-hidden" style={{background:"var(--header)"}}>{o.image_url?<img src={o.image_url} alt="" loading="lazy" className="h-full w-full object-cover transition duration-500 group-hover:scale-[1.04]"/>:<div className="grid h-full place-items-center text-5xl">{emoji(o.category||o.category_slug||"")}</div>}{action.booking&&<span className="absolute left-3 top-3 rounded-lg px-2 py-1 text-[11px] font-semibold backdrop-blur" style={{background:"rgba(11,11,13,.75)",border:"1px solid rgba(255,255,255,.15)",color:"#fff"}}>{action.label}</span>}</div><div className="flex flex-1 flex-col p-4"><div className="text-lg font-bold" style={{color:"var(--gold)"}}>{zl(o.price_gross)}{pm==="daily"&&<span className="text-xs font-medium" style={{color:"var(--mut)"}}> / dobę</span>}{pm==="appointment"&&<span className="text-xs font-medium" style={{color:"var(--mut)"}}> / termin</span>}</div><div className="mt-0.5 line-clamp-2 text-sm font-semibold leading-5">{o.title}</div><div className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-[11px]" style={{color:"var(--mut)"}}>{o.category&&<span className="rounded-md px-2 py-0.5" style={{background:"rgba(255,255,255,.06)",border:"1px solid var(--line)",color:"var(--ink)"}}>{o.category}</span>}<span className="truncate">{loc?`📍 ${loc}`:o.seller}</span>{timeAgo(o.created_at)&&<span className="ml-auto shrink-0">🕒 {timeAgo(o.created_at)}</span>}</div><div className="mt-auto pt-3"><div className="flex h-10 items-center justify-center rounded-xl text-sm font-semibold" style={action.booking?{background:"linear-gradient(135deg,#E8891A,#F5A623)",color:"#101012"}:{border:"1px solid var(--line)",color:"var(--ink)"}}>{action.cta} →</div></div></div></a>;})}</div>}
       </section>
     </div>
     </div>

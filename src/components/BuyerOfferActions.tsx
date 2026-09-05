@@ -43,6 +43,8 @@ export default function BuyerOfferActions({ offerId, categorySlug="", purchaseMo
   const [compare, setCompare] = useState(false);
   const [busy, setBusy] = useState(false);
   const [open, setOpen] = useState(false);
+  // Przycisk „Umów oględziny / prezentację” w karcie oferty (SpecializedProduct) otwiera to samo okno przez zdarzenie.
+  useEffect(() => { const on = () => setOpen(true); window.addEventListener("sunrise-open-interaction", on); return () => window.removeEventListener("sunrise-open-interaction", on); }, []);
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");

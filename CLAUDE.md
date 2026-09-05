@@ -136,3 +136,21 @@ pierwszeństwo przy każdej zmianie kodu. Nie wolno ich naruszać ani obchodzić
   Bez lokalizacji użytkownika, „O nas” i social — takich funkcji/stron nie ma; nie wymyślamy ich.
 - Dolny pasek aplikacji (`MobileAppNav`, ikony SVG, cele ≥ 44 px): Start · Szukaj · ＋ Dodaj (`/sprzedawca/wystaw`, złote kółko) · Ulubione (`/obserwowane`) · Konto.
 - `/szukaj` czyta parametry `q`, `kat` (slug kategorii), `tryb` (purchase|appointment|daily) i od razu szuka.
+
+## 10. Wiadomości, kontakt, lokalizacja, wyświetlenia (decyzja właściciela 2026-09-06)
+
+- **Wiadomości** kupujący ↔ sprzedawca: `market.conversations` (wątek = oferta + kupujący) i `market.messages`; RPC `start_conversation(p_offer,p_body)`
+  (z karty oferty, `MessageSellerButton`), `send_message`, `my_conversations`, `conversation_messages` (oznacza przeczytane), `unread_messages_count`.
+  Ekran `/wiadomosci` (`Wiadomosci.tsx`, `?w=<id>`), ikona koperty z licznikiem w nagłówku, pozycja w menu konta i sprzedawcy.
+  Powiadomienia przez `notify_once` (in-app + push). Bez e-maili. Lead z telefonem („Zapytaj o ofertę”, `create_offer_lead`) zostaje obok.
+- **Telefon sprzedawcy**: `sellers.phone_public` (opt-in w `/sprzedawca/odbior` — „Odbiór i kontakt”, RPC `my_contact_settings` /
+  `set_contact_settings`). `ShowPhoneButton`: `offer_has_phone` (anon) → „Pokaż numer” → `offer_seller_phone` **tylko dla zalogowanych**.
+- **Umów oględziny / prezentację**: istniejący `create_interaction_request` (BuyerOfferActions, typy viewing/demo/consultation…);
+  przycisk w karcie oferty auta/nieruchomości otwiera to okno zdarzeniem `sunrise-open-interaction`. Nie budujemy drugiego kalendarza.
+- **Lokalizacja**: `offers.attributes.location` (pole „Miejscowość” w kreatorach i edycji), filtr `p_filters.location` (ilike) w `search_offers_v2`,
+  wybór regionu „Cała Polska / województwo” w nagłówku (`SiteHeader`, localStorage `sm:region`, parametr `?lok=`), pole „Lokalizacja” w filtrach.
+  Mapa: `LocationMap` — Nominatim (OSM) w przeglądarce + iframe OSM, tylko miejscowość/okolica, bez kluczy API.
+- **Wyświetlenia**: `offers.view_count` przez `count_offer_view(p_offer)` (także goście; wołane raz w `ProductRouter`); `track_view` bez zmian
+  (rekomendacje). RPC `seller_offer_stats()` → tabela „Twoje ogłoszenia” w Panelu Partnera (wyświetlenia, ulubione, status).
+  `search_offers_v2` / `recommended_offers` / `my_watchlist` zwracają `created_at` (karty pokazują „x godz. temu”, `timeAgo`) i `views`;
+  sortowanie `popularne`.

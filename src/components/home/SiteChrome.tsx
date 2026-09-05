@@ -1,11 +1,13 @@
 // Wspólna „rama” strony (wg wzoru właściciela 2026-09-05): nagłówek z wyszukiwarką i paskiem działów na dużym ekranie,
 // niski pasek (logo · dzwonek · koszyk · konto) na telefonie, okruszki, tytuły sekcji z pomarańczową belką, stopka.
 // Tylko istniejące trasy — bez lokalizacji, „Porad i artykułów” i social (takich stron nie ma).
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import ThemeToggle from "../ThemeToggle";
 import NotificationsBell from "../NotificationsBell";
 import { useCart } from "../../lib/cart";
+import { supabase } from "../../lib/supabase";
+import { unreadMessagesCount } from "../../lib/api";
 import { Ico, GOLD_GRAD, CARD } from "./HomeShared";
 
 export const MENU: { to: string; label: string; key: string }[] = [
@@ -18,6 +20,10 @@ export const MENU: { to: string; label: string; key: string }[] = [
   { to: "/szukaj?kat=oze-i-energia", label: "OZE i Energia", key: "energy" },
 ];
 
+export const REGIONS = ["dolnośląskie", "kujawsko-pomorskie", "lubelskie", "lubuskie", "łódzkie", "małopolskie", "mazowieckie", "opolskie", "podkarpackie", "podlaskie", "pomorskie", "śląskie", "świętokrzyskie", "warmińsko-mazurskie", "wielkopolskie", "zachodniopomorskie"];
+const REGION_KEY = "sm:region";
+export function readRegion(): string { try { return localStorage.getItem(REGION_KEY) || ""; } catch { return ""; } }
+
 const navBtn = "flex h-11 items-center gap-2 rounded-xl px-3 text-sm font-medium transition hover:opacity-90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#F5A623]";
 
 /** Nagłówek serwisu. `active` = klucz pozycji paska działów do podświetlenia. */
@@ -26,7 +32,12 @@ export function SiteHeader({ active, compact = false }: { active?: string; compa
   const cart = useCart();
   const cartN = cart.reduce((n, x) => n + x.qty, 0);
   const [q, setQ] = useState("");
-  function submit(e: React.FormEvent) { e.preventDefault(); navigate(q.trim() ? `/szukaj?q=${encodeURIComponent(q.trim())}` : "/szukaj"); }
+  const [region, setRegion] = useState(readRegion());
+  const [unread, setUnread] = useState(0);
+  useEffect(() => { let alive = true; supabase.auth.getSession().then(({ data }) => { if (data.session) unreadMessagesCount().then((n) => { if (alive) setUnread(n); }); }); return () => { alive = false; }; }, []);
+  const mailBadge = unread > 0 && <span className="absolute -right-1 -top-1 grid h-4 min-w-4 place-items-center rounded-full px-1 text-[10px] font-bold" style={{ background: "var(--gold)", color: "#101012" }}>{unread}</span>;
+  function pickRegion(v: string) { setRegion(v); try { if (v) localStorage.setItem(REGION_KEY, v); else localStorage.removeItem(REGION_KEY); } catch { /* prywatny tryb */ } }
+  function submit(e: React.FormEvent) { e.preventDefault(); const sp = new URLSearchParams(); if (q.trim()) sp.set("q", q.trim()); if (region) sp.set("lok", region); navigate(`/szukaj${sp.toString() ? `?${sp}` : ""}`); }
   const badge = cartN > 0 && <span className="absolute -right-1 -top-1 grid h-4 min-w-4 place-items-center rounded-full px-1 text-[10px] font-bold" style={{ background: "var(--gold)", color: "#101012" }}>{cartN}</span>;
 
   return <header className="sticky top-0 z-30 backdrop-blur" style={{ background: "var(--header)", borderBottom: "1px solid var(--line)" }}>
@@ -35,6 +46,7 @@ export function SiteHeader({ active, compact = false }: { active?: string; compa
       <a href="/" className="flex items-center" aria-label="Sunrise Market — strona główna"><img src="/logo-sunrise-market-light.png" alt="Sunrise Market" className="brand-logo h-10 w-auto" /></a>
       <div className="flex-1" />
       <NotificationsBell />
+      <Link to="/wiadomosci" aria-label="Wiadomości" className="relative grid h-11 w-11 place-items-center rounded-xl" style={CARD}><Ico name="mail" size={20} />{mailBadge}</Link>
       <Link to="/koszyk" aria-label={cartN > 0 ? `Koszyk, ${cartN} szt.` : "Koszyk"} className="icon-btn relative grid h-11 w-11 place-items-center rounded-xl" style={CARD}><Ico name="cart" size={20} />{badge}</Link>
       <Link to="/konto" aria-label="Moje konto" className="grid h-11 w-11 place-items-center rounded-xl" style={CARD}><Ico name="user" size={20} /></Link>
     </div>
@@ -44,12 +56,14 @@ export function SiteHeader({ active, compact = false }: { active?: string; compa
       <form onSubmit={submit} role="search" className="order-last flex w-full max-w-2xl basis-full items-center overflow-hidden rounded-xl lg:order-none lg:mx-auto lg:basis-auto" style={{ background: "rgba(255,255,255,.06)", border: "1px solid var(--line)" }}>
         <span className="pl-4" style={{ color: "var(--mut)" }}><Ico name="search" size={20} /></span>
         <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Szukaj produktów, usług, ogłoszeń…" className="min-w-0 flex-1 bg-transparent px-3 py-3 text-sm outline-none" style={{ color: "var(--ink)" }} aria-label="Szukaj" />
+        <label className="hidden h-11 items-center gap-1.5 px-3 text-sm md:flex" style={{ borderLeft: "1px solid var(--line)", color: "var(--mut)" }} title="Region"><span aria-hidden="true">📍</span><select value={region} onChange={(e) => pickRegion(e.target.value)} aria-label="Region" className="max-w-[150px] bg-transparent text-sm font-medium outline-none" style={{ color: region ? "var(--ink)" : "var(--mut)" }}><option value="">Cała Polska</option>{REGIONS.map((r) => <option key={r} value={r}>{r}</option>)}</select></label>
         <button type="submit" className="h-11 shrink-0 px-5 text-sm font-bold" style={{ background: GOLD_GRAD, color: "#101012" }}>Szukaj</button>
       </form>
       <nav className="ml-auto flex shrink-0 items-center gap-1" aria-label="Konto">
         <ThemeToggle />
         <NotificationsBell />
         <Link to="/koszyk" aria-label={cartN > 0 ? `Koszyk, ${cartN} szt.` : "Koszyk"} className={`icon-btn relative ${navBtn}`}><Ico name="cart" size={20} />{badge}</Link>
+        <Link to="/wiadomosci" aria-label={unread > 0 ? `Wiadomości, ${unread} nieprzeczytane` : "Wiadomości"} className={`relative ${navBtn}`}><Ico name="mail" size={20} />{mailBadge}</Link>
         <Link to="/konto" className={navBtn}><Ico name="user" size={20} /><span className="hidden xl:inline">Moje konto</span></Link>
         <Link to="/obserwowane" className={navBtn}><Ico name="heart" size={20} /><span className="hidden xl:inline">Ulubione</span></Link>
         <Link to="/sprzedawca/wystaw" className="ml-2 flex h-11 items-center gap-2 rounded-xl px-4 text-sm font-bold shadow-[0_6px_20px_rgba(232,137,26,.3)] transition hover:brightness-105" style={{ background: GOLD_GRAD, color: "#101012" }}><span className="grid h-5 w-5 place-items-center rounded-full" style={{ background: "rgba(0,0,0,.2)" }}><Ico name="plus" size={12} strokeWidth={2.6} /></span><span className="hidden md:inline">Dodaj ogłoszenie</span><span className="md:hidden">Dodaj</span></Link>
