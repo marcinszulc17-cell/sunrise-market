@@ -72,3 +72,15 @@ pierwszeństwo przy każdej zmianie kodu. Nie wolno ich naruszać ani obchodzić
   lub `pay-credit` na portfel kupującego, potem `resolve_dispute(...,'refund')` → zamówienie `cancelled`,
   settlements `cancelled`. Cashback nie jest cofany (brak endpointu debit-points w MySunrise — TODO).
 - Zamówienia `paid` niewysłane 30 dni: kupujący dostaje powiadomienie, że może anulować — **bez auto-anulowania**.
+
+## 6. Opinie o sprzedawcach (decyzja właściciela 2026-09-05)
+
+- **Tylko prawdziwe opinie**: `add_review_simple` wymaga opłaconego zamówienia z tą ofertą; prośba o ocenę
+  po doręczeniu (`trg_request_reviews_after_delivery`). Nigdy nie generujemy ani nie importujemy opinii.
+- **Publiczny profil sprzedawcy** `/sprzedawcy/:id` (RPC `seller_public_profile`, anon): ocena, rozkład gwiazdek,
+  % polecających, liczba sprzedaży, lista opinii (autor, oferta, „Zweryfikowany zakup”), aktywne oferty.
+  Link ze strony produktu (`ProductPageExtras`, blok Sprzedawca).
+- **Centrum sprzedaży → Opinie** `/sprzedawca/opinie` (RPC `my_seller_reviews`): sprzedawca odpowiada publicznie
+  (`reply_review(p_review, p_text)` → `reviews.seller_reply`), nie edytuje i nie usuwa opinii.
+  Nowa opinia → powiadomienie in-app sprzedawcy (`trg_notify_seller_new_review`).
+- Odznaki z widoku `seller_reputation`: Aktywny (>0), Zaufany (≥10 opinii, śr. ≥4,5), Super Sprzedawca (≥50, ≥4,8).

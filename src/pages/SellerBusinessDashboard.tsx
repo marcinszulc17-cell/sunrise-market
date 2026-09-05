@@ -65,8 +65,9 @@ export default function SellerBusinessDashboard() {
         <Module to="/sprzedawca/rozliczenia" icon="💳" title="Rozliczenia" description="Wpływy ze sprzedaży, wypłaty na portfel Sunrise Pay i historia rozliczeń." meta={loading ? "Ładowanie…" : `Wpływy z zamówień: ${zl(stats.revenue)}`} primary="Otwórz rozliczenia" />
       </div>
 
-      <div className="mt-6 grid gap-3 sm:grid-cols-2">
+      <div className="mt-6 grid gap-3 sm:grid-cols-3">
         <Link to="/sprzedawca/zapytania" className="rounded-2xl p-5" style={{ background: "var(--glass)", border: "1px solid var(--line)" }}><div className="font-semibold">📈 Leady i sprzedaż</div><div className="mt-1 text-sm" style={{ color: "var(--mut)" }}>Zapytania przed zakupem i proces handlowy.</div></Link>
+        <Link to="/sprzedawca/opinie" className="rounded-2xl p-5" style={{ background: "var(--glass)", border: "1px solid var(--line)" }}><div className="font-semibold">⭐ Opinie kupujących</div><div className="mt-1 text-sm" style={{ color: "var(--mut)" }}>Oceny z opłaconych zamówień, publiczne odpowiedzi i Twój profil sprzedawcy.</div></Link>
         <div className="rounded-2xl p-5" style={{ background: "rgba(200,150,90,.07)", border: "1px solid rgba(200,150,90,.24)" }}><div className="font-semibold">🧾 Faktury sprzedawcy</div><div className="mt-1 text-sm leading-6" style={{ color: "var(--mut)" }}>Dane nabywcy do faktury znajdziesz przy każdym zamówieniu. Fakturę wystawiasz w swoim programie i możesz dołączyć ją bezpośrednio do zamówienia.</div></div>
       </div>
     </div>
