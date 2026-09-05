@@ -7,23 +7,157 @@
     }
   },
   "headers": [
-    {"source":"/sprzedawca","headers":[{"key":"X-Robots-Tag","value":"noindex, nofollow"}]},
-    {"source":"/sprzedawca/(.*)","headers":[{"key":"X-Robots-Tag","value":"noindex, nofollow"}]},
-    {"source":"/operator","headers":[{"key":"X-Robots-Tag","value":"noindex, nofollow"}]},
-    {"source":"/operator/(.*)","headers":[{"key":"X-Robots-Tag","value":"noindex, nofollow"}]},
-    {"source":"/login","headers":[{"key":"X-Robots-Tag","value":"noindex, nofollow"}]},
-    {"source":"/sso","headers":[{"key":"X-Robots-Tag","value":"noindex, nofollow"}]},
-    {"source":"/konto","headers":[{"key":"X-Robots-Tag","value":"noindex, nofollow"}]},
-    {"source":"/portfel","headers":[{"key":"X-Robots-Tag","value":"noindex, nofollow"}]},
-    {"source":"/koszyk","headers":[{"key":"X-Robots-Tag","value":"noindex, nofollow"}]},
-    {"source":"/zamowienia","headers":[{"key":"X-Robots-Tag","value":"noindex, nofollow"}]},
-    {"source":"/rezerwacje","headers":[{"key":"X-Robots-Tag","value":"noindex, nofollow"}]},
-    {"source":"/verify/(.*)","headers":[{"key":"X-Robots-Tag","value":"noindex, nofollow"}]},
-    {"source":"/potwierdz-zakup/(.*)","headers":[{"key":"X-Robots-Tag","value":"noindex, nofollow"}]},
-    {"source":"/szukaj","headers":[{"key":"X-Robots-Tag","value":"noindex, follow"}]},
-    {"source":"/porownaj","headers":[{"key":"X-Robots-Tag","value":"noindex, follow"}]}
+    {
+      "source": "/sprzedawca",
+      "headers": [
+        {
+          "key": "X-Robots-Tag",
+          "value": "noindex, nofollow"
+        }
+      ]
+    },
+    {
+      "source": "/sprzedawca/(.*)",
+      "headers": [
+        {
+          "key": "X-Robots-Tag",
+          "value": "noindex, nofollow"
+        }
+      ]
+    },
+    {
+      "source": "/operator",
+      "headers": [
+        {
+          "key": "X-Robots-Tag",
+          "value": "noindex, nofollow"
+        }
+      ]
+    },
+    {
+      "source": "/operator/(.*)",
+      "headers": [
+        {
+          "key": "X-Robots-Tag",
+          "value": "noindex, nofollow"
+        }
+      ]
+    },
+    {
+      "source": "/login",
+      "headers": [
+        {
+          "key": "X-Robots-Tag",
+          "value": "noindex, nofollow"
+        }
+      ]
+    },
+    {
+      "source": "/sso",
+      "headers": [
+        {
+          "key": "X-Robots-Tag",
+          "value": "noindex, nofollow"
+        }
+      ]
+    },
+    {
+      "source": "/konto",
+      "headers": [
+        {
+          "key": "X-Robots-Tag",
+          "value": "noindex, nofollow"
+        }
+      ]
+    },
+    {
+      "source": "/portfel",
+      "headers": [
+        {
+          "key": "X-Robots-Tag",
+          "value": "noindex, nofollow"
+        }
+      ]
+    },
+    {
+      "source": "/koszyk",
+      "headers": [
+        {
+          "key": "X-Robots-Tag",
+          "value": "noindex, nofollow"
+        }
+      ]
+    },
+    {
+      "source": "/zamowienia",
+      "headers": [
+        {
+          "key": "X-Robots-Tag",
+          "value": "noindex, nofollow"
+        }
+      ]
+    },
+    {
+      "source": "/rezerwacje",
+      "headers": [
+        {
+          "key": "X-Robots-Tag",
+          "value": "noindex, nofollow"
+        }
+      ]
+    },
+    {
+      "source": "/verify/(.*)",
+      "headers": [
+        {
+          "key": "X-Robots-Tag",
+          "value": "noindex, nofollow"
+        }
+      ]
+    },
+    {
+      "source": "/potwierdz-zakup/(.*)",
+      "headers": [
+        {
+          "key": "X-Robots-Tag",
+          "value": "noindex, nofollow"
+        }
+      ]
+    },
+    {
+      "source": "/szukaj",
+      "headers": [
+        {
+          "key": "X-Robots-Tag",
+          "value": "noindex, follow"
+        }
+      ]
+    },
+    {
+      "source": "/porownaj",
+      "headers": [
+        {
+          "key": "X-Robots-Tag",
+          "value": "noindex, follow"
+        }
+      ]
+    }
   ],
   "rewrites": [
-    {"source":"/(.*)","destination":"/index.html"}
+    {
+      "source": "/produkt/:id",
+      "has": [
+        {
+          "type": "header",
+          "key": "user-agent",
+          "value": ".*(facebookexternalhit|Facebot|Twitterbot|WhatsApp|LinkedInBot|Slackbot|TelegramBot|Discordbot|Pinterest|Googlebot|bingbot|Applebot|SkypeUriPreview|Viber|Iframely|Embedly|redditbot|Snapchat|vkShare).*"
+        }
+      ],
+      "destination": "/api/og?id=:id"
+    },
+    {
+      "source": "/(.*)",
+      "destination": "/index.html"
+    }
   ]
 }
