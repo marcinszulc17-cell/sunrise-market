@@ -1,7 +1,8 @@
 // Wypłata sprzedawcy na żądanie: pomniejsza saldo lustra (wallet_mirror) i robi transfer Stripe.
 // Atomowo: seller_wallet_withdraw debetuje lustro -> transfer Stripe -> settle; przy błędzie reverse (zwrot do lustra).
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-import Stripe from "https://esm.sh/stripe@16.12.0?target=deno";
+// Stripe przez npm: build esm.sh ciągnął polyfill std@0.177.1/node, który na obecnym runtime Supabase logował "Deno.core.runMicrotasks() is not supported".
+import Stripe from "npm:stripe@16.12.0";
 
 // Klucz Stripe: najpierw sekret środowiskowy, potem market.internal_secrets.
 async function readInternalSecret(key: string): Promise<string> {
