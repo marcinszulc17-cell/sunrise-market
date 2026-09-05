@@ -23,7 +23,7 @@ export default async function handler(req: Request): Promise<Response> {
   const id = url.searchParams.get("id") ?? "";
   const origin = `https://${req.headers.get("x-forwarded-host") ?? req.headers.get("host") ?? "sunrisemarket.pl"}`;
   const pageUrl = `${origin}/produkt/${id}`;
-  const fallback = { title: "Sunrise Market — marketplace ekosystemu Sunrise", description: "Płać portfelem Sunrise Pay, odbieraj 3% cashbacku i kupuj od zweryfikowanych sprzedawców.", image: `${origin}/logo-sunrise-market-navy.png`, price: "" };
+  const fallback = { title: "Sunrise Market — marketplace ekosystemu Sunrise", description: "Płać portfelem Sunrise Pay, odbieraj 3% cashbacku i kupuj od zweryfikowanych sprzedawców.", image: `${origin}/api/og-image`, price: "" };
   let meta = { ...fallback };
 
   if (/^[0-9a-f-]{36}$/i.test(id) && ANON) {
@@ -42,7 +42,8 @@ export default async function handler(req: Request): Promise<Response> {
         meta = {
           title: `${o.title} — ${price > 0 ? zl(price) + sub : "Sunrise Market"}`,
           description: plain(o.description) || `${o.category ?? "Oferta"} · ${o.seller ?? "Sunrise Market"} · cashback 3% na portfel Sunrise Pay`,
-          image: img ? (img.startsWith("http") ? img : `${origin}${img.startsWith("/") ? "" : "/"}${img}`) : fallback.image,
+          // Zawsze JPEG 1200×630 z /api/og-image (komunikatory pomijają WebP/HEIC/SVG i małe miniatury).
+          image: `${origin}/api/og-image?id=${id}`,
           price: price > 0 ? String(price) : "",
         };
       }
@@ -61,12 +62,15 @@ export default async function handler(req: Request): Promise<Response> {
 <meta property="og:description" content="${esc(meta.description)}">
 <meta property="og:image" content="${esc(meta.image)}">
 <meta property="og:image:secure_url" content="${esc(meta.image)}">
+<meta property="og:image:type" content="image/jpeg">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="${esc(meta.title)}">
 ${meta.price ? `<meta property="product:price:amount" content="${esc(meta.price)}"><meta property="product:price:currency" content="PLN">` : ""}
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:title" content="${esc(meta.title)}">
 <meta name="twitter:description" content="${esc(meta.description)}">
 <meta name="twitter:image" content="${esc(meta.image)}">
-<meta http-equiv="refresh" content="0; url=${esc(pageUrl)}">
 </head><body><p><a href="${esc(pageUrl)}">${esc(meta.title)}</a></p></body></html>`;
 
   return new Response(html, { status: 200, headers: { "Content-Type": "text/html; charset=utf-8", "Cache-Control": "public, max-age=300, s-maxage=600" } });
