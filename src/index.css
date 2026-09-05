@@ -174,3 +174,7 @@ img[src*="/storage/v1/render/image/public/"][src*="resize=contain"] {
   .grid { min-width: 0; }
   img, video, canvas, svg { max-width: 100%; }
 }
+
+/* Logo bez białego tła: jasna wersja (kremowa) na ciemnym motywie, granatowy oryginał na jasnym. */
+.brand-logo { display: block; }
+html[data-theme="light"] .brand-logo { content: url("/logo-sunrise-market.png"); }

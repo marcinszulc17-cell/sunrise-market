@@ -112,7 +112,7 @@ export default function SpecializedProduct() {
 
   return <div className="min-h-screen" style={{ background: "var(--bg)", color: "var(--ink)" }}>
     <header className="sticky top-0 z-30 backdrop-blur" style={{ background: "var(--header)", borderBottom: "1px solid var(--line)" }}>
-      <div className="mx-auto flex max-w-7xl items-center gap-3 px-4 py-3"><a href="/"><img src="/logo-sunrise-market.png" alt="Sunrise Market" className="h-12 w-auto rounded-xl bg-white p-1.5" /></a><div className="flex-1" /><button onClick={() => navigator.share?.({ title: o.title, url: window.location.href })} className="rounded-xl px-3 py-2 text-sm" style={{ border: "1px solid var(--line)" }}>Udostępnij</button><a href="/" className="text-sm">← Wróć</a></div>
+      <div className="mx-auto flex max-w-7xl items-center gap-3 px-4 py-3"><a href="/"><img src="/logo-sunrise-market-light.png" alt="Sunrise Market" className="brand-logo h-11 w-auto" /></a><div className="flex-1" /><button onClick={() => navigator.share?.({ title: o.title, url: window.location.href })} className="rounded-xl px-3 py-2 text-sm" style={{ border: "1px solid var(--line)" }}>Udostępnij</button><a href="/" className="text-sm">← Wróć</a></div>
     </header>
 
     <main className="mx-auto max-w-7xl px-4 py-6 sm:py-8">

@@ -91,7 +91,7 @@ function RootEntry() {
   }, [isAppDomain]);
   if (!isAppDomain) return <MarketEnhanced />;
   if (state === "guest") return <Login />;
-  if (state === "loading") return <main className="min-h-[100dvh] grid place-items-center" style={{ background: "#080c12", color: "#EDE7D6" }}><div className="text-center"><img src="/logo-sunrise-market.png" alt="Sunrise Market" className="mx-auto h-14 w-auto rounded-2xl bg-white p-2" /><div className="mt-4 text-sm" style={{ color: "var(--mut)" }}>Uruchamiam Sunrise Market…</div></div></main>;
+  if (state === "loading") return <main className="min-h-[100dvh] grid place-items-center" style={{ background: "#080c12", color: "#EDE7D6" }}><div className="text-center"><img src="/logo-sunrise-market-light.png" alt="Sunrise Market" className="mx-auto h-14 w-auto" /><div className="mt-4 text-sm" style={{ color: "var(--mut)" }}>Uruchamiam Sunrise Market…</div></div></main>;
   return <MarketEnhanced />;
 }
 

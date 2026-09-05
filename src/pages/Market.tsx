@@ -417,7 +417,7 @@ export default function Market() {
               style={{ background: "var(--header)", borderBottom: "1px solid var(--line)" }}>
         <div className="mx-auto max-w-6xl px-4 py-3 flex items-center gap-3">
           <a href="/" className="flex items-center gap-2 shrink-0">
-            <img src="/logo-sunrise-market.png" alt="Sunrise Market" className="h-16 sm:h-20 w-auto rounded-2xl bg-white p-2 shadow-lg" onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = "none"; }} />
+            <img src="/logo-sunrise-market-light.png" alt="Sunrise Market" className="brand-logo h-14 sm:h-16 w-auto" onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = "none"; }} />
           </a>
           <div className="flex-1 relative">
             <div className="flex items-center rounded-xl overflow-hidden"

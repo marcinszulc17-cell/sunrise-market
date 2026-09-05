@@ -287,7 +287,7 @@ export default function Koszyk() {
     <div className="min-h-screen">
       <header className="sticky top-0 z-20 backdrop-blur" style={{ background: "var(--header)", borderBottom: "1px solid var(--line)" }}>
         <div className="mx-auto max-w-4xl px-4 py-3 flex items-center gap-3">
-          <a href="/" className="flex items-center gap-2"><img src="/logo-sunrise-market.png" alt="Sunrise Market" className="h-12 w-auto rounded-xl bg-white p-1.5" onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = "none"; }} /></a>
+          <a href="/" className="flex items-center gap-2"><img src="/logo-sunrise-market-light.png" alt="Sunrise Market" className="brand-logo h-11 w-auto" onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = "none"; }} /></a>
           <div className="flex-1" /><a href="/" className="text-sm navlink">← Sklep</a>
         </div>
       </header>

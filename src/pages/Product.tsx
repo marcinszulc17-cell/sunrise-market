@@ -105,7 +105,7 @@ export default function Product() {
   return <div className="min-h-screen">
     <header className="sticky top-0 z-20 backdrop-blur" style={{ background: "var(--header)", borderBottom: "1px solid var(--line)" }}>
       <div className="mx-auto flex max-w-5xl items-center gap-3 px-4 py-3">
-        <a href="/"><img src="/logo-sunrise-market.png" alt="Sunrise Market" className="h-12 w-auto rounded-xl bg-white p-1.5" onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = "none"; }} /></a>
+        <a href="/"><img src="/logo-sunrise-market-light.png" alt="Sunrise Market" className="brand-logo h-11 w-auto" onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = "none"; }} /></a>
         <div className="flex-1"/><a href="/" className="text-sm navlink">← Wróć</a>
       </div>
     </header>
