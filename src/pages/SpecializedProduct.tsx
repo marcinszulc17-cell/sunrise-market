@@ -29,7 +29,8 @@ const LABELS: Record<string, string> = {
 const BOOLEAN_LABELS: Record<string, string> = {
   accident_free: "Bezwypadkowy", first_owner: "Pierwszy właściciel", serviced: "Serwisowany", heated_seats: "Podgrzewane fotele", electric_mirrors: "Elektryczne lusterka", air_conditioning: "Klimatyzacja", financing_available: "Finansowanie", balcony: "Balkon / taras", parking: "Miejsce parkingowe", full_vat_invoice: "Pełna faktura VAT",
 };
-const PRIVATE_KEYS = new Set(["vin", "registration_number", "offer_type", "cashback_only", "purchase_mode"]);
+// Klucze techniczne (sync MySunrise, promocje, flagi) — nie są danymi oferty i nie pokazujemy ich klientowi.
+const PRIVATE_KEYS = new Set(["vin", "registration_number", "offer_type", "cashback_only", "purchase_mode", "source", "enriched", "ms_stock", "own_brand", "mysunrise_id", "mysunrise_sku", "subscription", "promo", "price_locked", "private_listing", "buy_now_only", "specs", "images", "gallery", "seo", "sync"]);
 
 function kindOf(slug: string) {
   if (slug.includes("motoryzacja-samochody-osobowe")) return "car";
@@ -90,7 +91,7 @@ export default function SpecializedProduct() {
   }, [o, A, kind, mileage, power, engine]);
 
   const bools = Object.entries(BOOLEAN_LABELS).filter(([k]) => A[k] === true);
-  const details = Object.entries(A).filter(([k, v]) => v !== null && v !== "" && v !== false && !BOOLEAN_LABELS[k] && !PRIVATE_KEYS.has(k) && !["colors","sizes","features","packing","video"].includes(k));
+  const details = Object.entries(A).filter(([k, v]) => v !== null && v !== "" && v !== false && typeof v !== "object" && !BOOLEAN_LABELS[k] && !PRIVATE_KEYS.has(k) && !["colors","sizes","features","packing","video"].includes(k));
   const mainImage = imgs[active] || o?.image_url || null;
   const isCar = kind === "car";
   const isProperty = kind === "property";

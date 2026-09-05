@@ -22,6 +22,7 @@ export default function ProductRouter() {
   const [priceGross,setPriceGross]=useState<number|null>(null);
   const [purchaseMode,setPurchaseMode]=useState<PurchaseMode>("purchase");
   const [seoOffer,setSeoOffer]=useState<SeoOffer|null>(null);
+  const [isSubscription,setIsSubscription]=useState(false);
 
   useEffect(() => {
     if (!id) return;
@@ -31,8 +32,12 @@ export default function ProductRouter() {
       const mode:PurchaseMode=rawMode==="appointment"||rawMode==="daily"?rawMode:"purchase";
       const isPrivateListing = o?.attributes?.private_listing === true;
       const isPrivateBuyNow = mode === "purchase" && (isPrivateListing || o?.attributes?.buy_now_only === true);
-      const special = slug.includes("motoryzacja-samochody-osobowe") || slug.startsWith("nieruchomosci-") || slug.startsWith("uslugi-") || slug.startsWith("ogloszenia-lokalne-");
+      // Produkt z katalogu MySunrise (marka własna, stała cena, subskrypcja) jest zawsze kupowalny — nawet gdy
+      // siedzi w kategorii usługowej. Bez tego Protect Plus lądował na szablonie „zapytaj sprzedawcę” bez koszyka.
+      const catalogItem = !!o?.attributes?.subscription || o?.attributes?.source === "mysunrise" || o?.attributes?.own_brand === true;
+      const special = !catalogItem && (slug.includes("motoryzacja-samochody-osobowe") || slug.startsWith("nieruchomosci-") || slug.startsWith("uslugi-") || slug.startsWith("ogloszenia-lokalne-"));
       setPurchaseMode(mode);
+      setIsSubscription(!!o?.attributes?.subscription);
       setCategorySlug(slug);
       const p=Number(o?.price_gross ?? o?.price ?? 0); setPriceGross(Number.isFinite(p)&&p>0?p:null);
       setSeoOffer(o as SeoOffer);
@@ -51,7 +56,7 @@ export default function ProductRouter() {
     {kind === "special" ? <SpecializedProduct /> : <Product />}
     {id && <ProductPageExtras offerId={id} verifyKind={verifyKind} />}
     <MarketFooter />
-    {id && <BuyerOfferActions offerId={id} categorySlug={categorySlug} priceGross={priceGross} purchaseMode={purchaseMode} />}
+    {id && !isSubscription && <BuyerOfferActions offerId={id} categorySlug={categorySlug} priceGross={priceGross} purchaseMode={purchaseMode} />}
     {id&&verifyKind&&<VerifyOfferButton offerId={id} kind={verifyKind}/>} 
   </>;
 }
