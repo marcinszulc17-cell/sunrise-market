@@ -25,6 +25,8 @@ const STATUS: Record<string, { label: string; icon: string }> = {
   sold: { label: "Sprzedana", icon: "✅" },
   sold_out: { label: "Sprzedana", icon: "✅" },
   paused: { label: "Ukryta", icon: "⚪" },
+  hidden: { label: "Ukryta", icon: "⚪" },
+  draft: { label: "Szkic", icon: "📝" },
   blocked: { label: "Zablokowana", icon: "🔴" },
   archived: { label: "Archiwum", icon: "📁" },
 };
@@ -87,9 +89,9 @@ export default function PrivateSellerOffers() {
   }
 
   async function toggle(row: Row) {
-    if (!['active','paused'].includes(row.status)) return;
+    if (['archived','blocked'].includes(row.status)) return;
     setBusyId(row.offer_id); setMsg(null);
-    try { await setMyOfferVisibility(row.offer_id, row.status === 'paused'); await reload(); }
+    try { await setMyOfferVisibility(row.offer_id, row.status !== 'active'); await reload(); }
     catch (e) { setMsg((e as Error).message); }
     finally { setBusyId(null); }
   }
@@ -143,7 +145,7 @@ export default function PrivateSellerOffers() {
             <div className="flex flex-wrap gap-2 border-t p-3" style={{ borderColor: "var(--line)" }}>
               <Link to={`/produkt/${row.offer_id}`} className="rounded-lg px-3 py-2 text-sm" style={{ border: "1px solid var(--line)" }}>Podgląd</Link>
               <button onClick={() => startEdit(row.offer_id)} className="rounded-lg px-3 py-2 text-sm" style={{ border: "1px solid var(--line)" }}>✏️ Cena i zdjęcia</button>
-              {(row.status === 'active' || row.status === 'paused') && <button disabled={busyId===row.offer_id} onClick={() => toggle(row)} className="rounded-lg px-3 py-2 text-sm" style={{ border: "1px solid var(--line)" }}>{row.status === 'active' ? 'Ukryj' : 'Pokaż'}</button>}
+              {!['archived','blocked'].includes(row.status) && <button disabled={busyId===row.offer_id} onClick={() => toggle(row)} className="rounded-lg px-3 py-2 text-sm" style={{ border: "1px solid var(--line)" }}>{row.status === 'active' ? 'Ukryj' : 'Pokaż'}</button>}
               {canRelist && <button disabled={busyId===row.offer_id} onClick={() => relist(row)} className="rounded-lg px-3 py-2 text-sm font-semibold text-black disabled:opacity-50" style={{ background: "linear-gradient(135deg,#C8965A,#E8C896)" }}>↻ Wystaw ponownie</button>}
             </div>
           </article>;

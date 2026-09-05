@@ -23,9 +23,15 @@ const inputClass = "w-full rounded-xl px-3 py-2.5 outline-none";
 const inputStyle: React.CSSProperties = { background: "var(--glass)", border: "1px solid var(--line)", color: "var(--ink)" };
 const VAT_RATES = ["23", "8", "5", "0"] as const;
 
+// Ukrywanie/pokazywanie dostępne dla KAŻDEJ wystawionej oferty poza archiwum i blokadą
+// (aktywna, ukryta, szkic, wyprzedana, hidden z importu) — decyzja właściciela 2026-09-05.
+function canToggleVisibility(status: string) {
+  return status !== "archived" && status !== "blocked";
+}
+
 function statusLabel(value: string) {
   if (value === "active") return "Aktywna";
-  if (value === "paused") return "Ukryta";
+  if (value === "paused" || value === "hidden") return "Ukryta";
   if (value === "draft") return "Szkic";
   if (value === "blocked") return "Zablokowana";
   if (value === "archived") return "Archiwum";
@@ -114,8 +120,8 @@ export default function SellerOffersManage() {
   }
 
   async function toggleVisibility(row: OfferRow) {
-    if (row.status !== "active" && row.status !== "paused") return;
-    const show = row.status === "paused";
+    if (!canToggleVisibility(row.status)) return;
+    const show = row.status !== "active";
     setActionOfferId(row.offer_id);
     setMsg(null);
     try {
@@ -197,10 +203,10 @@ export default function SellerOffersManage() {
     <Card>
       <div className="mb-4 grid gap-3 md:grid-cols-[1fr_180px_auto]">
         <input className={inputClass} style={inputStyle} placeholder="Szukaj po nazwie, kategorii lub ID…" value={query} onChange={e=>setQuery(e.target.value)}/>
-        <select className={inputClass} style={inputStyle} value={status} onChange={e=>setStatus(e.target.value)}><option value="all">Wszystkie statusy</option><option value="active">Aktywne</option><option value="paused">Ukryte</option><option value="draft">Szkice</option><option value="blocked">Zablokowane</option><option value="archived">Archiwum</option></select>
+        <select className={inputClass} style={inputStyle} value={status} onChange={e=>setStatus(e.target.value)}><option value="all">Wszystkie statusy</option><option value="active">Aktywne</option><option value="paused">Ukryte</option><option value="hidden">Ukryte (import)</option><option value="draft">Szkice</option><option value="blocked">Zablokowane</option><option value="archived">Archiwum</option></select>
         <div className="flex items-center text-sm" style={{ color: "var(--mut)" }}>{visible.length} z {rows.length}</div>
       </div>
-      {loading ? <p>Ładowanie ofert…</p> : <div className="overflow-x-auto"><table className="w-full min-w-[980px] text-sm"><thead><tr className="text-left" style={{ color: "var(--mut)" }}><th className="pb-3">Oferta</th><th className="pb-3">Kategoria</th><th className="pb-3">Cena</th><th className="pb-3">Stan</th><th className="pb-3">Status</th><th className="pb-3"></th></tr></thead><tbody>{visible.map(r => { const busy = actionOfferId === r.offer_id; return <tr key={r.offer_id} style={{ borderTop: "1px solid var(--line)" }}><td className="py-3 pr-3"><div className="max-w-md font-medium">{r.title}</div><div className="mt-1 font-mono text-[10px]" style={{ color: "var(--mut)" }}>{r.offer_id}</div></td><td className="py-3 pr-3">{r.category}</td><td className="py-3 pr-3 whitespace-nowrap">{Number(r.price_gross).toLocaleString("pl-PL")} zł</td><td className="py-3 pr-3">{r.stock}</td><td className="py-3 pr-3">{statusLabel(r.status)}</td><td className="py-3 text-right"><div className="flex flex-wrap justify-end gap-2"><Link to={`/produkt/${r.offer_id}`} className="rounded-lg px-3 py-1.5" style={{ border:"1px solid var(--line)" }}>Podgląd</Link><button onClick={()=>openEdit(r.offer_id)} className="rounded-lg px-3 py-1.5 font-semibold text-black" style={{ background:"linear-gradient(135deg,#C8965A,#E8C896)" }}>Edytuj</button>{(r.status === "active" || r.status === "paused") && <button disabled={busy} onClick={()=>toggleVisibility(r)} className="rounded-lg px-3 py-1.5 disabled:opacity-50" style={{ border:"1px solid var(--line)" }}>{busy ? "…" : r.status === "paused" ? "Pokaż" : "Ukryj"}</button>}{r.status !== "archived" && r.status !== "blocked" && <button disabled={busy} onClick={()=>removeOffer(r)} className="rounded-lg px-3 py-1.5 font-semibold disabled:opacity-50" style={{ border:"1px solid rgba(239,68,68,.35)", color:"#fca5a5" }}>Usuń</button>}</div></td></tr>; })}</tbody></table>{visible.length===0 && <p className="py-6 text-center" style={{ color:"var(--mut)" }}>Brak ofert spełniających kryteria.</p>}</div>}
+      {loading ? <p>Ładowanie ofert…</p> : <div className="overflow-x-auto"><table className="w-full min-w-[980px] text-sm"><thead><tr className="text-left" style={{ color: "var(--mut)" }}><th className="pb-3">Oferta</th><th className="pb-3">Kategoria</th><th className="pb-3">Cena</th><th className="pb-3">Stan</th><th className="pb-3">Status</th><th className="pb-3"></th></tr></thead><tbody>{visible.map(r => { const busy = actionOfferId === r.offer_id; return <tr key={r.offer_id} style={{ borderTop: "1px solid var(--line)" }}><td className="py-3 pr-3"><div className="max-w-md font-medium">{r.title}</div><div className="mt-1 font-mono text-[10px]" style={{ color: "var(--mut)" }}>{r.offer_id}</div></td><td className="py-3 pr-3">{r.category}</td><td className="py-3 pr-3 whitespace-nowrap">{Number(r.price_gross).toLocaleString("pl-PL")} zł</td><td className="py-3 pr-3">{r.stock}</td><td className="py-3 pr-3">{statusLabel(r.status)}</td><td className="py-3 text-right"><div className="flex flex-wrap justify-end gap-2"><Link to={`/produkt/${r.offer_id}`} className="rounded-lg px-3 py-1.5" style={{ border:"1px solid var(--line)" }}>Podgląd</Link><button onClick={()=>openEdit(r.offer_id)} className="rounded-lg px-3 py-1.5 font-semibold text-black" style={{ background:"linear-gradient(135deg,#C8965A,#E8C896)" }}>Edytuj</button>{canToggleVisibility(r.status) && <button disabled={busy} onClick={()=>toggleVisibility(r)} className="rounded-lg px-3 py-1.5 disabled:opacity-50" style={{ border:"1px solid var(--line)" }}>{busy ? "…" : r.status === "active" ? "Ukryj" : "Pokaż"}</button>}{r.status !== "archived" && r.status !== "blocked" && <button disabled={busy} onClick={()=>removeOffer(r)} className="rounded-lg px-3 py-1.5 font-semibold disabled:opacity-50" style={{ border:"1px solid rgba(239,68,68,.35)", color:"#fca5a5" }}>Usuń</button>}</div></td></tr>; })}</tbody></table>{visible.length===0 && <p className="py-6 text-center" style={{ color:"var(--mut)" }}>Brak ofert spełniających kryteria.</p>}</div>}
     </Card>
   </Shell>;
 }
