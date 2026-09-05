@@ -91,6 +91,7 @@ pierwszeństwo przy każdej zmianie kodu. Nie wolno ich naruszać ani obchodzić
 
 - **Podpowiedź „Zapisz aplikację”** tylko na `app.sunrisemarket.pl` (`PwaInstallPrompt`): pasek u dołu, znika
   na stałe po instalacji (`appinstalled` / standalone) i na 7 dni po „Nie teraz”; iOS — instrukcja Udostępnij → Do ekranu początkowego.
+  Android/Chrome/Edge: systemowy dialog instalacji odpala się sam przy pierwszym dotknięciu strony (wymóg gestu użytkownika).
 - **Web push (VAPID)**: klucze w `market.internal_secrets` (`vapid_public_key`, `vapid_private_key`, `vapid_subject`) — nigdy w repo.
   Subskrypcje `market.push_subscriptions` (RPC `save_push_subscription` / `remove_push_subscription`, klucz publiczny `push_public_key()`),
   włączanie w Moje konto → Ustawienia (`PushToggle`). Każdy wpis `market.notifications` (channel `app`) wysyła edge fn

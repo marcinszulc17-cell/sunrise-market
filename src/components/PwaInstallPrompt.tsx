@@ -2,6 +2,8 @@ import { useEffect, useState } from "react";
 
 /**
  * Podpowiedź „Zapisz aplikację” — TYLKO na app.sunrisemarket.pl (decyzja właściciela 2026-09-05).
+ * Tam, gdzie system na to pozwala (Android, Chrome/Edge na komputerze), dialog instalacji odpala się sam
+ * przy pierwszym dotknięciu strony; iPhone (Safari) nie ma takiego API — zostaje instrukcja.
  * Nie blokuje ekranu: mały pasek u dołu. Znika na stałe po zainstalowaniu (event `appinstalled`,
  * tryb standalone) i na 7 dni po „Nie teraz”. Android/Chrome: natywny dialog z `beforeinstallprompt`;
  * iPhone/iPad (Safari): krótka instrukcja Udostępnij → „Do ekranu początkowego”.
@@ -31,6 +33,28 @@ export default function PwaInstallPrompt() {
     window.addEventListener("appinstalled", onInstalled);
     return () => { window.removeEventListener("beforeinstallprompt", onPrompt); window.removeEventListener("appinstalled", onInstalled); };
   }, []);
+
+  // Android / Chrome / Edge: systemowy dialog instalacji otwiera się AUTOMATYCZNIE przy pierwszym dotknięciu
+  // czegokolwiek na stronie (przeglądarka wymaga gestu użytkownika — bez kliknięcia nie da się wywołać prompt()).
+  // Klient tylko potwierdza „Zainstaluj”. Odrzucenie = 7 dni ciszy, potem pasek jako łagodniejsze przypomnienie.
+  useEffect(() => {
+    if (!isAppDomain || !deferred || isStandalone() || read(DONE_KEY) === "1") return;
+    const snooze = Number(read(SNOOZE_KEY) || 0);
+    if (snooze && Date.now() - snooze < SNOOZE_MS) return;
+    let fired = false;
+    const onFirstTap = async () => {
+      if (fired) return; fired = true;
+      document.removeEventListener("pointerdown", onFirstTap, true);
+      try {
+        await deferred.prompt();
+        const { outcome } = await deferred.userChoice;
+        if (outcome === "accepted") write(DONE_KEY, "1"); else write(SNOOZE_KEY, String(Date.now()));
+      } catch { /* przeglądarka odmówiła — zostaje pasek */ }
+      setDeferred(null); setVisible(false);
+    };
+    document.addEventListener("pointerdown", onFirstTap, true);
+    return () => document.removeEventListener("pointerdown", onFirstTap, true);
+  }, [isAppDomain, deferred]);
 
   useEffect(() => {
     if (!isAppDomain || isStandalone() || read(DONE_KEY) === "1") { setVisible(false); return; }
