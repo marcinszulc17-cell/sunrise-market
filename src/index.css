@@ -110,6 +110,7 @@ img[src*="/storage/v1/render/image/public/"][src*="resize=contain"] {
     align-items: center;
     justify-content: center;
     gap: .1rem;
+    min-height: 48px;
     padding: .25rem .1rem;
     border-radius: .8rem;
     color: var(--mut);
@@ -118,7 +119,9 @@ img[src*="/storage/v1/render/image/public/"][src*="resize=contain"] {
     line-height: 1.1;
   }
   .pwa-bottom-nav a.active { color: var(--gold); background: rgba(200,150,90,.10); }
-  .pwa-bottom-nav-icon { font-size: 1.18rem; line-height: 1.15; }
+  .pwa-bottom-nav-icon { display: grid; place-items: center; height: 24px; }
+  .pwa-bottom-nav-primary { display: grid; place-items: center; width: 40px; height: 40px; margin-top: -14px; border-radius: 999px; background: linear-gradient(135deg,#C8965A,#E8C896); box-shadow: 0 6px 18px rgba(200,150,90,.35); }
+  .pwa-bottom-nav a:focus-visible { outline: 2px solid var(--gold); outline-offset: -2px; }
 
   header.sticky > div:first-child {
     flex-wrap: wrap;
@@ -145,7 +148,7 @@ img[src*="/storage/v1/render/image/public/"][src*="resize=contain"] {
     padding-left: .9rem;
     padding-right: .9rem;
   }
-  header.sticky a[href="/koszyk"] {
+  header.sticky a[href="/koszyk"]:not(.icon-btn) {
     font-size: 0;
     width: 2.5rem;
     height: 2.5rem;
@@ -153,7 +156,7 @@ img[src*="/storage/v1/render/image/public/"][src*="resize=contain"] {
     display: grid;
     place-items: center;
   }
-  header.sticky a[href="/koszyk"]::before {
+  header.sticky a[href="/koszyk"]:not(.icon-btn)::before {
     content: "🛒";
     font-size: 1rem;
   }

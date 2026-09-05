@@ -3,7 +3,7 @@ import { useEffect, useState } from "react";
 /**
  * Podpowiedź „Zapisz aplikację” — TYLKO na app.sunrisemarket.pl (decyzja właściciela 2026-09-05).
  * Tam, gdzie system na to pozwala (Android, Chrome/Edge na komputerze), dialog instalacji odpala się sam
- * przy pierwszym dotknięciu strony; iPhone (Safari) nie ma takiego API — zostaje instrukcja.
+ * przy pierwszym dotknięciu strony — ale dopiero od DRUGIEJ wizyty (pierwsze wejście: tylko subtelny, zamykany pasek); iPhone (Safari) nie ma takiego API — zostaje instrukcja.
  * Nie blokuje ekranu: mały pasek u dołu. Znika na stałe po zainstalowaniu (event `appinstalled`,
  * tryb standalone) i na 7 dni po „Nie teraz”. Android/Chrome: natywny dialog z `beforeinstallprompt`;
  * iPhone/iPad (Safari): krótka instrukcja Udostępnij → „Do ekranu początkowego”.
@@ -11,6 +11,7 @@ import { useEffect, useState } from "react";
 type BIP = Event & { prompt: () => Promise<void>; userChoice: Promise<{ outcome: "accepted" | "dismissed" }> };
 const SNOOZE_KEY = "sm:pwa-install-snooze";
 const DONE_KEY = "sm:pwa-installed";
+const VISITS_KEY = "sm:pwa-visits"; // dialog systemowy dopiero od 2. wizyty — pierwsze wejście bez agresywnego popupu
 const SNOOZE_MS = 7 * 24 * 3600 * 1000;
 
 function isStandalone() {
@@ -37,8 +38,9 @@ export default function PwaInstallPrompt() {
   // Android / Chrome / Edge: systemowy dialog instalacji otwiera się AUTOMATYCZNIE przy pierwszym dotknięciu
   // czegokolwiek na stronie (przeglądarka wymaga gestu użytkownika — bez kliknięcia nie da się wywołać prompt()).
   // Klient tylko potwierdza „Zainstaluj”. Odrzucenie = 7 dni ciszy, potem pasek jako łagodniejsze przypomnienie.
+  const [visits] = useState(() => { const n = Number(read(VISITS_KEY) || 0) + 1; write(VISITS_KEY, String(n)); return n; });
   useEffect(() => {
-    if (!isAppDomain || !deferred || isStandalone() || read(DONE_KEY) === "1") return;
+    if (!isAppDomain || !deferred || isStandalone() || read(DONE_KEY) === "1" || visits < 2) return;
     const snooze = Number(read(SNOOZE_KEY) || 0);
     if (snooze && Date.now() - snooze < SNOOZE_MS) return;
     let fired = false;
@@ -54,7 +56,7 @@ export default function PwaInstallPrompt() {
     };
     document.addEventListener("pointerdown", onFirstTap, true);
     return () => document.removeEventListener("pointerdown", onFirstTap, true);
-  }, [isAppDomain, deferred]);
+  }, [isAppDomain, deferred, visits]);
 
   useEffect(() => {
     if (!isAppDomain || isStandalone() || read(DONE_KEY) === "1") { setVisible(false); return; }
@@ -89,7 +91,7 @@ export default function PwaInstallPrompt() {
           <button type="button" onClick={later} className="rounded-xl px-4 py-2 text-sm" style={{ background: "var(--glass)", border: "1px solid var(--line)" }}>{iosHelp ? "Rozumiem" : "Nie teraz"}</button>
         </div>
       </div>
-      <button type="button" onClick={later} aria-label="Zamknij" className="text-lg leading-none" style={{ color: "var(--mut)" }}>×</button>
+      <button type="button" onClick={later} aria-label="Zamknij" className="-mr-2 -mt-2 grid h-11 w-11 place-items-center rounded-xl text-xl leading-none" style={{ color: "var(--mut)" }}>×</button>
     </div>
   </div>;
 }

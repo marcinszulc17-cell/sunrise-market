@@ -91,7 +91,8 @@ pierwszeństwo przy każdej zmianie kodu. Nie wolno ich naruszać ani obchodzić
 
 - **Podpowiedź „Zapisz aplikację”** tylko na `app.sunrisemarket.pl` (`PwaInstallPrompt`): pasek u dołu, znika
   na stałe po instalacji (`appinstalled` / standalone) i na 7 dni po „Nie teraz”; iOS — instrukcja Udostępnij → Do ekranu początkowego.
-  Android/Chrome/Edge: systemowy dialog instalacji odpala się sam przy pierwszym dotknięciu strony (wymóg gestu użytkownika).
+  Android/Chrome/Edge: systemowy dialog instalacji odpala się sam przy pierwszym dotknięciu strony (wymóg gestu użytkownika) —
+  ale dopiero od 2. wizyty; pierwsze wejście pokazuje tylko zamykany pasek (bez agresywnego popupu, nie zasłania logowania).
 - **Web push (VAPID)**: klucze w `market.internal_secrets` (`vapid_public_key`, `vapid_private_key`, `vapid_subject`) — nigdy w repo.
   Subskrypcje `market.push_subscriptions` (RPC `save_push_subscription` / `remove_push_subscription`, klucz publiczny `push_public_key()`),
   włączanie w Moje konto → Ustawienia (`PushToggle`). Każdy wpis `market.notifications` (channel `app`) wysyła edge fn
@@ -113,15 +114,19 @@ pierwszeństwo przy każdej zmianie kodu. Nie wolno ich naruszać ani obchodzić
 
 ## 9. Ekran startowy „hub” (decyzja właściciela 2026-09-05, „jest premium”)
 
-- Na telefonie (≤ 640 px) i w aplikacji app.sunrisemarket.pl strona główna to `Start.tsx`: hasło „Kupuj. Rezerwuj. Zarabiaj.”,
-  wyszukiwarka → `/szukaj?q=`, 6 kafli (Zakupy, Rezerwacje `?tryb=appointment`, Nieruchomości, Motoryzacja,
-  Usługi `?kat=uslugi-i-reklama`, OZE i Energia `?kat=oze-i-energia`), „Polecane ogłoszenia” z ♡ (watchlist),
-  wejście „Wystaw ogłoszenie”.
+- Na telefonie (≤ 640 px) i w aplikacji app.sunrisemarket.pl strona główna to `Start.tsx` (spójny z desktopem, nie kopia 1:1):
+  niski top bar (logo, dzwonek, koszyk, konto), wyszukiwarka → `/szukaj?q=`, hasło „Kupuj. Rezerwuj. Zarabiaj.”, 6 kafli w 2 kolumnach
+  (Zakupy `/sklep`, Rezerwacje `?tryb=appointment`, Nieruchomości, Motoryzacja, Usługi `?kat=uslugi-i-reklama`, OZE i Energia
+  `?kat=oze-i-energia`), poziomy carousel „Dla Ciebie” (zalogowany, `recommended_offers`) / „Polecane” (gość: `home_promoted`
+  → `search_offers_v2`) z ♡, chipy „Popularne” (kategorie z ofertami), karta Rezerwacje (`/szukaj?tryb=appointment`, `/rezerwacje`),
+  widget cashback ze stawką z `public_market_config`, wejście „Sprzedawaj na Sunrise Market”.
+- Wspólne elementy desktop/mobile w `src/components/home/HomeShared.tsx`: ikony SVG, `SECTIONS` (działy i trasy), `RecoCard`,
+  `useHomeFeed`, `usePopularCategories`. Nowe sekcje strony głównej budujemy z nich — nie duplikujemy kart/ikon.
 - **Duży ekran sunrisemarket.pl** (> 640 px): `Home.tsx` — premium landing (ciemne tło, złoty akcent): nagłówek z centralną
   wyszukiwarką → `/szukaj?q=`, menu kategorii (tylko istniejące sekcje), hero „Wszystko, czego potrzebujesz w jednym miejscu.”,
   6 kafli, „Polecane ogłoszenia” (RPC `recommended_offers` + `home_promoted`, 4 kolumny, ♡ watchlist),
   „Popularne kategorie” (kategorie główne z `category_counts` > 0), stopka z realnymi stronami `/legal/*`.
   Pełny katalog z filtrami/banerami/Strefą Energii (`MarketEnhanced`) jest pod `/sklep`; `/?q=` nadal otwiera katalog.
   Bez lokalizacji użytkownika, „O nas” i social — takich funkcji/stron nie ma; nie wymyślamy ich.
-- Dolny pasek aplikacji: Start · Szukaj · ＋ Dodaj (`/sprzedawca/wystaw`) · Obserwuj (`/obserwowane`) · Konto.
+- Dolny pasek aplikacji (`MobileAppNav`, ikony SVG, cele ≥ 44 px): Start · Szukaj · ＋ Dodaj (`/sprzedawca/wystaw`, złote kółko) · Ulubione (`/obserwowane`) · Konto.
 - `/szukaj` czyta parametry `q`, `kat` (slug kategorii), `tryb` (purchase|appointment|daily) i od razu szuka.

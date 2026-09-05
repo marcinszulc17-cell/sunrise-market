@@ -1,0 +1,124 @@
+// Wspólne elementy strony głównej desktop (Home.tsx) i mobile/app (Start.tsx): ikony, lista działów,
+// karta polecanej oferty oraz hooki danych. Tylko istniejące RPC i trasy — bez nowej logiki biznesowej.
+//  • useHomeFeed: „Dla Ciebie” (recommended_offers, tylko zalogowani) → home_promoted → search_offers_v2 (dla gościa).
+//  • usePopularCategories: kategorie główne z aktywnymi ofertami (category_counts).
+import { useEffect, useState } from "react";
+import { Link, useNavigate } from "react-router-dom";
+import { recommendedOffers, homePromoted, searchOffersWithAttributes, toggleWatch, watchedIds, categoryCounts } from "../../lib/api";
+import { getMarketConfig, cashbackFor } from "../../lib/marketConfig";
+import { supabase } from "../../lib/supabase";
+import { zl } from "../../lib/money";
+
+export const GOLD_GRAD = "linear-gradient(135deg,#C8965A,#E8C896)";
+export const CARD = { background: "var(--glass)", border: "1px solid var(--line)" } as const;
+
+export const ICONS = {
+  bag: <path d="M6 8h12l1 12H5L6 8zm3 0V6a3 3 0 0 1 6 0v2" />,
+  calendar: <><rect x="4" y="5" width="16" height="15" rx="2" /><path d="M4 10h16M8 3v4M16 3v4M8 14h2M12 14h2M16 14h2" /></>,
+  house: <><path d="M3 11l9-7 9 7" /><path d="M5 10v10h14V10" /><path d="M10 20v-6h4v6" /></>,
+  car: <><path d="M3 13l2-5a2 2 0 0 1 2-1h10a2 2 0 0 1 2 1l2 5v5H3z" /><circle cx="7" cy="17" r="1.6" /><circle cx="17" cy="17" r="1.6" /><path d="M5 13h14" /></>,
+  wrench: <path d="M14 4a4 4 0 0 0-3.6 5.7L4 16.1V20h3.9l6.4-6.4A4 4 0 0 0 20 10l-2.6 1.4L15.6 9 17 6.4 14 4z" />,
+  bolt: <path d="M13 2L4 14h6l-1 8 9-12h-6l1-8z" />,
+  search: <><circle cx="11" cy="11" r="7" /><path d="M20 20l-3.5-3.5" /></>,
+  heart: <path d="M12 20s-7-4.6-7-10a4 4 0 0 1 7-2.6A4 4 0 0 1 19 10c0 5.4-7 10-7 10z" />,
+  user: <><circle cx="12" cy="8" r="4" /><path d="M4 21a8 8 0 0 1 16 0" /></>,
+  cart: <><path d="M3 4h2l2.4 11h11.2L21 8H7" /><circle cx="9" cy="19" r="1.4" /><circle cx="17" cy="19" r="1.4" /></>,
+  plus: <path d="M12 5v14M5 12h14" />,
+  home: <><path d="M3 11l9-7 9 7" /><path d="M5 10v10h14V10" /></>,
+  sun: <><circle cx="12" cy="12" r="4" /><path d="M12 2v2M12 20v2M2 12h2M20 12h2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4" /></>,
+  shield: <path d="M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6l8-3z" />,
+} as const;
+export type IconName = keyof typeof ICONS;
+
+export function Ico({ name, size = 18, stroke = "currentColor", strokeWidth = 1.7 }: { name: IconName; size?: number; stroke?: string; strokeWidth?: number }) {
+  return <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={stroke} strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">{ICONS[name]}</svg>;
+}
+export function IconTile({ name, size = 48 }: { name: IconName; size?: number }) {
+  return <div className="grid shrink-0 place-items-center rounded-2xl" style={{ width: size, height: size, background: "linear-gradient(135deg,rgba(232,200,150,.22),rgba(200,150,90,.08))", border: "1px solid rgba(232,200,150,.35)" }}><Ico name={name} size={Math.round(size / 2)} stroke="#E8C896" /></div>;
+}
+
+// Działy strony głównej — istniejące trasy: /sklep (pełny katalog), /szukaj (parametry q/kat/tryb), portale.
+export type Section = { to: string; icon: IconName; title: string; short: string; desc: string; cta: string };
+export const SECTIONS: Section[] = [
+  { to: "/sklep", icon: "bag", title: "Zakupy", short: "Produkty dla Ciebie", desc: "Produkty od zweryfikowanych sprzedawców, z cashbackiem i Ochroną Kupujących.", cta: "Przeglądaj produkty" },
+  { to: "/szukaj?tryb=appointment", icon: "calendar", title: "Rezerwacje", short: "Usługi i terminy", desc: "Usługi z terminarzem — rezerwujesz i płacisz w jednym miejscu.", cta: "Zarezerwuj termin" },
+  { to: "/nieruchomosci", icon: "house", title: "Nieruchomości", short: "Domy i lokale", desc: "Mieszkania, domy, działki i lokale — z filtrami dopasowanymi do rynku.", cta: "Zobacz oferty" },
+  { to: "/motoryzacja", icon: "car", title: "Motoryzacja", short: "Pojazdy i części", desc: "Samochody, motocykle i części — z weryfikacją Sunrise Verify.", cta: "Znajdź pojazd" },
+  { to: "/szukaj?kat=uslugi-i-reklama", icon: "wrench", title: "Usługi", short: "Fachowcy i firmy", desc: "Fachowcy, firmy i usługi dla domu oraz biznesu.", cta: "Znajdź wykonawcę" },
+  { to: "/szukaj?kat=oze-i-energia", icon: "bolt", title: "OZE i Energia", short: "PV, pompy ciepła", desc: "Fotowoltaika, pompy ciepła, magazyny energii i montaż.", cta: "Sprawdź oferty" },
+];
+
+export type FeedOffer = { offer_id: string; title: string; price_gross: number; image_url: string | null; category: string | null; seller: string | null; rating?: number; reviews?: number; location?: string | null };
+
+function normalize(r: any): FeedOffer {
+  const loc = r.location ?? r.city ?? (r.attributes && typeof r.attributes === "object" ? (r.attributes as any).location : null);
+  return { offer_id: r.offer_id, title: r.title, price_gross: Number(r.price_gross), image_url: r.image_url ?? null, category: r.category ?? null, seller: r.seller ?? null, rating: r.rating, reviews: r.reviews, location: typeof loc === "string" && loc.trim() ? loc.trim() : null };
+}
+
+/** Polecane oferty + obserwowane. `personalized` = lista pochodzi z recommended_offers (zalogowany). */
+export function useHomeFeed(limit: number) {
+  const navigate = useNavigate();
+  const [rows, setRows] = useState<FeedOffer[] | null>(null);
+  const [personalized, setPersonalized] = useState(false);
+  const [watched, setWatched] = useState<Set<string>>(new Set());
+  const [authed, setAuthed] = useState(false);
+  const [rate, setRate] = useState(0.03);
+
+  useEffect(() => {
+    let alive = true;
+    getMarketConfig().then((c) => { if (alive) setRate(c.cashbackRate); }).catch(() => {});
+    (async () => {
+      const { data } = await supabase.auth.getSession();
+      const isAuthed = !!data.session;
+      if (isAuthed) { setAuthed(true); watchedIds().then((ids) => { if (alive) setWatched(new Set(ids)); }).catch(() => {}); }
+      let out: FeedOffer[] = [];
+      if (isAuthed) { try { out = ((await recommendedOffers(limit)) as any[]).filter((r) => r?.offer_id).map(normalize); } catch { /* brak */ } }
+      const fromReco = out.length;
+      const add = (list: any[]) => { for (const r of list) { if (r?.offer_id && !out.some((x) => x.offer_id === r.offer_id)) out.push(normalize(r)); if (out.length >= limit) break; } };
+      if (out.length < limit) { try { add((await homePromoted()) as any[]); } catch { /* brak */ } }
+      if (out.length < limit) { try { add((await searchOffersWithAttributes(null, null, { limit })) as any[]); } catch { /* brak */ } }
+      if (alive) { setRows(out.slice(0, limit)); setPersonalized(fromReco > 0); }
+    })();
+    return () => { alive = false; };
+  }, [limit]);
+
+  async function heart(id: string) {
+    if (!authed) { navigate(`/login?next=${encodeURIComponent("/")}`); return; }
+    setWatched((s) => { const n = new Set(s); if (n.has(id)) n.delete(id); else n.add(id); return n; });
+    try { await toggleWatch(id); } catch { /* stan odświeży się przy następnym wejściu */ }
+  }
+  return { rows, personalized, watched, heart, rate, authed };
+}
+
+export type Cat = { id: string; slug: string; name: string; count: number };
+/** Kategorie główne z co najmniej jedną aktywną ofertą. */
+export function usePopularCategories() {
+  const [cats, setCats] = useState<Cat[]>([]);
+  useEffect(() => {
+    let alive = true;
+    Promise.all([
+      supabase.from("categories").select("id,slug,name").is("parent_id", null).order("sort_order"),
+      categoryCounts().catch(() => ({ byId: {} as Record<string, number>, total: 0 })),
+    ]).then(([{ data }, { byId }]) => { if (alive) setCats(((data ?? []) as any[]).map((c) => ({ ...c, count: byId[c.id] ?? 0 })).filter((c) => c.count > 0)); });
+    return () => { alive = false; };
+  }, []);
+  return cats;
+}
+
+/** Karta polecanej oferty: zdjęcie, cena, tytuł, lokalizacja/sprzedawca, kategoria, ♡. */
+export function RecoCard({ o, fav, onFav, rate, compact = false, className = "", style }: { o: FeedOffer; fav: boolean; onFav: (id: string) => void; rate: number; compact?: boolean; className?: string; style?: React.CSSProperties }) {
+  const href = `/produkt/${o.offer_id}`;
+  return <article className={`group relative overflow-hidden rounded-2xl transition ${compact ? "" : "hover:-translate-y-0.5"} ${className}`} style={{ ...CARD, ...(compact ? {} : { boxShadow: "0 10px 30px rgba(0,0,0,.15)" }), ...style }}>
+    <Link to={href} className={`block w-full overflow-hidden ${compact ? "aspect-square" : "aspect-[4/3]"}`} style={{ background: "var(--header)" }} tabIndex={-1} aria-hidden="true">{o.image_url ? <img src={o.image_url} alt="" loading="lazy" decoding="async" className={`h-full w-full object-cover ${compact ? "" : "transition duration-500 group-hover:scale-[1.04]"}`} /> : <div className="grid h-full place-items-center text-3xl">🛍️</div>}</Link>
+    <button type="button" onClick={() => onFav(o.offer_id)} aria-pressed={fav} aria-label={fav ? "Usuń z ulubionych" : "Dodaj do ulubionych"} className="absolute right-2 top-2 grid h-11 w-11 place-items-center rounded-full backdrop-blur transition hover:scale-105 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#E8C896]" style={{ background: "rgba(10,18,36,.7)", border: "1px solid rgba(237,231,214,.15)", color: fav ? "#F25CB0" : "#EDE7D6" }}><svg width="20" height="20" viewBox="0 0 24 24" fill={fav ? "currentColor" : "none"} stroke="currentColor" strokeWidth="1.8" strokeLinejoin="round" aria-hidden="true">{ICONS.heart}</svg></button>
+    <div className={compact ? "p-3" : "p-4"}>
+      {o.category && <div className="truncate text-[11px] font-semibold uppercase tracking-wider" style={{ color: "var(--gold)" }}>{o.category}</div>}
+      <Link to={href} className="mt-1 line-clamp-2 text-sm font-semibold leading-5 focus-visible:underline">{o.title}</Link>
+      <div className={`mt-1.5 font-semibold ${compact ? "text-base" : "text-lg"}`} style={{ color: "var(--gold)" }}>{zl(o.price_gross)}</div>
+      <div className="mt-1 flex items-center justify-between gap-2 text-xs" style={{ color: "var(--mut)" }}>
+        <span className="truncate">{o.location ? `📍 ${o.location}` : o.seller ?? ""}</span>
+        {!compact && <span className="shrink-0">+{cashbackFor(o.price_gross, rate).toLocaleString("pl-PL", { maximumFractionDigits: 2 })} pkt</span>}
+      </div>
+    </div>
+  </article>;
+}
