@@ -65,10 +65,17 @@ export default function AdvancedSearchUniversal(){
   const [loadingFilters,setLoadingFilters]=useState(false);
   const [msg,setMsg]=useState<string|null>(null);
 
+  // Parametry z adresu (ekran startowy / linki): ?q=… ?kat=slug ?tryb=appointment|daily — po wczytaniu od razu szukamy.
+  const [autoRun,setAutoRun]=useState(false);
   useEffect(()=>{
+    const sp=new URLSearchParams(window.location.search);
+    const pq=sp.get("q")||"", pk=sp.get("kat")||"", pm=sp.get("tryb")||"";
+    if(pq) setQ(pq); if(pk) setSelected(pk); if(pm==="appointment"||pm==="daily"||pm==="purchase") setMode(pm as PurchaseModeFilter);
+    if(pq||pk||pm) setAutoRun(true);
     supabase.from("categories").select("id,slug,name,parent_id,sort_order").order("sort_order").order("name")
       .then(({data})=>setCategories((data||[]) as Category[]));
   },[]);
+  useEffect(()=>{ if(autoRun){ setAutoRun(false); search(); } },[autoRun]);
 
   const selectedCategory=useMemo(()=>categories.find(c=>c.slug===selected)||null,[categories,selected]);
   const roots=useMemo(()=>categories.filter(c=>!c.parent_id),[categories]);

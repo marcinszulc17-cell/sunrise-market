@@ -110,3 +110,12 @@ pierwszeństwo przy każdej zmianie kodu. Nie wolno ich naruszać ani obchodzić
   + powiadomienie klienta z adresem; `mark_pickup(p_order,'hand_over')` → `handed_over` → zamówienie `delivered`
   (Ochrona Kupujących 14 dni jak przy kurierze). Kupujący widzi punkt, godziny i status w `my_orders.pickup`.
 - Sprzedający prywatny (`private_partner_set_fulfillment`) rozpoznaje odbiór po `fulfillment_tasks.delivery` / kodach.
+
+## 9. Ekran startowy „hub” (decyzja właściciela 2026-09-05, „jest premium”)
+
+- Na telefonie (≤ 640 px) i w aplikacji app.sunrisemarket.pl strona główna to `Start.tsx`: hasło „Kupuj. Rezerwuj. Zarabiaj.”,
+  wyszukiwarka → `/szukaj?q=`, 6 kafli (Zakupy, Rezerwacje `?tryb=appointment`, Nieruchomości, Motoryzacja,
+  Usługi `?kat=uslugi-i-reklama`, OZE i Energia `?kat=oze-i-energia`), „Polecane ogłoszenia” z ♡ (watchlist),
+  wejście „Wystaw ogłoszenie”. Duży ekran sunrisemarket.pl zostaje przy pełnej stronie głównej (`MarketEnhanced`).
+- Dolny pasek aplikacji: Start · Szukaj · ＋ Dodaj (`/sprzedawca/wystaw`) · Obserwuj (`/obserwowane`) · Konto.
+- `/szukaj` czyta parametry `q`, `kat` (slug kategorii), `tryb` (purchase|appointment|daily) i od razu szuka.

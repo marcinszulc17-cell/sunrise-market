@@ -23,6 +23,7 @@ import SellerLeads from "./pages/SellerLeads";
 import SellerReviews from "./pages/SellerReviews";
 import SellerPickup from "./pages/SellerPickup";
 import Obserwowane from "./pages/Obserwowane";
+import Start from "./pages/Start";
 import SellerProfile from "./pages/SellerProfile";
 import SaleConfirmation from "./pages/SaleConfirmation";
 import VerifyRequest from "./pages/VerifyRequest";
@@ -93,10 +94,13 @@ function RootEntry() {
     supabase.auth.getSession().then(({ data }) => { if (alive) setState(data.session ? "authed" : "guest"); }).catch(() => { if (alive) setState("guest"); });
     return () => { alive = false; };
   }, [isAppDomain]);
-  if (!isAppDomain) return <MarketEnhanced />;
+  // Ekran startowy „hub” na telefonie (≤ 640 px) i w aplikacji; duży ekran sunrisemarket.pl zostaje przy pełnej stronie głównej.
+  const [narrow, setNarrow] = React.useState(() => window.matchMedia("(max-width: 640px)").matches);
+  React.useEffect(() => { const mq = window.matchMedia("(max-width: 640px)"); const on = () => setNarrow(mq.matches); mq.addEventListener("change", on); return () => mq.removeEventListener("change", on); }, []);
+  if (!isAppDomain) return narrow ? <Start /> : <MarketEnhanced />;
   if (state === "guest") return <Login />;
   if (state === "loading") return <main className="min-h-[100dvh] grid place-items-center" style={{ background: "#080c12", color: "#EDE7D6" }}><div className="text-center"><img src="/logo-sunrise-market-light.png" alt="Sunrise Market" className="mx-auto h-14 w-auto" /><div className="mt-4 text-sm" style={{ color: "var(--mut)" }}>Uruchamiam Sunrise Market…</div></div></main>;
-  return <MarketEnhanced />;
+  return narrow ? <Start /> : <MarketEnhanced />;
 }
 
 function SellerChrome() {
