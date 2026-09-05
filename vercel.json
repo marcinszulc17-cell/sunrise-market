@@ -145,6 +145,32 @@
   ],
   "rewrites": [
     {
+      "source": "/sitemap.xml",
+      "destination": "/api/sitemap"
+    },
+    {
+      "source": "/oze",
+      "has": [
+        {
+          "type": "header",
+          "key": "user-agent",
+          "value": ".*(facebookexternalhit|Facebot|Twitterbot|WhatsApp|LinkedInBot|Slackbot|TelegramBot|Discordbot|Pinterest|Googlebot|bingbot|Applebot|SkypeUriPreview|Viber|Iframely|Embedly|redditbot|Snapchat|vkShare|DuckDuckBot|YandexBot|Baiduspider).*"
+        }
+      ],
+      "destination": "/api/miasto"
+    },
+    {
+      "source": "/oze/:slug",
+      "has": [
+        {
+          "type": "header",
+          "key": "user-agent",
+          "value": ".*(facebookexternalhit|Facebot|Twitterbot|WhatsApp|LinkedInBot|Slackbot|TelegramBot|Discordbot|Pinterest|Googlebot|bingbot|Applebot|SkypeUriPreview|Viber|Iframely|Embedly|redditbot|Snapchat|vkShare|DuckDuckBot|YandexBot|Baiduspider).*"
+        }
+      ],
+      "destination": "/api/miasto?slug=:slug"
+    },
+    {
       "source": "/produkt/:id",
       "has": [
         {

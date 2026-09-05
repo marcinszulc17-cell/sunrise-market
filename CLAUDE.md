@@ -163,3 +163,16 @@ pierwszeństwo przy każdej zmianie kodu. Nie wolno ich naruszać ani obchodzić
   oferty prywatne) używają `SiteHeader` z `SiteChrome`; strony sprzedawcy `/sprzedawca*` mają `SellerTopBar`.
 - Jasny motyw: hero na stronie głównej ma zawsze jasny tekst (grafika jest ciemna), kafle tonowane kończą się na `var(--glass)`.
 - Oferty marki własnej Sunrise bez miejscowości dostały „Nowy Tomyśl, wielkopolskie” (migracja 20260906130000).
+
+## 12. Obszar działania marek własnych — 200 km i SEO miast (decyzja właściciela 2026-09-06)
+
+- Marki własne Sunrise są dostępne w promieniu **200 km od Nowego Tomyśla** (wielkopolskie, lubuskie, dolnośląskie,
+  zachodniopomorskie, kujawsko-pomorskie). Oferty `seller_type='sunrise'` mają `attributes.service_radius_km=200`,
+  `service_lat/lon` (Nowy Tomyśl); karty pokazują „📍 Nowy Tomyśl · +200 km”, `LocationMap` — notkę o zasięgu.
+- `market.service_cities` (27 miast ≤ 200 km, z lat/lon) = `src/lib/cities.ts` = `api/_shared.ts` — zmieniać razem.
+  `market.offer_serves(attrs, loc)`: lokalizacja pasuje tekstowo ALBO miasto/województwo leży w promieniu oferty
+  (`km_between`). Używane w filtrze `location` `search_offers_v2` i w `city_offers(p_slug)`.
+- **Strony miast** `/oze` i `/oze/<slug>` (`CityLanding.tsx`): H1 „Fotowoltaika, pompy ciepła i magazyny energii w …”,
+  prawdziwe oferty, odległość, FAQ, linki do pozostałych miast, JSON-LD Service/FAQ. Roboty (UA w `vercel.json`) dostają
+  ten sam HTML z `api/miasto.ts`; `/sitemap.xml` → `api/sitemap.ts` (statyczne + miasta + aktywne oferty).
+  Linki do miast: sekcja na stronie głównej i w stopce (`HomeFooter`). Nie dodajemy miast spoza 200 km bez decyzji właściciela.

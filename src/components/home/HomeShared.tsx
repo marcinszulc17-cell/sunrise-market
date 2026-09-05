@@ -8,6 +8,7 @@ import { recommendedOffers, homePromoted, searchOffersWithAttributes, toggleWatc
 import { getMarketConfig, cashbackFor } from "../../lib/marketConfig";
 import { supabase } from "../../lib/supabase";
 import { zl } from "../../lib/money";
+import { CITIES } from "../../lib/cities";
 
 export const GOLD_GRAD = "linear-gradient(135deg,#E8891A,#F5A623)";
 export const CARD = { background: "var(--glass)", border: "1px solid var(--line)" } as const;
@@ -68,7 +69,7 @@ export const SECTIONS: Section[] = [
   { to: "/szukaj?kat=oze-i-energia", icon: "bolt", tint: "amber", title: "OZE i Energia", short: "PV, pompy ciepła", desc: "Fotowoltaika, Pompy ciepła, Magazyny energii", cta: "Sprawdź oferty" },
 ];
 
-export type FeedOffer = { offer_id: string; title: string; price_gross: number; image_url: string | null; category: string | null; seller: string | null; rating?: number; reviews?: number; location?: string | null; created_at?: string | null; views?: number };
+export type FeedOffer = { offer_id: string; title: string; price_gross: number; image_url: string | null; category: string | null; seller: string | null; rating?: number; reviews?: number; location?: string | null; created_at?: string | null; views?: number; radius_km?: number | null };
 
 /** „2 godz. temu” / „3 dni temu” — z daty utworzenia ogłoszenia. */
 export function timeAgo(iso?: string | null): string | null {
@@ -85,7 +86,7 @@ export function timeAgo(iso?: string | null): string | null {
 
 function normalize(r: any): FeedOffer {
   const loc = r.location ?? r.city ?? (r.attributes && typeof r.attributes === "object" ? (r.attributes as any).location : null);
-  return { offer_id: r.offer_id, title: r.title, price_gross: Number(r.price_gross), image_url: r.image_url ?? null, category: r.category ?? null, seller: r.seller ?? null, rating: r.rating, reviews: r.reviews, location: typeof loc === "string" && loc.trim() ? loc.trim() : null, created_at: r.created_at ?? null, views: r.views };
+  return { offer_id: r.offer_id, title: r.title, price_gross: Number(r.price_gross), image_url: r.image_url ?? null, category: r.category ?? null, seller: r.seller ?? null, rating: r.rating, reviews: r.reviews, location: typeof loc === "string" && loc.trim() ? loc.trim() : null, created_at: r.created_at ?? null, views: r.views, radius_km: Number(r.attributes?.service_radius_km ?? r.service_radius_km) || null };
 }
 
 /** Polecane oferty + obserwowane. `personalized` = lista pochodzi z recommended_offers (zalogowany). */
@@ -149,7 +150,7 @@ export function RecoCard({ o, fav, onFav, rate, compact = false, className = "",
       <Link to={href} className="mt-0.5 line-clamp-2 text-sm font-semibold leading-5 focus-visible:underline">{o.title}</Link>
       <div className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-[11px]" style={{ color: "var(--mut)" }}>
         {o.category && <span className="truncate rounded-md px-2 py-0.5" style={{ background: "rgba(255,255,255,.06)", border: "1px solid var(--line)", color: "var(--ink)" }}>{o.category}</span>}
-        <span className="truncate">{o.location ? `📍 ${o.location}` : o.seller ?? ""}</span>
+        <span className="truncate">{o.location ? `📍 ${o.location}${o.radius_km ? ` · +${o.radius_km} km` : ""}` : o.seller ?? ""}</span>
         {timeAgo(o.created_at) && <span className="ml-auto shrink-0">🕒 {timeAgo(o.created_at)}</span>}
       </div>
     </div>
@@ -169,6 +170,10 @@ export function HomeFooter() {
       <Link to="/pomoc" className="navlink">Pomoc</Link>
       <a href="/legal/kontakt.html" className="navlink">Kontakt</a>
       <span className="ml-auto text-xs">Bliżej ludzi. Bliżej możliwości. · © {new Date().getFullYear()} Sunrise Market</span>
+    </div>
+    <div className="mx-auto flex max-w-[1440px] flex-wrap items-center gap-x-3 gap-y-1 px-6 pb-6 text-xs xl:px-10" style={{ color: "var(--mut)" }}>
+      <Link to="/oze" className="font-semibold" style={{ color: "var(--ink)" }}>OZE i energia — obszar działania (200 km):</Link>
+      {CITIES.map((c) => <Link key={c.slug} to={`/oze/${c.slug}`} className="navlink">{c.name}</Link>)}
     </div>
   </footer>;
 }
