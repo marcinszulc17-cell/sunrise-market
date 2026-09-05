@@ -172,8 +172,8 @@ export function HomeFooter() {
       <span className="ml-auto text-xs">Bliżej ludzi. Bliżej możliwości. · © {new Date().getFullYear()} Sunrise Market</span>
     </div>
     <div className="mx-auto flex max-w-[1440px] flex-wrap items-center gap-x-3 gap-y-1 px-6 pb-6 text-xs xl:px-10" style={{ color: "var(--mut)" }}>
-      <Link to="/oze" className="font-semibold" style={{ color: "var(--ink)" }}>OZE i energia — obszar działania (200 km):</Link>
-      {CITIES.map((c) => <Link key={c.slug} to={`/oze/${c.slug}`} className="navlink">{c.name}</Link>)}
+      <Link to="/miasto" className="font-semibold" style={{ color: "var(--ink)" }}>Sunrise Market w Twoim mieście:</Link>
+      {CITIES.slice(0, 30).map((c) => <Link key={c.slug} to={`/miasto/${c.slug}`} className="navlink">{c.name}</Link>)}<Link to="/miasto" className="font-semibold" style={{ color: "var(--gold)" }}>wszystkie miasta ›</Link>
     </div>
   </footer>;
 }

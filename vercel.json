@@ -149,7 +149,7 @@
       "destination": "/api/sitemap"
     },
     {
-      "source": "/oze",
+      "source": "/miasto",
       "has": [
         {
           "type": "header",
@@ -160,7 +160,7 @@
       "destination": "/api/miasto"
     },
     {
-      "source": "/oze/:slug",
+      "source": "/miasto/:slug",
       "has": [
         {
           "type": "header",

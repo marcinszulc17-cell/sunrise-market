@@ -1,9 +1,9 @@
-// Obszar działania marek własnych Sunrise (decyzja właściciela 2026-09-06): promień 200 km od Nowego Tomyśla.
+// Obszar działania marek własnych Sunrise (decyzja właściciela 2026-09-06): promień 500 km od Nowego Tomyśla (praktycznie cała Polska).
 // Lista = market.service_cities (ta sama kolejność: od najbliższych). Używana przez strony miast /oze/<slug>, stopkę,
 // stronę główną i api/miasto.ts (HTML dla robotów) oraz api/sitemap.ts.
 export type City = { slug: string; name: string; region: string; lat: number; lon: number; km: number };
 export const BASE_CITY = { name: "Nowy Tomyśl", lat: 52.3181, lon: 16.1283 };
-export const SERVICE_RADIUS_KM = 200;
+export const SERVICE_RADIUS_KM = 500;
 export const CITIES: City[] = [
   { slug: "nowy-tomysl", name: "Nowy Tomyśl", region: "wielkopolskie", lat: 52.3181, lon: 16.1283, km: 0 },
   { slug: "grodzisk-wielkopolski", name: "Grodzisk Wielkopolski", region: "wielkopolskie", lat: 52.227, lon: 16.364, km: 19 },
@@ -24,17 +24,56 @@ export const CITIES: City[] = [
   { slug: "gniezno", name: "Gniezno", region: "wielkopolskie", lat: 52.5349, lon: 17.5826, km: 102 },
   { slug: "lubin", name: "Lubin", region: "dolnośląskie", lat: 51.4, lon: 16.201, km: 102 },
   { slug: "legnica", name: "Legnica", region: "dolnośląskie", lat: 51.207, lon: 16.1553, km: 124 },
+  { slug: "stargard", name: "Stargard", region: "zachodniopomorskie", lat: 53.3364, lon: 15.0503, km: 134 },
   { slug: "ostrow-wielkopolski", name: "Ostrów Wielkopolski", region: "wielkopolskie", lat: 51.6549, lon: 17.8104, km: 137 },
   { slug: "konin", name: "Konin", region: "wielkopolskie", lat: 52.223, lon: 18.2512, km: 145 },
   { slug: "wroclaw", name: "Wrocław", region: "dolnośląskie", lat: 51.1079, lon: 17.0385, km: 148 },
   { slug: "kalisz", name: "Kalisz", region: "wielkopolskie", lat: 51.7611, lon: 18.091, km: 148 },
   { slug: "inowroclaw", name: "Inowrocław", region: "kujawsko-pomorskie", lat: 52.798, lon: 18.261, km: 154 },
   { slug: "bydgoszcz", name: "Bydgoszcz", region: "kujawsko-pomorskie", lat: 53.1235, lon: 18.0084, km: 155 },
+  { slug: "jelenia-gora", name: "Jelenia Góra", region: "dolnośląskie", lat: 50.9044, lon: 15.7197, km: 160 },
   { slug: "szczecin", name: "Szczecin", region: "zachodniopomorskie", lat: 53.4285, lon: 14.5528, km: 163 },
-  { slug: "torun", name: "Toruń", region: "kujawsko-pomorskie", lat: 53.0138, lon: 18.5984, km: 184 }
+  { slug: "walbrzych", name: "Wałbrzych", region: "dolnośląskie", lat: 50.7714, lon: 16.2843, km: 172 },
+  { slug: "torun", name: "Toruń", region: "kujawsko-pomorskie", lat: 53.0138, lon: 18.5984, km: 184 },
+  { slug: "brzeg", name: "Brzeg", region: "opolskie", lat: 50.8608, lon: 17.4674, km: 187 },
+  { slug: "sieradz", name: "Sieradz", region: "łódzkie", lat: 51.5958, lon: 18.7305, km: 196 },
+  { slug: "wloclawek", name: "Włocławek", region: "kujawsko-pomorskie", lat: 52.6483, lon: 19.0677, km: 202 },
+  { slug: "koszalin", name: "Koszalin", region: "zachodniopomorskie", lat: 54.1943, lon: 16.1722, km: 209 },
+  { slug: "kolobrzeg", name: "Kołobrzeg", region: "zachodniopomorskie", lat: 54.1755, lon: 15.5833, km: 210 },
+  { slug: "swinoujscie", name: "Świnoujście", region: "zachodniopomorskie", lat: 53.91, lon: 14.247, km: 217 },
+  { slug: "grudziadz", name: "Grudziądz", region: "kujawsko-pomorskie", lat: 53.4837, lon: 18.7536, km: 219 },
+  { slug: "opole", name: "Opole", region: "opolskie", lat: 50.6751, lon: 17.9213, km: 221 },
+  { slug: "nysa", name: "Nysa", region: "opolskie", lat: 50.474, lon: 17.334, km: 221 },
+  { slug: "zgierz", name: "Zgierz", region: "łódzkie", lat: 51.8563, lon: 19.4063, km: 230 },
+  { slug: "lodz", name: "Łódź", region: "łódzkie", lat: 51.7592, lon: 19.456, km: 236 },
+  { slug: "plock", name: "Płock", region: "mazowieckie", lat: 52.5463, lon: 19.7065, km: 244 },
+  { slug: "slupsk", name: "Słupsk", region: "pomorskie", lat: 54.4641, lon: 17.0285, km: 246 },
+  { slug: "tczew", name: "Tczew", region: "pomorskie", lat: 54.0921, lon: 18.7767, km: 265 },
+  { slug: "czestochowa", name: "Częstochowa", region: "śląskie", lat: 50.8118, lon: 19.1203, km: 266 },
+  { slug: "piotrkow-trybunalski", name: "Piotrków Trybunalski", region: "łódzkie", lat: 51.4054, lon: 19.7031, km: 266 },
+  { slug: "gdansk", name: "Gdańsk", region: "pomorskie", lat: 54.352, lon: 18.6466, km: 281 },
+  { slug: "gliwice", name: "Gliwice", region: "śląskie", lat: 50.2945, lon: 18.6714, km: 286 },
+  { slug: "gdynia", name: "Gdynia", region: "pomorskie", lat: 54.5189, lon: 18.5305, km: 292 },
+  { slug: "elblag", name: "Elbląg", region: "warmińsko-mazurskie", lat: 54.1522, lon: 19.4088, km: 299 },
+  { slug: "rybnik", name: "Rybnik", region: "śląskie", lat: 50.0971, lon: 18.5416, km: 299 },
+  { slug: "katowice", name: "Katowice", region: "śląskie", lat: 50.2649, lon: 19.0238, km: 304 },
+  { slug: "ciechanow", name: "Ciechanów", region: "mazowieckie", lat: 52.8814, lon: 20.6203, km: 310 },
+  { slug: "warszawa", name: "Warszawa", region: "mazowieckie", lat: 52.2297, lon: 21.0122, km: 332 },
+  { slug: "olsztyn", name: "Olsztyn", region: "warmińsko-mazurskie", lat: 53.7784, lon: 20.4801, km: 333 },
+  { slug: "bielsko-biala", name: "Bielsko-Biała", region: "śląskie", lat: 49.8224, lon: 19.0584, km: 345 },
+  { slug: "kielce", name: "Kielce", region: "świętokrzyskie", lat: 50.8661, lon: 20.6286, km: 350 },
+  { slug: "radom", name: "Radom", region: "mazowieckie", lat: 51.4027, lon: 21.1471, km: 359 },
+  { slug: "krakow", name: "Kraków", region: "małopolskie", lat: 50.0647, lon: 19.945, km: 365 },
+  { slug: "lomza", name: "Łomża", region: "podlaskie", lat: 53.178, lon: 22.0591, km: 410 },
+  { slug: "siedlce", name: "Siedlce", region: "mazowieckie", lat: 52.1676, lon: 22.2902, km: 420 },
+  { slug: "tarnow", name: "Tarnów", region: "małopolskie", lat: 50.0121, lon: 20.9858, km: 425 },
+  { slug: "nowy-sacz", name: "Nowy Sącz", region: "małopolskie", lat: 49.6249, lon: 20.6915, km: 438 },
+  { slug: "lublin", name: "Lublin", region: "lubelskie", lat: 51.2465, lon: 22.5684, km: 459 },
+  { slug: "rzeszow", name: "Rzeszów", region: "podkarpackie", lat: 50.0412, lon: 21.9991, km: 481 },
+  { slug: "bialystok", name: "Białystok", region: "podlaskie", lat: 53.1325, lon: 23.1688, km: 482 }
 ];
 export const SERVICE_REGIONS = Array.from(new Set(CITIES.map((c) => c.region)));
 export function cityBySlug(slug: string): City | undefined { return CITIES.find((c) => c.slug === slug); }
 /** Miejscownik dla nagłówków: „w Poznaniu”. Uproszczona odmiana + wyjątki. */
-const LOC: Record<string, string> = { "Poznań": "Poznaniu", "Zielona Góra": "Zielonej Górze", "Gorzów Wielkopolski": "Gorzowie Wielkopolskim", "Leszno": "Lesznie", "Wrocław": "Wrocławiu", "Bydgoszcz": "Bydgoszczy", "Toruń": "Toruniu", "Szczecin": "Szczecinie", "Kalisz": "Kaliszu", "Konin": "Koninie", "Piła": "Pile", "Legnica": "Legnicy", "Głogów": "Głogowie", "Gniezno": "Gnieźnie", "Ostrów Wielkopolski": "Ostrowie Wielkopolskim", "Świebodzin": "Świebodzinie", "Nowy Tomyśl": "Nowym Tomyślu", "Grodzisk Wielkopolski": "Grodzisku Wielkopolskim", "Wolsztyn": "Wolsztynie", "Międzyrzecz": "Międzyrzeczu", "Szamotuły": "Szamotułach", "Śrem": "Śremie", "Kościan": "Kościanie", "Lubin": "Lubinie", "Nowa Sól": "Nowej Soli", "Żary": "Żarach", "Inowrocław": "Inowrocławiu" };
+const LOC: Record<string, string> = { "Poznań": "Poznaniu", "Zielona Góra": "Zielonej Górze", "Gorzów Wielkopolski": "Gorzowie Wielkopolskim", "Leszno": "Lesznie", "Wrocław": "Wrocławiu", "Bydgoszcz": "Bydgoszczy", "Toruń": "Toruniu", "Szczecin": "Szczecinie", "Kalisz": "Kaliszu", "Konin": "Koninie", "Piła": "Pile", "Legnica": "Legnicy", "Głogów": "Głogowie", "Gniezno": "Gnieźnie", "Ostrów Wielkopolski": "Ostrowie Wielkopolskim", "Świebodzin": "Świebodzinie", "Nowy Tomyśl": "Nowym Tomyślu", "Grodzisk Wielkopolski": "Grodzisku Wielkopolskim", "Wolsztyn": "Wolsztynie", "Międzyrzecz": "Międzyrzeczu", "Szamotuły": "Szamotułach", "Śrem": "Śremie", "Kościan": "Kościanie", "Lubin": "Lubinie", "Nowa Sól": "Nowej Soli", "Żary": "Żarach", "Inowrocław": "Inowrocławiu", "Warszawa": "Warszawie", "Kraków": "Krakowie", "Gdańsk": "Gdańsku", "Gdynia": "Gdyni", "Katowice": "Katowicach", "Lublin": "Lublinie", "Białystok": "Białymstoku", "Kielce": "Kielcach", "Olsztyn": "Olsztynie", "Częstochowa": "Częstochowie", "Radom": "Radomiu", "Płock": "Płocku", "Słupsk": "Słupsku", "Elbląg": "Elblągu", "Tarnów": "Tarnowie", "Bielsko-Biała": "Bielsku-Białej", "Gliwice": "Gliwicach", "Rybnik": "Rybniku", "Włocławek": "Włocławku", "Wałbrzych": "Wałbrzychu", "Jelenia Góra": "Jeleniej Górze", "Grudziądz": "Grudziądzu", "Siedlce": "Siedlcach", "Nowy Sącz": "Nowym Sączu", "Rzeszów": "Rzeszowie", "Łomża": "Łomży", "Piotrków Trybunalski": "Piotrkowie Trybunalskim", "Sieradz": "Sieradzu", "Zgierz": "Zgierzu", "Brzeg": "Brzegu", "Nysa": "Nysie", "Stargard": "Stargardzie", "Kołobrzeg": "Kołobrzegu", "Świnoujście": "Świnoujściu", "Tczew": "Tczewie", "Ciechanów": "Ciechanowie", "Zamość": "Zamościu" };
 export function inCity(name: string) { return `w ${LOC[name] ?? name}`; }

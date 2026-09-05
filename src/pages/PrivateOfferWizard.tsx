@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { supabase } from "../lib/supabase";
 import { childCategories, configureBookingOffer, topCategories, uploadProductImage } from "../lib/api";
+import { RADIUS_OPTIONS, radiusLabel, serviceAreaAttrs } from "../lib/serviceArea";
 
 type Cat = { id: string; slug: string; name: string };
 type Delivery = "shipping" | "pickup" | "both";
@@ -31,6 +32,7 @@ export default function PrivateOfferWizard() {
   const [images, setImages] = useState<string[]>([]);
   const [title, setTitle] = useState("");
   const [location, setLocation] = useState(""); // miejscowość (attributes.location)
+  const [radiusKm, setRadiusKm] = useState(0); // dojazd do klienta (attributes.service_radius_km + service_lat/lon)
   const [description, setDescription] = useState("");
   const [price, setPrice] = useState("");
   const [condition, setCondition] = useState<Condition>("good");
@@ -150,6 +152,7 @@ export default function PrivateOfferWizard() {
           private_listing: true,
           buy_now_only: mode === "purchase",
           ...(location.trim() ? { location: location.trim() } : {}),
+          ...(await serviceAreaAttrs(location, radiusKm)),
         },
       });
       if (error) throw error;
@@ -204,7 +207,7 @@ export default function PrivateOfferWizard() {
           {images.length > 0 && <div className="mt-3 grid grid-cols-3 gap-2 sm:grid-cols-5">{images.map((url, i) => <div key={`${url}-${i}`} className="relative"><img src={url} alt="" className="aspect-square w-full rounded-xl object-cover"/><button type="button" onClick={() => setImages(p => p.filter((_,j) => j !== i))} className="absolute right-1 top-1 rounded-full bg-black/70 px-2 py-1 text-xs text-white">×</button>{i===0 && <span className="absolute bottom-1 left-1 rounded-lg bg-black/70 px-2 py-1 text-[10px] text-white">Główne</span>}</div>)}</div>}
         </div>
 
-        <div><h2 className="mb-3 text-lg font-semibold">{mode === "daily" ? "3" : "2"}. {copy.itemLabel}</h2><input className={field} style={fieldStyle} placeholder={copy.placeholder} value={title} onChange={e=>setTitle(e.target.value)} /><input className={`${field} mt-2`} style={fieldStyle} placeholder="Miejscowość, np. Nowy Tomyśl" value={location} onChange={e=>setLocation(e.target.value)} aria-label="Miejscowość" /></div>
+        <div><h2 className="mb-3 text-lg font-semibold">{mode === "daily" ? "3" : "2"}. {copy.itemLabel}</h2><input className={field} style={fieldStyle} placeholder={copy.placeholder} value={title} onChange={e=>setTitle(e.target.value)} /><input className={`${field} mt-2`} style={fieldStyle} placeholder="Miejscowość, np. Nowy Tomyśl" value={location} onChange={e=>setLocation(e.target.value)} aria-label="Miejscowość" />{location.trim() && <select className={`${field} mt-2`} style={fieldStyle} value={radiusKm} onChange={e=>setRadiusKm(Number(e.target.value))} aria-label="Dojazd do klienta">{RADIUS_OPTIONS.map(km => <option key={km} value={km}>{radiusLabel(km)}</option>)}</select>}</div>
 
         <div>
           <h2 className="mb-3 text-lg font-semibold">{mode === "daily" ? "4" : "3"}. Kategoria</h2>

@@ -164,15 +164,20 @@ pierwszeństwo przy każdej zmianie kodu. Nie wolno ich naruszać ani obchodzić
 - Jasny motyw: hero na stronie głównej ma zawsze jasny tekst (grafika jest ciemna), kafle tonowane kończą się na `var(--glass)`.
 - Oferty marki własnej Sunrise bez miejscowości dostały „Nowy Tomyśl, wielkopolskie” (migracja 20260906130000).
 
-## 12. Obszar działania marek własnych — 200 km i SEO miast (decyzja właściciela 2026-09-06)
+## 12. Obszar działania marek własnych — 500 km i SEO miast (decyzja właściciela 2026-09-06, 200 → 500 km)
 
-- Marki własne Sunrise są dostępne w promieniu **200 km od Nowego Tomyśla** (wielkopolskie, lubuskie, dolnośląskie,
-  zachodniopomorskie, kujawsko-pomorskie). Oferty `seller_type='sunrise'` mają `attributes.service_radius_km=200`,
-  `service_lat/lon` (Nowy Tomyśl); karty pokazują „📍 Nowy Tomyśl · +200 km”, `LocationMap` — notkę o zasięgu.
-- `market.service_cities` (27 miast ≤ 200 km, z lat/lon) = `src/lib/cities.ts` = `api/_shared.ts` — zmieniać razem.
+- Marki własne Sunrise są dostępne w promieniu **500 km od Nowego Tomyśla** (praktycznie cała Polska, 15 województw).
+  Oferty `seller_type='sunrise'` mają `attributes.service_radius_km=500`, `service_lat/lon` (Nowy Tomyśl); karty pokazują
+  „📍 Nowy Tomyśl · +500 km”, `LocationMap` — notkę o zasięgu. Promień: `SERVICE_RADIUS_KM` (cities.ts) i `RADIUS_KM` (api/_shared.ts).
+- `market.service_cities` (66 miast ≤ 500 km, z lat/lon) = `src/lib/cities.ts` = `api/_shared.ts` — zmieniać razem.
   `market.offer_serves(attrs, loc)`: lokalizacja pasuje tekstowo ALBO miasto/województwo leży w promieniu oferty
   (`km_between`). Używane w filtrze `location` `search_offers_v2` i w `city_offers(p_slug)`.
-- **Strony miast** `/oze` i `/oze/<slug>` (`CityLanding.tsx`): H1 „Fotowoltaika, pompy ciepła i magazyny energii w …”,
-  prawdziwe oferty, odległość, FAQ, linki do pozostałych miast, JSON-LD Service/FAQ. Roboty (UA w `vercel.json`) dostają
+- **Sunrise Market jest platformą DLA WSZYSTKICH** (sprzedawcy prywatni, firmy, marki własne) — strony miast i SEO nie mogą
+  sprowadzać serwisu do OZE Sunrise. **Strony miast** `/miasto` i `/miasto/<slug>` (`CityLanding.tsx`; stare `/oze*` przekierowują):
+  H1 „Kupuj i sprzedawaj w …”, wszystkie oferty obsługujące miasto (lokalizacja tekstowa albo zasięg dojazdu), OZE jako jedna
+  z sekcji, FAQ, CTA „Sprzedajesz w …? Dodaj ogłoszenie”, linki do miast, JSON-LD WebPage/FAQ. Roboty (UA w `vercel.json`) dostają
   ten sam HTML z `api/miasto.ts`; `/sitemap.xml` → `api/sitemap.ts` (statyczne + miasta + aktywne oferty).
-  Linki do miast: sekcja na stronie głównej i w stopce (`HomeFooter`). Nie dodajemy miast spoza 200 km bez decyzji właściciela.
+  Linki do miast: sekcja „Sunrise Market w Twoim mieście” na stronie głównej i w stopce (`HomeFooter`).
+- Każdy sprzedawca może ustawić własny **zasięg dojazdu** (pole „Dojazd do klienta w promieniu (km)” w kreatorach i edycji →
+  `attributes.service_radius_km` + `service_lat/lon` geokodowane z miejscowości przez Nominatim) — wtedy jego oferta trafia
+  na strony miast i do filtra lokalizacji w promieniu. Nie dodajemy miast spoza promienia bez decyzji właściciela.

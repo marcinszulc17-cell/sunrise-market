@@ -89,13 +89,13 @@ export default function Home() {
         </div>
       </section>}
 
-      {/* ── Obszar działania OZE (SEO, 200 km) ─────────────────── */}
+      {/* ── Obszar działania OZE (SEO, SERVICE_RADIUS_KM) ─────────── */}
       <section className="mt-10" aria-labelledby="area-h">
         <div className="flex items-end justify-between gap-4">
-          <div className="border-l-4 pl-4" style={{ borderColor: "var(--gold)" }}><h2 id="area-h" className="text-2xl font-bold">Fotowoltaika i pompy ciepła w Twoim mieście</h2><p className="mt-0.5 text-sm" style={{ color: "var(--mut)" }}>Marki własne Sunrise z montażem w promieniu {SERVICE_RADIUS_KM} km od Nowego Tomyśla — {SERVICE_REGIONS.join(", ")}.</p></div>
-          <Link to="/oze" className="flex h-10 items-center rounded-xl px-4 text-sm font-semibold" style={CARD}>Cały obszar ›</Link>
+          <div className="border-l-4 pl-4" style={{ borderColor: "var(--gold)" }}><h2 id="area-h" className="text-2xl font-bold">Sunrise Market w Twoim mieście</h2><p className="mt-0.5 text-sm" style={{ color: "var(--mut)" }}>Ogłoszenia lokalnych sprzedawców i firm w całej Polsce, a do tego fotowoltaika i pompy ciepła marek własnych Sunrise z montażem do {SERVICE_RADIUS_KM} km od Nowego Tomyśla ({SERVICE_REGIONS.length} województw).</p></div>
+          <Link to="/miasto" className="flex h-10 items-center rounded-xl px-4 text-sm font-semibold" style={CARD}>Wszystkie miasta ›</Link>
         </div>
-        <div className="mt-5 flex flex-wrap gap-2">{CITIES.slice(0, 16).map((c) => <Link key={c.slug} to={`/oze/${c.slug}`} className="flex h-10 items-center rounded-xl px-3 text-sm font-medium transition hover:-translate-y-0.5" style={CARD}>{c.name}</Link>)}<Link to="/oze" className="flex h-10 items-center rounded-xl px-3 text-sm font-semibold" style={{ color: "var(--gold)" }}>+{CITIES.length - 16} miast ›</Link></div>
+        <div className="mt-5 flex flex-wrap gap-2">{CITIES.slice(0, 24).map((c) => <Link key={c.slug} to={`/miasto/${c.slug}`} className="flex h-10 items-center rounded-xl px-3 text-sm font-medium transition hover:-translate-y-0.5" style={CARD}>{c.name}</Link>)}<Link to="/miasto" className="flex h-10 items-center rounded-xl px-3 text-sm font-semibold" style={{ color: "var(--gold)" }}>+{CITIES.length - 24} miast ›</Link></div>
       </section>
 
       {/* ── Sprzedawaj ────────────────────────────────────────── */}

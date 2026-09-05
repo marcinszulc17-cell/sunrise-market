@@ -4,6 +4,7 @@ import { uploadProductImage } from "../lib/api";
 import { getOfferForManage, updateOfferManage, type ManagedOffer } from "../lib/sellerOfferManage";
 import OfferDescriptionEditor from "../components/OfferDescriptionEditor";
 import OfferPhotoManager from "../components/OfferPhotoManager";
+import { RADIUS_OPTIONS, radiusLabel, serviceAreaAttrs } from "../lib/serviceArea";
 
 const inputClass = "w-full rounded-xl px-3 py-2.5 outline-none";
 const inputStyle: React.CSSProperties = { background: "var(--glass)", border: "1px solid var(--line)", color: "var(--ink)" };
@@ -149,6 +150,7 @@ export default function SellerOfferEdit() {
         commissionModel: offer.commission_model,
         attributes: {
           ...(offer.attributes ?? {}),
+          ...(await serviceAreaAttrs(String(offer.attributes?.location ?? ""), Number(offer.attributes?.service_radius_km ?? 0))),
           full_vat_invoice: offer.full_vat_invoice,
           ...(isDaily ? {
             rental_kind: offer.rental_kind,
@@ -196,6 +198,7 @@ export default function SellerOfferEdit() {
         <div className="mt-4 space-y-4">
           <label className="text-sm"><span className="mb-1 block" style={{ color: "var(--mut)" }}>Tytuł</span><input className={inputClass} style={inputStyle} value={offer.title} onChange={(e) => setOffer({ ...offer, title: e.target.value })} /></label>
           <label className="text-sm"><span className="mb-1 block" style={{ color: "var(--mut)" }}>Miejscowość</span><input className={inputClass} style={inputStyle} value={String(offer.attributes?.location ?? "")} onChange={(e) => setOffer({ ...offer, attributes: { ...(offer.attributes ?? {}), location: e.target.value } })} placeholder="np. Nowy Tomyśl, wielkopolskie" /></label>
+          <label className="text-sm"><span className="mb-1 block" style={{ color: "var(--mut)" }}>Dojazd do klienta</span><select className={inputClass} style={inputStyle} value={Number(offer.attributes?.service_radius_km ?? 0)} onChange={(e) => setOffer({ ...offer, attributes: { ...(offer.attributes ?? {}), service_radius_km: Number(e.target.value) } })}>{RADIUS_OPTIONS.map((km) => <option key={km} value={km}>{radiusLabel(km)}</option>)}</select></label>
           <OfferDescriptionEditor value={offer.description ?? ""} onChange={(description) => setOffer({ ...offer, description })} title={offer.title} category={offer.category} />
           <div className="grid gap-3 sm:grid-cols-2">
             <label className="text-sm"><span className="mb-1 block" style={{ color: "var(--mut)" }}>{isDaily ? "Cena za dobę" : "Cena brutto"}</span><input type="number" min="0" step="0.01" className={inputClass} style={inputStyle} value={offer.price_gross} onChange={(e) => setOffer({ ...offer, price_gross: Number(e.target.value) })} /></label>
