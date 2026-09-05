@@ -4,6 +4,7 @@ import { myOrders, openReturn, myReturns } from "../lib/api";
 import InvoiceSnapshotCard, { type InvoiceSnapshot } from "../components/InvoiceSnapshotCard";
 import SalesDocumentsPanel from "../components/SalesDocumentsPanel";
 import { zl } from "../lib/money";
+import ReviewInline, { type MyReview } from "../components/ReviewInline";
 
 type Item = { offer_id: string; title: string; qty: number; price: number };
 type Order = { order_id: string; status: string; total: number; cashback: number; created_at: string; shipping_method: string | null; tracking_no: string | null; invoice: InvoiceSnapshot; items: Item[] };
@@ -42,10 +43,12 @@ export default function Zamowienia() {
   const [disputeReason, setDisputeReason] = useState("");
   const [disputeBusy, setDisputeBusy] = useState(false);
   const [disputeError, setDisputeError] = useState<string | null>(null);
+  const [myReviews, setMyReviews] = useState<Record<string, MyReview>>({});
   const [subs, setSubs] = useState<{ id: string; title: string; qty: number; status: string; price_gross: number; next_run: string | null; canceled_at: string | null }[]>([]);
 
   async function load() {
     setOrders((await myOrders()) as Order[]);
+    try { const { data } = await supabase.schema("market").rpc("my_reviews"); setMyReviews(Object.fromEntries(((data ?? []) as MyReview[]).map((r) => [r.offer_id, r]))); } catch { /* brak opinii */ }
     try { const { data } = await supabase.schema("market").rpc("my_subscriptions"); setSubs((data ?? []) as typeof subs); } catch { /* brak subskrypcji */ }
     const r = (await myReturns()) as { order_id: string; status: string }[];
     setReturns(Object.fromEntries(r.map((x) => [x.order_id, x.status])));
@@ -184,9 +187,12 @@ export default function Zamowienia() {
               </div>
               <div className="flex flex-col gap-1 mb-3">
                 {o.items.map((it, i) => (
-                  <div key={i} className="flex justify-between text-sm">
-                    <a href={`/produkt/${it.offer_id}`} className="hover:text-amber-300">{it.title} × {it.qty}</a>
-                    <span style={{ color: "var(--mut)" }}>{zl(it.price * it.qty)}</span>
+                  <div key={i} className="text-sm">
+                    <div className="flex justify-between">
+                      <a href={`/produkt/${it.offer_id}`} className="hover:text-amber-300">{it.title} × {it.qty}</a>
+                      <span style={{ color: "var(--mut)" }}>{zl(it.price * it.qty)}</span>
+                    </div>
+                    {["paid", "shipped", "delivered", "completed"].includes(o.status) && <div className="mt-1"><ReviewInline offerId={it.offer_id} title={it.title} existing={myReviews[it.offer_id]} onSaved={(r) => setMyReviews((m) => ({ ...m, [it.offer_id]: r }))} /></div>}
                   </div>
                 ))}
               </div>

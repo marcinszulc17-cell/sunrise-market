@@ -77,7 +77,8 @@ pierwszeństwo przy każdej zmianie kodu. Nie wolno ich naruszać ani obchodzić
 ## 6. Opinie o sprzedawcach (decyzja właściciela 2026-09-05)
 
 - **Tylko prawdziwe opinie**: `add_review_simple` wymaga opłaconego zamówienia z tą ofertą; prośba o ocenę
-  po doręczeniu (`trg_request_reviews_after_delivery`). Nigdy nie generujemy ani nie importujemy opinii.
+  po doręczeniu (`trg_request_reviews_after_delivery`). Kupujący ocenia w **Zamówieniach** przy każdej pozycji
+  (`ReviewInline`, RPC `my_reviews`) albo na stronie produktu (`#opinia`). Nigdy nie generujemy ani nie importujemy opinii.
 - **Publiczny profil sprzedawcy** `/sprzedawcy/:id` (RPC `seller_public_profile`, anon): ocena, rozkład gwiazdek,
   % polecających, liczba sprzedaży, lista opinii (autor, oferta, „Zweryfikowany zakup”), aktywne oferty.
   Link ze strony produktu (`ProductPageExtras`, blok Sprzedawca).
