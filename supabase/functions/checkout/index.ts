@@ -103,6 +103,20 @@ async function pay(path: string, body: unknown): Promise<{ status: number; data:
   return { status: r.status, data };
 }
 
+// Ochrona Kupujących Sunrise (decyzja właściciela 2026-09-05): wypłata sprzedawcy jest WSTRZYMANA
+// (seller_settlements.status='scheduled', available_at=null) do potwierdzenia odbioru przez kupującego
+// lub auto-zwolnienia po `platform_config.buyer_protection_hold_days` (market.auto_release_settlements).
+// Wyjątek — wypłata natychmiast jak dotąd: odnowienia subskrypcji (stripe_session_id 'inv:%') oraz
+// zamówienia, których WSZYSTKIE pozycje to subskrypcje (usługa ciągła, nie ma "dostawy").
+// Rezerwacje (bookings) zachowują dotychczasowy mechanizm: scheduled + available_at = ends_at.
+async function isImmediatePayoutOrder(sb: any, orderId: string): Promise<boolean> {
+  const { data: ord } = await sb.from("orders").select("stripe_session_id").eq("id", orderId).maybeSingle();
+  if (String(ord?.stripe_session_id ?? "").startsWith("inv:")) return true;
+  const { data: items } = await sb.from("order_items").select("offers!inner(attributes)").eq("order_id", orderId);
+  const list = items ?? [];
+  return list.length > 0 && list.every((it: any) => !!it.offers?.attributes?.subscription);
+}
+
 async function settleSellerPayouts(sb: any, orderId: string) {
   const { data: booking } = await sb.from("bookings").select("ends_at").eq("order_id", orderId).maybeSingle();
   const { data: rows, error } = await sb
@@ -110,6 +124,7 @@ async function settleSellerPayouts(sb: any, orderId: string) {
     .select("seller_id,seller_payout,sellers!inner(email,seller_type)")
     .eq("order_id", orderId);
   if (error) throw error;
+  const hold = !booking && !(await isImmediatePayoutOrder(sb, orderId));
 
   // Cel wypłaty (decyzja właściciela 2026-09-05): zwykły sprzedawca -> portfel prywatny,
   // Partner Handlowy (firma, seller_type=business) -> saldo firmowe (merchant) w Sunrise Pay.
@@ -133,12 +148,13 @@ async function settleSellerPayouts(sb: any, orderId: string) {
       seller_id: sellerId,
       seller_email: entry.email,
       amount,
-      status: booking ? "scheduled" : "pending",
+      status: booking || hold ? "scheduled" : "pending",
       available_at: booking?.ends_at ?? null,
       updated_at: new Date().toISOString(),
     }, { onConflict: "order_id,seller_id", ignoreDuplicates: true });
 
-    if (booking) continue;
+    // Rezerwacja lub blokada Ochrony Kupujących: wypłatę zrobi retry-seller-settlements po available_at.
+    if (booking || hold) continue;
 
     const idem = await uuidv5(`market:seller:${orderId}:${sellerId}`);
     const credited = await pay("pay-credit", {

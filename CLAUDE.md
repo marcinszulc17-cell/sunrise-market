@@ -50,3 +50,25 @@ pierwszeństwo przy każdej zmianie kodu. Nie wolno ich naruszać ani obchodzić
   (`commission_model = 'cashback_only'`).
 - Sprzedawcy zewnętrzni działają standardowo (własny fulfillment, model
   prowizyjny bez zmian). Koszyk mieszany rozdzielany per pozycja.
+
+## 5. Ochrona Kupujących (decyzja właściciela 2026-09-05)
+
+- **Każda transakcja idzie przez Sunrise** — sprzedawca dostaje wypłatę (`pay-credit`)
+  **dopiero po odbiorze towaru**: potwierdzenie kupującego (`buyer_confirm_delivery(p_order)`
+  lub per pozycja `buyer_confirm_item_delivery`), doręczenie kuriera (`sync_order_status_from_fulfillment`)
+  albo auto-zwolnienie po `platform_config.buyer_protection_hold_days` (**14** dni) —
+  cron `market-buyer-protection-release` → `market.auto_release_settlements()`.
+- Mechanizm: `checkout` / `stripe-webhook` tworzą `seller_settlements` ze `status='scheduled'`,
+  `available_at=null` (blokada); status `delivered`/`completed` na `orders` → trigger
+  `trg_release_settlements_on_delivery` → `release_order_settlements` ustawia `available_at=now()`;
+  wypłatę robi istniejący cron `retry-seller-settlements`. Rezerwacje bez zmian (`available_at=ends_at`).
+- **Wyjątek (wypłata natychmiast)**: odnowienia subskrypcji (`stripe_session_id like 'inv:%'`)
+  i zamówienia, których wszystkie pozycje to subskrypcje (`attributes.subscription`) — usługa ciągła.
+- **Spory**: kupujący `open_dispute(p_order, p_reason)` (tylko w oknie ochrony) → `orders.status='disputed'`,
+  tabela `market.order_disputes`, wypłata wstrzymana, powiadomienia sprzedawcy + operatora.
+  Operator: `resolve_dispute(p_dispute, 'release'|'rejected'|'refund', p_note)`; listy:
+  `my_order_disputes()`, `operator_disputes()`.
+- **Zwroty** wykonuje operator edge fn `order-refund` ({dispute_id}): Stripe `refunds.create`
+  lub `pay-credit` na portfel kupującego, potem `resolve_dispute(...,'refund')` → zamówienie `cancelled`,
+  settlements `cancelled`. Cashback nie jest cofany (brak endpointu debit-points w MySunrise — TODO).
+- Zamówienia `paid` niewysłane 30 dni: kupujący dostaje powiadomienie, że może anulować — **bez auto-anulowania**.

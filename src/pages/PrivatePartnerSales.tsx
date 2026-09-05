@@ -34,6 +34,7 @@ const EVENT_LABELS: Record<string, { icon: string; label: string }> = {
 };
 
 function taskLabel(s: Sale) {
+  if (s.order_status === "disputed") return "Spór — wypłata wstrzymana";
   if (s.task_status === "shipped") return "Wysłane";
   if (s.task_status === "handed_over") return "Przekazane";
   return s.delivery_mode === "pickup" ? "Do przekazania" : "Do wysyłki";
@@ -119,6 +120,7 @@ export default function PrivatePartnerSales() {
 
       {msg && <div className="mb-5 rounded-xl px-4 py-3 text-sm" style={{ background: "rgba(200,150,90,.12)", border: "1px solid rgba(200,150,90,.25)", color: "var(--gold)" }}>{msg}</div>}
 
+      <div className="mb-4 rounded-xl px-4 py-2.5 text-xs" style={{ background: "rgba(122,184,154,.08)", border: "1px solid rgba(122,184,154,.25)", color: "var(--mut)" }}>🛡 <b style={{ color: "var(--ink)" }}>Ochrona Kupujących:</b> Wypłata trafia na Twój portfel po potwierdzeniu odbioru przez kupującego lub automatycznie po 14 dniach od wysyłki.</div>
       {loading ? <p>Ładowanie sprzedaży…</p> : rows.length === 0 ? <div className="rounded-2xl p-8 text-center" style={{ background: "var(--glass)", border: "1px solid var(--line)" }}><div className="text-4xl">🛍️</div><h2 className="mt-3 text-xl font-semibold">Nie masz jeszcze sprzedaży</h2><p className="mt-2 text-sm" style={{ color: "var(--mut)" }}>Gdy klient opłaci zakup, pojawi się tutaj automatycznie.</p></div> : <div className="space-y-4">
         {rows.map(row => {
           const done = ["shipped","handed_over"].includes(row.task_status);
@@ -131,7 +133,7 @@ export default function PrivatePartnerSales() {
                 <h2 className="mt-1 text-lg font-semibold">{row.title}</h2>
                 <div className="mt-1 text-sm" style={{ color: "var(--mut)" }}>{row.qty} szt. · {zl(row.unit_price_gross)} / szt.</div>
               </div>
-              <div className="text-right"><div className="text-sm font-semibold">{pickup ? "🤝 Odbiór osobisty" : "📦 Wysyłka"}</div><div className="mt-1 text-xs" style={{ color: done ? "var(--green)" : "var(--gold)" }}>{taskLabel(row)}</div></div>
+              <div className="text-right"><div className="text-sm font-semibold">{pickup ? "🤝 Odbiór osobisty" : "📦 Wysyłka"}</div><div className="mt-1 text-xs" style={{ color: row.order_status === "disputed" ? "#F25CB0" : done ? "var(--green)" : "var(--gold)" }}>{taskLabel(row)}</div></div>
             </div>
 
             <div className="mt-4 grid gap-4 md:grid-cols-2">

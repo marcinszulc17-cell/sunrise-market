@@ -6,6 +6,7 @@ import { zl } from "../lib/money";
 import { pushRecent } from "../lib/recent";
 import { displayImageUrl } from "../lib/imageUrl";
 import OfferDescription from "../components/OfferDescription";
+import { addToCart } from "../lib/cart";
 
 type Offer = {
   offer_id: string;
@@ -95,6 +96,13 @@ export default function SpecializedProduct() {
   const mainImage = imgs[active] || o?.image_url || null;
   const isCar = kind === "car";
   const isProperty = kind === "property";
+  // Ochrona Kupujących: każda oferta z ceną kupowalna przez Sunrise (poza rezerwacjami i nieruchomościami).
+  const canBuy = Boolean(o && o.price_gross > 0 && !isProperty && !["appointment", "daily"].includes(String(A.purchase_mode || "")));
+  function buyViaSunrise() {
+    if (!o) return;
+    addToCart({ offer_id: o.offer_id, title: o.title, price: o.price_gross });
+    window.location.href = "/koszyk";
+  }
 
   function resetZoom() { setZoom(1); setPan({ x: 0, y: 0 }); }
   function choosePhoto(index: number) { if (!imgs.length) return; const next = ((index % imgs.length) + imgs.length) % imgs.length; setActive(next); resetZoom(); }
@@ -146,7 +154,12 @@ export default function SpecializedProduct() {
 
             {(isCar || isProperty) && <div className="mt-4 rounded-2xl p-4" style={{background:"linear-gradient(135deg,rgba(200,150,90,.10),rgba(56,224,240,.05))",border:"1px solid rgba(200,150,90,.25)"}}><div className="flex items-center justify-between gap-3"><div className="font-semibold">🛡 Sunrise Verify</div><span className="rounded-full px-2 py-1 text-[10px] font-semibold" style={{background:"rgba(122,184,154,.12)",color:"var(--green)"}}>DOSTĘPNE</span></div><div className="mt-2 text-xs leading-5" style={{color:"var(--mut)"}}>{isCar?"Przed zakupem możesz zamówić dodatkową weryfikację danych pojazdu. Zakres raportu zależy od danych oferty i dostępnych źródeł.":"Przed zakupem możesz zamówić dodatkową analizę danych nieruchomości w zakresie dostępnych źródeł."}</div><div className="mt-2 text-xs font-semibold" style={{color:"var(--gold)"}}>Usługę uruchomisz przy tej ofercie.</div></div>}
 
-            <div className="mt-5 grid gap-2"><button onClick={() => { setLeadOpen(true); setLeadDone(false); setLeadError(null); }} className="rounded-2xl py-3 text-center font-semibold text-black" style={{ background: "linear-gradient(135deg,#C8965A,#E8C896)" }}>Zapytaj sprzedawcę</button><button onClick={() => navigator.clipboard?.writeText(window.location.href)} className="rounded-2xl py-3 text-sm font-semibold" style={{ border: "1px solid var(--line)" }}>Kopiuj link do ogłoszenia</button></div>
+            {canBuy && <div className="mt-5">
+              <button type="button" onClick={buyViaSunrise} className="w-full rounded-2xl py-3 text-center font-semibold text-black" style={{ background: "linear-gradient(135deg,#C8965A,#E8C896)" }}>Kup przez Sunrise · Ochrona Kupujących</button>
+              <div className="mt-2 text-xs leading-5" style={{ color: "var(--mut)" }}>🛡 Płacisz przez Sunrise. Sprzedający dostaje pieniądze dopiero, gdy potwierdzisz odbiór — inaczej wracają do Ciebie.</div>
+            </div>}
+            {isProperty && <div className="mt-5 rounded-2xl p-4 text-xs leading-5" style={{ background: "rgba(56,224,240,.07)", border: "1px solid rgba(56,224,240,.20)", color: "var(--mut)" }}>Transakcje nieruchomości finalizowane są u notariusza. Sunrise Verify sprawdzi stan prawny przed spotkaniem.</div>}
+            <div className={`${canBuy || isProperty ? "mt-3" : "mt-5"} grid gap-2`}><button onClick={() => { setLeadOpen(true); setLeadDone(false); setLeadError(null); }} className="rounded-2xl py-3 text-center font-semibold" style={canBuy ? { border: "1px solid rgba(200,150,90,.45)", color: "var(--gold)" } : { background: "linear-gradient(135deg,#C8965A,#E8C896)", color: "#000" }}>Zapytaj sprzedawcę</button><button onClick={() => navigator.clipboard?.writeText(window.location.href)} className="rounded-2xl py-3 text-sm font-semibold" style={{ border: "1px solid var(--line)" }}>Kopiuj link do ogłoszenia</button></div>
             <div className="mt-5 rounded-2xl p-4 text-xs leading-5" style={{ background:"var(--header)", color: "var(--mut)", border:"1px solid var(--line)" }}><div className="font-semibold" style={{color:"var(--ink)"}}>{o.seller}</div><div className="mt-1">Sprzedawca odpowiada za warunki konkretnej oferty. Płatność, rezerwacja i historia transakcji są obsługiwane w Sunrise Market tam, gdzie dana oferta je udostępnia.</div></div>
           </div>
         </aside>

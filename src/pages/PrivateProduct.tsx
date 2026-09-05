@@ -86,6 +86,7 @@ export default function PrivateProduct(){
           <div className="flex flex-wrap gap-2">{["Ochrona płatności","Sunrise Pay","Cashback na portfel"].map(x=><span key={x} className="rounded-lg px-2.5 py-1 text-xs" style={{background:"var(--glass)",border:"1px solid var(--line)",color:"var(--mut)"}}>✓ {x}</span>)}</div>
           <button onClick={buyNow} disabled={offer.stock<=0} className="mt-2 w-full rounded-2xl py-4 text-lg font-bold text-black disabled:cursor-not-allowed disabled:opacity-50" style={{background:"linear-gradient(135deg,#C8965A,#E8C896)"}}>{offer.stock>0?"Kup teraz":"Oferta niedostępna"}</button>
           <p className="text-center text-xs" style={{color:"var(--mut)"}}>Stała cena. Bez negocjacji i bez kontaktu przed zakupem.</p>
+          <p className="text-center text-xs leading-5" style={{color:"var(--mut)"}}>🛡 Płacisz przez Sunrise. Sprzedający dostaje pieniądze dopiero, gdy potwierdzisz odbiór — inaczej wracają do Ciebie.</p>
         </div>
       </div>
     </main>

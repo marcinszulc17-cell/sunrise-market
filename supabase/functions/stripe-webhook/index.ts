@@ -67,12 +67,27 @@ async function uuidv5(name: string): Promise<string> {
   const hex = Array.from(hash.slice(0, 16)).map((b) => b.toString(16).padStart(2, "0")).join("");
   return `${hex.slice(0,8)}-${hex.slice(8,12)}-${hex.slice(12,16)}-${hex.slice(16,20)}-${hex.slice(20,32)}`;
 }
+// Ochrona Kupujących Sunrise (decyzja właściciela 2026-09-05): wypłata sprzedawcy jest WSTRZYMANA
+// (seller_settlements.status='scheduled', available_at=null) do potwierdzenia odbioru przez kupującego
+// lub auto-zwolnienia po `platform_config.buyer_protection_hold_days` (market.auto_release_settlements).
+// Wyjątek — wypłata natychmiast jak dotąd: odnowienia subskrypcji (invoice.paid, stripe_session_id 'inv:%')
+// oraz zamówienia, których WSZYSTKIE pozycje to subskrypcje (usługa ciągła, nie ma "dostawy").
+// Rezerwacje (bookings) zachowują dotychczasowy mechanizm: scheduled + available_at = ends_at.
+async function isImmediatePayoutOrder(sb: any, orderId: string): Promise<boolean> {
+  const { data: ord } = await sb.from("orders").select("stripe_session_id").eq("id", orderId).maybeSingle();
+  if (String(ord?.stripe_session_id ?? "").startsWith("inv:")) return true;
+  const { data: items } = await sb.from("order_items").select("offers!inner(attributes)").eq("order_id", orderId);
+  const list = items ?? [];
+  return list.length > 0 && list.every((it: any) => !!it.offers?.attributes?.subscription);
+}
+
 async function settleSellerPayouts(sb: any, orderId: string) {
   const { data: booking } = await sb.from("bookings").select("ends_at").eq("order_id", orderId).maybeSingle();
   const { data: rows, error } = await sb.from("order_items")
     .select("seller_id,seller_payout,sellers!inner(email,seller_type)")
     .eq("order_id", orderId);
   if (error) throw error;
+  const hold = !booking && !(await isImmediatePayoutOrder(sb, orderId));
 
   // Cel wypłaty: zwykły sprzedawca -> portfel prywatny; Partner Handlowy (business) -> saldo firmowe (merchant).
   const grouped = new Map<string, { email: string; amount: number; target: "personal" | "merchant" }>();
@@ -93,13 +108,14 @@ async function settleSellerPayouts(sb: any, orderId: string) {
       seller_id: sellerId,
       seller_email: entry.email,
       amount: entry.amount,
-      status: booking ? "scheduled" : "pending",
+      status: booking || hold ? "scheduled" : "pending",
       available_at: booking?.ends_at ?? null,
       updated_at: new Date().toISOString(),
     }, { onConflict: "order_id,seller_id", ignoreDuplicates: true });
     if (settlementError) throw settlementError;
 
-    if (booking) continue;
+    // Rezerwacja lub blokada Ochrony Kupujących: wypłatę zrobi retry-seller-settlements po available_at.
+    if (booking || hold) continue;
 
     const idem = await uuidv5(`market:seller:${orderId}:${sellerId}`);
     const credited = await pay("pay-credit", {
@@ -244,6 +260,8 @@ async function settleCardOrder(sb: any, s: any, stripe: any) {
   try {
     try {
       if (s.payment_intent) {
+        // payment_intent zapisujemy dla zwrotów (order-refund, Ochrona Kupujących).
+        await sb.from("orders").update({ stripe_payment_intent: String(s.payment_intent) }).eq("id", orderId);
         const pi = await stripe.paymentIntents.retrieve(String(s.payment_intent), { expand: ["latest_charge.balance_transaction"] });
         const fee = pi?.latest_charge?.balance_transaction?.fee;
         if (typeof fee === "number" && fee >= 0) await sb.from("orders").update({ stripe_fee: Math.round(fee) / 100 }).eq("id", orderId);

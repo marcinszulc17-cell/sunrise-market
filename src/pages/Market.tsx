@@ -816,6 +816,7 @@ export default function Market() {
           <a href="/legal/kontakt.html" className="hover:text-amber-300">Kontakt</a>
           <a href="/legal/zwroty.html" className="hover:text-amber-300">Zwroty i reklamacje</a>
           <a href="/legal/regulamin.html" className="hover:text-amber-300">Regulamin</a>
+          <a href="/legal/ochrona-kupujacego.html" className="hover:text-amber-300">Ochrona Kupujących</a>
           <a href="/legal/prywatnosc.html" className="hover:text-amber-300">Prywatność (RODO)</a>
           <a href="/legal/cookies.html" className="hover:text-amber-300">Cookies</a>
         </div>

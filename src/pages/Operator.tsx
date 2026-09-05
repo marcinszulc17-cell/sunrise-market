@@ -12,7 +12,7 @@ import { zl } from "../lib/money";
 const n = (v: number) => Number(v || 0).toLocaleString("pl-PL");
 const dt = (s: string) => new Date(s).toLocaleString("pl-PL");
 
-type Tab = "pulpit" | "zamowienia" | "klienci" | "sprzedawcy" | "oferty" | "cjdrop" | "fulfillment" | "zwroty";
+type Tab = "pulpit" | "zamowienia" | "klienci" | "sprzedawcy" | "oferty" | "cjdrop" | "fulfillment" | "zwroty" | "spory";
 const TABS: { id: Tab; label: string }[] = [
   { id: "pulpit", label: "📊 Pulpit" },
   { id: "zamowienia", label: "🧾 Zamówienia" },
@@ -22,6 +22,7 @@ const TABS: { id: Tab; label: string }[] = [
   { id: "cjdrop", label: "🛒 CJ Drop" },
   { id: "fulfillment", label: "🚚 Fulfillment" },
   { id: "zwroty", label: "↩️ Zwroty" },
+  { id: "spory", label: "⚖️ Spory" },
 ];
 
 const ORDER_STATUSES = ["paid", "shipped", "delivered", "completed", "cancelled", "disputed"];
@@ -83,6 +84,7 @@ export default function Operator() {
         {isOp && tab === "cjdrop" && <CjDrop />}
         {isOp && tab === "fulfillment" && <Fulfillment />}
         {isOp && tab === "zwroty" && <Zwroty />}
+        {isOp && tab === "spory" && <Spory />}
       </main>
     </div>
   );
@@ -670,6 +672,83 @@ function Zwroty() {
           </Card>
         ))}
         {!loading && rows.length === 0 && <p style={{ color: "var(--mut)" }}>Brak zgłoszeń.</p>}
+      </div>
+    </>
+  );
+}
+
+type OperatorDispute = { id: string; order_id: string; order_status: string; buyer_email: string | null; sellers: string | null; amount: number; payment_provider: string | null; reason: string; status: string; resolution: string | null; created_at: string; resolved_at: string | null };
+const disputeStatusLabel: Record<string, string> = { open: "Otwarty", refunded: "Zwrot kupującemu", released: "Wypłata zwolniona", rejected: "Odrzucony" };
+
+function Spory() {
+  const [rows, setRows] = useState<OperatorDispute[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [busy, setBusy] = useState<string | null>(null);
+  const [notes, setNotes] = useState<Record<string, string>>({});
+  const [err, setErr] = useState<string | null>(null);
+  const [showClosed, setShowClosed] = useState(false);
+  async function load() {
+    setLoading(true); setErr(null);
+    try { const { data, error } = await supabase.rpc("operator_disputes"); if (error) throw error; setRows((data ?? []) as OperatorDispute[]); }
+    catch (e) { setErr((e as Error).message); } finally { setLoading(false); }
+  }
+  useEffect(() => { load(); }, []);
+  async function resolve(d: OperatorDispute, outcome: "release" | "rejected") {
+    const label = outcome === "release" ? "zwolnić wypłatę dla sprzedawcy" : "odrzucić spór (wypłata do sprzedawcy po decyzji)";
+    if (!window.confirm(`Na pewno ${label}? Zam. ${d.order_id.slice(0, 8)}, ${zl(d.amount)}.`)) return;
+    setBusy(d.id); setErr(null);
+    try {
+      const { data, error } = await supabase.rpc("resolve_dispute", { p_dispute: d.id, p_outcome: outcome, p_note: notes[d.id]?.trim() || null });
+      if (error) throw error;
+      if (data && data.ok === false) throw new Error(data.message ?? data.error ?? "Nie udało się rozstrzygnąć sporu.");
+      await load();
+    } catch (e) { setErr((e as Error).message); } finally { setBusy(null); }
+  }
+  async function refund(d: OperatorDispute) {
+    if (!window.confirm(`Zwrócić ${zl(d.amount)} kupującemu (${d.buyer_email ?? "—"})? Zamówienie zostanie anulowane, a wypłata dla sprzedawcy wycofana.`)) return;
+    setBusy(d.id); setErr(null);
+    try {
+      const { data, error } = await supabase.functions.invoke("order-refund", { body: { dispute_id: d.id, note: notes[d.id]?.trim() || undefined } });
+      if (error) throw error;
+      if (data && data.ok === false) throw new Error(data.message ?? data.error ?? "Zwrot nie powiódł się.");
+      await load();
+    } catch (e) { setErr((e as Error).message); } finally { setBusy(null); }
+  }
+  const visible = rows.filter((r) => showClosed || r.status === "open");
+  const openCount = rows.filter((r) => r.status === "open").length;
+  return (
+    <>
+      <div className="mb-4 flex flex-wrap items-center gap-3 text-sm" style={{ color: "var(--mut)" }}>
+        <span>{openCount} otwartych · {rows.length} łącznie</span>
+        <label className="flex items-center gap-1 text-xs"><input type="checkbox" checked={showClosed} onChange={(e) => setShowClosed(e.target.checked)} /> pokaż zamknięte</label>
+        <button onClick={load} className="text-xs px-2 py-1 rounded-lg" style={{ background: "var(--glass)", border: "1px solid var(--line)" }}>Odśwież</button>
+      </div>
+      {err && <div className="mb-3 text-sm" style={{ color: "#ef4444" }}>{err}</div>}
+      {loading && <p style={{ color: "var(--mut)" }}>Ładowanie…</p>}
+      <div className="flex flex-col gap-2">
+        {visible.map((d) => (
+          <Card key={d.id}>
+            <div className="flex flex-wrap items-start justify-between gap-3">
+              <div className="min-w-0 flex-1">
+                <div className="text-sm">Zam. {d.order_id.slice(0, 8)} · <b>{zl(d.amount)}</b> · {d.payment_provider ?? "—"} · {statusLabel[d.order_status] ?? d.order_status}</div>
+                <div className="text-xs" style={{ color: "var(--mut)" }}>{dt(d.created_at)} · kupujący {d.buyer_email ?? "—"} · sprzedawca {d.sellers ?? "—"}</div>
+                <div className="mt-1 text-xs whitespace-pre-wrap" style={{ color: "var(--ink)" }}>{d.reason}</div>
+                {d.status !== "open" && <div className="mt-1 text-xs" style={{ color: "var(--mut)" }}>{disputeStatusLabel[d.status] ?? d.status}{d.resolved_at ? ` · ${dt(d.resolved_at)}` : ""}{d.resolution ? ` · ${d.resolution}` : ""}</div>}
+              </div>
+              {d.status === "open"
+                ? <div className="flex flex-col gap-2 shrink-0 w-full sm:w-72">
+                    <input value={notes[d.id] ?? ""} onChange={(e) => setNotes((m) => ({ ...m, [d.id]: e.target.value }))} placeholder="Notatka do decyzji (opcjonalnie)" className="rounded-lg px-2 py-1.5 text-xs outline-none" style={{ background: "var(--glass)", border: "1px solid var(--line)", color: "var(--ink)" }} />
+                    <div className="flex flex-wrap gap-2">
+                      <button disabled={busy === d.id} onClick={() => refund(d)} className="text-xs font-semibold px-3 py-1.5 rounded-lg text-black disabled:opacity-50" style={{ background: "linear-gradient(135deg,#7AB89A,#38E0F0)" }}>Zwrot kupującemu</button>
+                      <button disabled={busy === d.id} onClick={() => resolve(d, "release")} className="text-xs font-semibold px-3 py-1.5 rounded-lg text-black disabled:opacity-50" style={{ background: "linear-gradient(135deg,#C8965A,#E8C896)" }}>Zwolnij wypłatę</button>
+                      <button disabled={busy === d.id} onClick={() => resolve(d, "rejected")} className="text-xs px-3 py-1.5 rounded-lg disabled:opacity-50" style={{ background: "var(--glass)", border: "1px solid var(--line)" }}>Odrzuć</button>
+                    </div>
+                  </div>
+                : <span className="text-xs shrink-0" style={{ color: "var(--mut)" }}>{disputeStatusLabel[d.status] ?? d.status}</span>}
+            </div>
+          </Card>
+        ))}
+        {!loading && visible.length === 0 && <p style={{ color: "var(--mut)" }}>Brak {showClosed ? "sporów" : "otwartych sporów"}.</p>}
       </div>
     </>
   );

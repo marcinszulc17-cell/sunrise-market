@@ -23,7 +23,10 @@ const statusLabel: Record<string, string> = {
   shipped: "Wysłane",
   delivered: "Dostarczone",
   completed: "Zakończone",
+  disputed: "Spór — wypłata wstrzymana",
+  cancelled: "Anulowane",
 };
+const ESCROW_NOTE = "Wypłata trafia na Twój portfel po potwierdzeniu odbioru przez kupującego lub automatycznie po 14 dniach od wysyłki.";
 
 export default function SellerOrders() {
   const [authed, setAuthed] = useState<boolean | null>(null);
@@ -85,6 +88,7 @@ export default function SellerOrders() {
         <Stat label="Twoje wpływy" value={zl(rows.reduce((sum, row) => sum + Number(row.my_total || 0), 0))} />
       </div>}
 
+      {authed && <div className="mb-4 rounded-xl px-4 py-2.5 text-xs" style={{ background: "rgba(122,184,154,.08)", border: "1px solid rgba(122,184,154,.25)", color: "var(--mut)" }}>🛡 <b style={{ color: "var(--ink)" }}>Ochrona Kupujących:</b> {ESCROW_NOTE}</div>}
       {loading && <p style={{ color: "var(--mut)" }}>Ładowanie zamówień…</p>}
       {!loading && authed && rows.length === 0 && <div className="rounded-2xl p-6" style={{ background: "var(--glass)", border: "1px solid var(--line)" }}>Nie masz jeszcze opłaconych zamówień.</div>}
 
