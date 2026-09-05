@@ -11,11 +11,15 @@ type Payout = {
   gross_sales: number; commission_total: number; net_payout: number;
   status: string; paid_at: string | null;
 };
+type Settlement = { id: string; order_id: string; amount: number; status: string; created_at: string; settled_at: string | null; available_at: string | null; last_error: string | null };
+const settlementLabel: Record<string, string> = { settled: "Wypłacone na Sunrise Pay", pending: "Oczekuje", scheduled: "Zaplanowane (po zakończeniu rezerwacji)", processing: "W trakcie", failed: "Nieudane — ponawiamy" };
 
 export default function Rozliczenia() {
   const [authed, setAuthed] = useState<boolean | null>(null);
   const [seller, setSeller] = useState<Seller | null>(null);
   const [payouts, setPayouts] = useState<Payout[]>([]);
+  const [settlements, setSettlements] = useState<Settlement[]>([]);
+  const [sellerType, setSellerType] = useState<string>("");
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
 
@@ -27,7 +31,12 @@ export default function Rozliczenia() {
       try {
         const s = await getMySeller();
         setSeller(s);
-        if (s) setPayouts(await getPayouts(s.id));
+        if (s) {
+          setSellerType(String((s as { seller_type?: string }).seller_type ?? ""));
+          const { data: st } = await supabase.schema("market").rpc("my_seller_settlements");
+          setSettlements((st ?? []) as Settlement[]);
+          try { setPayouts(await getPayouts(s.id)); } catch { /* Stripe payout_runs — opcjonalne */ }
+        }
       } catch (e) { setMsg((e as Error).message); }
     })();
     const p = new URLSearchParams(window.location.search).get("connect");
@@ -69,10 +78,27 @@ export default function Rozliczenia() {
         </div>
       </div>
 
-      <div className="rounded-2xl bg-zinc-900/70 p-5 mb-6 ring-1 ring-amber-500/20">
+      <div className="rounded-2xl bg-zinc-900/70 p-5 mb-6 ring-1 ring-emerald-500/20">
+        <div className="text-sm text-zinc-400">Wypłaty ze sprzedaży</div>
+        <div className="text-lg font-semibold text-emerald-400">{sellerType === "business" || sellerType === "sunrise" ? "Saldo firmowe Sunrise Pay" : "Prywatny portfel Sunrise Pay"}</div>
+        <p className="mt-1 text-xs text-zinc-400">Po opłaceniu zamówienia (dla rezerwacji — po jej zakończeniu) kwota po prowizji trafia automatycznie na Twoje saldo Sunrise Pay. Stamtąd możesz płacić, przelać lub zlecić wypłatę na konto bankowe w aplikacji MySunrise.</p>
+      </div>
+
+      <h2 className="text-lg font-semibold mb-3">Rozliczenia zamówień</h2>
+      <div className="overflow-x-auto rounded-xl ring-1 ring-zinc-800 mb-8">
+        <table className="w-full min-w-[640px] text-sm">
+          <thead className="bg-zinc-900/80 text-zinc-400"><tr><th className="text-left px-3 py-2">Data</th><th className="text-left px-3 py-2">Zamówienie</th><th className="text-right px-3 py-2">Kwota</th><th className="text-left px-3 py-2">Status</th></tr></thead>
+          <tbody>
+            {settlements.length === 0 && <tr><td colSpan={4} className="px-3 py-4 text-zinc-500">Brak rozliczeń — pojawią się po pierwszej sprzedaży.</td></tr>}
+            {settlements.map((s) => <tr key={s.id} className="border-t border-zinc-800"><td className="px-3 py-2 whitespace-nowrap">{new Date(s.created_at).toLocaleDateString("pl-PL")}</td><td className="px-3 py-2 font-mono text-xs">{s.order_id.slice(0, 8)}</td><td className="px-3 py-2 text-right whitespace-nowrap">{zl(s.amount)}</td><td className="px-3 py-2">{settlementLabel[s.status] || s.status}{s.status === "scheduled" && s.available_at ? ` · ${new Date(s.available_at).toLocaleDateString("pl-PL")}` : ""}</td></tr>)}
+          </tbody>
+        </table>
+      </div>
+
+      {(sellerType === "business" || sellerType === "sunrise") && <div className="rounded-2xl bg-zinc-900/70 p-5 mb-6 ring-1 ring-amber-500/20">
         <div className="flex items-center justify-between gap-4 flex-wrap">
           <div>
-            <div className="text-sm text-zinc-400">Status wypłat (Stripe Connect)</div>
+            <div className="text-sm text-zinc-400">Wypłaty kartowe na konto firmowe (Stripe Connect) — dla Partnera Handlowego</div>
             <div className={"text-lg font-semibold " + (active ? "text-emerald-400" : "text-amber-400")}>
               {active ? "Aktywne" : statusLabel(seller.connect_status)}
             </div>
@@ -84,7 +110,7 @@ export default function Rozliczenia() {
             </button>
           )}
         </div>
-      </div>
+      </div>}
 
       <div className="mb-6 rounded-xl bg-sky-500/10 px-4 py-3 text-sm text-sky-200 ring-1 ring-sky-500/20">
         W opłacie 7,9% mieści się cashback dla kupującego oraz część należna platformie. Sprzedawca widzi jedną, stałą opłatę — bez dodatkowych prowizji zależnych od kategorii.
@@ -92,7 +118,7 @@ export default function Rozliczenia() {
 
       {msg && <div className="mb-4 rounded-lg bg-amber-500/10 px-4 py-2 text-amber-300 text-sm">{msg}</div>}
 
-      <h2 className="text-lg font-semibold mb-3">Historia wypłat</h2>
+      {payouts.length > 0 && <><h2 className="text-lg font-semibold mb-3">Historia wypłat Stripe</h2>
       <div className="overflow-x-auto rounded-xl ring-1 ring-zinc-800">
         <table className="w-full min-w-[680px] text-sm">
           <thead className="bg-zinc-900/80 text-zinc-400">
@@ -119,7 +145,7 @@ export default function Rozliczenia() {
             )}
           </tbody>
         </table>
-      </div>
+      </div></>}
     </div>
   );
 }

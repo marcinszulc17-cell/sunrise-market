@@ -28,12 +28,30 @@ function copy(event: string, recipient: string, p: any) {
   return { subject, html };
 }
 
+// Klucz Resend: env RESEND_API_KEY, a gdy brak — market.internal_secrets (klucz resend_api_key).
+// Domena sunrisemarket.pl nie jest zweryfikowana w Resend, więc nadawcą jest adres w mysunrise.pl.
+async function resolveResendKey(sb: any): Promise<string> {
+  const fromEnv = Deno.env.get("RESEND_API_KEY");
+  if (fromEnv) return fromEnv;
+  const { data } = await sb.schema("market").from("internal_secrets").select("value").eq("key", "resend_api_key").maybeSingle();
+  return String(data?.value ?? "");
+}
+
+// Maile ogólne (zamówienie, nowa sprzedaż, zapytanie od klienta): event_type = 'generic',
+// payload = { subject, heading, lines: string[], cta_label?, cta_url? } — kolejkowane przez market.enqueue_mail().
+function genericCopy(p: any) {
+  const lines = Array.isArray(p.lines) ? p.lines.map((l: unknown) => `<p style="margin:0 0 10px;line-height:1.55">${esc(l)}</p>`).join("") : "";
+  const cta = p.cta_url ? `<a href="${esc(p.cta_url)}" style="display:inline-block;margin-top:18px;padding:12px 20px;border-radius:12px;background:#d6aa6d;color:#111;font-weight:700;text-decoration:none">${esc(p.cta_label || "Otwórz Sunrise Market")}</a>` : "";
+  const html = `<!doctype html><html><body style="margin:0;background:#07070f;color:#f5f2ea;font-family:Arial,sans-serif"><div style="max-width:620px;margin:auto;padding:32px 20px"><div style="color:#d6aa6d;font-weight:700;letter-spacing:.14em;font-size:12px">SUNRISE MARKET</div><h1 style="font-size:22px;margin:14px 0 18px">${esc(p.heading || p.subject || "Sunrise Market")}</h1>${lines}${cta}<p style="margin-top:28px;font-size:12px;color:#8b8b99">Ta wiadomość została wysłana automatycznie z Sunrise Market (sunrisemarket.pl).</p></div></body></html>`;
+  return { subject: String(p.subject || "Sunrise Market"), html };
+}
+
 Deno.serve(async () => {
   const url = Deno.env.get("SUPABASE_URL")!;
   const service = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-  const resend = Deno.env.get("RESEND_API_KEY");
-  const from = Deno.env.get("BOOKING_MAIL_FROM") || "Sunrise Market <noreply@sunrisemarket.pl>";
   const sb = createClient(url, service, { auth: { persistSession: false } });
+  const resend = await resolveResendKey(sb);
+  const from = Deno.env.get("BOOKING_MAIL_FROM") || "Sunrise Market <market@mysunrise.pl>";
   const { data: rows, error } = await sb.schema("market").from("booking_mail_outbox").select("id,event_type,recipient_type,recipient_email,payload,attempts").in("status", ["pending","failed"]).lt("attempts", 5).order("created_at").limit(25);
   if (error) return json({ ok: false, error: error.message }, 500);
   if (!rows?.length) return json({ ok: true, configured: Boolean(resend), processed: 0, sent: 0, failed: 0 });
@@ -44,7 +62,7 @@ Deno.serve(async () => {
     const { data: claimed } = await sb.schema("market").from("booking_mail_outbox").update({ status: "sending" }).eq("id", row.id).in("status", ["pending","failed"]).select("id").maybeSingle();
     if (!claimed) continue;
     try {
-      const c = copy(row.event_type, row.recipient_type, row.payload);
+      const c = row.event_type === "generic" ? genericCopy(row.payload ?? {}) : copy(row.event_type, row.recipient_type, row.payload);
       const r = await fetch("https://api.resend.com/emails", { method: "POST", headers: { Authorization: `Bearer ${resend}`, "Content-Type": "application/json" }, body: JSON.stringify({ from, to: [row.recipient_email], subject: c.subject, html: c.html }) });
       if (!r.ok) throw new Error(`Resend ${r.status}: ${(await r.text()).slice(0,300)}`);
       await sb.schema("market").from("booking_mail_outbox").update({ status: "sent", sent_at: new Date().toISOString(), attempts: Number(row.attempts || 0) + 1, last_error: null }).eq("id", row.id);

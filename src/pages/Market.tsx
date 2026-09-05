@@ -455,7 +455,7 @@ export default function Market() {
               </div>
             )}
           </div>
-          <a href="/sprzedawca" className="text-sm navlink px-2 hidden md:block">Sprzedawaj</a>
+          
           {!authed && <a href="/login" className="text-sm navlink px-2 hidden sm:block">Zaloguj</a>}
           <ThemeToggle />
           <NotificationsBell />

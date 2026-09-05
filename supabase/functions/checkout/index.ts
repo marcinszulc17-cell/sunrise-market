@@ -248,7 +248,8 @@ Deno.serve(async (req) => {
     const { data: cashbackCfg } = await sb.from("platform_config").select("value").eq("key", "cashback_rate").maybeSingle();
     const cashbackRate = Math.max(0, Number(cashbackCfg?.value ?? 0.03));
     const cashbackBase = money(Math.max(0, discountedProducts - refundableDeposit));
-    const cashback = money(cashbackBase * cashbackRate);
+    // Cashback 3% TYLKO przy płatności portfelem Sunrise Pay (CLAUDE.md §1). Karta/BLIK/P24 = 0.
+    const cashback = payMethod === "card" ? 0 : money(cashbackBase * cashbackRate);
     const inv = ord0?.invoice_snapshot_at ? {} : invoiceSnapshot(invoice);
 
     await sb.from("orders").update({
@@ -271,11 +272,40 @@ Deno.serve(async (req) => {
         const { data: booking } = await sb.from("bookings").select("hold_expires_at").eq("id", bookingId).eq("order_id", orderId).single();
         bookingExpiresAt = Math.floor(new Date(booking!.hold_expires_at).getTime() / 1000);
       }
-      const session = await stripe.checkout.sessions.create({ mode: "payment", payment_method_types: ["card", "p24", "blik"], currency: "pln", line_items: [{ price_data: { currency: "pln", product_data: { name: bookingId ? "Rezerwacja Sunrise Market" : "Zamówienie Sunrise Market" }, unit_amount: amountGrosz }, quantity: 1 }], metadata: { market_order_id: String(orderId), booking_id: bookingId ?? "", user_id: user.id, user_email: email }, customer_email: email, expires_at: bookingExpiresAt, success_url: successUrl, cancel_url: cancelUrl }, bookingId ? { idempotencyKey: `market-booking:${orderId}` } : undefined);
+      // Subskrypcje (attributes.subscription): Stripe Checkout w trybie subscription — pozycja abonamentowa
+      // jako cena cykliczna (miesiąc, z góry, auto-odnawianie), reszta koszyka jako pozycje jednorazowe.
+      const { data: subItems } = await sb.from("order_items").select("offer_id,qty,unit_price_gross,offers!inner(title,attributes)").eq("order_id", orderId);
+      const subscriptionLines = (subItems ?? []).filter((it: any) => it.offers?.attributes?.subscription);
+      let session;
+      if (!bookingId && subscriptionLines.length > 0) {
+        const oneOff = (subItems ?? []).filter((it: any) => !it.offers?.attributes?.subscription);
+        const line_items: any[] = [];
+        for (const it of subscriptionLines) {
+          const interval = it.offers?.attributes?.subscription?.interval === "year" ? "year" : "month";
+          line_items.push({ price_data: { currency: "pln", product_data: { name: `${it.offers.title} — subskrypcja ${interval === "year" ? "roczna" : "miesięczna"}` }, unit_amount: Math.round(Number(it.unit_price_gross) * 100), recurring: { interval } }, quantity: Number(it.qty) || 1 });
+        }
+        for (const it of oneOff) {
+          line_items.push({ price_data: { currency: "pln", product_data: { name: it.offers.title }, unit_amount: Math.round(Number(it.unit_price_gross) * 100) }, quantity: Number(it.qty) || 1 });
+        }
+        const extras = money(finalTotal - (subItems ?? []).reduce((a: number, it: any) => a + Number(it.unit_price_gross) * Number(it.qty || 1), 0));
+        if (extras > 0) line_items.push({ price_data: { currency: "pln", product_data: { name: "Dostawa" }, unit_amount: Math.round(extras * 100) }, quantity: 1 });
+        if (extras < 0) line_items.push({ price_data: { currency: "pln", product_data: { name: "Rabat" }, unit_amount: 0 }, quantity: 1 });
+        session = await stripe.checkout.sessions.create({ mode: "subscription", payment_method_types: ["card"], currency: "pln", line_items, metadata: { market_order_id: String(orderId), booking_id: "", user_id: user.id, user_email: email, subscription_order: "1" }, subscription_data: { metadata: { market_order_id: String(orderId), user_email: email } }, customer_email: email, success_url: successUrl, cancel_url: cancelUrl });
+      } else {
+        session = await stripe.checkout.sessions.create({ mode: "payment", payment_method_types: ["card", "p24", "blik"], currency: "pln", line_items: [{ price_data: { currency: "pln", product_data: { name: bookingId ? "Rezerwacja Sunrise Market" : "Zamówienie Sunrise Market" }, unit_amount: amountGrosz }, quantity: 1 }], metadata: { market_order_id: String(orderId), booking_id: bookingId ?? "", user_id: user.id, user_email: email }, customer_email: email, expires_at: bookingExpiresAt, success_url: successUrl, cancel_url: cancelUrl }, bookingId ? { idempotencyKey: `market-booking:${orderId}` } : undefined);
+      }
       await sb.from("orders").update({ payment_provider: "stripe", stripe_session_id: session.id }).eq("id", orderId);
       return json({ order_id: orderId, url: session.url, payment: "card", total: finalTotal, cashback });
     }
 
+    // Subskrypcje wyłącznie przez Stripe (auto-odnawianie kartą) — portfelem nie da się kupić abonamentu.
+    if (!bookingId) {
+      const { data: subCheck } = await sb.from("order_items").select("offers!inner(attributes)").eq("order_id", orderId);
+      if ((subCheck ?? []).some((it: any) => it.offers?.attributes?.subscription)) {
+        await sb.rpc("release_unpaid_order", { p_order_id: orderId }).then(() => {}, () => {});
+        return json({ error: "Subskrypcję opłacasz kartą — odnawia się automatycznie co miesiąc. Wybierz płatność kartą.", subscription_requires_card: true }, 402);
+      }
+    }
     const chargeKey = await uuidv5(`market:charge:${orderId}`);
     const charge = await pay("pay-charge", { user_ref: email, amount_grosz: amountGrosz, order_ref: orderId, idempotency_key: chargeKey });
     if (charge.status === 402 || (charge.data && charge.data.ok === false && charge.data.error === "insufficient_funds")) {

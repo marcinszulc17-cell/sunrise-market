@@ -303,7 +303,39 @@ Deno.serve(async (req) => {
           await creditTopup(sb, s);
         } else if (s.metadata?.market_order_id) {
           await settleCardOrder(sb, s, stripe);
+          // Sesja w trybie subscription: zapisujemy subskrypcję (odnowienia obsługuje invoice.paid).
+          if (s.mode === "subscription" && s.subscription) {
+            await sb.rpc("register_stripe_subscription", { p_order: s.metadata.market_order_id, p_stripe_subscription_id: String(s.subscription), p_stripe_customer_id: s.customer ? String(s.customer) : null });
+          }
         }
+        break;
+      }
+      case "invoice.paid": {
+        // Odnowienie subskrypcji (kolejny miesiąc opłacony z góry) -> nowe opłacone zamówienie w Market,
+        // z prowizją, wypłatą dla sprzedawcy i powiadomieniami jak przy zwykłym zakupie.
+        const inv = event.data.object;
+        const subId = inv.subscription ? String(inv.subscription) : "";
+        if (subId && inv.billing_reason === "subscription_cycle") {
+          const { data: renewalOrder, error: renewalError } = await sb.rpc("create_subscription_renewal_order", { p_stripe_subscription_id: subId, p_invoice_id: String(inv.id) });
+          if (renewalError) throw renewalError;
+          if (renewalOrder) {
+            const orderId = String(renewalOrder);
+            const { data: already } = await sb.from("orders").select("card_settlement_status").eq("id", orderId).maybeSingle();
+            if (already?.card_settlement_status !== "settled") {
+              const { error: feeError } = await sb.rpc("apply_stripe_seller_fee", { p_order_id: orderId });
+              if (feeError) throw feeError;
+              await settleSellerPayouts(sb, orderId);
+              const now = new Date().toISOString();
+              await sb.from("orders").update({ card_settlement_status: "settled", card_settled_at: now, card_settlement_updated_at: now, stripe_payment_intent: inv.payment_intent ? String(inv.payment_intent) : null }).eq("id", orderId);
+              try { await sb.rpc("notify_order", { p_order: orderId }); } catch {}
+            }
+          }
+        }
+        break;
+      }
+      case "customer.subscription.deleted": {
+        const sub = event.data.object;
+        await sb.rpc("cancel_stripe_subscription", { p_stripe_subscription_id: String(sub.id) });
         break;
       }
       case "checkout.session.expired": {

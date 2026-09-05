@@ -31,6 +31,19 @@ export default function SellerOrders() {
   const [sellerType, setSellerType] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [msg, setMsg] = useState<string | null>(null);
+  const [tracking, setTracking] = useState<Record<string, string>>({});
+  const [shipping, setShipping] = useState<string | null>(null);
+
+  async function ship(orderId: string) {
+    setShipping(orderId); setMsg(null);
+    try {
+      const { error } = await supabase.schema("market").rpc("mark_shipped", { p_order: orderId, p_tracking: (tracking[orderId] ?? "").trim() || null });
+      if (error) throw error;
+      setRows(await sellerOrders() as SellerOrder[]);
+      setMsg("Zamówienie oznaczone jako wysłane. Klient dostał powiadomienie. ✅");
+    } catch (e) { setMsg((e as Error).message); }
+    finally { setShipping(null); }
+  }
 
   useEffect(() => {
     supabase.auth.getUser().then(async ({ data }) => {
@@ -90,6 +103,11 @@ export default function SellerOrders() {
           </div>
 
           {(order.shipping_method || order.tracking_no) && <div className="mt-3 text-xs" style={{ color: "var(--mut)" }}>🚚 {order.shipping_method || "Dostawa"}{order.tracking_no ? ` · ${order.tracking_no}` : ""}</div>}
+
+          {order.status === "paid" && <div className="mt-4 flex flex-wrap items-center gap-2 rounded-xl p-3" style={{ background: "rgba(200,150,90,.08)", border: "1px solid rgba(200,150,90,.25)" }}>
+            <input className="flex-1 min-w-[200px] rounded-lg px-3 py-2 text-sm outline-none" style={{ background: "var(--glass)", border: "1px solid var(--line)", color: "var(--ink)" }} placeholder="Numer przesyłki (opcjonalnie)" value={tracking[order.order_id] ?? ""} onChange={(e) => setTracking((t) => ({ ...t, [order.order_id]: e.target.value }))} />
+            <button disabled={shipping === order.order_id} onClick={() => ship(order.order_id)} className="rounded-lg px-4 py-2 text-sm font-semibold text-black disabled:opacity-50" style={{ background: "linear-gradient(135deg,#C8965A,#E8C896)" }}>{shipping === order.order_id ? "Zapisuję…" : "Oznacz jako wysłane"}</button>
+          </div>}
 
           {!privateSeller && <div className="mt-4">
             <InvoiceSnapshotCard invoice={order.invoice} showNoInvoice />

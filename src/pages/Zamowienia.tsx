@@ -35,9 +35,11 @@ export default function Zamowienia() {
   const [timelines, setTimelines] = useState<Record<string, ItemTimeline[]>>({});
   const [timelineLoading, setTimelineLoading] = useState<string | null>(null);
   const [confirming, setConfirming] = useState<string | null>(null);
+  const [subs, setSubs] = useState<{ id: string; title: string; qty: number; status: string; price_gross: number; next_run: string | null; canceled_at: string | null }[]>([]);
 
   async function load() {
     setOrders((await myOrders()) as Order[]);
+    try { const { data } = await supabase.schema("market").rpc("my_subscriptions"); setSubs((data ?? []) as typeof subs); } catch { /* brak subskrypcji */ }
     const r = (await myReturns()) as { order_id: string; status: string }[];
     setReturns(Object.fromEntries(r.map((x) => [x.order_id, x.status])));
   }
@@ -115,6 +117,17 @@ export default function Zamowienia() {
 
       <main className="mx-auto max-w-3xl px-4 py-8">
         <h1 className="font-display text-3xl font-semibold mb-6">Moje zamówienia</h1>
+
+        {subs.length > 0 && <section className="mb-8 rounded-2xl p-5" style={{ background: "rgba(56,224,240,.06)", border: "1px solid rgba(56,224,240,.2)" }}>
+          <h2 className="font-semibold text-lg">🔁 Moje subskrypcje</h2>
+          <p className="mt-1 text-xs" style={{ color: "var(--mut)" }}>Opłacane z góry co miesiąc, odnawiane automatycznie kartą — bez przerw w usłudze.</p>
+          <div className="mt-3 space-y-2">
+            {subs.map((sub) => <div key={sub.id} className="flex flex-wrap items-center justify-between gap-2 rounded-xl px-3 py-2 text-sm" style={{ background: "var(--glass)", border: "1px solid var(--line)" }}>
+              <div><div className="font-medium">{sub.title}{sub.qty > 1 ? ` × ${sub.qty}` : ""}</div><div className="text-xs" style={{ color: "var(--mut)" }}>{sub.status === "active" ? `Aktywna · następne odnowienie ${sub.next_run ? new Date(sub.next_run).toLocaleDateString("pl-PL") : "—"}` : `Zakończona${sub.canceled_at ? ` ${new Date(sub.canceled_at).toLocaleDateString("pl-PL")}` : ""}`}</div></div>
+              <div className="font-semibold">{zl(sub.price_gross)} <span className="text-xs font-normal" style={{ color: "var(--mut)" }}>/ mies.</span></div>
+            </div>)}
+          </div>
+        </section>}
 
         {authed === false && <p style={{ color: "var(--mut)" }}>Zaloguj się, aby zobaczyć zamówienia. <a href="/login" className="text-amber-400 underline">Logowanie</a>.</p>}
         {authed === null && <p style={{ color: "var(--mut)" }}>Ładowanie…</p>}

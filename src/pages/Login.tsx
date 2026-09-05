@@ -60,6 +60,7 @@ const LOGIN_CSS = `.sl-root{position:relative;min-height:100dvh;overflow:hidden;
 
 const REMEMBER_KEY = "sunrise.market.login.email";
 const RESET_URL = "https://app.mysunrise.pl/forgot-password";
+const REGISTER_URL = "https://app.mysunrise.pl/register-client";
 
 function safeNext() {
   const value = new URLSearchParams(window.location.search).get("next") || "/";
@@ -105,8 +106,16 @@ export default function Login() {
     setBusy(true);
     setError(null);
     try {
-      const { error: signErr } = await supabase.auth.signInWithPassword({ email: email.trim(), password });
-      if (signErr) throw signErr;
+      let { error: signErr } = await supabase.auth.signInWithPassword({ email: email.trim(), password });
+      if (signErr) {
+        // Konto istnieje w MySunrise, ale nie było jeszcze w Market (albo hasło się zmieniło):
+        // sso-login sprawdza dane w MySunrise i zakłada / aktualizuje konto Market z tym samym hasłem.
+        const { data: sso } = await supabase.functions.invoke("sso-login", { body: { email: email.trim(), password } });
+        if ((sso as { ok?: boolean } | null)?.ok) {
+          ({ error: signErr } = await supabase.auth.signInWithPassword({ email: email.trim(), password }));
+        }
+        if (signErr) throw signErr;
+      }
       try {
         if (remember) window.localStorage.setItem(REMEMBER_KEY, email.trim());
         else window.localStorage.removeItem(REMEMBER_KEY);
@@ -175,6 +184,10 @@ export default function Login() {
                 Zapamiętaj mnie
               </label>
               <a className="sl-link" href={RESET_URL}>Nie pamiętasz hasła?</a>
+            </div>
+            <div className="sl-row" style={{ marginTop: 6 }}>
+              <span style={{ color: "rgba(255,255,255,.6)", fontSize: 13 }}>Nie masz konta Sunrise?</span>
+              <a className="sl-link" href={REGISTER_URL}>Zarejestruj się w MySunrise →</a>
             </div>
 
             {error && <div className="sl-err">{error}</div>}

@@ -449,6 +449,7 @@ export async function sellerWallet(): Promise<SellerWallet> {
 // energii/MySunrise nie gotowy → available:false, UI degraduje się (jak sellerWallet).
 export type EnergyReferral = {
   available: boolean;
+  reason?: string;
   code?: string;
   link?: string;
   reward_pct?: number;

@@ -12,11 +12,12 @@ export default function Cennik() {
     <div className="min-h-screen">
       <header className="sticky top-0 z-20 backdrop-blur" style={{ background: "var(--header)", borderBottom: "1px solid var(--line)" }}>
         <div className="mx-auto max-w-4xl px-4 py-3 flex items-center gap-3">
+          <a href="/" className="rounded-xl px-3 py-1.5 text-sm font-semibold" style={{ border: "1px solid var(--line)" }}>← Sklep</a>
           <a href="/" className="flex items-center gap-2">
             <img src="/logo-sunrise-market-light.png" alt="Sunrise Market" className="brand-logo h-11 w-auto" onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = "none"; }} />
           </a>
           <div className="flex-1" />
-          <a href="/sprzedawca" className="text-sm navlink">Zostań sprzedawcą →</a>
+          <a href="/sprzedawca/dolacz" className="text-sm navlink">Zostań sprzedawcą →</a>
         </div>
       </header>
 
@@ -56,9 +57,7 @@ export default function Cennik() {
           </div>
         )}
 
-        <div className="mt-8 rounded-2xl p-5 text-sm" style={{ background: "var(--glass)", border: "1px solid var(--line)", color: "var(--mut)" }}>
-          7 strumieni przychodu platformy: prowizja od sprzedaży, subskrypcja sprzedawcy, promowanie (CPC), wyróżnienia, banery, marża dostawy, usługi dodatkowe.
-        </div>
+
       </main>
     </div>
   );

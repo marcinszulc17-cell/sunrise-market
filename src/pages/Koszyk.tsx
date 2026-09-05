@@ -45,6 +45,8 @@ export default function Koszyk() {
 
   const ids = cart.map((i) => i.offer_id);
   const idsKey = ids.join(",");
+  // Subskrypcja w koszyku: płatność tylko kartą (Stripe, auto-odnawianie co miesiąc).
+  const hasSubscription = cart.some((i) => Boolean(subscriptionInfo(i.billing ? { subscription: { interval: i.billing } } : null, i.title)));
 
   async function refreshWallet() {
     try { const w = await walletBalance(); setBalance(w.balance); setLinked(w.linked); setPoints(w.points); } catch { setBalance(null); }
@@ -150,6 +152,7 @@ export default function Koszyk() {
 
   async function pay() {
     setMsg(null);
+    if (hasSubscription) { setMsg("Subskrypcję opłacasz kartą — odnawia się automatycznie co miesiąc. Użyj przycisku „Zapłać kartą”."); return; }
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) { window.location.href = "/login"; return; }
     if (!deliveryReady) { setMsg("Uzupełnij adres dostawy (imię i nazwisko, ulica, miasto, kod)."); return; }

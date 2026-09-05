@@ -182,13 +182,31 @@ function Zyczenia() {
   return <div className="grid gap-3 sm:grid-cols-2">{items.map((x) => <Card key={x.id}><a href={`/produkt/${x.product_id}`} className="font-semibold">{x.product_name ?? "Produkt"}</a><button onClick={() => toggleWatch(x.product_id).then(() => setItems((v) => v.filter((i) => i.product_id !== x.product_id)))} className="block mt-2 text-xs" style={{ color: "var(--mut)" }}>Usuń z listy</button></Card>)}</div>;
 }
 
+type Consent = { channel: string; purpose: string; basis?: string | null; text?: string | null; since?: string | null; verified?: boolean };
+function Zgody() {
+  const [state, setState] = useState<{ consents: Consent[]; manage_url?: string } | null | "error">(null);
+  useEffect(() => {
+    supabase.functions.invoke("customer-consents", { body: {} }).then(({ data, error }) => {
+      if (error || !data?.ok) setState("error"); else setState({ consents: data.consents ?? [], manage_url: data.manage_url });
+    });
+  }, []);
+  return <Card>
+    <div className="flex items-center justify-between gap-3"><div><div className="font-semibold">Twoje zgody</div><div className="text-xs mt-1" style={{ color: "var(--mut)" }}>Jedno miejsce dla całego ekosystemu Sunrise. Pokazujemy tylko zgody aktywne.</div></div>
+      <a href={(state !== null && state !== "error" && state.manage_url) || "https://app.mysunrise.pl/profile"} target="_blank" rel="noreferrer" className="rounded-lg px-3 py-1.5 text-xs font-semibold" style={{ border: "1px solid var(--line)" }}>Zarządzaj w MySunrise →</a></div>
+    {state === null && <div className="mt-3 text-sm" style={{ color: "var(--mut)" }}>Ładuję zgody…</div>}
+    {state === "error" && <div className="mt-3 text-sm" style={{ color: "var(--mut)" }}>Nie udało się pobrać zgód. Odśwież stronę za chwilę.</div>}
+    {state !== null && state !== "error" && state.consents.length === 0 && <div className="mt-3 text-sm" style={{ color: "var(--mut)" }}>Brak aktywnych zgód marketingowych. Zgody na regulaminy są zapisane przy Twoim koncie MySunrise.</div>}
+    {state !== null && state !== "error" && state.consents.length > 0 && <ul className="mt-3 space-y-2 text-sm">{state.consents.map((c, i) => <li key={i} className="flex items-start justify-between gap-3 rounded-xl px-3 py-2" style={{ background: "var(--header)", border: "1px solid var(--line)" }}><div><div className="font-medium">✓ {c.purpose}</div><div className="text-xs" style={{ color: "var(--mut)" }}>{c.channel}{c.text ? ` · ${c.text}` : ""}</div></div><div className="text-xs whitespace-nowrap" style={{ color: "var(--mut)" }}>{c.since ? new Date(c.since).toLocaleDateString("pl-PL") : ""}</div></li>)}</ul>}
+  </Card>;
+}
+
 function Ustawienia({ email, seller, isOp, onLogout }: { email: string; seller: any; isOp: boolean; onLogout: () => void }) {
-  return <div className="space-y-4"><Card><div className="text-sm" style={{ color: "var(--mut)" }}>E-mail</div><div className="font-semibold mt-1">{email}</div></Card><Card><div className="text-sm" style={{ color: "var(--mut)" }}>Rola</div><div className="font-semibold mt-1">{isOp ? "Operator" : seller ? (seller.seller_type === "business" || seller.seller_type === "sunrise" ? "Partner Handlowy" : "Sprzedawca") : "Klient"}</div></Card><button onClick={onLogout} className="text-sm px-4 py-2 rounded-xl" style={{ background: "var(--glass)", border: "1px solid var(--line)" }}>Wyloguj</button></div>;
+  return <div className="space-y-4"><Card><div className="text-sm" style={{ color: "var(--mut)" }}>E-mail</div><div className="font-semibold mt-1">{email}</div></Card><Zgody /><Card><div className="text-sm" style={{ color: "var(--mut)" }}>Rola</div><div className="font-semibold mt-1">{isOp ? "Operator" : seller ? (seller.seller_type === "business" || seller.seller_type === "sunrise" ? "Partner Handlowy" : "Sprzedawca") : "Klient"}</div></Card><button onClick={onLogout} className="text-sm px-4 py-2 rounded-xl" style={{ background: "var(--glass)", border: "1px solid var(--line)" }}>Wyloguj</button></div>;
 }
 
 function PolecajPV() {
   const [r, setR] = useState<EnergyReferral | null>(null);
   useEffect(() => { energyReferral().then(setR).catch(() => {}); }, []);
   const link = r?.link || (r?.code ? `https://sunriseenergy.pl/?ref=${r.code}` : "");
-  return <Card><div className="font-semibold">Polecaj Sunrise Energy</div><div className="text-sm mt-1" style={{ color: "var(--mut)" }}>Polecaj fotowoltaikę i rozwiązania energetyczne. Twój link zapisuje polecenie do programu Sunrise.</div>{link ? <div className="mt-3 flex gap-2"><input readOnly value={link} className="flex-1 rounded-lg px-3 py-2 text-sm" style={{ background: "var(--glass)", border: "1px solid var(--line)" }} /><button onClick={() => navigator.clipboard.writeText(link)} className="px-3 py-2 rounded-lg text-sm" style={{ background: "var(--gold)", color: "#000" }}>Kopiuj</button></div> : <div className="mt-3 text-xs" style={{ color: "var(--mut)" }}>{r?.available === false ? "Program poleceń jest chwilowo niedostępny." : "Ładowanie linku polecającego…"}</div>}</Card>;
+  return <Card><div className="font-semibold">Polecaj Sunrise Energy</div><div className="text-sm mt-1" style={{ color: "var(--mut)" }}>Polecaj fotowoltaikę i rozwiązania energetyczne. Twój link zapisuje polecenie do programu Sunrise.</div>{link ? <div className="mt-3 flex gap-2"><input readOnly value={link} className="flex-1 rounded-lg px-3 py-2 text-sm" style={{ background: "var(--glass)", border: "1px solid var(--line)" }} /><button onClick={() => navigator.clipboard.writeText(link)} className="px-3 py-2 rounded-lg text-sm" style={{ background: "var(--gold)", color: "#000" }}>Kopiuj</button></div> : <div className="mt-3 text-xs" style={{ color: "var(--mut)" }}>{r === null ? "Ładuję Twój link polecający…" : r.reason === "no_code" ? "Twoje konto nie ma jeszcze kodu polecającego — dołącz do Sunrise Family Club w MySunrise, a link pojawi się tutaj." : "Program poleceń jest chwilowo niedostępny. Odśwież stronę za chwilę."}</div>}</Card>;
 }

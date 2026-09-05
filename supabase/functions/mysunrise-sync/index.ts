@@ -82,12 +82,17 @@ Deno.serve(async (req) => {
         const patch = { title: p.name, description: descr, image_url: img, category_id: cid, commission_model: "mlm_full", attributes: mergedAttrs, updated_at: new Date().toISOString() };
         // Cena z MySunrise tylko gdy nie ma ręcznej zmiany (price_locked) ani aktywnej promocji.
         if (!prev.price_locked && !prev.promo) { patch.price_gross = price; }
+        // Stan magazynowy z MySunrise (źródło prawdy między zakupami); ms_stock = znacznik echa dla
+        // triggera push_stock_to_mysunrise, żeby nie odsyłać tej samej wartości z powrotem.
+        const msStock = Math.max(0, Number(p.stock_qty ?? 0));
+        patch.stock = msStock;
+        patch.attributes = { ...mergedAttrs, ms_stock: msStock };
         // Ręcznie ukryta/zablokowana/zarchiwizowana oferta zachowuje swój status.
         if (STATUSY_RECZNE.has(match.status)) { keptHidden++; } else { patch.status = "active"; }
         await admin.from("offers").update(patch).eq("id", match.id);
         updated++;
       } else {
-        await admin.from("offers").insert({ seller_id: seller.id, category_id: cid, title: p.name, description: descr, price_gross: price, currency: "PLN", stock: Number(p.stock_qty ?? 0), status: "active", image_url: img, fulfillment_provider: "mysunrise", commission_model: "mlm_full", attributes: attrs });
+        await admin.from("offers").insert({ seller_id: seller.id, category_id: cid, title: p.name, description: descr, price_gross: price, currency: "PLN", stock: Number(p.stock_qty ?? 0), status: "active", image_url: img, fulfillment_provider: "mysunrise", commission_model: "mlm_full", attributes: { ...attrs, ms_stock: Number(p.stock_qty ?? 0) } });
         inserted++;
       }
     } catch (e) { errs.push({ name: p?.name, e: String(e).slice(0, 120) }); }
