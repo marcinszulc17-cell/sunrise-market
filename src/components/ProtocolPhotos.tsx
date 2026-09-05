@@ -97,7 +97,8 @@ export function PhotoProofList({ bookingId, photos, onError, onDelete }: { booki
 
 /** Zapis akceptacji umowy najmu (market.my_rental_agreement) — dla klienta i sprzedawcy. */
 export function RentalAgreementBadge({ bookingId, showRenter }: { bookingId: string; showRenter?: boolean }) {
-  const [row, setRow] = useState<{ version: string; text_sha256: string; renter: Record<string, string>; accepted_at: string } | null | undefined>(undefined);
+  const [row, setRow] = useState<{ version: string; text_sha256: string; renter: Record<string, string>; accepted_at: string; agreement_text?: string | null } | null | undefined>(undefined);
+  const [open, setOpen] = useState(false);
   useEffect(() => {
     supabase.rpc("my_rental_agreement", { p_booking: bookingId }).then(({ data }) => setRow((data && data[0]) || null));
   }, [bookingId]);
@@ -106,6 +107,8 @@ export function RentalAgreementBadge({ bookingId, showRenter }: { bookingId: str
   const r = row.renter || {};
   return <div className="mt-3 rounded-xl px-3 py-2 text-[11px]" style={{ border: "1px solid rgba(34,197,94,.3)", background: "rgba(34,197,94,.06)" }}>
     <b>Umowa najmu zaakceptowana</b> {dt(row.accepted_at)} · wersja {row.version} · odcisk #{row.text_sha256.slice(0, 10)}
+    {row.agreement_text && <button type="button" onClick={() => setOpen((v) => !v)} className="ml-2 underline" style={{ color: "var(--gold)" }}>{open ? "zwiń" : "pokaż treść"}</button>}
+    {open && row.agreement_text && <pre className="mt-2 max-h-72 overflow-auto whitespace-pre-wrap rounded-lg p-2 text-[11px] leading-4" style={{ background: "var(--bg)", border: "1px solid var(--line)", color: "var(--mut)" }}>{row.agreement_text}</pre>}
     {showRenter && <div className="mt-1" style={{ color: "var(--mut)" }}>Najemca: {r.full_name || "—"} · tel. {r.phone || "—"} · {r.doc_type || "dokument"} {r.doc_number || "—"}{r.license_number ? ` · prawo jazdy ${r.license_number} (od ${r.license_since_year || "—"})` : ""}{r.address ? ` · ${r.address}` : ""}</div>}
   </div>;
 }

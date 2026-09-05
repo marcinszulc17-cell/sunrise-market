@@ -180,7 +180,8 @@ export default function BookingPurchaseModal({ offerId, config, open, onClose }:
   const agreementText = isDaily ? rentalAgreementText({
     item: offerFacts?.title || "Przedmiot najmu", sellerName: offerFacts?.seller || "Wynajmujący", from: shortDate(fromDay), to: shortDate(toDay), units: rentalUnits,
     rent: rentalBase, deposit, fees, isVehicle,
-    kmLimitPerDay: Number(offerFacts?.attributes?.km_limit_per_day || offerFacts?.attributes?.mileage_limit || 0) || null,
+    kmLimitPerDay: Number(offerFacts?.attributes?.km_limit_per_day || (offerFacts?.attributes?.rental_operations as any)?.included_km_per_day || offerFacts?.attributes?.mileage_limit || 0) || null,
+    extraKmRate: Number((offerFacts?.attributes?.rental_operations as any)?.excess_km_fee || 0) || null,
     minDriverAge: Number(offerFacts?.attributes?.min_driver_age || 0) || null,
     pickupLocation: String(offerFacts?.attributes?.pickup_location || offerFacts?.attributes?.location || "") || null,
   }, renter) : "";
@@ -234,7 +235,7 @@ export default function BookingPurchaseModal({ offerId, config, open, onClose }:
         if (!renterReady) throw new Error("Uzupełnij dane najemcy (imię i nazwisko, telefon, dokument" + (isVehicle ? ", prawo jazdy" : "") + ")");
         if (!agreementAccepted) throw new Error("Zaakceptuj umowę najmu — bez tego nie można opłacić rezerwacji");
         hold = await createBookingHoldV2({ offerId, startsAt: dateAtNoonUtc(fromDay), endsAt: dateAtNoonUtc(toDay), resourceId });
-        const { error: agreementError } = await supabase.rpc("accept_rental_agreement", { p_booking: hold.booking_id, p_version: RENTAL_AGREEMENT_VERSION, p_sha256: await sha256Text(agreementText), p_renter: renter, p_user_agent: navigator.userAgent });
+        const { error: agreementError } = await supabase.rpc("accept_rental_agreement", { p_booking: hold.booking_id, p_version: RENTAL_AGREEMENT_VERSION, p_sha256: await sha256Text(agreementText), p_renter: renter, p_user_agent: navigator.userAgent, p_text: agreementText });
         if (agreementError) throw new Error(agreementError.message);
       }
       const result = await checkoutWithInvoice({ booking_id: hold.booking_id, payment_method: payment }, invoice);
