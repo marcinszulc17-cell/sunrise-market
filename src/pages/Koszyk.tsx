@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { SiteHeader } from "../components/home/SiteChrome";
 import { supabase } from "../lib/supabase";
 import { validateCoupon, walletBalance, listShippingLanes, cartLanes, recommendedOffers, similarOffers, smartStatus, smartSubscribe, type ShipMethod, type CartLane, type ShipAddress, type CouponCheck } from "../lib/api";
 import { useCart, setQty, removeItem, clearCart, cartTotal, addToCart, cleanTitle } from "../lib/cart";
@@ -296,12 +297,7 @@ export default function Koszyk() {
 
   return (
     <div className="min-h-screen">
-      <header className="sticky top-0 z-20 backdrop-blur" style={{ background: "var(--header)", borderBottom: "1px solid var(--line)" }}>
-        <div className="mx-auto max-w-4xl px-4 py-3 flex items-center gap-3">
-          <a href="/" className="flex items-center gap-2"><img src="/logo-sunrise-market-light.png" alt="Sunrise Market" className="brand-logo h-11 w-auto" onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = "none"; }} /></a>
-          <div className="flex-1" /><a href="/" className="text-sm navlink">← Sklep</a>
-        </div>
-      </header>
+      <SiteHeader compact />
 
       <main className="mx-auto max-w-4xl px-4 py-8">
         <h1 className="font-display text-3xl font-semibold mb-6">Koszyk</h1>

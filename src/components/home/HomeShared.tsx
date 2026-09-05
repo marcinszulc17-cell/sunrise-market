@@ -49,7 +49,7 @@ export type Tint = keyof typeof TINTS;
 /** Tło kafla działu w odcieniu ikony (wg wzoru: każdy kafel lekko tonowany, nadal ciemny). */
 export function tileStyle(tint: Tint): React.CSSProperties {
   const t = TINTS[tint];
-  return { background: `linear-gradient(135deg, ${t.bg} 0%, rgba(24,24,27,.85) 70%)`, border: `1px solid ${t.bd}` };
+  return { background: `linear-gradient(135deg, ${t.bg} 0%, var(--glass) 70%)`, border: `1px solid ${t.bd}` };
 }
 export function IconTile({ name, size = 48, tint = "amber" }: { name: IconName; size?: number; tint?: Tint }) {
   const t = TINTS[tint];

@@ -221,7 +221,7 @@ const SELLER_NAV = (a: Attention) => [
 ];
 function StatTile({ to, tint, icon, value, label, sub }: { to: string; tint: Tint; icon: "bag" | "cart" | "calendar" | "sun"; value: string; label: string; sub: string }) {
   const t = TINTS[tint];
-  return <Link to={to} className="group flex items-center gap-4 rounded-2xl p-5 transition hover:-translate-y-0.5" style={{ background: `linear-gradient(135deg, ${t.bg} 0%, rgba(24,24,27,.85) 70%)`, border: `1px solid ${t.bd}` }}>
+  return <Link to={to} className="group flex items-center gap-4 rounded-2xl p-5 transition hover:-translate-y-0.5" style={{ background: `linear-gradient(135deg, ${t.bg} 0%, var(--glass) 70%)`, border: `1px solid ${t.bd}` }}>
     <div className="grid h-12 w-12 shrink-0 place-items-center rounded-xl" style={{ background: t.bg, color: t.c }}><Ico name={icon} size={24} /></div>
     <div className="min-w-0 flex-1"><div className={`truncate font-bold ${value.length > 9 ? "text-xl" : "text-2xl"}`}>{value}</div><div className="text-sm font-semibold">{label}</div><div className="text-xs" style={{ color: "var(--mut)" }}>{sub}</div></div>
     <span aria-hidden="true" className="text-xl transition group-hover:translate-x-0.5" style={{ color: "var(--mut)" }}>›</span>

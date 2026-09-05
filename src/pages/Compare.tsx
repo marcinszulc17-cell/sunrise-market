@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { SiteHeader } from "../components/home/SiteChrome";
 import { getOffer } from "../lib/api";
 import { zl } from "../lib/money";
 
@@ -23,7 +24,7 @@ export default function Compare() {
   const keys = Array.from(new Set(items.flatMap(x => Object.keys(x.attributes || {})))).filter(k => !["vin","registration_number","kw_number","offer_type","cashback_only","purchase_mode"].includes(k)).slice(0, 20);
 
   return <div className="min-h-screen" style={{ background: "var(--bg)", color: "var(--ink)" }}>
-    <header className="sticky top-0 z-20 backdrop-blur" style={{ background: "var(--header)", borderBottom: "1px solid var(--line)" }}><div className="mx-auto max-w-7xl px-4 py-3 flex items-center gap-3"><a href="/"><img src="/logo-sunrise-market-light.png" alt="Sunrise Market" className="brand-logo h-11 w-auto" /></a><div className="flex-1"/><a href="/" className="text-sm">← Wróć do ofert</a></div></header>
+    <SiteHeader compact />
     <main className="mx-auto max-w-7xl px-4 py-8">
       <h1 className="text-3xl font-semibold">Porównaj oferty</h1>
       <p className="mt-2 text-sm" style={{ color: "var(--mut)" }}>Możesz porównać maksymalnie 4 oferty obok siebie.</p>

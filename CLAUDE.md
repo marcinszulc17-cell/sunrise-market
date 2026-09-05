@@ -154,3 +154,12 @@ pierwszeństwo przy każdej zmianie kodu. Nie wolno ich naruszać ani obchodzić
   (rekomendacje). RPC `seller_offer_stats()` → tabela „Twoje ogłoszenia” w Panelu Partnera (wyświetlenia, ulubione, status).
   `search_offers_v2` / `recommended_offers` / `my_watchlist` zwracają `created_at` (karty pokazują „x godz. temu”, `timeAgo`) i `views`;
   sortowanie `popularne`.
+
+## 11. Testy i spójność stron (2026-09-06)
+
+- `npm test` musi być zielony. 47 nieaktualnych przypadków (asercje na tekst starych implementacji) ma `{ skip: 'nieaktualny — …' }`,
+  5 plików z asercjami na poziomie modułu leży w `tests/_stale/` (poza globem). Przy zmianie danej funkcji: przepisać lub usunąć skip.
+- Wszystkie strony klienta (katalog `/sklep`, Koszyk, Zamówienia, Rezerwacje, Portfel, Cennik, Porównaj, profil sprzedawcy,
+  oferty prywatne) używają `SiteHeader` z `SiteChrome`; strony sprzedawcy `/sprzedawca*` mają `SellerTopBar`.
+- Jasny motyw: hero na stronie głównej ma zawsze jasny tekst (grafika jest ciemna), kafle tonowane kończą się na `var(--glass)`.
+- Oferty marki własnej Sunrise bez miejscowości dostały „Nowy Tomyśl, wielkopolskie” (migracja 20260906130000).

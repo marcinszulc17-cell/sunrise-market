@@ -45,11 +45,11 @@ export default function Home() {
       <section className="relative mt-5 overflow-hidden rounded-2xl" style={{ border: "1px solid var(--line)", minHeight: 320 }}>
         <SunriseArt />
         <div className="relative flex min-h-[300px] flex-col justify-center px-10 py-12 xl:min-h-[340px] xl:px-14">
-          <h1 className="max-w-2xl text-4xl font-extrabold leading-[1.08] tracking-tight xl:text-5xl">Wszystko,<br /><span style={{ color: "var(--gold)" }}>czego potrzebujesz</span><br />w jednym miejscu.</h1>
+          <h1 className="max-w-2xl text-4xl font-extrabold leading-[1.08] tracking-tight xl:text-5xl" style={{ color: "#F5F5F7" }}>Wszystko,<br /><span style={{ color: "var(--gold)" }}>czego potrzebujesz</span><br />w jednym miejscu.</h1>
           <p className="mt-4 max-w-xl text-sm leading-6 xl:text-base" style={{ color: "rgba(245,245,247,.82)" }}>Zakupy. Rezerwacje. Nieruchomości. Motoryzacja. Usługi.<br />Sunrise Market — bliżej Twoich spraw.</p>
           <div className="mt-6 flex flex-wrap gap-3">
             <Link to="/sklep" className="flex h-11 items-center rounded-xl px-6 text-sm font-bold shadow-[0_8px_24px_rgba(232,137,26,.3)] transition hover:brightness-105" style={{ background: GOLD_GRAD, color: "#101012" }}>Przeglądaj oferty</Link>
-            <Link to="/sprzedawca/wystaw" className="flex h-11 items-center rounded-xl px-6 text-sm font-semibold backdrop-blur transition hover:opacity-90" style={{ background: "rgba(255,255,255,.08)", border: "1px solid rgba(255,255,255,.18)" }}>Dodaj ogłoszenie</Link>
+            <Link to="/sprzedawca/wystaw" className="flex h-11 items-center rounded-xl px-6 text-sm font-semibold backdrop-blur transition hover:opacity-90" style={{ background: "rgba(255,255,255,.1)", border: "1px solid rgba(255,255,255,.25)", color: "#F5F5F7" }}>Dodaj ogłoszenie</Link>
           </div>
         </div>
         <div aria-hidden="true" className="font-display pointer-events-none absolute right-12 top-1/2 hidden -translate-y-1/2 -rotate-6 text-right text-2xl italic leading-tight lg:block xl:text-3xl" style={{ color: "#FFE0A8", textShadow: "0 2px 12px rgba(0,0,0,.6)" }}>Więcej możliwości<br />na każdy dzień.</div>

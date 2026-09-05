@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, type MouseEvent } from "react";
+import { SiteHeader } from "../components/home/SiteChrome";
 import ThemeToggle from "../components/ThemeToggle";
 import { zl, pkt } from "../lib/money";
 import { subscriptionInfo } from "../lib/subscription";
@@ -414,59 +415,8 @@ export default function Market() {
   return (
     <div className="min-h-screen">
       {/* ── HEADER ── */}
-      <header className="sticky top-0 z-20 backdrop-blur"
-              style={{ background: "var(--header)", borderBottom: "1px solid var(--line)" }}>
-        <div className="mx-auto max-w-6xl px-4 py-3 flex items-center gap-3">
-          <a href="/" className="flex items-center gap-2 shrink-0">
-            <img src="/logo-sunrise-market-light.png" alt="Sunrise Market" className="brand-logo h-14 sm:h-16 w-auto" onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = "none"; }} />
-          </a>
-          <div className="flex-1 relative">
-            <div className="flex items-center rounded-xl overflow-hidden"
-                 style={{ background: "var(--glass)", border: "1px solid var(--line)" }}>
-              <input value={q} onChange={(e) => onSearchChange(e.target.value)}
-                     onKeyDown={(e) => { if (e.key === "Enter") { setSOpen(false); load(q); } if (e.key === "Escape") setSOpen(false); }}
-                     onFocus={() => { if (q.trim().length >= 2) setSOpen(true); }}
-                     onBlur={() => setTimeout(() => setSOpen(false), 150)}
-                     placeholder="Szukaj produktów…"
-                     className="flex-1 bg-transparent px-4 py-2 text-sm outline-none placeholder:text-zinc-500" />
-              <button onClick={() => { setSOpen(false); load(q); }} className="px-5 py-2 text-sm font-semibold text-black"
-                      style={{ background: "linear-gradient(135deg,#E8891A,#A97B42)" }}>Szukaj</button>
-            </div>
-            {sOpen && q.trim().length >= 2 && (sugg.length > 0 || depts.some((d) => d.name.toLowerCase().includes(q.trim().toLowerCase()))) && (
-              <div className="absolute left-0 right-0 top-full mt-2 z-30 rounded-xl overflow-hidden py-1"
-                   style={{ background: "var(--glass)", border: "1px solid var(--line)", backdropFilter: "blur(14px)", boxShadow: "0 18px 44px -14px rgba(0,0,0,.65)" }}>
-                {depts.filter((d) => d.name.toLowerCase().includes(q.trim().toLowerCase())).slice(0, 3).map((d) => (
-                  <button key={"c" + d.slug} onMouseDown={(e) => { e.preventDefault(); setSOpen(false); pickDept(d); }}
-                          className="w-full text-left px-4 py-2 text-sm hover:opacity-80" style={{ color: "var(--ink)" }}>📂 {d.name}</button>
-                ))}
-                {sugg.map((o) => (
-                  <a key={o.offer_id} href={`/produkt/${o.offer_id}`} className="flex items-center gap-3 px-4 py-2 hover:opacity-80">
-                    <div className="w-9 h-9 rounded-lg overflow-hidden shrink-0" style={{ background: "var(--line)" }}>
-                      {o.image_url ? <img src={o.image_url} alt="" className="w-full h-full object-cover" /> : null}
-                    </div>
-                    <div className="min-w-0 flex-1">
-                      <div className="text-sm truncate" style={{ color: "var(--ink)" }}>{o.title}</div>
-                      <div className="text-xs" style={{ color: "var(--mut)" }}>{zl(o.price_gross)}</div>
-                    </div>
-                  </a>
-                ))}
-                <button onMouseDown={(e) => { e.preventDefault(); setSOpen(false); load(q); }}
-                        className="w-full text-left px-4 py-2 text-sm hover:opacity-80" style={{ color: "var(--gold)" }}>🔎 Szukaj „{q}" w całym sklepie</button>
-              </div>
-            )}
-          </div>
-          
-          {!authed && <a href="/login" className="text-sm navlink px-2 hidden sm:block">Zaloguj</a>}
-          <ThemeToggle />
-          <NotificationsBell />
-          <a href="/koszyk" className="text-sm font-medium px-3 py-2 rounded-xl relative"
-             style={{ background: "var(--glass)", border: "1px solid var(--line)" }}>
-            🛒 Koszyk{cartN > 0 ? ` (${cartN})` : ""}
-          </a>
-          {authed && <a href="/zamowienia" className="text-sm navlink px-2 hidden md:block">Zamówienia</a>}
-          {authed && <a href="/konto" className="text-sm font-medium px-3 py-2 rounded-xl hidden sm:block"
-             style={{ background: "var(--glass)", border: "1px solid var(--line)" }}>👤 Konto</a>}
-        </div>
+      <SiteHeader active="shop" />
+      <header style={{ background: "var(--header)", borderBottom: "1px solid var(--line)" }}>
         {/* pasek działów */}
         <div className="mx-auto max-w-6xl px-4 pb-2 flex gap-2 overflow-x-auto">
           <Chip active={activeDept === null} onClick={() => pickDept(null)}>☰ Wszystkie{total ? ` (${total.toLocaleString("pl-PL")})` : ""}</Chip>

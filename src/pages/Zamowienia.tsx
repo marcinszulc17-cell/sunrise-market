@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { SiteHeader } from "../components/home/SiteChrome";
 import { supabase } from "../lib/supabase";
 import { myOrders, openReturn, myReturns } from "../lib/api";
 import InvoiceSnapshotCard, { type InvoiceSnapshot } from "../components/InvoiceSnapshotCard";
@@ -141,16 +142,7 @@ export default function Zamowienia() {
 
   return (
     <div className="min-h-screen">
-      <header className="sticky top-0 z-20 backdrop-blur" style={{ background: "var(--header)", borderBottom: "1px solid var(--line)" }}>
-        <div className="mx-auto max-w-3xl px-4 py-3 flex items-center gap-3">
-          <a href="/" className="flex items-center gap-2">
-            <img src="/logo-sunrise-market-light.png" alt="Sunrise Market" className="brand-logo h-11 w-auto" onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = "none"; }} />
-          </a>
-          <div className="flex-1" />
-          <a href="/portfel" className="text-sm navlink">Portfel</a>
-          <a href="/" className="text-sm navlink">← Sklep</a>
-        </div>
-      </header>
+      <SiteHeader compact />
 
       <main className="mx-auto max-w-3xl px-4 py-8">
         <h1 className="font-display text-3xl font-semibold mb-4">Moje zamówienia</h1>

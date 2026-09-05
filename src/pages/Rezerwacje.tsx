@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { SiteHeader } from "../components/home/SiteChrome";
 import { myBookingsV2, type BuyerBooking } from "../lib/buyerBookings";
 import { supabase } from "../lib/supabase";
 import { zl } from "../lib/money";
@@ -109,8 +110,9 @@ export default function Rezerwacje() {
   const historyCount = rows.filter(isHistory).length;
   const visibleRows = rows.filter((r) => view === "all" || (view === "history" ? isHistory(r) : !isHistory(r)));
 
-  return <main className="min-h-screen px-4 py-8" style={{ background: "var(--bg)", color: "var(--ink)" }}>
-    <div className="mx-auto max-w-4xl">
+  return <main className="min-h-screen pb-24 sm:pb-8" style={{ background: "var(--bg)", color: "var(--ink)" }}>
+    <SiteHeader compact />
+    <div className="mx-auto max-w-4xl px-4 py-8">
       <div className="mb-7 flex items-center justify-between gap-3"><div><a href="/konto" className="text-sm" style={{ color: "var(--mut)" }}>← Moje konto</a><h1 className="mt-2 font-display text-3xl font-semibold">Moje rezerwacje</h1></div><a href="/" className="rounded-xl px-4 py-2 text-sm" style={{ border: "1px solid var(--line)" }}>Sklep</a></div>
       {paid && <p className="mb-5 rounded-2xl p-4" style={{ background: "rgba(34,197,94,.12)", border: "1px solid rgba(34,197,94,.35)", color: "var(--green)" }}>Płatność przyjęta. Jeśli oferta ma automatyczne potwierdzanie, rezerwacja zostanie potwierdzona od razu. W przeciwnym razie termin pozostaje zablokowany i czeka na akceptację sprzedawcy.</p>}
       {cancelled && <p className="mb-5 rounded-2xl p-4" style={{ background: "rgba(239,68,68,.1)", border: "1px solid rgba(239,68,68,.3)" }}>Płatność przerwana. Termin pozostaje zablokowany tylko do końca czasu płatności.</p>}

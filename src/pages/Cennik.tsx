@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { SiteHeader } from "../components/home/SiteChrome";
 import { pricingList } from "../lib/api";
 
 const zl = (v: number) => Number(v).toLocaleString("pl-PL", { minimumFractionDigits: 2 }) + " zł";
@@ -10,16 +11,7 @@ export default function Cennik() {
 
   return (
     <div className="min-h-screen">
-      <header className="sticky top-0 z-20 backdrop-blur" style={{ background: "var(--header)", borderBottom: "1px solid var(--line)" }}>
-        <div className="mx-auto max-w-4xl px-4 py-3 flex items-center gap-3">
-          <a href="/" className="rounded-xl px-3 py-1.5 text-sm font-semibold" style={{ border: "1px solid var(--line)" }}>← Sklep</a>
-          <a href="/" className="flex items-center gap-2">
-            <img src="/logo-sunrise-market-light.png" alt="Sunrise Market" className="brand-logo h-11 w-auto" onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = "none"; }} />
-          </a>
-          <div className="flex-1" />
-          <a href="/sprzedawca/dolacz" className="text-sm navlink">Zostań sprzedawcą →</a>
-        </div>
-      </header>
+      <SiteHeader compact />
 
       <main className="mx-auto max-w-4xl px-4 py-10">
         <h1 className="font-display text-4xl font-semibold mb-2">Cennik</h1>

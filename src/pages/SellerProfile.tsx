@@ -1,6 +1,7 @@
 // Publiczny profil sprzedawcy na portalu: ocena, rozkład gwiazdek, opinie zweryfikowanych kupujących
 // (tylko klienci z opłaconym zamówieniem — add_review_simple), odpowiedzi sprzedawcy i jego aktywne oferty.
 import { useEffect, useMemo, useState } from "react";
+import { SiteHeader } from "../components/home/SiteChrome";
 import { Link, useParams } from "react-router-dom";
 import { supabase } from "../lib/supabase";
 import MarketFooter from "../components/MarketFooter";
@@ -43,6 +44,7 @@ export default function SellerProfile() {
 
   const initials = p.name.split(/\s+/).slice(0, 2).map(w => w[0] || "").join("").toUpperCase() || "S";
   return <main className="min-h-screen" style={{ background: "var(--bg)", color: "var(--ink)" }}>
+    <SiteHeader />
     <section className="mx-auto max-w-6xl px-4 pt-6 sm:px-6">
       <nav className="text-xs" style={{ color: "var(--mut)" }}><Link to="/">Strona główna</Link> › <span>Sprzedawcy</span> › <span style={{ color: "var(--ink)" }}>{p.name}</span></nav>
 

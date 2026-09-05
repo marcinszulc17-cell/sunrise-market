@@ -1,4 +1,5 @@
 import { pkt } from "../lib/money";
+import { SiteHeader } from "../components/home/SiteChrome";
 import { useEffect, useState } from "react";
 import { supabase } from "../lib/supabase";
 import { getWalletOps, redeemPoints } from "../lib/payments";
@@ -60,22 +61,16 @@ export default function Portfel() {
     });
   }, []);
 
-  if (!userId) return (
+  if (!userId) return (<>
+    <SiteHeader compact />
     <div className="mx-auto max-w-2xl px-4 py-10">
-      <a href="/" className="navlink text-sm">← Sklep</a>
       <p className="mt-4" style={{ color: "var(--mut)" }}>Zaloguj się, aby zobaczyć dane portfela MySunrise. <a href="/login" className="underline" style={{ color: "var(--gold)" }}>Przejdź do logowania</a>.</p>
     </div>
-  );
+  </>);
 
-  return (
+  return (<>
+    <SiteHeader compact />
     <div className="mx-auto max-w-3xl px-4 py-8">
-      <div className="flex items-center gap-2 mb-6">
-        <a href="/" className="flex items-center gap-2"><img src="/logo-sunrise-market-light.png" alt="Sunrise Market" className="brand-logo h-11 w-auto" onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = "none"; }} /></a>
-        <div className="flex-1" />
-        <a href="/koszyk" className="navlink text-sm">🛒 Koszyk</a>
-        <a href="/zamowienia" className="navlink text-sm">Zamówienia</a>
-        <a href="/" className="navlink text-sm">← Sklep</a>
-      </div>
 
       <div className="rounded-2xl p-5 mb-6" style={{ background: "linear-gradient(140deg,#0b1a34,#123a86)", border: "1px solid rgba(245,166,35,.28)" }}>
         <div className="flex items-start justify-between gap-4 flex-wrap">
@@ -160,7 +155,7 @@ export default function Portfel() {
         {ops.length === 0 && <li className="py-3 text-sm" style={{ color: "var(--mut)" }}>Brak operacji z Sunrise Market.</li>}
       </ul>
     </div>
-  );
+  </>);
 }
 
 function labelOp(t: string) {
