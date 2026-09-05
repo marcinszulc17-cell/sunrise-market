@@ -46,7 +46,7 @@ export default function SellerBusinessDashboard() {
         <div>
           <div className="text-sm font-semibold" style={{ color: "var(--gold)" }}>SUNRISE MARKET</div>
           <h1 className="mt-1 font-display text-3xl font-semibold sm:text-4xl">Centrum sprzedawcy</h1>
-          <p className="mt-2 max-w-2xl text-sm sm:text-base" style={{ color: "var(--mut)" }}>Jedno centrum, bez równoległych paneli. Każda rzecz ma jedno właściwe miejsce do zarządzania.</p>
+          <p className="mt-2 max-w-2xl text-sm sm:text-base" style={{ color: "var(--mut)" }}>Twoje oferty, zamówienia, rezerwacje i rozliczenia w jednym miejscu.</p>
         </div>
         <Link to="/sprzedawca/wystaw" className="rounded-2xl px-5 py-3 font-semibold text-black" style={{ background: "linear-gradient(135deg,#C8965A,#E8C896)" }}>+ Wystaw ofertę</Link>
       </div>
@@ -59,15 +59,15 @@ export default function SellerBusinessDashboard() {
       </div>
 
       <div className="grid gap-4 md:grid-cols-2">
-        <Module to="/sprzedawca/oferty" icon="📦" title="Oferty" description="Jedno miejsce do edycji, zdjęć, ceny, VAT, ukrywania/pokazywania, archiwum oraz wejścia do ustawień bookingu." meta={loading ? "Ładowanie…" : `${stats.activeOffers} aktywnych · ${stats.hiddenOffers} ukrytych`} primary="Zarządzaj ofertami" />
-        <Module to="/sprzedawca/zamowienia" icon="🛍️" title="Zamówienia" description="Wszystkie opłacone zamówienia i realizacja sprzedaży. Dane nabywcy do faktury są przypięte do konkretnego zamówienia." meta={loading ? "Ładowanie…" : `${stats.orders} zamówień · ${stats.invoiceRequests} próśb o fakturę`} primary="Otwórz zamówienia" />
+        <Module to="/sprzedawca/oferty" icon="📦" title="Oferty" description="Edycja ofert, zdjęcia, ceny, VAT, ukrywanie i pokazywanie ofert, archiwum oraz ustawienia rezerwacji." meta={loading ? "Ładowanie…" : `${stats.activeOffers} aktywnych · ${stats.hiddenOffers} ukrytych`} primary="Zarządzaj ofertami" />
+        <Module to="/sprzedawca/zamowienia" icon="🛍️" title="Zamówienia" description="Opłacone zamówienia, wysyłka i realizacja sprzedaży. Przy każdym zamówieniu znajdziesz dane nabywcy do faktury." meta={loading ? "Ładowanie…" : `${stats.orders} zamówień · ${stats.invoiceRequests} próśb o fakturę`} primary="Otwórz zamówienia" />
         <Module to="/sprzedawca/rezerwacje" icon="📅" title="Rezerwacje" description="Kalendarz, dzisiejsze i nadchodzące terminy, blokady, pracownicy, auta, nieruchomości i inne zasoby." meta={loading ? "Ładowanie…" : `${stats.activeBookings} aktywnych rezerwacji`} primary="Otwórz rezerwacje" />
-        <Module to="/sprzedawca/rozliczenia" icon="💳" title="Rozliczenia" description="Wpływy, wypłaty i finansowe rozliczenie sprzedaży. To nie jest drugie miejsce do obsługi zamówień." meta={loading ? "Ładowanie…" : `Wpływy z zamówień: ${zl(stats.revenue)}`} primary="Otwórz rozliczenia" />
+        <Module to="/sprzedawca/rozliczenia" icon="💳" title="Rozliczenia" description="Wpływy ze sprzedaży, wypłaty na portfel Sunrise Pay i historia rozliczeń." meta={loading ? "Ładowanie…" : `Wpływy z zamówień: ${zl(stats.revenue)}`} primary="Otwórz rozliczenia" />
       </div>
 
       <div className="mt-6 grid gap-3 sm:grid-cols-2">
         <Link to="/sprzedawca/zapytania" className="rounded-2xl p-5" style={{ background: "var(--glass)", border: "1px solid var(--line)" }}><div className="font-semibold">📈 Leady i sprzedaż</div><div className="mt-1 text-sm" style={{ color: "var(--mut)" }}>Zapytania przed zakupem i proces handlowy.</div></Link>
-        <div className="rounded-2xl p-5" style={{ background: "rgba(200,150,90,.07)", border: "1px solid rgba(200,150,90,.24)" }}><div className="font-semibold">🧾 Faktury sprzedawcy</div><div className="mt-1 text-sm leading-6" style={{ color: "var(--mut)" }}>Na dziś Market przechowuje dane nabywcy potrzebne do wystawienia faktury. Docelowe automatyczne wystawianie/KSeF będzie osobnym modułem dokumentów, a nie drugim panelem zamówień.</div></div>
+        <div className="rounded-2xl p-5" style={{ background: "rgba(200,150,90,.07)", border: "1px solid rgba(200,150,90,.24)" }}><div className="font-semibold">🧾 Faktury sprzedawcy</div><div className="mt-1 text-sm leading-6" style={{ color: "var(--mut)" }}>Dane nabywcy do faktury znajdziesz przy każdym zamówieniu. Fakturę wystawiasz w swoim programie i możesz dołączyć ją bezpośrednio do zamówienia.</div></div>
       </div>
     </div>
   </main>;

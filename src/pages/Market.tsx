@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, type MouseEvent } from "react";
 import ThemeToggle from "../components/ThemeToggle";
 import { zl, pkt } from "../lib/money";
+import { subscriptionInfo } from "../lib/subscription";
 import { getRecent } from "../lib/recent";
 import { searchOffers, searchOffersWithAttributes, homePromoted, categoryCounts, recommendedOffers, sponsoredOffers, toggleWatch, watchedIds, myWatchlist, bannersFor, bannerView, bannerClick } from "../lib/api";
 import { supabase } from "../lib/supabase";
@@ -133,12 +134,13 @@ function OfferCard({ o, fav, onToggleFav, badge }: { o: Offer; fav: boolean; onT
   const [added, setAdded] = useState(false);
   const isTest = isTestProduct(o.title);      // katalog testowy — bez mozliwosci zakupu
   const shownTitle = cleanTitle(o.title);
+  const sub = subscriptionInfo(o.attributes, o.title);
 
   // Dodanie do koszyka bez opuszczania katalogu — wcześniej każda karta wypychała
   // użytkownika na stronę produktu, nawet gdy już wiedział, czego chce.
   function add(e: MouseEvent) {
     e.preventDefault();
-    addToCart({ offer_id: o.offer_id, title: o.title, price: o.price_gross });
+    addToCart({ offer_id: o.offer_id, title: o.title, price: o.price_gross, billing: sub?.interval });
     setAdded(true);
     setTimeout(() => setAdded(false), 1600);
   }
@@ -164,7 +166,8 @@ function OfferCard({ o, fav, onToggleFav, badge }: { o: Offer; fav: boolean; onT
         <Stars rating={o.rating} reviews={o.reviews} />
         <a href={`/produkt/${o.offer_id}`} className="font-semibold leading-snug flex-1 hover:text-amber-300">{shownTitle}</a>
 
-        <div className="font-display text-2xl font-semibold">{zl(o.price_gross)}</div>
+        <div className="font-display text-2xl font-semibold">{zl(o.price_gross)}{sub && <span className="text-sm font-medium" style={{ color: "var(--mut)" }}> {sub.priceSuffix}</span>}</div>
+        {sub && <div className="text-[11px] font-semibold px-2 py-1 rounded-full self-start" title={sub.note} style={{ background: "rgba(56,224,240,.12)", color: "#7FE7F0" }}>🔁 {sub.badge} · płatna z góry</div>}
 
         {/* Sygnały zaufania — to, po czym klient decyduje, zanim kliknie */}
         <div className="flex flex-wrap gap-1.5">

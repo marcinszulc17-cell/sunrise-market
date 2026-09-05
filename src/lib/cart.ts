@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 
-export type CartItem = { offer_id: string; title: string; price: number; qty: number; variant?: string };
+export type CartItem = { offer_id: string; title: string; price: number; qty: number; variant?: string; billing?: "month" | "year" };
 
 // Produkty testowe (katalog dropshippingowy) — widoczne w sklepie, ale NIE do kupienia.
 // Zrodlo prawdy jest w bazie (offers.is_test + blokada w market.checkout); front rozpoznaje

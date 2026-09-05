@@ -16,7 +16,7 @@ export default function InvoiceDetailsFields({ value, onChange, compact = false 
       <input type="checkbox" checked={value.requested} onChange={(e) => set("requested", e.target.checked)} className="mt-1" />
       <div>
         <div className="font-semibold">Chcę fakturę VAT</div>
-        <div className="mt-0.5 text-xs" style={{ color: "var(--mut)" }}>Dane zostaną zapisane jako snapshot tego zamówienia i nie zmienią się później wraz z profilem.</div>
+        <div className="mt-0.5 text-xs" style={{ color: "var(--mut)" }}>Dane zostaną zapisane przy tym zamówieniu i nie zmienią się później, nawet jeśli zaktualizujesz profil.</div>
       </div>
     </label>
 

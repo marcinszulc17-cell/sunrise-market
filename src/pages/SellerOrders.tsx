@@ -58,7 +58,7 @@ export default function SellerOrders() {
         <div>
           <Link to="/sprzedawca" className="text-sm underline" style={{ color: "var(--mut)" }}>← Centrum sprzedawcy</Link>
           <h1 className="mt-2 font-display text-3xl font-semibold">Zamówienia i dokumenty sprzedaży</h1>
-          <p className="mt-1 text-sm" style={{ color: "var(--mut)" }}>{privateSeller ? "Tryb prywatny: obsługujesz tutaj sprzedaż i realizację zamówień. Upload faktur jest wyłączony." : "Sunrise Market nie wystawia faktur za sprzedawcę. Jeśli klient podał dane do faktury, widzisz ich snapshot z chwili zakupu, a gotowy dokument z własnego programu możesz dołączyć bezpośrednio do zamówienia."}</p>
+          <p className="mt-1 text-sm" style={{ color: "var(--mut)" }}>{privateSeller ? "Tutaj obsługujesz sprzedaż i realizację zamówień." : "Jeśli klient podał dane do faktury, zobaczysz je przy zamówieniu (stan z chwili zakupu). Fakturę wystawiasz w swoim programie i możesz dołączyć ją bezpośrednio do zamówienia."}</p>
         </div>
         <Link to="/sprzedawca/rozliczenia" className="rounded-xl px-4 py-2 text-sm font-semibold" style={{ border: "1px solid var(--line)" }}>Rozliczenia →</Link>
       </div>

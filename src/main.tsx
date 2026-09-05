@@ -35,6 +35,7 @@ import Konto from "./pages/Konto";
 import Rezerwacje from "./pages/Rezerwacje";
 import PwaInstallPrompt from "./components/PwaInstallPrompt";
 import MobileAppNav from "./components/MobileAppNav";
+import SellerTopBar from "./components/SellerTopBar";
 import { supabase } from "./lib/supabase";
 import { initTheme } from "./lib/theme";
 import { startMarketBookingAvailability } from "./lib/marketBookingAvailability";
@@ -93,6 +94,13 @@ function RootEntry() {
   return <MarketEnhanced />;
 }
 
+function SellerChrome() {
+  const { pathname } = useLocation();
+  const sellerArea = pathname === "/sprzedawca" || pathname.startsWith("/sprzedawca/");
+  if (!sellerArea) return null;
+  return <SellerTopBar />;
+}
+
 function AppChrome() {
   const { pathname } = useLocation();
   const authScreen = pathname === "/login" || pathname === "/sso" || (pathname === "/" && window.location.hostname.toLowerCase() === "app.sunrisemarket.pl");
@@ -101,7 +109,7 @@ function AppChrome() {
 }
 
 ReactDOM.createRoot(document.getElementById("root")!).render(
-  <React.StrictMode><BrowserRouter><RouteMeta /><Routes>
+  <React.StrictMode><BrowserRouter><RouteMeta /><SellerChrome /><Routes>
     <Route path="/" element={<RootEntry />} /><Route path="/motoryzacja" element={<CategoryPortal mode="car" />} /><Route path="/nieruchomosci" element={<CategoryPortal mode="property" />} /><Route path="/szukaj" element={<AdvancedSearchUniversal />} /><Route path="/porownaj" element={<Compare />} /><Route path="/login" element={<Login />} /><Route path="/sso" element={<Sso />} /><Route path="/produkt/:id" element={<ProductRouter />} /><Route path="/verify/:id" element={<VerifyRequest />} /><Route path="/koszyk" element={<Koszyk />} /><Route path="/zamowienia" element={<Zamowienia />} /><Route path="/rezerwacje" element={<Rezerwacje />} /><Route path="/cennik" element={<Cennik />} /><Route path="/operator" element={<Operator />} /><Route path="/operator/verify" element={<OperatorVerify />} /><Route path="/operator/refundy-rezerwacji" element={<OperatorBookingRefundExceptions />} /><Route path="/portfel" element={<Portfel />} /><Route path="/konto" element={<Konto />} /><Route path="/sprzedawca" element={<SellerHome />} /><Route path="/sprzedawca/partner" element={<TradePartnerActivate />} /><Route path="/sprzedawca/partner/pulpit" element={<PartnerDashboard />} /><Route path="/sprzedawca/oferty" element={<SellerOffersRouter />} /><Route path="/sprzedawca/oferty/:offerId/edytuj" element={<SellerOfferEdit />} /><Route path="/sprzedawca/zamowienia" element={<SellerOrdersRouter />} /><Route path="/sprzedawca/rezerwacje" element={<SellerBookingsManage />} /><Route path="/sprzedawca/rezerwacje/operacje" element={<SellerResourceOperationsPage />} /><Route path="/sprzedawca/rezerwacje/grafiki" element={<SellerResourceSchedules />} /><Route path="/sprzedawca/rezerwacje/ustawienia/:offerId" element={<SellerBookingSetup />} /><Route path="/sprzedawca/wystaw" element={<SprzedawcaWystaw />} /><Route path="/sprzedawca/zapytania" element={<SellerLeads />} /><Route path="/potwierdz-zakup/:token" element={<SaleConfirmation />} /><Route path="/sprzedawca-klasyczny" element={<LegacySellerGate />} /><Route path="/sprzedawca/rozliczenia" element={<Rozliczenia />} /><Route path="*" element={<Navigate to="/" replace />} />
   </Routes><AppChrome /></BrowserRouter></React.StrictMode>,
 );

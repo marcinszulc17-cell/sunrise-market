@@ -78,7 +78,7 @@ export default function SalesDocumentsPanel({ orderId, mode, invoiceRequested = 
   }
 
   async function upload() {
-    if (!allowUpload) { setMessage("Sprzedaż prywatna nie korzysta z modułu faktur."); return; }
+    if (!allowUpload) { setMessage("Sprzedaż prywatna nie obejmuje faktur."); return; }
     if (!file) { setMessage("Wybierz plik PDF."); return; }
     if (file.type !== "application/pdf" && !file.name.toLowerCase().endsWith(".pdf")) { setMessage("Dozwolone są tylko pliki PDF."); return; }
     if (file.size > 10 * 1024 * 1024) { setMessage("Plik może mieć maksymalnie 10 MB."); return; }

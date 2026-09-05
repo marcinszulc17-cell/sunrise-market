@@ -5,6 +5,7 @@
 // 2026-08: dodany krok dezaktywacji — produkt zdjęty w MySunrise znika też z Marketu.
 // 2026-09-05: oferta UKRYTA ręcznie w Market (status 'paused') zostaje ukryta — sync nie
 //   przywraca jej statusu 'active'. Opis z MySunrise (pełny, z sunriserewards.pl) nadpisuje opis w Market.
+//   Produkty z shop_products.subscription_interval dostają attributes.subscription (płatne z góry, ciągłe).
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "jsr:@supabase/supabase-js@2";
 
@@ -40,7 +41,7 @@ Deno.serve(async (req) => {
 
   const h = { apikey: MS_ANON, Authorization: "Bearer " + MS_ANON };
   const [pr, cr] = await Promise.all([
-    fetch(`${MS_URL}/rest/v1/shop_products?active=eq.true&select=id,name,sku,description,price_pln,image_url,category_id,stock_qty`, { headers: h }),
+    fetch(`${MS_URL}/rest/v1/shop_products?active=eq.true&select=id,name,sku,description,price_pln,image_url,category_id,stock_qty,subscription_interval`, { headers: h }),
     fetch(`${MS_URL}/rest/v1/shop_categories?select=id,name`, { headers: h }),
   ]);
   const products = await pr.json().catch(() => []);
@@ -67,7 +68,11 @@ Deno.serve(async (req) => {
       const { data: existing } = await admin.from("offers").select("id,status").eq("fulfillment_provider", "mysunrise").or(`attributes->>mysunrise_id.eq.${p.id},title.eq.${p.name.replace(/,/g," ")}`).limit(1).maybeSingle();
       let match = existing;
       if (!match) { const { data: bytitle } = await admin.from("offers").select("id,status").eq("fulfillment_provider", "mysunrise").eq("title", p.name).limit(1).maybeSingle(); match = bytitle; }
-      const attrs = { source: "mysunrise", mysunrise_id: p.id, mysunrise_sku: p.sku ?? null, own_brand: true, enriched: true };
+      // Subskrypcja: miesięczna/roczna, płatna z góry, z ciągłością (auto-odnawianie). Front pokazuje to klientowi.
+      const subscription = (p.subscription_interval === "month" || p.subscription_interval === "year")
+        ? { interval: p.subscription_interval, prepaid: true, continuous: true }
+        : null;
+      const attrs = { source: "mysunrise", mysunrise_id: p.id, mysunrise_sku: p.sku ?? null, own_brand: true, enriched: true, ...(subscription ? { subscription } : {}) };
       if (match) {
         const patch = { title: p.name, description: descr, price_gross: price, image_url: img, category_id: cid, commission_model: "mlm_full", attributes: attrs, updated_at: new Date().toISOString() };
         // Ręcznie ukryta/zablokowana/zarchiwizowana oferta zachowuje swój status.

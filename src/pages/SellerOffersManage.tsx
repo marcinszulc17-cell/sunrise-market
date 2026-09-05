@@ -154,7 +154,7 @@ export default function SellerOffersManage() {
       <div>
         <Link to="/sprzedawca" className="text-sm" style={{ color: "var(--mut)" }}>← Centrum sprzedawcy</Link>
         <h1 className="mt-2 font-display text-3xl font-semibold">Moje oferty</h1>
-        <p className="mt-1 text-sm" style={{ color: "var(--mut)" }}>Edycja oferty, zdjęcia, VAT i model cashback/prowizji. Booking, grafiki i dostępność mają jedno centralne miejsce.</p>
+        <p className="mt-1 text-sm" style={{ color: "var(--mut)" }}>Edycja oferty, zdjęcia, VAT i model cashback/prowizji. Rezerwacje, grafiki i dostępność ustawisz w zakładce Rezerwacje.</p>
       </div>
       <Link to="/sprzedawca/wystaw" className="rounded-xl px-4 py-2 font-semibold text-black" style={{ background: "linear-gradient(135deg,#C8965A,#E8C896)" }}>+ Wystaw ofertę</Link>
     </div>
@@ -190,7 +190,7 @@ export default function SellerOffersManage() {
       <Card>
         <div className="text-xs font-semibold tracking-[.14em]" style={{ color: "var(--gold)" }}>CENTRALNE USTAWIENIA</div>
         <h2 className="mt-1 text-xl font-semibold">📅 Rezerwacje i dostępność</h2>
-        <p className="mt-2 text-sm leading-6" style={{ color: "var(--mut)" }}>Booking tej oferty konfigurujesz w jednym miejscu. Tam ustawisz typ rezerwacji, usługi, pracowników i inne zasoby, godziny pracy, nieobecności, ceny sezonowe, kaucję, minimalny/maksymalny okres oraz automatyczne potwierdzanie.</p>
+        <p className="mt-2 text-sm leading-6" style={{ color: "var(--mut)" }}>Rezerwacje dla tej oferty ustawisz w zakładce Rezerwacje: typ rezerwacji, usługi, pracowników i inne zasoby, godziny pracy, nieobecności, ceny sezonowe, kaucję, minimalny/maksymalny okres oraz automatyczne potwierdzanie.</p>
         <div className="mt-5 space-y-3">
           <Link to={`/sprzedawca/rezerwacje/ustawienia/${edit.offer_id}`} className="block rounded-xl px-4 py-3 text-center font-semibold text-black" style={{ background: "linear-gradient(135deg,#C8965A,#E8C896)" }}>Ustaw booking →</Link>
           <Link to="/sprzedawca/rezerwacje" className="block rounded-xl px-4 py-3 text-center text-sm font-semibold" style={{ border: "1px solid var(--line)" }}>Otwórz kalendarz rezerwacji</Link>
