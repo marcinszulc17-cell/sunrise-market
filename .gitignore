@@ -20,3 +20,7 @@ _to_delete/
 # smietnik na zawieszone blokady gita (nie trafia do repo)
 _git_lock_trash/
 _git_trash/
+
+# artefakty builda (były przypadkowo w repo)
+dist/
+dist_check/

@@ -104,7 +104,18 @@ function SellerChrome() {
 
 function AppChrome() {
   const { pathname } = useLocation();
-  const authScreen = pathname === "/login" || pathname === "/sso" || (pathname === "/" && window.location.hostname.toLowerCase() === "app.sunrisemarket.pl");
+  const isAppDomain = window.location.hostname.toLowerCase() === "app.sunrisemarket.pl";
+  // Na app.* korzeń pokazuje ekran logowania TYLKO gościowi. Zalogowany widzi tam sklep,
+  // więc pasek menu musi być widoczny — wcześniej znikał dla wszystkich na "/".
+  const [authed, setAuthed] = React.useState<boolean | null>(isAppDomain ? null : true);
+  React.useEffect(() => {
+    if (!isAppDomain) return;
+    let alive = true;
+    supabase.auth.getSession().then(({ data }) => { if (alive) setAuthed(!!data.session); }).catch(() => { if (alive) setAuthed(false); });
+    const { data: sub } = supabase.auth.onAuthStateChange((_e, session) => { if (alive) setAuthed(!!session); });
+    return () => { alive = false; sub.subscription.unsubscribe(); };
+  }, [isAppDomain]);
+  const authScreen = pathname === "/login" || pathname === "/sso" || (pathname === "/" && isAppDomain && authed !== true);
   if (authScreen) return null;
   return <><MobileAppNav /><PwaInstallPrompt /></>;
 }

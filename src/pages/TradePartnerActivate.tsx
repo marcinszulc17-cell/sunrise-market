@@ -114,7 +114,7 @@ export default function TradePartnerActivate() {
 
   if (loading) return <Shell><p style={{ color: "var(--mut)" }}>Sprawdzam dostęp…</p></Shell>;
 
-  const fee = Number(status?.annual_fee_gross ?? 299);
+  const fee = Number(status?.annual_fee_gross ?? 499);
   const privatePartner = status?.seller_type === "private_partner";
 
   return <Shell>

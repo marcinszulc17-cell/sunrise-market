@@ -72,6 +72,10 @@ paths = [
 ]
 
 regexes = [
+  # JWT Supabase z "role":"anon" (trzy warianty base64url zależnie od wyrównania) — publiczny klucz
+  # przeglądarki; service_role ma inne payload i nadal jest blokowany. Dodane 2026-09-05 po fałszywych
+  # alarmach na mysunrise-sync / sso-login / sso-handoff.
+  '''eyJ[A-Za-z0-9_\-]+\.eyJ[A-Za-z0-9_\-]*(?:cm9sZSI6ImFub24i|yb2xlIjoiYW5vbi|JvbGUiOiJhbm9uI)[A-Za-z0-9_\-]*\.[A-Za-z0-9_\-]+''',
   '''sb_publishable_[A-Za-z0-9_\-]+''',   # publiczny klucz Supabase
   '''pk_(test|live)_[A-Za-z0-9]+''',      # publiczny klucz Stripe
   '''G-[A-Z0-9]{8,}''',                   # Google Analytics Measurement ID
@@ -80,6 +84,6 @@ regexes = [
 ]
 
 # UWAGA: publiczny `anon` key Supabase to JWT (eyJ...) i wygląda jak sekret.
-# NIE dodaję go tu globalnie do allowlisty — lepiej mieć jeden fałszywy alarm do ręcznego
-# odhaczenia niż przepuścić prawdziwy `service_role`, który wygląda niemal identycznie.
-# Różnica siedzi w polu `role` wewnątrz JWT: "anon" (OK) vs "service_role" (SEKRET).
+# Allowlista wyżej przepuszcza WYŁĄCZNIE tokeny z "role":"anon" (sprawdzane po zakodowanym payloadzie);
+# `service_role` ma inny payload i nadal jest blokowany.
+

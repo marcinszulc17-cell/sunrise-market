@@ -139,7 +139,7 @@ export default function PartnerDashboard() {
       <Card title="Partner Handlowy" icon="🏅">
         <Stat label="Aktywny od" value={date(membership?.partner_since)} />
         <Stat label="Bezpłatnie do" value={date(membership?.free_until)} />
-        <Stat label="Odnowienie" value={`${Number(membership?.annual_fee_gross || 299).toFixed(0)} zł / rok`} />
+        <Stat label="Odnowienie" value={`${Number(membership?.annual_fee_gross || 499).toFixed(0)} zł / rok`} />
         {membership?.paid_until && <Stat label="Opłacone do" value={date(membership.paid_until)} />}
         <Link to="/sprzedawca/partner" className="mt-4 block rounded-xl px-4 py-2.5 text-center text-sm font-semibold" style={{ background: membership?.renewal_due ? "linear-gradient(135deg,#C8965A,#E8C896)" : "var(--header)", color: membership?.renewal_due ? "#000" : "var(--ink)", border: membership?.renewal_due ? "none" : "1px solid var(--line)" }}>{membership?.renewal_due ? "Odnow Partnera Handlowego" : "Status członkostwa"}</Link>
       </Card>

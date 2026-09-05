@@ -144,7 +144,7 @@ function Pulpit({ seller, goTab }: { seller: any; goTab: (t: Tab) => void }) {
       {sub && (
         <Card>
           <span className="text-sm" style={{ color: "var(--mut)" }}>Subskrypcja Sunrise Pay:{" "}
-            {sub.in_free ? <b style={{ color: "var(--green)" }}>darmowa do {sub.promo_until} ({sub.days_left} dni)</b> : <b style={{ color: "var(--gold)" }}>{Number(sub.monthly_fee).toFixed(0)} zł/mc</b>}
+            {sub.in_free ? <b style={{ color: "var(--green)" }}>darmowa do {sub.promo_until} ({sub.days_left} dni)</b> : <b style={{ color: "var(--gold)" }}>{Number(sub.annual_fee ?? 299).toFixed(0)} zł/rok</b>}
           </span>
         </Card>
       )}
