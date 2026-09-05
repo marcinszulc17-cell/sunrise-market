@@ -2,7 +2,21 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const SERVICE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? Deno.env.get("SUPABASE_SERVICE_KEY");
 const PAY_BASE = (Deno.env.get("MYSUNRISE_PAY_BASE_URL") ?? "https://lvmrhgpxhqvfuoftblky.supabase.co/functions/v1").replace(/\/$/, "");
-const PAY_TOKEN = Deno.env.get("SUNRISE_MARKET_SERVICE_TOKEN");
+// Token serwisowy Sunrise Pay: najpierw sekret środowiskowy, potem market.internal_secrets.
+// Fallback dodany 2026-09-05 — sekret SUNRISE_MARKET_SERVICE_TOKEN nie był ustawiony w projekcie,
+// przez co portfel, checkout portfelem i wypłaty sprzedawców zwracały "Brak konfiguracji Sunrise Pay".
+async function resolveSunrisePayToken(): Promise<string> {
+  const fromEnv = Deno.env.get("SUNRISE_MARKET_SERVICE_TOKEN");
+  if (fromEnv) return fromEnv;
+  try {
+    const url = Deno.env.get("SUPABASE_URL") ?? "";
+    const key = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? Deno.env.get("SUPABASE_SERVICE_KEY") ?? "";
+    const r = await fetch(`${url}/rest/v1/internal_secrets?select=value&key=eq.sunrise_pay_service_token`, { headers: { apikey: key, Authorization: `Bearer ${key}`, "Accept-Profile": "market" } });
+    const rows = await r.json().catch(() => []);
+    return String(rows?.[0]?.value ?? "");
+  } catch { return ""; }
+}
+const PAY_TOKEN = await resolveSunrisePayToken();
 const SUNRISE_PAY_PAYOUT_NS = "6ba7b810-9dad-11d1-80b4-00f048300c8";
 const STRIPE_PAYOUT_NS = "6ba7b810-9dad-11d1-80b4-00c04fd430c8";
 
@@ -83,12 +97,16 @@ Deno.serve(async (req) => {
       const namespace = provider === "stripe" ? STRIPE_PAYOUT_NS : SUNRISE_PAY_PAYOUT_NS;
       const idem = await uuidv5(`market:seller:${row.order_id}:${row.seller_id}`, namespace);
 
+      // Cel wypłaty: Partner Handlowy (business) -> saldo firmowe (merchant), reszta -> portfel prywatny.
+      const { data: sellerRow } = await sb.from("sellers").select("seller_type").eq("id", row.seller_id).maybeSingle();
+      const target = String(sellerRow?.seller_type ?? "") === "business" ? "merchant" : "personal";
       const credited = await pay("pay-credit", {
         user_ref: row.seller_email,
         amount_grosz: Math.round(Number(row.amount ?? 0) * 100),
         reason: "Sprzedaż Sunrise Market",
         order_ref: row.order_id,
         idempotency_key: idem,
+        target,
       });
       const ok = credited.status === 200 && credited.data?.ok === true;
       await sb.from("seller_settlements").update({

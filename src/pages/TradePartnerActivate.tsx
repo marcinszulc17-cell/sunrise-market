@@ -101,12 +101,12 @@ export default function TradePartnerActivate() {
       }
       if (data?.ok) {
         await loadStatus();
-        setMsg("Partner Handlowy odnowiony na kolejny rok ✅");
+        setMsg("Konto Sprzedawcy odnowione na kolejny rok ✅");
         return;
       }
       throw new Error(data?.error || "Nie udało się rozpocząć odnowienia");
     } catch (e) {
-      setMsg((e as Error).message || "Nie udało się odnowić Partnera Handlowego");
+      setMsg((e as Error).message || "Nie udało się odnowić konta Sprzedawcy");
     } finally {
       setBusy(false);
     }
@@ -121,17 +121,17 @@ export default function TradePartnerActivate() {
     <div className="mx-auto max-w-3xl">
       <Link to="/sprzedawca" className="text-sm underline" style={{ color: "var(--mut)" }}>← Centrum sprzedawcy</Link>
       <div className="mt-5 rounded-3xl p-6 sm:p-8" style={{ background: "var(--glass)", border: "1px solid rgba(200,150,90,.28)" }}>
-        <div className="text-xs font-semibold tracking-[.15em]" style={{ color: "var(--gold)" }}>MYSUNRISE · PARTNER HANDLOWY</div>
+        <div className="text-xs font-semibold tracking-[.15em]" style={{ color: "var(--gold)" }}>MYSUNRISE · SPRZEDAWCA</div>
         <h1 className="mt-2 font-display text-3xl font-semibold sm:text-4xl">Sprzedawaj swoje produkty i zarabiaj</h1>
         <p className="mt-3 text-sm leading-6 sm:text-base" style={{ color: "var(--mut)" }}>
-          Sprzedaż działa na Twoim istniejącym koncie MySunrise. Nie zakładamy drugiego konta i nie wymagamy NIP-u, jeśli sprzedajesz prywatnie.
+          Sprzedaż działa na Twoim istniejącym koncie MySunrise. Nie zakładamy drugiego konta i nie wymagamy NIP-u. Wypłaty trafiają na Twój prywatny portfel Sunrise Pay. Masz firmę i chcesz więcej? Wybierz <Link to="/sprzedawca/dolacz" className="underline">Partnera Handlowego</Link>.
         </p>
 
         <div className="mt-6 grid gap-3 sm:grid-cols-2">
           {[
             ["🛍️", "Własne produkty", "Wystawiaj prywatne rzeczy, auta, sprzęt i inne przedmioty."],
             ["💸", "Dodatkowy dochód", "Zarabiaj na własnej sprzedaży oraz poleceniach dostępnych w ekosystemie."],
-            ["🎁", "12 miesięcy bez opłaty", "Pierwszy rok członkostwa Partnera Handlowego jest bez opłaty rocznej."],
+            ["🎁", "12 miesięcy bez opłaty", "Pierwszy rok konta Sprzedawcy jest bez opłaty rocznej."],
             ["🔄", `${fee.toFixed(0)} zł / rok`, "Po okresie startowym odnawiasz dostęp sprzedażowy na kolejne 12 miesięcy."],
           ].map(([icon, title, body]) => <div key={title} className="rounded-2xl p-4" style={{ background: "var(--header)", border: "1px solid var(--line)" }}>
             <div className="text-2xl">{icon}</div><div className="mt-2 font-semibold">{title}</div><div className="mt-1 text-sm leading-5" style={{ color: "var(--mut)" }}>{body}</div>
@@ -165,11 +165,11 @@ export default function TradePartnerActivate() {
 
           <label className="mt-5 flex items-start gap-3 rounded-2xl p-4 text-sm" style={{ background: "rgba(200,150,90,.08)", border: "1px solid rgba(200,150,90,.22)" }}>
             <input type="checkbox" checked={accept} onChange={(e) => setAccept(e.target.checked)} className="mt-1" />
-            <span style={{ color: "var(--mut)" }}>Aktywuję status Partnera Handlowego, akceptuję zasady sprzedaży Sunrise Market i przyjmuję do wiadomości, że pierwszy rok jest bez opłaty, a po 12 miesiącach dalszy dostęp sprzedażowy kosztuje {fee.toFixed(0)} zł za rok.</span>
+            <span style={{ color: "var(--mut)" }}>Aktywuję konto Sprzedawcy, akceptuję zasady sprzedaży Sunrise Market i przyjmuję do wiadomości, że pierwszy rok jest bez opłaty, a po 12 miesiącach dalszy dostęp sprzedażowy kosztuje {fee.toFixed(0)} zł za rok.</span>
           </label>
 
           <button onClick={activate} disabled={busy || !accept} className="mt-5 w-full rounded-2xl py-3.5 font-bold text-black disabled:opacity-50" style={{ background: "linear-gradient(135deg,#C8965A,#E8C896)" }}>
-            {busy ? "Aktywuję…" : "Aktywuj Partnera Handlowego →"}
+            {busy ? "Aktywuję…" : "Aktywuj konto Sprzedawcy →"}
           </button>
         </>}
 

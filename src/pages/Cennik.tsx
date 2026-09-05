@@ -22,19 +22,27 @@ export default function Cennik() {
 
       <main className="mx-auto max-w-4xl px-4 py-10">
         <h1 className="font-display text-4xl font-semibold mb-2">Cennik</h1>
-        <p className="mb-8" style={{ color: "var(--mut)" }}>Przejrzyste zasady. Płatności wyłącznie przez portfel Sunrise Pay.</p>
+        <p className="mb-8" style={{ color: "var(--mut)" }}>Przejrzyste zasady. Portfel Sunrise Pay z cashbackiem albo karta/BLIK/P24 przez Stripe.</p>
 
         {p && (
           <div className="grid gap-5 md:grid-cols-2">
             <Card title="Sprzedaż" highlight>
-              <Row k="Prowizja od sprzedaży" v={pct(p.commission_rate)} />
-              <Row k="Cashback dla kupującego" v={pct(p.cashback_rate)} note="wraca na portfel" />
+              <Row k="Prowizja — płatność Sunrise Pay" v={pct(p.commission_rate)} note="cashback 3% dla kupującego zawarty" />
+              <Row k="Prowizja — karta / BLIK / P24 (Stripe)" v={pct(p.stripe_commission_rate ?? 0.129)} note="cashback zawarty" />
+              <Row k="Cashback dla kupującego" v={pct(p.cashback_rate)} note="wraca na portfel Sunrise Pay" />
               <Row k="Wypłata dla sprzedawcy" v="na portfel Sunrise Pay" />
             </Card>
-            <Card title="Konto sprzedawcy (Sunrise Pay)">
-              <Row k="Rejestracja" v={Number(p.pay_activation_fee) === 0 ? "0 zł" : zl(p.pay_activation_fee)} />
+            <Card title="Sprzedawca (osoba prywatna)">
+              <Row k="Aktywacja" v="0 zł" note="bez NIP" />
+              <Row k="Pierwszy rok" v={`${p.pay_free_months} mc GRATIS`} note="od aktywacji" />
+              <Row k="Po roku" v={`${zl(p.trade_partner_annual_fee ?? 299)}/rok`} note="płatne z góry" />
+              <Row k="Wypłaty" v="prywatny portfel Sunrise Pay" />
+            </Card>
+            <Card title="Partner Handlowy (firma)">
+              <Row k="Rejestracja" v={Number(p.pay_activation_fee) === 0 ? "0 zł" : zl(p.pay_activation_fee)} note="wymagany NIP" />
               <Row k="Pierwszy rok" v={`${p.pay_free_months} mc GRATIS`} note="od rejestracji" />
-              <Row k="Po roku" v={`${zl(p.pay_monthly_fee)}/mc`} />
+              <Row k="Po roku" v={`${zl(p.pay_annual_fee ?? 499)}/rok`} note="płatne z góry" />
+              <Row k="Wypłaty" v="saldo firmowe Sunrise Pay + Stripe Connect" />
             </Card>
             <Card title="Promowanie produktów">
               <Row k="Promowanie (za kliknięcie)" v={`${zl(p.promote_cpc)}/klik`} />

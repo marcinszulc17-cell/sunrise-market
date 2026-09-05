@@ -3,7 +3,21 @@ import Stripe from "https://esm.sh/stripe@16.12.0?target=deno";
 
 const cors={"Access-Control-Allow-Origin":"*","Access-Control-Allow-Headers":"authorization, x-client-info, apikey, content-type"};
 const PAY_BASE=(Deno.env.get("MYSUNRISE_PAY_BASE_URL")??"https://lvmrhgpxhqvfuoftblky.supabase.co/functions/v1").replace(/\/$/,"");
-const PAY_TOKEN=Deno.env.get("SUNRISE_MARKET_SERVICE_TOKEN");
+// Token serwisowy Sunrise Pay: najpierw sekret środowiskowy, potem market.internal_secrets.
+// Fallback dodany 2026-09-05 — sekret SUNRISE_MARKET_SERVICE_TOKEN nie był ustawiony w projekcie,
+// przez co portfel, checkout portfelem i wypłaty sprzedawców zwracały "Brak konfiguracji Sunrise Pay".
+async function resolveSunrisePayToken(): Promise<string> {
+  const fromEnv = Deno.env.get("SUNRISE_MARKET_SERVICE_TOKEN");
+  if (fromEnv) return fromEnv;
+  try {
+    const url = Deno.env.get("SUPABASE_URL") ?? "";
+    const key = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? Deno.env.get("SUPABASE_SERVICE_KEY") ?? "";
+    const r = await fetch(`${url}/rest/v1/internal_secrets?select=value&key=eq.sunrise_pay_service_token`, { headers: { apikey: key, Authorization: `Bearer ${key}`, "Accept-Profile": "market" } });
+    const rows = await r.json().catch(() => []);
+    return String(rows?.[0]?.value ?? "");
+  } catch { return ""; }
+}
+const PAY_TOKEN = await resolveSunrisePayToken();
 const SERVICE_KEY=Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")??Deno.env.get("SUPABASE_SERVICE_KEY");
 function json(body:unknown,status=200){return new Response(JSON.stringify(body),{status,headers:{...cors,"Content-Type":"application/json"}})}
 async function uuidv5(name:string):Promise<string>{const ns="6ba7b810-9dad-11d1-80b4-00c04fd430c8";const nsBytes=(ns.replace(/-/g,"").match(/.{2}/g) as string[]).map(h=>parseInt(h,16));const data=new Uint8Array([...nsBytes,...new TextEncoder().encode(name)]);const hash=new Uint8Array(await crypto.subtle.digest("SHA-1",data));hash[6]=(hash[6]&15)|80;hash[8]=(hash[8]&63)|128;const hex=Array.from(hash.slice(0,16)).map(b=>b.toString(16).padStart(2,"0")).join("");return `${hex.slice(0,8)}-${hex.slice(8,12)}-${hex.slice(12,16)}-${hex.slice(16,20)}-${hex.slice(20,32)}`}

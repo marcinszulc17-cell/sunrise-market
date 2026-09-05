@@ -23,13 +23,23 @@ pierwszeństwo przy każdej zmianie kodu. Nie wolno ich naruszać ani obchodzić
 
 - Po zakupie klient otrzymuje **3% cashback** z powrotem na portfel Sunrise Pay.
 
-## 3. Zasady sprzedawców
+## 3. Zasady sprzedawców (decyzja właściciela 2026-09-05: dwa poziomy)
 
-- Sprzedawca otrzymuje wypłatę **netto do portfela Sunrise Pay** (nie na konto
-  bankowe).
-- Prowizja platformy: **7,9%**.
-- Rok darmowy od rejestracji, potem miesięczna subskrypcja za dostęp do
-  Sunrise Pay. Akceptacja regulaminu Sunrise Pay wymagana przy rejestracji.
+- **Sprzedawca** (`sellers.seller_type = 'private_partner'`): uproszczone centrum,
+  bez NIP; wypłata **netto na PRYWATNY portfel Sunrise Pay** (`pay-credit`,
+  `target: personal`). 12 mies. gratis, potem **299 zł / rok** z góry
+  (`partner_program_config.annual_fee_gross`, `platform_config.trade_partner_annual_fee`).
+- **Partner Handlowy** (`seller_type = 'business'`, firma z NIP): rozbudowane centrum
+  (faktury, statystyki, reklamy, Stripe Connect); wypłata **netto na SALDO FIRMOWE**
+  Sunrise Pay (`wallets.merchant_balance`, `pay-credit` z `target: merchant`).
+  12 mies. gratis, potem **499 zł / rok** z góry (`platform_config.pay_annual_fee`,
+  `pay_subscriptions.annual_fee`).
+- Wybór poziomu: `/sprzedawca/dolacz`. Prowizja platformy: **7,9%** (Sunrise Pay),
+  **12,9%** (Stripe). Akceptacja regulaminów wymagana przy aktywacji.
+- Subskrypcje produktowe (np. Protect Plus): zawsze **miesięczne, płatne z góry,
+  z ciągłością** (`shop_products.subscription_interval` → `attributes.subscription`).
+- Sekret `SUNRISE_MARKET_SERVICE_TOKEN`: gdy brak w env, funkcje czytają
+  `market.internal_secrets` (klucz `sunrise_pay_service_token`).
 
 ## 4. Dropship first-party (TeemDrop)
 

@@ -181,7 +181,7 @@ export default function PrivateOfferWizard() {
   return <main className="min-h-screen px-4 py-6 sm:px-6" style={{ background: "var(--bg)", color: "var(--ink)" }}>
     <div className="mx-auto max-w-3xl">
       <div className="mb-5 flex items-center justify-between gap-3">
-        <div><div className="text-xs font-semibold tracking-[.14em]" style={{ color: "var(--gold)" }}>PARTNER HANDLOWY</div><h1 className="mt-1 text-3xl font-semibold">{copy.title}</h1><p className="mt-1 text-sm" style={{ color: "var(--mut)" }}>{copy.subtitle}</p></div>
+        <div><div className="text-xs font-semibold tracking-[.14em]" style={{ color: "var(--gold)" }}>SPRZEDAWCA</div><h1 className="mt-1 text-3xl font-semibold">{copy.title}</h1><p className="mt-1 text-sm" style={{ color: "var(--mut)" }}>{copy.subtitle}</p></div>
         <Link to="/sprzedawca/wystaw" className="text-sm underline" style={{ color: "var(--mut)" }}>Zmień tryb</Link>
       </div>
 

@@ -10,7 +10,21 @@ const json = (body: unknown, status = 200) => new Response(JSON.stringify(body),
 });
 
 const MYS_BASE = (Deno.env.get("MYSUNRISE_PAY_BASE_URL") ?? "https://lvmrhgpxhqvfuoftblky.supabase.co/functions/v1").replace(/\/$/, "");
-const SERVICE_TOKEN = Deno.env.get("SUNRISE_MARKET_SERVICE_TOKEN") ?? "";
+// Token serwisowy Sunrise Pay: najpierw sekret środowiskowy, potem market.internal_secrets.
+// Fallback dodany 2026-09-05 — sekret SUNRISE_MARKET_SERVICE_TOKEN nie był ustawiony w projekcie,
+// przez co portfel, checkout portfelem i wypłaty sprzedawców zwracały "Brak konfiguracji Sunrise Pay".
+async function resolveSunrisePayToken(): Promise<string> {
+  const fromEnv = Deno.env.get("SUNRISE_MARKET_SERVICE_TOKEN");
+  if (fromEnv) return fromEnv;
+  try {
+    const url = Deno.env.get("SUPABASE_URL") ?? "";
+    const key = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? Deno.env.get("SUPABASE_SERVICE_KEY") ?? "";
+    const r = await fetch(`${url}/rest/v1/internal_secrets?select=value&key=eq.sunrise_pay_service_token`, { headers: { apikey: key, Authorization: `Bearer ${key}`, "Accept-Profile": "market" } });
+    const rows = await r.json().catch(() => []);
+    return String(rows?.[0]?.value ?? "");
+  } catch { return ""; }
+}
+const SERVICE_TOKEN = await resolveSunrisePayToken();
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: cors });

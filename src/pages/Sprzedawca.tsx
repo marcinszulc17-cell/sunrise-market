@@ -62,7 +62,7 @@ export default function Sprzedawca() {
 
       {!seller ? (
         <form onSubmit={onBecome} className="max-w-md rounded-2xl p-5 flex flex-col gap-3" style={{ background: "var(--glass)", border: "1px solid var(--line)" }}>
-          <h2 className="font-semibold text-lg">Zostań sprzedawcą</h2>
+          <h2 className="font-semibold text-lg">Zostań Partnerem Handlowym (firma)</h2><p className="text-xs" style={{ color: "var(--mut)" }}>Dla firm z NIP: rozbudowane centrum, faktury, saldo firmowe Sunrise Pay i Stripe Connect. Pierwszy rok gratis, potem 499 zł/rok. Sprzedajesz prywatnie? <a href="/sprzedawca/dolacz" className="underline">Wybierz konto Sprzedawcy</a>.</p>
           <input className={inp} style={inpStyle} placeholder="Nazwa firmy" value={legalName} onChange={(e) => setLegalName(e.target.value)} required />
           <input className={inp} style={inpStyle} placeholder="NIP firmy (wymagany — tylko firmy mogą sprzedawać)" value={nip}
             onChange={(e) => setNip(e.target.value)}
@@ -80,7 +80,7 @@ export default function Sprzedawca() {
             <input type="checkbox" checked={accept} onChange={(e) => setAccept(e.target.checked)} className="mt-1" />
             <span>Akceptuję <a href="/legal/regulamin-sprzedawcy.html" target="_blank" className="text-amber-400 underline">Regulamin sprzedawcy</a> oraz <a href="/legal/regulamin.html" target="_blank" className="text-amber-400 underline">Regulamin Sunrise Pay</a> (prowizja 7,9% liczona od ceny brutto, wypłata na portfel Sunrise Pay).</span>
           </label>
-          <button disabled={busy || !accept} className="rounded-xl py-2 font-semibold text-black disabled:opacity-50" style={{ background: "linear-gradient(135deg,#C8965A,#E8C896)" }}>{busy ? "…" : "Aktywuj konto sprzedawcy"}</button>
+          <button disabled={busy || !accept} className="rounded-xl py-2 font-semibold text-black disabled:opacity-50" style={{ background: "linear-gradient(135deg,#C8965A,#E8C896)" }}>{busy ? "…" : "Aktywuj Partnera Handlowego"}</button>
         </form>
       ) : (
         <>

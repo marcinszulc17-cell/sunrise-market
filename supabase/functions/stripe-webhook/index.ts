@@ -3,7 +3,21 @@ import Stripe from "https://esm.sh/stripe@16.12.0?target=deno";
 
 const SERVICE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? Deno.env.get("SUPABASE_SERVICE_KEY");
 const PAY_BASE = (Deno.env.get("MYSUNRISE_PAY_BASE_URL") ?? "https://lvmrhgpxhqvfuoftblky.supabase.co/functions/v1").replace(/\/$/, "");
-const PAY_TOKEN = Deno.env.get("SUNRISE_MARKET_SERVICE_TOKEN");
+// Token serwisowy Sunrise Pay: najpierw sekret środowiskowy, potem market.internal_secrets.
+// Fallback dodany 2026-09-05 — sekret SUNRISE_MARKET_SERVICE_TOKEN nie był ustawiony w projekcie,
+// przez co portfel, checkout portfelem i wypłaty sprzedawców zwracały "Brak konfiguracji Sunrise Pay".
+async function resolveSunrisePayToken(): Promise<string> {
+  const fromEnv = Deno.env.get("SUNRISE_MARKET_SERVICE_TOKEN");
+  if (fromEnv) return fromEnv;
+  try {
+    const url = Deno.env.get("SUPABASE_URL") ?? "";
+    const key = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? Deno.env.get("SUPABASE_SERVICE_KEY") ?? "";
+    const r = await fetch(`${url}/rest/v1/internal_secrets?select=value&key=eq.sunrise_pay_service_token`, { headers: { apikey: key, Authorization: `Bearer ${key}`, "Accept-Profile": "market" } });
+    const rows = await r.json().catch(() => []);
+    return String(rows?.[0]?.value ?? "");
+  } catch { return ""; }
+}
+const PAY_TOKEN = await resolveSunrisePayToken();
 
 function sbClient() {
   return createClient(Deno.env.get("SUPABASE_URL")!, SERVICE_KEY!, { db: { schema: "market" } });
@@ -35,16 +49,18 @@ async function uuidv5(name: string): Promise<string> {
 async function settleSellerPayouts(sb: any, orderId: string) {
   const { data: booking } = await sb.from("bookings").select("ends_at").eq("order_id", orderId).maybeSingle();
   const { data: rows, error } = await sb.from("order_items")
-    .select("seller_id,seller_payout,sellers!inner(email)")
+    .select("seller_id,seller_payout,sellers!inner(email,seller_type)")
     .eq("order_id", orderId);
   if (error) throw error;
 
-  const grouped = new Map<string, { email: string; amount: number }>();
+  // Cel wypłaty: zwykły sprzedawca -> portfel prywatny; Partner Handlowy (business) -> saldo firmowe (merchant).
+  const grouped = new Map<string, { email: string; amount: number; target: "personal" | "merchant" }>();
   for (const row of rows ?? []) {
     const sellerId = String(row.seller_id ?? "");
     const email = String(row.sellers?.email ?? "").trim();
     if (!sellerId || !email) continue;
-    const prev = grouped.get(sellerId) ?? { email, amount: 0 };
+    const target: "personal" | "merchant" = String(row.sellers?.seller_type ?? "") === "business" ? "merchant" : "personal";
+    const prev = grouped.get(sellerId) ?? { email, amount: 0, target };
     prev.amount = Math.round((prev.amount + Number(row.seller_payout ?? 0)) * 100) / 100;
     grouped.set(sellerId, prev);
   }
@@ -71,6 +87,7 @@ async function settleSellerPayouts(sb: any, orderId: string) {
       reason: "Sprzedaż Sunrise Market",
       order_ref: orderId,
       idempotency_key: idem,
+      target: entry.target,
     });
     const settled = credited.status === 200 && credited.data?.ok === true;
     const { error: updateError } = await sb.from("seller_settlements").update({

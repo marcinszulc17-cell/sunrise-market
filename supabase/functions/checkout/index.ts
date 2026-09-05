@@ -6,7 +6,21 @@ const cors = {
 };
 const SERVICE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? Deno.env.get("SUPABASE_SERVICE_KEY");
 const PAY_BASE = (Deno.env.get("MYSUNRISE_PAY_BASE_URL") ?? "https://lvmrhgpxhqvfuoftblky.supabase.co/functions/v1").replace(/\/$/, "");
-const PAY_TOKEN = Deno.env.get("SUNRISE_MARKET_SERVICE_TOKEN");
+// Token serwisowy Sunrise Pay: najpierw sekret środowiskowy, potem market.internal_secrets.
+// Fallback dodany 2026-09-05 — sekret SUNRISE_MARKET_SERVICE_TOKEN nie był ustawiony w projekcie,
+// przez co portfel, checkout portfelem i wypłaty sprzedawców zwracały "Brak konfiguracji Sunrise Pay".
+async function resolveSunrisePayToken(): Promise<string> {
+  const fromEnv = Deno.env.get("SUNRISE_MARKET_SERVICE_TOKEN");
+  if (fromEnv) return fromEnv;
+  try {
+    const url = Deno.env.get("SUPABASE_URL") ?? "";
+    const key = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? Deno.env.get("SUPABASE_SERVICE_KEY") ?? "";
+    const r = await fetch(`${url}/rest/v1/internal_secrets?select=value&key=eq.sunrise_pay_service_token`, { headers: { apikey: key, Authorization: `Bearer ${key}`, "Accept-Profile": "market" } });
+    const rows = await r.json().catch(() => []);
+    return String(rows?.[0]?.value ?? "");
+  } catch { return ""; }
+}
+const PAY_TOKEN = await resolveSunrisePayToken();
 const FREE_SHIPPING_THRESHOLD = 149;
 function json(b: unknown, s = 200) { return new Response(JSON.stringify(b), { status: s, headers: { ...cors, "Content-Type": "application/json" } }); }
 function money(v: number) { return Math.round(Math.max(0, Number(v) || 0) * 100) / 100; }
@@ -77,16 +91,19 @@ async function settleSellerPayouts(sb: any, orderId: string) {
   const { data: booking } = await sb.from("bookings").select("ends_at").eq("order_id", orderId).maybeSingle();
   const { data: rows, error } = await sb
     .from("order_items")
-    .select("seller_id,seller_payout,sellers!inner(email)")
+    .select("seller_id,seller_payout,sellers!inner(email,seller_type)")
     .eq("order_id", orderId);
   if (error) throw error;
 
-  const grouped = new Map<string, { email: string; amount: number }>();
+  // Cel wypłaty (decyzja właściciela 2026-09-05): zwykły sprzedawca -> portfel prywatny,
+  // Partner Handlowy (firma, seller_type=business) -> saldo firmowe (merchant) w Sunrise Pay.
+  const grouped = new Map<string, { email: string; amount: number; target: "personal" | "merchant" }>();
   for (const row of rows ?? []) {
     const sellerId = String(row.seller_id ?? "");
     const email = String(row.sellers?.email ?? "").trim();
     if (!sellerId || !email) continue;
-    const prev = grouped.get(sellerId) ?? { email, amount: 0 };
+    const target: "personal" | "merchant" = String(row.sellers?.seller_type ?? "") === "business" ? "merchant" : "personal";
+    const prev = grouped.get(sellerId) ?? { email, amount: 0, target };
     prev.amount = money(prev.amount + Number(row.seller_payout ?? 0));
     grouped.set(sellerId, prev);
   }
@@ -114,6 +131,7 @@ async function settleSellerPayouts(sb: any, orderId: string) {
       reason: "Sprzedaż Sunrise Market",
       order_ref: orderId,
       idempotency_key: idem,
+      target: entry.target,
     });
 
     const ok = credited.status === 200 && credited.data?.ok === true;

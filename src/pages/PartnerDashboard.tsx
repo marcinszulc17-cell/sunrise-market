@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, Navigate } from "react-router-dom";
 import { supabase } from "../lib/supabase";
 
 type DashboardData = {
@@ -55,23 +55,16 @@ export default function PartnerDashboard() {
         const a = (attentionResult.data as Attention[] | null)?.[0];
         if (!attentionResult.error && a) setAttention(a);
       } catch (e) {
-        setError((e as Error).message || "Nie udało się wczytać centrum Partnera Handlowego");
+        setError((e as Error).message || "Nie udało się wczytać centrum sprzedawcy");
       } finally {
         setLoading(false);
       }
     })();
   }, []);
 
-  if (loading) return <Shell><div className="rounded-2xl p-6" style={{ background: "var(--glass)", border: "1px solid var(--line)", color: "var(--mut)" }}>Ładowanie centrum Partnera Handlowego…</div></Shell>;
+  if (loading) return <Shell><div className="rounded-2xl p-6" style={{ background: "var(--glass)", border: "1px solid var(--line)", color: "var(--mut)" }}>Ładowanie centrum sprzedawcy…</div></Shell>;
   if (error) return <Shell><div className="rounded-2xl p-6" style={{ background: "rgba(239,68,68,.08)", border: "1px solid rgba(239,68,68,.2)" }}>{error}</div></Shell>;
-  if (!data?.seller) return <Shell>
-    <div className="mx-auto max-w-2xl rounded-3xl p-7" style={{ background: "var(--glass)", border: "1px solid rgba(200,150,90,.3)" }}>
-      <div className="text-sm font-semibold" style={{ color: "var(--gold)" }}>PARTNER HANDLOWY</div>
-      <h1 className="mt-2 text-3xl font-semibold">Zacznij zarabiać w Sunrise Market</h1>
-      <p className="mt-3 text-sm leading-6" style={{ color: "var(--mut)" }}>Aktywuj sprzedaż na swoim koncie MySunrise. Pierwsze 12 miesięcy bez opłaty, potem 299 zł rocznie.</p>
-      <Link to="/sprzedawca/partner" className="mt-5 inline-flex rounded-xl px-5 py-3 font-semibold text-black" style={{ background: "linear-gradient(135deg,#C8965A,#E8C896)" }}>Aktywuj Partnera Handlowego →</Link>
-    </div>
-  </Shell>;
+  if (!data?.seller) return <Navigate to="/sprzedawca/dolacz" replace />;
 
   const membership = data.membership;
   const amb = data.ambassador?.ambassador;
@@ -88,7 +81,7 @@ export default function PartnerDashboard() {
   return <Shell>
     <div className="mb-6 flex flex-wrap items-start justify-between gap-4">
       <div>
-        <div className="text-sm font-semibold" style={{ color: "var(--gold)" }}>MYSUNRISE · PARTNER HANDLOWY</div>
+        <div className="text-sm font-semibold" style={{ color: "var(--gold)" }}>MYSUNRISE · SPRZEDAWCA</div>
         <h1 className="mt-1 font-display text-3xl font-semibold sm:text-4xl">Twoje centrum zarabiania</h1>
         <p className="mt-2 max-w-2xl text-sm sm:text-base" style={{ color: "var(--mut)" }}>Własna sprzedaż i polecenia w jednym miejscu. Dane poleceń pochodzą bezpośrednio z Sunrise Ambassador Club.</p>
       </div>
