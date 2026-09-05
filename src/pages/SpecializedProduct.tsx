@@ -1,4 +1,5 @@
 import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
+import ShareOfferButton from "../components/ShareOfferButton";
 import { useParams } from "react-router-dom";
 import { getOffer, offerImages, trackView, similarOffers } from "../lib/api";
 import { supabase } from "../lib/supabase";
@@ -159,7 +160,7 @@ export default function SpecializedProduct() {
               <div className="mt-2 text-xs leading-5" style={{ color: "var(--mut)" }}>🛡 Płacisz przez Sunrise. Sprzedający dostaje pieniądze dopiero, gdy potwierdzisz odbiór — inaczej wracają do Ciebie.</div>
             </div>}
             {isProperty && <div className="mt-5 rounded-2xl p-4 text-xs leading-5" style={{ background: "rgba(56,224,240,.07)", border: "1px solid rgba(56,224,240,.20)", color: "var(--mut)" }}>Transakcje nieruchomości finalizowane są u notariusza. Sunrise Verify sprawdzi stan prawny przed spotkaniem.</div>}
-            <div className={`${canBuy || isProperty ? "mt-3" : "mt-5"} grid gap-2`}><button onClick={() => { setLeadOpen(true); setLeadDone(false); setLeadError(null); }} className="rounded-2xl py-3 text-center font-semibold" style={canBuy ? { border: "1px solid rgba(200,150,90,.45)", color: "var(--gold)" } : { background: "linear-gradient(135deg,#C8965A,#E8C896)", color: "#000" }}>Zapytaj sprzedawcę</button><button onClick={() => navigator.clipboard?.writeText(window.location.href)} className="rounded-2xl py-3 text-sm font-semibold" style={{ border: "1px solid var(--line)" }}>Kopiuj link do ogłoszenia</button></div>
+            <div className={`${canBuy || isProperty ? "mt-3" : "mt-5"} grid gap-2`}><button onClick={() => { setLeadOpen(true); setLeadDone(false); setLeadError(null); }} className="rounded-2xl py-3 text-center font-semibold" style={canBuy ? { border: "1px solid rgba(200,150,90,.45)", color: "var(--gold)" } : { background: "linear-gradient(135deg,#C8965A,#E8C896)", color: "#000" }}>Zapytaj sprzedawcę</button><ShareOfferButton offerId={String(id)} title={o.title} className="rounded-2xl py-3 text-sm font-semibold" style={{ border: "1px solid var(--line)" }} /></div>
             <div className="mt-5 rounded-2xl p-4 text-xs leading-5" style={{ background:"var(--header)", color: "var(--mut)", border:"1px solid var(--line)" }}><div className="font-semibold" style={{color:"var(--ink)"}}>{o.seller}</div><div className="mt-1">Sprzedawca odpowiada za warunki konkretnej oferty. Płatność, rezerwacja i historia transakcji są obsługiwane w Sunrise Market tam, gdzie dana oferta je udostępnia.</div></div>
           </div>
         </aside>
