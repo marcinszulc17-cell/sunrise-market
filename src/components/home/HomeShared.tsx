@@ -42,6 +42,11 @@ export const TINTS = {
   orange: { c: "#FF8A3D", bg: "rgba(255,138,61,.14)", bd: "rgba(255,138,61,.32)" },
 } as const;
 export type Tint = keyof typeof TINTS;
+/** Tło kafla działu w odcieniu ikony (wg wzoru: każdy kafel lekko tonowany, nadal ciemny). */
+export function tileStyle(tint: Tint): React.CSSProperties {
+  const t = TINTS[tint];
+  return { background: `linear-gradient(135deg, ${t.bg} 0%, rgba(24,24,27,.85) 70%)`, border: `1px solid ${t.bd}` };
+}
 export function IconTile({ name, size = 48, tint = "amber" }: { name: IconName; size?: number; tint?: Tint }) {
   const t = TINTS[tint];
   return <div className="grid shrink-0 place-items-center rounded-2xl" style={{ width: size, height: size, background: t.bg, border: `1px solid ${t.bd}` }}><Ico name={name} size={Math.round(size / 2)} stroke={t.c} /></div>;

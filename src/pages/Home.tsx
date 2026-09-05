@@ -10,7 +10,7 @@ import ThemeToggle from "../components/ThemeToggle";
 import NotificationsBell from "../components/NotificationsBell";
 import { useCart } from "../lib/cart";
 import { useSeo } from "../lib/seo";
-import { Ico, IconTile, SECTIONS, RecoCard, HomeFooter, useHomeFeed, usePopularCategories, GOLD_GRAD, CARD } from "../components/home/HomeShared";
+import { Ico, IconTile, SECTIONS, RecoCard, HomeFooter, useHomeFeed, usePopularCategories, tileStyle, GOLD_GRAD, CARD } from "../components/home/HomeShared";
 
 // Pasek działów — tylko istniejące trasy. Po prawej: Dla firm (/sprzedawca/dolacz), Kontakt (/legal/kontakt.html).
 const MENU: { to: string; label: string; home?: boolean }[] = [
@@ -24,18 +24,22 @@ const MENU: { to: string; label: string; home?: boolean }[] = [
 ];
 
 function SunriseArt() {
-  // Oryginalna grafika: niebo, poświata słońca i sylwetki wzgórz — lekki SVG zamiast zdjęcia.
+  // Oryginalna grafika: niebo o zmierzchu, tarcza słońca z poświatą i trzy plany wzgórz — lekki SVG zamiast zdjęcia.
   return <svg aria-hidden="true" className="absolute inset-0 h-full w-full" viewBox="0 0 1440 520" preserveAspectRatio="xMidYMid slice">
     <defs>
-      <linearGradient id="sky" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stopColor="#0B0B0D" /><stop offset=".55" stopColor="#1A1410" /><stop offset="1" stopColor="#3A2410" /></linearGradient>
-      <radialGradient id="sun" cx="1060" cy="330" r="420" gradientUnits="userSpaceOnUse"><stop offset="0" stopColor="#FFD08A" stopOpacity=".95" /><stop offset=".18" stopColor="#F5A623" stopOpacity=".75" /><stop offset=".5" stopColor="#E8891A" stopOpacity=".25" /><stop offset="1" stopColor="#E8891A" stopOpacity="0" /></radialGradient>
-      <linearGradient id="fade" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stopColor="#0B0B0D" stopOpacity=".92" /><stop offset=".55" stopColor="#0B0B0D" stopOpacity=".35" /><stop offset="1" stopColor="#0B0B0D" stopOpacity="0" /></linearGradient>
+      <linearGradient id="sky" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stopColor="#0C0E14" /><stop offset=".25" stopColor="#1C1B22" /><stop offset=".38" stopColor="#6B3A12" /><stop offset=".46" stopColor="#D9761C" /><stop offset=".6" stopColor="#4A2C10" /></linearGradient>
+      <radialGradient id="glow" cx="1080" cy="215" r="460" gradientUnits="userSpaceOnUse"><stop offset="0" stopColor="#FFE3A6" stopOpacity="1" /><stop offset=".1" stopColor="#F5A623" stopOpacity=".9" /><stop offset=".4" stopColor="#E8891A" stopOpacity=".45" /><stop offset="1" stopColor="#E8891A" stopOpacity="0" /></radialGradient>
+      <linearGradient id="fade" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stopColor="#0B0B0D" stopOpacity=".88" /><stop offset=".42" stopColor="#0B0B0D" stopOpacity=".3" /><stop offset="1" stopColor="#0B0B0D" stopOpacity="0" /></linearGradient>
+      <linearGradient id="bottom" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stopColor="#0B0B0D" stopOpacity="0" /><stop offset="1" stopColor="#0B0B0D" stopOpacity=".55" /></linearGradient>
     </defs>
     <rect width="1440" height="520" fill="url(#sky)" />
-    <circle cx="1060" cy="330" r="420" fill="url(#sun)" />
-    <path d="M0 400 C180 340 300 360 420 320 C560 275 640 300 760 330 C880 360 960 300 1080 310 C1200 320 1300 290 1440 300 L1440 520 L0 520 Z" fill="#15110D" />
-    <path d="M0 440 C160 400 280 430 400 400 C540 370 620 420 760 410 C900 400 1000 360 1120 380 C1260 405 1340 380 1440 370 L1440 520 L0 520 Z" fill="#0E0C0A" />
+    <circle cx="1080" cy="215" r="460" fill="url(#glow)" />
+    <path d="M0 330 C120 300 220 310 330 285 C450 258 540 292 660 280 C800 266 880 262 990 275 C1100 288 1180 266 1290 272 C1360 276 1400 282 1440 278 L1440 520 L0 520 Z" fill="#241A12" />
+    <path d="M0 380 C140 350 260 372 380 345 C520 314 620 352 760 342 C900 332 980 296 1100 318 C1240 344 1330 322 1440 312 L1440 520 L0 520 Z" fill="#17120C" />
+    <path d="M0 440 C160 410 280 438 400 412 C540 382 640 428 780 420 C920 412 1010 380 1130 400 C1270 424 1350 402 1440 392 L1440 520 L0 520 Z" fill="#0C0A08" />
     <rect width="1440" height="520" fill="url(#fade)" />
+    <rect width="1440" height="520" fill="url(#bottom)" />
+    <circle cx="1080" cy="218" r="26" fill="#FFF3D0" />
   </svg>;
 }
 
@@ -71,7 +75,7 @@ export default function Home() {
           <Link to="/sprzedawca/wystaw" className="ml-2 flex h-11 items-center gap-2 rounded-xl px-4 text-sm font-bold shadow-[0_6px_20px_rgba(232,137,26,.3)] transition hover:brightness-105" style={{ background: GOLD_GRAD, color: "#101012" }}><span className="grid h-5 w-5 place-items-center rounded-full" style={{ background: "rgba(0,0,0,.2)" }}><Ico name="plus" size={12} strokeWidth={2.6} /></span><span className="hidden md:inline">Dodaj ogłoszenie</span><span className="md:hidden">Dodaj</span></Link>
         </nav>
       </div>
-      <div className="mx-auto flex max-w-[1440px] items-center px-6 xl:px-10" style={{ borderTop: "1px solid var(--line)" }}>
+      <div style={{ borderTop: "1px solid var(--line)", background: "rgba(255,255,255,.03)" }}><div className="mx-auto flex max-w-[1440px] items-center px-6 xl:px-10">
         <nav className="flex items-center gap-1 overflow-x-auto text-sm" aria-label="Działy" style={{ scrollbarWidth: "none" }}>
           {MENU.map((m) => <Link key={m.label} to={m.to} aria-current={m.home ? "page" : undefined} className="flex h-11 items-center gap-1.5 whitespace-nowrap px-3 font-medium transition hover:text-[var(--ink)]" style={{ color: m.home ? "var(--gold)" : "var(--mut)", boxShadow: m.home ? "inset 0 -2px 0 var(--gold)" : "none" }}>{m.home && <Ico name="home" size={16} />}{m.label}</Link>)}
         </nav>
@@ -79,12 +83,12 @@ export default function Home() {
           <Link to="/sprzedawca/dolacz" className="flex h-11 items-center px-3 font-medium navlink">Dla firm</Link>
           <a href="/legal/kontakt.html" className="flex h-11 items-center px-3 font-medium navlink">Kontakt</a>
         </nav>
-      </div>
+      </div></div>
     </header>
 
     <div className="mx-auto max-w-[1440px] px-6 xl:px-10">
       {/* ── Hero ───────────────────────────────────────────────── */}
-      <section className="relative mt-6 overflow-hidden rounded-2xl" style={{ border: "1px solid var(--line)", minHeight: 300 }}>
+      <section className="relative mt-5 overflow-hidden rounded-2xl" style={{ border: "1px solid var(--line)", minHeight: 320 }}>
         <SunriseArt />
         <div className="relative flex min-h-[300px] flex-col justify-center px-10 py-12 xl:min-h-[340px] xl:px-14">
           <h1 className="max-w-2xl text-4xl font-extrabold leading-[1.08] tracking-tight xl:text-5xl">Wszystko,<br /><span style={{ color: "var(--gold)" }}>czego potrzebujesz</span><br />w jednym miejscu.</h1>
@@ -99,7 +103,7 @@ export default function Home() {
 
       {/* ── Kafle działów ─────────────────────────────────────── */}
       <section className="mt-5 grid gap-4 md:grid-cols-2 xl:grid-cols-5" aria-label="Działy">
-        {tiles.map((t) => <Link key={t.title} to={t.to} className="group flex items-center gap-3 rounded-2xl p-4 transition hover:-translate-y-0.5 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#F5A623]" style={CARD} onMouseEnter={(e) => { e.currentTarget.style.borderColor = "rgba(245,166,35,.45)"; }} onMouseLeave={(e) => { e.currentTarget.style.borderColor = "var(--line)"; }}>
+        {tiles.map((t) => <Link key={t.title} to={t.to} className="group flex items-center gap-3 rounded-2xl p-4 transition hover:-translate-y-0.5 hover:brightness-110 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#F5A623]" style={tileStyle(t.tint)}>
           <IconTile name={t.icon} tint={t.tint} size={52} />
           <div className="min-w-0 flex-1"><div className="font-bold">{t.title}</div><div className="mt-0.5 line-clamp-2 text-xs leading-4" style={{ color: "var(--mut)" }}>{t.desc}</div></div>
           <span aria-hidden="true" className="text-xl transition group-hover:translate-x-0.5" style={{ color: "var(--mut)" }}>›</span>

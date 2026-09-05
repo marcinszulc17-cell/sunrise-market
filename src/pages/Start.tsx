@@ -8,7 +8,7 @@ import { Link, useNavigate } from "react-router-dom";
 import { useCart } from "../lib/cart";
 import { useSeo } from "../lib/seo";
 import NotificationsBell from "../components/NotificationsBell";
-import { Ico, IconTile, SECTIONS, RecoCard, useHomeFeed, usePopularCategories, GOLD_GRAD, CARD } from "../components/home/HomeShared";
+import { Ico, IconTile, SECTIONS, RecoCard, useHomeFeed, usePopularCategories, tileStyle, GOLD_GRAD, CARD } from "../components/home/HomeShared";
 
 export default function Start() {
   const navigate = useNavigate();
@@ -45,7 +45,7 @@ export default function Start() {
 
       {/* Działy — 2 kolumny */}
       <section className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3" aria-label="Działy">
-        {SECTIONS.map((t) => <Link key={t.title} to={t.to} className="relative flex min-h-[132px] flex-col gap-3 rounded-2xl p-4 transition active:scale-[.98] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#F5A623]" style={CARD}>
+        {SECTIONS.map((t) => <Link key={t.title} to={t.to} className="relative flex min-h-[132px] flex-col gap-3 rounded-2xl p-4 transition active:scale-[.98] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#F5A623]" style={tileStyle(t.tint)}>
           <IconTile name={t.icon} tint={t.tint} size={44} />
           <div className="min-w-0"><div className="font-semibold leading-tight">{t.title}</div><div className="mt-0.5 text-xs" style={{ color: "var(--mut)" }}>{t.short}</div></div>
           <span aria-hidden="true" className="absolute right-4 top-4 text-lg leading-none" style={{ color: "var(--mut)" }}>›</span>
