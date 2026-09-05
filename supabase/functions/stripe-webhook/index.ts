@@ -344,6 +344,17 @@ Deno.serve(async (req) => {
             if (already?.card_settlement_status !== "settled") {
               const { error: feeError } = await sb.rpc("apply_stripe_seller_fee", { p_order_id: orderId });
               if (feeError) throw feeError;
+              // Cashback także za odnowienie (decyzja właściciela 2026-09-05: cashback przy każdej płatności).
+              const { data: renewalRow } = await sb.from("orders").select("cashback_amount,buyer_id").eq("id", orderId).maybeSingle();
+              if (Number(renewalRow?.cashback_amount) > 0) {
+                let renewalEmail = String(inv.customer_email ?? "").trim();
+                if (!renewalEmail && renewalRow?.buyer_id) { try { const { data: u } = await sb.auth.admin.getUserById(String(renewalRow.buyer_id)); renewalEmail = String(u?.user?.email ?? "").trim(); } catch {} }
+                if (renewalEmail) {
+                  const pointsKey = await uuidv5(`market:points:${orderId}`);
+                  const points = await pay("pay-credit-points", { user_ref: renewalEmail, points: Number(renewalRow.cashback_amount), reason: "cashback", order_ref: orderId, idempotency_key: pointsKey });
+                  if (points.status !== 200 || points.data?.ok !== true) throw new Error(`MySunrise cashback (renewal) failed: ${points.data?.message ?? points.data?.error ?? points.status}`);
+                }
+              }
               await settleSellerPayouts(sb, orderId);
               const now = new Date().toISOString();
               await sb.from("orders").update({ card_settlement_status: "settled", card_settled_at: now, card_settlement_updated_at: now, stripe_payment_intent: inv.payment_intent ? String(inv.payment_intent) : null }).eq("id", orderId);

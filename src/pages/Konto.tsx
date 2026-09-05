@@ -39,7 +39,13 @@ export default function Konto() {
       try { setMs(await memberStatus()); } catch { /* ignore */ }
     });
   }, []);
-  async function logout() { await supabase.auth.signOut(); window.location.href = "/"; }
+  // Po wylogowaniu zawsze strona główna sklepu. Na app.sunrisemarket.pl korzeń pokazuje gościowi ekran logowania,
+  // więc tam przenosimy na publiczną domenę sklepu (decyzja właściciela 2026-09-05).
+  async function logout() {
+    try { await supabase.auth.signOut(); } catch { /* i tak przechodzimy dalej */ }
+    const onApp = window.location.hostname.toLowerCase() === "app.sunrisemarket.pl";
+    window.location.href = onApp ? "https://sunrisemarket.pl/" : "/";
+  }
 
   return (
     <div className="min-h-screen">

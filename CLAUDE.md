@@ -3,15 +3,16 @@
 Te zasady obowiązują we WSZYSTKICH projektach ekosystemu Sunrise i mają
 pierwszeństwo przy każdej zmianie kodu. Nie wolno ich naruszać ani obchodzić.
 
-## 1. Płatności: portfel promowany + karta do wyboru (decyzja właściciela 2026-08-11)
+## 1. Płatności: portfel promowany + karta do wyboru (decyzja właściciela 2026-08-11, cashback dla wszystkich metod 2026-09-05)
 
 - **Zakupy jednorazowe**: portfel Sunrise Pay jest metodą **promowaną**
-  (główny przycisk, **jedyna metoda z cashbackiem 3%**) + do wyboru
-  **karta/P24/BLIK przez Stripe** (drugi przycisk, bez cashbacku).
-- **Subskrypcje**: rozliczane **wyłącznie przez Stripe**.
+  (główny przycisk) + do wyboru **karta/P24/BLIK przez Stripe** (drugi przycisk).
+- **Cashback 3% przy KAŻDEJ metodzie płatności** — portfel, karta/BLIK/P24,
+  subskrypcje i ich odnowienia (decyzja właściciela 2026-09-05; wcześniej tylko portfel).
+- **Subskrypcje**: rozliczane **wyłącznie przez Stripe** (cashback za każdy opłacony miesiąc).
 - Płatność kartą: edge `checkout` z `payment_method='card'` tworzy sesję
   Stripe Checkout; `stripe-webhook` po opłacie ustawia `paid`, nalicza wypłaty
-  sprzedawcom (te same stawki) i prowizję MLM marki własnej — **bez cashbacku**.
+  sprzedawcom (te same stawki), prowizję MLM marki własnej i **cashback** (`pay-credit-points`).
 - Portfel: checkout woła `pay-charge`; brak środków → `need_topup`, UI proponuje
   punkty/doładowanie w koszyku, a poniżej alternatywę kartą.
 - Integracje fulfillmentu (np. most TeemDrop → WooCommerce) **nie pobierają
@@ -21,7 +22,7 @@ pierwszeństwo przy każdej zmianie kodu. Nie wolno ich naruszać ani obchodzić
 
 ## 2. Cashback
 
-- Po zakupie klient otrzymuje **3% cashback** z powrotem na portfel Sunrise Pay.
+- Po zakupie klient otrzymuje **3% cashback** z powrotem na portfel Sunrise Pay — przy każdej metodzie płatności.
 
 ## 3. Zasady sprzedawców (decyzja właściciela 2026-09-05: dwa poziomy)
 

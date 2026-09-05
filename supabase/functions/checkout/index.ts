@@ -264,7 +264,8 @@ Deno.serve(async (req) => {
     const cashbackRate = Math.max(0, Number(cashbackCfg?.value ?? 0.03));
     const cashbackBase = money(Math.max(0, discountedProducts - refundableDeposit));
     // Cashback 3% TYLKO przy płatności portfelem Sunrise Pay (CLAUDE.md §1). Karta/BLIK/P24 = 0.
-    const cashback = payMethod === "card" ? 0 : money(cashbackBase * cashbackRate);
+    // Decyzja właściciela 2026-09-05: cashback przy KAŻDEJ metodzie płatności (portfel, karta/BLIK/P24, subskrypcje).
+    const cashback = money(cashbackBase * cashbackRate);
     const inv = ord0?.invoice_snapshot_at ? {} : invoiceSnapshot(invoice);
 
     await sb.from("orders").update({
