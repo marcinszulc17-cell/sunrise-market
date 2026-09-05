@@ -50,7 +50,7 @@ function styleButtons(buttons: HTMLButtonElement[], key: "mode" | "availability"
     const selected = key === "mode"
       ? button.dataset.marketMode === activeMode
       : button.dataset.availabilityFilter === activeAvailability;
-    button.style.background = selected ? "linear-gradient(135deg,#C8965A,#E8C896)" : "var(--bg)";
+    button.style.background = selected ? "linear-gradient(135deg,#E8891A,#F5A623)" : "var(--bg)";
     button.style.color = selected ? "#000" : "var(--ink)";
     button.style.border = selected ? "1px solid transparent" : "1px solid var(--line)";
     button.setAttribute("aria-pressed", selected ? "true" : "false");

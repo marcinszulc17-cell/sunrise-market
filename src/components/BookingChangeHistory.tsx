@@ -61,7 +61,7 @@ export default function BookingChangeHistory({ bookingId }: { bookingId: string 
           <div className="font-semibold">Historia zmian rezerwacji</div>
           <div className="mt-1 text-xs" style={{ color: "var(--mut)" }}>Każda zmiana terminu lub przypisanego zasobu. Cena pozostaje zgodna z warunkami z momentu rezerwacji.</div>
         </div>
-        <span className="rounded-full px-2 py-1 text-[10px] font-semibold" style={{ background: "rgba(200,150,90,.10)", color: "var(--gold)" }}>AUDYT</span>
+        <span className="rounded-full px-2 py-1 text-[10px] font-semibold" style={{ background: "rgba(232,137,26,.10)", color: "var(--gold)" }}>AUDYT</span>
       </div>
 
       {loading && <div className="mt-4 text-sm" style={{ color: "var(--mut)" }}>Pobieram historię…</div>}

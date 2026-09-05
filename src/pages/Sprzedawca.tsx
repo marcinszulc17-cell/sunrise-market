@@ -58,7 +58,7 @@ export default function Sprzedawca() {
   return (
     <Shell tabs={seller ? { tab, setTab } : undefined}>
       <h1 className="font-display text-3xl font-semibold mb-6">Centrum sprzedawcy</h1>
-      {msg && <div className="mb-5 rounded-lg px-4 py-2 text-sm" style={{ background: "rgba(200,150,90,.12)", color: "var(--gold)" }}>{msg}</div>}
+      {msg && <div className="mb-5 rounded-lg px-4 py-2 text-sm" style={{ background: "rgba(232,137,26,.12)", color: "var(--gold)" }}>{msg}</div>}
 
       {!seller ? (
         <form onSubmit={onBecome} className="max-w-md rounded-2xl p-5 flex flex-col gap-3" style={{ background: "var(--glass)", border: "1px solid var(--line)" }}>
@@ -80,7 +80,7 @@ export default function Sprzedawca() {
             <input type="checkbox" checked={accept} onChange={(e) => setAccept(e.target.checked)} className="mt-1" />
             <span>Akceptuję <a href="/legal/regulamin-sprzedawcy.html" target="_blank" className="text-amber-400 underline">Regulamin sprzedawcy</a> oraz <a href="/legal/regulamin.html" target="_blank" className="text-amber-400 underline">Regulamin Sunrise Pay</a> (prowizja 7,9% liczona od ceny brutto, wypłata na portfel Sunrise Pay).</span>
           </label>
-          <button disabled={busy || !accept} className="rounded-xl py-2 font-semibold text-black disabled:opacity-50" style={{ background: "linear-gradient(135deg,#C8965A,#E8C896)" }}>{busy ? "…" : "Aktywuj Partnera Handlowego"}</button>
+          <button disabled={busy || !accept} className="rounded-xl py-2 font-semibold text-black disabled:opacity-50" style={{ background: "linear-gradient(135deg,#E8891A,#F5A623)" }}>{busy ? "…" : "Aktywuj Partnera Handlowego"}</button>
         </form>
       ) : (
         <>
@@ -187,7 +187,7 @@ function Oferty() {
         {msg && <div className="text-sm" style={{ color: "var(--gold)" }}>{msg}</div>}
         <input className={inp} style={inpStyle} placeholder="Nazwa produktu" value={title} onChange={(e) => setTitle(e.target.value)} required />
         <textarea className={inp} style={inpStyle} placeholder="Opis" value={desc} onChange={(e) => setDesc(e.target.value)} rows={3} />
-        <button type="button" disabled={busy} onClick={async () => { if (!title) { setMsg("Najpierw wpisz nazwę produktu."); return; } setBusy(true); try { setDesc(await genDescription(title, chosen?.name)); } catch (e) { setMsg((e as Error).message); } finally { setBusy(false); } }} className="text-xs px-3 py-1.5 rounded-lg self-start disabled:opacity-50" style={{ background: "var(--glass)", border: "1px solid rgba(200,150,90,.5)", color: "var(--gold)" }}>✨ Generuj opis AI</button>
+        <button type="button" disabled={busy} onClick={async () => { if (!title) { setMsg("Najpierw wpisz nazwę produktu."); return; } setBusy(true); try { setDesc(await genDescription(title, chosen?.name)); } catch (e) { setMsg((e as Error).message); } finally { setBusy(false); } }} className="text-xs px-3 py-1.5 rounded-lg self-start disabled:opacity-50" style={{ background: "var(--glass)", border: "1px solid rgba(232,137,26,.5)", color: "var(--gold)" }}>✨ Generuj opis AI</button>
         <div className="flex gap-3">
           <input className={inp} style={inpStyle} type="number" min={0} step="0.01" placeholder="Cena brutto (zł)" value={price || ""} onChange={(e) => setPrice(Number(e.target.value))} required />
           <input className={inp} style={inpStyle} type="number" min={0} placeholder="Sztuk" value={stock} onChange={(e) => setStock(Number(e.target.value))} />
@@ -202,7 +202,7 @@ function Oferty() {
           {imageUrl && <img src={imageUrl} alt="podgląd" className="w-12 h-12 rounded-lg object-cover" />}
         </div>
         <p className="text-xs" style={{ color: "var(--mut)" }}>Kategoria: {chosen?.name ?? "—"}. Prowizja 7,9% liczona od ceny brutto — na portfel Sunrise Pay trafia 92,1% ceny brutto.{price > 0 && <> Przy cenie {zl(price)} otrzymasz <b>{zl(price * 0.921)}</b>.</>}</p>
-        <button disabled={busy || uploading} className="rounded-xl py-2 font-semibold text-black disabled:opacity-50" style={{ background: "linear-gradient(135deg,#C8965A,#A97B42)" }}>{busy ? "…" : "Wystaw"}</button>
+        <button disabled={busy || uploading} className="rounded-xl py-2 font-semibold text-black disabled:opacity-50" style={{ background: "linear-gradient(135deg,#E8891A,#A97B42)" }}>{busy ? "…" : "Wystaw"}</button>
       </form>
       <div>
         <h2 className="font-semibold text-lg mb-3">Twoje oferty ({offers.length})</h2>
@@ -241,7 +241,7 @@ function Zamowienia() {
             {o.status === "paid" ? (
               <span className="flex items-center gap-2">
                 <button onClick={() => setLabelFor(o.order_id)} className="text-xs font-semibold px-3 py-1.5 rounded-lg text-black" style={{ background: "linear-gradient(135deg,#7AB89A,#38E0F0)" }}>📦 Kup etykietę</button>
-                <button onClick={() => onShip(o.order_id)} className="text-xs font-semibold px-3 py-1.5 rounded-lg text-black" style={{ background: "linear-gradient(135deg,#C8965A,#E8C896)" }}>Oznacz wysłane</button>
+                <button onClick={() => onShip(o.order_id)} className="text-xs font-semibold px-3 py-1.5 rounded-lg text-black" style={{ background: "linear-gradient(135deg,#E8891A,#F5A623)" }}>Oznacz wysłane</button>
               </span>
             ) : <span className="text-xs" style={{ color: "var(--green)" }}>✓</span>}
           </div>
@@ -271,7 +271,7 @@ function Portfel({ seller }: { seller: any }) {
         </div>
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
           <div><div className="text-xs" style={{ color: "var(--mut)" }}>Sunrise Pay</div><div className="font-display text-2xl font-semibold" style={{ color: "var(--green)" }}>{zl(w.available ? (w.sunrise_pay ?? 0) : 0)}</div></div>
-          {w.available && w.gold != null && <div><div className="text-xs" style={{ color: "var(--mut)" }}>Gold Pay</div><div className="font-display text-2xl font-semibold" style={{ color: "#E8C896" }}>{w.gold.toLocaleString("pl-PL")} <span className="text-base">g</span></div></div>}
+          {w.available && w.gold != null && <div><div className="text-xs" style={{ color: "var(--mut)" }}>Gold Pay</div><div className="font-display text-2xl font-semibold" style={{ color: "#F5A623" }}>{w.gold.toLocaleString("pl-PL")} <span className="text-base">g</span></div></div>}
           {w.available && <div><div className="text-xs" style={{ color: "var(--mut)" }}>W rozliczeniu</div><div className="font-display text-2xl font-semibold" style={{ color: "var(--gold)" }}>{zl(w.pending ?? 0)}</div></div>}
           <div className="flex items-end">
             <a href="https://mysunrise.pl/wallet/wyplata" target="_blank" rel="noreferrer"
@@ -427,7 +427,7 @@ function LabelDialog({ orderId, onClose }: { orderId: string; onClose: () => voi
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: "rgba(0,0,0,.7)" }} onClick={() => !busy && onClose()}>
-      <div className="w-full max-w-lg rounded-2xl p-5 max-h-[90vh] overflow-auto" style={{ background: "var(--bg, #0E1729)", border: "1px solid var(--line)" }} onClick={(e) => e.stopPropagation()}>
+      <div className="w-full max-w-lg rounded-2xl p-5 max-h-[90vh] overflow-auto" style={{ background: "var(--bg, #101012)", border: "1px solid var(--line)" }} onClick={(e) => e.stopPropagation()}>
         <div className="flex items-center justify-between mb-3">
           <div className="font-semibold text-lg">📦 Kup etykietę — GlobKurier</div>
           <button onClick={onClose} className="text-xl" style={{ color: "var(--mut)" }}>✕</button>
@@ -441,7 +441,7 @@ function LabelDialog({ orderId, onClose }: { orderId: string; onClose: () => voi
             </div>
             <button onClick={downloadLabel} disabled={pdfBusy} className="rounded-xl py-2 font-semibold disabled:opacity-50" style={{ background: "var(--glass)", border: "1px solid var(--line)", color: "var(--ink)" }}>{pdfBusy ? "Pobieram…" : "🖨️ Pobierz etykietę (PDF)"}</button>
             {err && <div className="text-sm" style={{ color: "#ff7b7b" }}>{err}</div>}
-            <button onClick={onClose} className="rounded-xl py-2 font-semibold text-black" style={{ background: "linear-gradient(135deg,#C8965A,#E8C896)" }}>Zamknij</button>
+            <button onClick={onClose} className="rounded-xl py-2 font-semibold text-black" style={{ background: "linear-gradient(135deg,#E8891A,#F5A623)" }}>Zamknij</button>
           </div>
         ) : (
           <div className="flex flex-col gap-3">
@@ -477,7 +477,7 @@ function LabelDialog({ orderId, onClose }: { orderId: string; onClose: () => voi
                   <input className={inp} style={inpStyle} placeholder="Telefon" value={snd.phone || ""} onChange={(e) => set("phone", e.target.value)} />
                   <input className={inp} style={inpStyle} placeholder="E-mail" value={snd.email || ""} onChange={(e) => set("email", e.target.value)} />
                 </div>
-                <button onClick={buy} disabled={busy} className="rounded-xl py-2.5 font-semibold text-black disabled:opacity-50" style={{ background: "linear-gradient(135deg,#C8965A,#E8C896)" }}>{busy ? "Kupuję…" : "Kup etykietę (płatność z portfela Sunrise Pay)"}</button>
+                <button onClick={buy} disabled={busy} className="rounded-xl py-2.5 font-semibold text-black disabled:opacity-50" style={{ background: "linear-gradient(135deg,#E8891A,#F5A623)" }}>{busy ? "Kupuję…" : "Kup etykietę (płatność z portfela Sunrise Pay)"}</button>
                 <div className="text-xs" style={{ color: "var(--mut)" }}>Koszt etykiety zostanie pobrany z Twojego portfela Sunrise Pay — tego samego, na który trafiają wpływy ze sprzedaży.</div>
               </>
             )}
@@ -517,7 +517,7 @@ function Shell({ children, tabs }: { children: React.ReactNode; tabs?: { tab: Ta
             <img src="/logo-sunrise-market-light.png" alt="Sunrise Market" className="brand-logo h-11 w-auto" onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = "none"; }} />
           </a>
           <div className="flex-1" />
-          <a href="/konto" onClick={() => setMode("buyer")} className="text-sm font-semibold px-3 py-1.5 rounded-lg" style={{ background: "linear-gradient(135deg,#E8C896,#C8965A)", color: "#241606" }}>👤 Moje konto</a>
+          <a href="/konto" onClick={() => setMode("buyer")} className="text-sm font-semibold px-3 py-1.5 rounded-lg" style={{ background: "linear-gradient(135deg,#F5A623,#E8891A)", color: "#241606" }}>👤 Moje konto</a>
           <a href="/" onClick={() => setMode("buyer")} className="text-sm navlink">🛍️ Sklep</a>
         </div>
         {tabs && (
@@ -555,7 +555,7 @@ function Reklamy() {
         <p className="text-xs mb-3" style={{ color: "var(--mut)" }}>Cennik konkurencyjny względem Allegro Ads. Marki własne Sunrise są sponsorowane bez opłat.</p>
         <div className="grid gap-2 mb-3">
           {rates.map((r) => (
-            <label key={r.code} className="flex items-center justify-between rounded-xl px-3 py-2 cursor-pointer" style={{ background: "var(--glass)", border: rate === r.code ? "1px solid rgba(200,150,90,.6)" : "1px solid var(--line)" }}>
+            <label key={r.code} className="flex items-center justify-between rounded-xl px-3 py-2 cursor-pointer" style={{ background: "var(--glass)", border: rate === r.code ? "1px solid rgba(232,137,26,.6)" : "1px solid var(--line)" }}>
               <span className="text-sm"><input type="radio" name="adrate" checked={rate === r.code} onChange={() => setRate(r.code)} className="mr-2" />{r.name}</span>
               <span className="text-sm font-semibold" style={{ color: "var(--gold)" }}>{r.model === "cpc" ? `${r.price} zł/klik` : `${Math.round(r.price)} zł`}</span>
             </label>
@@ -566,7 +566,7 @@ function Reklamy() {
           {offers.map((o) => <option key={o.offer_id} value={o.offer_id}>{o.title}</option>)}
         </select>
         {chosen?.model === "cpc" && <div className="mb-2 text-sm">Budżet: <input type="number" min={20} value={budget} onChange={(e) => setBudget(Number(e.target.value))} className="w-24 rounded px-2 py-1 bg-zinc-900 outline-none" /> zł</div>}
-        <button onClick={buy} disabled={busy} className="text-sm font-semibold px-4 py-2 rounded-xl text-black disabled:opacity-50" style={{ background: "linear-gradient(135deg,#C8965A,#E8C896)" }}>{busy ? "Uruchamiam…" : "Uruchom reklamę"}</button>
+        <button onClick={buy} disabled={busy} className="text-sm font-semibold px-4 py-2 rounded-xl text-black disabled:opacity-50" style={{ background: "linear-gradient(135deg,#E8891A,#F5A623)" }}>{busy ? "Uruchamiam…" : "Uruchom reklamę"}</button>
         {msg && <div className="mt-2 text-sm" style={{ color: "var(--gold)" }}>{msg}</div>}
       </Card>
       <StatystykiBanerow />

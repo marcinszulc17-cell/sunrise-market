@@ -23,7 +23,7 @@ export default function ReviewInline({ offerId, title, existing, onSaved }: { of
     return <div className="flex flex-wrap items-center gap-2 text-xs">
       {existing
         ? <><span style={{ color: "var(--gold)" }}>{"★".repeat(existing.rating)}<span style={{ opacity: .25 }}>{"★".repeat(5 - existing.rating)}</span></span><span style={{ color: "var(--mut)" }}>Twoja ocena{done ? " — zapisana" : ""}</span><button type="button" onClick={() => setOpen(true)} className="underline" style={{ color: "var(--mut)" }}>Edytuj</button>{existing.seller_reply && <span style={{ color: "var(--mut)" }}>· sprzedawca odpowiedział</span>}</>
-        : <button type="button" onClick={() => setOpen(true)} className="rounded-lg px-3 py-1 font-semibold" style={{ background: "rgba(232,200,150,.12)", color: "var(--gold)", border: "1px solid rgba(232,200,150,.3)" }}>⭐ Oceń zakup</button>}
+        : <button type="button" onClick={() => setOpen(true)} className="rounded-lg px-3 py-1 font-semibold" style={{ background: "rgba(245,166,35,.12)", color: "var(--gold)", border: "1px solid rgba(245,166,35,.3)" }}>⭐ Oceń zakup</button>}
     </div>;
   }
   return <div className="rounded-xl p-3" style={{ background: "var(--glass)", border: "1px solid var(--line)" }}>
@@ -35,7 +35,7 @@ export default function ReviewInline({ offerId, title, existing, onSaved }: { of
     <textarea rows={2} maxLength={1000} value={comment} onChange={e => setComment(e.target.value)} placeholder="Kilka słów o produkcie i sprzedawcy (opcjonalnie) — opinia będzie publiczna." className="mt-2 w-full rounded-lg px-3 py-2 text-sm outline-none" style={{ background: "var(--header)", border: "1px solid var(--line)", color: "var(--ink)" }} />
     {err && <div className="mt-1 text-xs" style={{ color: "#ef4444" }}>{err}</div>}
     <div className="mt-2 flex flex-wrap items-center gap-2">
-      <button type="button" disabled={busy} onClick={save} className="rounded-lg px-3 py-1.5 text-sm font-semibold text-black disabled:opacity-50" style={{ background: "linear-gradient(135deg,#C8965A,#E8C896)" }}>{busy ? "Zapisuję…" : existing ? "Zapisz zmiany" : "Opublikuj opinię"}</button>
+      <button type="button" disabled={busy} onClick={save} className="rounded-lg px-3 py-1.5 text-sm font-semibold text-black disabled:opacity-50" style={{ background: "linear-gradient(135deg,#E8891A,#F5A623)" }}>{busy ? "Zapisuję…" : existing ? "Zapisz zmiany" : "Opublikuj opinię"}</button>
       <button type="button" onClick={() => setOpen(false)} className="text-sm" style={{ color: "var(--mut)" }}>Anuluj</button>
       <span className="text-xs" style={{ color: "var(--mut)" }}>Publikujemy tylko opinie klientów po zakupie.</span>
     </div>

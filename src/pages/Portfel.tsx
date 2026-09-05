@@ -77,16 +77,16 @@ export default function Portfel() {
         <a href="/" className="navlink text-sm">← Sklep</a>
       </div>
 
-      <div className="rounded-2xl p-5 mb-6" style={{ background: "linear-gradient(140deg,#0b1a34,#123a86)", border: "1px solid rgba(232,200,150,.28)" }}>
+      <div className="rounded-2xl p-5 mb-6" style={{ background: "linear-gradient(140deg,#0b1a34,#123a86)", border: "1px solid rgba(245,166,35,.28)" }}>
         <div className="flex items-start justify-between gap-4 flex-wrap">
           <div>
-            <div className="text-xs font-semibold tracking-[.16em]" style={{ color: "#E8C896" }}>MYSUNRISE • ŹRÓDŁO ŚRODKÓW</div>
+            <div className="text-xs font-semibold tracking-[.16em]" style={{ color: "#F5A623" }}>MYSUNRISE • ŹRÓDŁO ŚRODKÓW</div>
             <h1 className="font-display text-3xl font-semibold mt-1">Twój portfel MySunrise</h1>
             <p className="text-sm mt-2 max-w-xl" style={{ color: "rgba(255,255,255,.7)" }}>
               Sunrise Market nie tworzy osobnego portfela. Saldo Sunrise Pay, punkty cashback, Gold i rozliczenia użytkownika należą do MySunrise. Market tylko pokazuje te dane i wykorzystuje je przy zakupach.
             </p>
           </div>
-          <a href={MYSUNRISE_URL} target="_blank" rel="noopener" className="rounded-xl px-4 py-2 text-sm font-semibold text-black" style={{ background: "linear-gradient(135deg,#E8C896,#C8965A)" }}>Otwórz MySunrise →</a>
+          <a href={MYSUNRISE_URL} target="_blank" rel="noopener" className="rounded-xl px-4 py-2 text-sm font-semibold text-black" style={{ background: "linear-gradient(135deg,#F5A623,#E8891A)" }}>Otwórz MySunrise →</a>
         </div>
       </div>
 
@@ -101,7 +101,7 @@ export default function Portfel() {
         </div>
         <div className="rounded-2xl p-5" style={{ background: "var(--glass)", border: "1px solid var(--line)" }}>
           <div className="text-xs" style={{ color: "var(--mut)" }}>Gold • MySunrise</div>
-          <div className="text-3xl font-extrabold" style={{ color: "#E8C896" }}>{gold == null ? "—" : gold.toLocaleString("pl-PL")} {gold != null && <span className="text-base">g</span>}</div>
+          <div className="text-3xl font-extrabold" style={{ color: "#F5A623" }}>{gold == null ? "—" : gold.toLocaleString("pl-PL")} {gold != null && <span className="text-base">g</span>}</div>
         </div>
       </div>
 
@@ -110,15 +110,15 @@ export default function Portfel() {
           <div className="font-semibold">Portfel nie jest jeszcze połączony z tym kontem.</div>
           <div className="mt-1">Wyloguj się z Sunrise Market i zaloguj ponownie tym samym adresem e-mail. Przy logowaniu konto MySunrise zostanie automatycznie dopięte. Jeśli komunikat pozostanie, otwórz MySunrise i sprawdź ten sam adres e-mail.</div>
           <div className="mt-3 flex flex-wrap gap-2">
-            <a href="/login" className="rounded-lg px-3 py-1.5 font-semibold text-black" style={{ background: "linear-gradient(135deg,#E8C896,#C8965A)" }}>Przejdź do logowania</a>
+            <a href="/login" className="rounded-lg px-3 py-1.5 font-semibold text-black" style={{ background: "linear-gradient(135deg,#F5A623,#E8891A)" }}>Przejdź do logowania</a>
             <a href={MYSUNRISE_URL} target="_blank" rel="noopener" className="rounded-lg px-3 py-1.5" style={{ border: "1px solid rgba(56,224,240,.3)" }}>Otwórz MySunrise</a>
           </div>
         </div>
       )}
-      {msg && <div className="mb-4 rounded-xl px-4 py-3 text-sm" style={{ background: "rgba(200,150,90,.12)", color: "var(--gold)" }}>{msg}</div>}
+      {msg && <div className="mb-4 rounded-xl px-4 py-3 text-sm" style={{ background: "rgba(232,137,26,.12)", color: "var(--gold)" }}>{msg}</div>}
 
       {hasIntent() && (
-        <div className="mb-5 rounded-xl px-4 py-3 text-sm flex items-center justify-between gap-3" style={{ background: "rgba(200,150,90,.12)", border: "1px solid rgba(200,150,90,.3)" }}>
+        <div className="mb-5 rounded-xl px-4 py-3 text-sm flex items-center justify-between gap-3" style={{ background: "rgba(232,137,26,.12)", border: "1px solid rgba(232,137,26,.3)" }}>
           <span>Masz zamówienie w toku. Płatność zostanie pobrana z Sunrise Pay w MySunrise.</span>
           <a href="/koszyk?topup=success" className="whitespace-nowrap rounded-lg px-3 py-1.5 font-semibold text-black" style={{ background: "var(--gold)" }}>Dokończ →</a>
         </div>
@@ -140,7 +140,7 @@ export default function Portfel() {
       <div className="rounded-2xl p-5 mb-7" style={{ background: "var(--glass)", border: "1px solid var(--line)" }}>
         <div className="font-semibold mb-1">Zarządzanie portfelem</div>
         <p className="text-sm mb-3" style={{ color: "var(--mut)" }}>Doładowanie, pełna historia środków, cashback, prowizje i pozostałe operacje finansowe są zarządzane w MySunrise.</p>
-        <a href={MYSUNRISE_URL} target="_blank" rel="noopener" className="inline-block rounded-xl px-5 py-2.5 font-semibold text-black" style={{ background: "linear-gradient(135deg,#C8965A,#E8C896)" }}>Zarządzaj portfelem w MySunrise →</a>
+        <a href={MYSUNRISE_URL} target="_blank" rel="noopener" className="inline-block rounded-xl px-5 py-2.5 font-semibold text-black" style={{ background: "linear-gradient(135deg,#E8891A,#F5A623)" }}>Zarządzaj portfelem w MySunrise →</a>
       </div>
 
       <div className="flex items-end justify-between gap-3 mb-3">

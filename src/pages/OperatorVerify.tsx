@@ -61,7 +61,7 @@ export default function OperatorVerify(){
         <div className="flex-1" />
         <button onClick={load} className="rounded-xl px-4 py-2 text-sm" style={{border:"1px solid var(--line)"}}>Odśwież</button>
       </div>
-      <div className="mt-6 rounded-3xl p-6" style={{background:"linear-gradient(135deg,rgba(200,150,90,.14),rgba(56,224,240,.07))",border:"1px solid rgba(200,150,90,.28)"}}>
+      <div className="mt-6 rounded-3xl p-6" style={{background:"linear-gradient(135deg,rgba(232,137,26,.14),rgba(56,224,240,.07))",border:"1px solid rgba(232,137,26,.28)"}}>
         <div className="text-sm font-semibold" style={{color:"var(--gold)"}}>🛡 SUNRISE VERIFY</div>
         <h1 className="mt-1 text-3xl font-semibold">Kolejka weryfikacji</h1>
         <p className="mt-2 text-sm" style={{color:"var(--mut)"}}>Płatne raporty pojazdów i nieruchomości. Na start raport może być uzupełniany operacyjnie; później podepniemy automatyczne źródła danych.</p>
@@ -83,7 +83,7 @@ export default function OperatorVerify(){
             <div className="mt-3 flex flex-wrap gap-2">
               <button disabled={busy===r.id} onClick={()=>save(r,"processing")} className="rounded-xl px-4 py-2 text-sm" style={{border:"1px solid var(--line)"}}>W toku</button>
               <button disabled={busy===r.id} onClick={()=>save(r,"failed")} className="rounded-xl px-4 py-2 text-sm text-red-300" style={{border:"1px solid rgba(239,68,68,.35)"}}>Oznacz błąd</button>
-              <button disabled={busy===r.id} onClick={()=>save(r,"ready")} className="rounded-xl px-5 py-2 text-sm font-semibold text-black" style={{background:"linear-gradient(135deg,#C8965A,#E8C896)"}}>{busy===r.id?"Zapisuję…":"Raport gotowy"}</button>
+              <button disabled={busy===r.id} onClick={()=>save(r,"ready")} className="rounded-xl px-5 py-2 text-sm font-semibold text-black" style={{background:"linear-gradient(135deg,#E8891A,#F5A623)"}}>{busy===r.id?"Zapisuję…":"Raport gotowy"}</button>
             </div>
           </div>}
         </div>)}

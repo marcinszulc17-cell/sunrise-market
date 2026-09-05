@@ -185,12 +185,12 @@ export default function PrivateOfferWizard() {
         <Link to="/sprzedawca/wystaw" className="text-sm underline" style={{ color: "var(--mut)" }}>Zmień tryb</Link>
       </div>
 
-      {msg && <div className="mb-4 rounded-2xl px-4 py-3 text-sm" style={{ background: "rgba(200,150,90,.12)", border: "1px solid rgba(200,150,90,.24)", color: "var(--gold)" }}>{msg}</div>}
+      {msg && <div className="mb-4 rounded-2xl px-4 py-3 text-sm" style={{ background: "rgba(232,137,26,.12)", border: "1px solid rgba(232,137,26,.24)", color: "var(--gold)" }}>{msg}</div>}
 
       <section className="space-y-6 rounded-3xl p-5 sm:p-7" style={{ background: "var(--glass)", border: "1px solid var(--line)" }}>
         {mode === "daily" && <div>
           <h2 className="mb-3 text-lg font-semibold">1. Co chcesz wynajmować?</h2>
-          <div className="grid gap-2 sm:grid-cols-3">{RENTAL_KINDS.map(k => <button type="button" key={k.id} onClick={() => { setRentalKind(k.id); setS1(null); setS2(null); setS3(null); setD2([]); setD3([]); }} className="rounded-2xl p-4 text-left" style={{ background: rentalKind === k.id ? "rgba(200,150,90,.14)" : "var(--header)", border: rentalKind === k.id ? "1px solid var(--gold)" : "1px solid var(--line)" }}><div className="text-2xl">{k.icon}</div><div className="mt-2 text-sm font-semibold">{k.title}</div></button>)}</div>
+          <div className="grid gap-2 sm:grid-cols-3">{RENTAL_KINDS.map(k => <button type="button" key={k.id} onClick={() => { setRentalKind(k.id); setS1(null); setS2(null); setS3(null); setD2([]); setD3([]); }} className="rounded-2xl p-4 text-left" style={{ background: rentalKind === k.id ? "rgba(232,137,26,.14)" : "var(--header)", border: rentalKind === k.id ? "1px solid var(--gold)" : "1px solid var(--line)" }}><div className="text-2xl">{k.icon}</div><div className="mt-2 text-sm font-semibold">{k.title}</div></button>)}</div>
         </div>}
 
         <div>
@@ -229,7 +229,7 @@ export default function PrivateOfferWizard() {
               : "Po utworzeniu wynajmu ustawisz dostępność, zasoby i kalendarz oraz opcjonalną kaucję dla auta lub sprzętu. Klient wybierze daty od–do, zobaczy czynsz za cały okres i od razu opłaci rezerwację."}
         </div>
 
-        <button type="button" disabled={busy || uploading} onClick={publish} className="w-full rounded-2xl px-5 py-4 text-lg font-bold text-black disabled:opacity-50" style={{ background: "linear-gradient(135deg,#C8965A,#E8C896)" }}>{busy ? "Tworzę ofertę…" : copy.publishLabel}</button>
+        <button type="button" disabled={busy || uploading} onClick={publish} className="w-full rounded-2xl px-5 py-4 text-lg font-bold text-black disabled:opacity-50" style={{ background: "linear-gradient(135deg,#E8891A,#F5A623)" }}>{busy ? "Tworzę ofertę…" : copy.publishLabel}</button>
       </section>
     </div>
   </main>;

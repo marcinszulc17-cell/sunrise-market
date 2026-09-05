@@ -74,7 +74,7 @@ export default function PrivateProduct(){
           {imgs.length>1&&<div className="mt-3 flex gap-2 overflow-x-auto">{imgs.map((u,i)=><button key={`${u}-${i}`} onClick={()=>setActive(i)} className="h-20 w-20 shrink-0 overflow-hidden rounded-xl" style={{border:active===i?"2px solid var(--gold)":"1px solid var(--line)"}}><img src={u} alt="" className="h-full w-full object-cover"/></button>)}</div>}
         </div>
         <div className="flex flex-col gap-4">
-          <div className="flex flex-wrap items-center gap-2"><span className="rounded-full px-3 py-1 text-xs font-semibold" style={{background:"rgba(200,150,90,.12)",color:"var(--gold)",border:"1px solid rgba(200,150,90,.25)"}}>Sprzedający prywatny</span><span className="text-xs" style={{color:"var(--mut)"}}>{offer.category}</span></div>
+          <div className="flex flex-wrap items-center gap-2"><span className="rounded-full px-3 py-1 text-xs font-semibold" style={{background:"rgba(232,137,26,.12)",color:"var(--gold)",border:"1px solid rgba(232,137,26,.25)"}}>Sprzedający prywatny</span><span className="text-xs" style={{color:"var(--mut)"}}>{offer.category}</span></div>
           <h1 className="font-display text-3xl font-semibold leading-tight sm:text-4xl">{offer.title}</h1>
           <div className="font-display text-4xl font-bold">{zl(offer.price_gross)}</div>
           <div className="flex flex-wrap gap-2 text-xs">
@@ -84,7 +84,7 @@ export default function PrivateProduct(){
           <div className="rounded-2xl p-4 text-sm" style={{background:"rgba(122,184,154,.08)",border:"1px solid rgba(122,184,154,.2)"}}><b>{offer.seller}</b><div className="mt-1 text-xs" style={{color:"var(--mut)"}}>Oferta osoby prywatnej w Sunrise Market.</div></div>
           {offer.description&&<div className="rounded-2xl p-4 text-sm leading-6" style={{background:"var(--glass)",border:"1px solid var(--line)",color:"var(--mut)"}}>{offer.description}</div>}
           <div className="flex flex-wrap gap-2">{["Ochrona płatności","Sunrise Pay","Cashback na portfel"].map(x=><span key={x} className="rounded-lg px-2.5 py-1 text-xs" style={{background:"var(--glass)",border:"1px solid var(--line)",color:"var(--mut)"}}>✓ {x}</span>)}</div>
-          <button onClick={buyNow} disabled={offer.stock<=0} className="mt-2 w-full rounded-2xl py-4 text-lg font-bold text-black disabled:cursor-not-allowed disabled:opacity-50" style={{background:"linear-gradient(135deg,#C8965A,#E8C896)"}}>{offer.stock>0?"Kup teraz":"Oferta niedostępna"}</button>
+          <button onClick={buyNow} disabled={offer.stock<=0} className="mt-2 w-full rounded-2xl py-4 text-lg font-bold text-black disabled:cursor-not-allowed disabled:opacity-50" style={{background:"linear-gradient(135deg,#E8891A,#F5A623)"}}>{offer.stock>0?"Kup teraz":"Oferta niedostępna"}</button>
           <p className="text-center text-xs" style={{color:"var(--mut)"}}>Stała cena. Bez negocjacji i bez kontaktu przed zakupem.</p>
           <p className="text-center text-xs leading-5" style={{color:"var(--mut)"}}>🛡 Płacisz przez Sunrise. Sprzedający dostaje pieniądze dopiero, gdy potwierdzisz odbiór — inaczej wracają do Ciebie.</p>
         </div>

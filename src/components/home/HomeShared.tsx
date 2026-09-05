@@ -9,7 +9,7 @@ import { getMarketConfig, cashbackFor } from "../../lib/marketConfig";
 import { supabase } from "../../lib/supabase";
 import { zl } from "../../lib/money";
 
-export const GOLD_GRAD = "linear-gradient(135deg,#C8965A,#E8C896)";
+export const GOLD_GRAD = "linear-gradient(135deg,#E8891A,#F5A623)";
 export const CARD = { background: "var(--glass)", border: "1px solid var(--line)" } as const;
 
 export const ICONS = {
@@ -33,19 +33,30 @@ export type IconName = keyof typeof ICONS;
 export function Ico({ name, size = 18, stroke = "currentColor", strokeWidth = 1.7 }: { name: IconName; size?: number; stroke?: string; strokeWidth?: number }) {
   return <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={stroke} strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">{ICONS[name]}</svg>;
 }
-export function IconTile({ name, size = 48 }: { name: IconName; size?: number }) {
-  return <div className="grid shrink-0 place-items-center rounded-2xl" style={{ width: size, height: size, background: "linear-gradient(135deg,rgba(232,200,150,.22),rgba(200,150,90,.08))", border: "1px solid rgba(232,200,150,.35)" }}><Ico name={name} size={Math.round(size / 2)} stroke="#E8C896" /></div>;
+// Subtelny odcień ikony (wg wzoru): karta zostaje ciemna, kolor tylko w kafelku ikony.
+export const TINTS = {
+  amber: { c: "#F5A623", bg: "rgba(245,166,35,.16)", bd: "rgba(245,166,35,.35)" },
+  violet: { c: "#B98CFF", bg: "rgba(185,140,255,.14)", bd: "rgba(185,140,255,.32)" },
+  green: { c: "#5CD39A", bg: "rgba(92,211,154,.14)", bd: "rgba(92,211,154,.32)" },
+  blue: { c: "#6FB1FF", bg: "rgba(111,177,255,.14)", bd: "rgba(111,177,255,.32)" },
+  orange: { c: "#FF8A3D", bg: "rgba(255,138,61,.14)", bd: "rgba(255,138,61,.32)" },
+} as const;
+export type Tint = keyof typeof TINTS;
+export function IconTile({ name, size = 48, tint = "amber" }: { name: IconName; size?: number; tint?: Tint }) {
+  const t = TINTS[tint];
+  return <div className="grid shrink-0 place-items-center rounded-2xl" style={{ width: size, height: size, background: t.bg, border: `1px solid ${t.bd}` }}><Ico name={name} size={Math.round(size / 2)} stroke={t.c} /></div>;
 }
 
 // Działy strony głównej — istniejące trasy: /sklep (pełny katalog), /szukaj (parametry q/kat/tryb), portale.
-export type Section = { to: string; icon: IconName; title: string; short: string; desc: string; cta: string };
+export type Section = { to: string; icon: IconName; tint: Tint; title: string; short: string; desc: string; cta: string };
+// Opisy = prawdziwe kategorie z bazy (market.categories), bez wymyślonych działów.
 export const SECTIONS: Section[] = [
-  { to: "/sklep", icon: "bag", title: "Zakupy", short: "Produkty dla Ciebie", desc: "Produkty od zweryfikowanych sprzedawców, z cashbackiem i Ochroną Kupujących.", cta: "Przeglądaj produkty" },
-  { to: "/szukaj?tryb=appointment", icon: "calendar", title: "Rezerwacje", short: "Usługi i terminy", desc: "Usługi z terminarzem — rezerwujesz i płacisz w jednym miejscu.", cta: "Zarezerwuj termin" },
-  { to: "/nieruchomosci", icon: "house", title: "Nieruchomości", short: "Domy i lokale", desc: "Mieszkania, domy, działki i lokale — z filtrami dopasowanymi do rynku.", cta: "Zobacz oferty" },
-  { to: "/motoryzacja", icon: "car", title: "Motoryzacja", short: "Pojazdy i części", desc: "Samochody, motocykle i części — z weryfikacją Sunrise Verify.", cta: "Znajdź pojazd" },
-  { to: "/szukaj?kat=uslugi-i-reklama", icon: "wrench", title: "Usługi", short: "Fachowcy i firmy", desc: "Fachowcy, firmy i usługi dla domu oraz biznesu.", cta: "Znajdź wykonawcę" },
-  { to: "/szukaj?kat=oze-i-energia", icon: "bolt", title: "OZE i Energia", short: "PV, pompy ciepła", desc: "Fotowoltaika, pompy ciepła, magazyny energii i montaż.", cta: "Sprawdź oferty" },
+  { to: "/sklep", icon: "bag", tint: "amber", title: "Zakupy", short: "Produkty dla Ciebie", desc: "Elektronika, Moda, Dom, Dziecko, Sport i więcej", cta: "Przeglądaj produkty" },
+  { to: "/szukaj?tryb=appointment", icon: "calendar", tint: "violet", title: "Rezerwacje", short: "Usługi i terminy", desc: "Noclegi, Wydarzenia, Usługi z terminarzem", cta: "Zarezerwuj termin" },
+  { to: "/nieruchomosci", icon: "house", tint: "green", title: "Nieruchomości", short: "Domy i lokale", desc: "Mieszkania, Domy, Działki, Lokale użytkowe", cta: "Zobacz oferty" },
+  { to: "/motoryzacja", icon: "car", tint: "blue", title: "Motoryzacja", short: "Pojazdy i części", desc: "Samochody, Motocykle, Części, Akcesoria", cta: "Znajdź pojazd" },
+  { to: "/szukaj?kat=uslugi-i-reklama", icon: "wrench", tint: "orange", title: "Usługi", short: "Fachowcy i firmy", desc: "Remonty, Transport, Zdrowie, Edukacja i więcej", cta: "Znajdź wykonawcę" },
+  { to: "/szukaj?kat=oze-i-energia", icon: "bolt", tint: "amber", title: "OZE i Energia", short: "PV, pompy ciepła", desc: "Fotowoltaika, Pompy ciepła, Magazyny energii", cta: "Sprawdź oferty" },
 ];
 
 export type FeedOffer = { offer_id: string; title: string; price_gross: number; image_url: string | null; category: string | null; seller: string | null; rating?: number; reviews?: number; location?: string | null };
@@ -110,15 +121,30 @@ export function RecoCard({ o, fav, onFav, rate, compact = false, className = "",
   const href = `/produkt/${o.offer_id}`;
   return <article className={`group relative overflow-hidden rounded-2xl transition ${compact ? "" : "hover:-translate-y-0.5"} ${className}`} style={{ ...CARD, ...(compact ? {} : { boxShadow: "0 10px 30px rgba(0,0,0,.15)" }), ...style }}>
     <Link to={href} className={`block w-full overflow-hidden ${compact ? "aspect-square" : "aspect-[4/3]"}`} style={{ background: "var(--header)" }} tabIndex={-1} aria-hidden="true">{o.image_url ? <img src={o.image_url} alt="" loading="lazy" decoding="async" className={`h-full w-full object-cover ${compact ? "" : "transition duration-500 group-hover:scale-[1.04]"}`} /> : <div className="grid h-full place-items-center text-3xl">🛍️</div>}</Link>
-    <button type="button" onClick={() => onFav(o.offer_id)} aria-pressed={fav} aria-label={fav ? "Usuń z ulubionych" : "Dodaj do ulubionych"} className="absolute right-2 top-2 grid h-11 w-11 place-items-center rounded-full backdrop-blur transition hover:scale-105 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#E8C896]" style={{ background: "rgba(10,18,36,.7)", border: "1px solid rgba(237,231,214,.15)", color: fav ? "#F25CB0" : "#EDE7D6" }}><svg width="20" height="20" viewBox="0 0 24 24" fill={fav ? "currentColor" : "none"} stroke="currentColor" strokeWidth="1.8" strokeLinejoin="round" aria-hidden="true">{ICONS.heart}</svg></button>
+    <button type="button" onClick={() => onFav(o.offer_id)} aria-pressed={fav} aria-label={fav ? "Usuń z ulubionych" : "Dodaj do ulubionych"} className="absolute right-2 top-2 grid h-11 w-11 place-items-center rounded-full backdrop-blur transition hover:scale-105 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#F5A623]" style={{ background: "rgba(10,18,36,.7)", border: "1px solid rgba(237,231,214,.15)", color: fav ? "#F25CB0" : "#EDE7D6" }}><svg width="20" height="20" viewBox="0 0 24 24" fill={fav ? "currentColor" : "none"} stroke="currentColor" strokeWidth="1.8" strokeLinejoin="round" aria-hidden="true">{ICONS.heart}</svg></button>
     <div className={compact ? "p-3" : "p-4"}>
-      {o.category && <div className="truncate text-[11px] font-semibold uppercase tracking-wider" style={{ color: "var(--gold)" }}>{o.category}</div>}
-      <Link to={href} className="mt-1 line-clamp-2 text-sm font-semibold leading-5 focus-visible:underline">{o.title}</Link>
-      <div className={`mt-1.5 font-semibold ${compact ? "text-base" : "text-lg"}`} style={{ color: "var(--gold)" }}>{zl(o.price_gross)}</div>
-      <div className="mt-1 flex items-center justify-between gap-2 text-xs" style={{ color: "var(--mut)" }}>
+      <div className={`font-bold ${compact ? "text-base" : "text-lg"}`} style={{ color: "var(--gold)" }}>{zl(o.price_gross)}</div>
+      <Link to={href} className="mt-0.5 line-clamp-2 text-sm font-semibold leading-5 focus-visible:underline">{o.title}</Link>
+      <div className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-[11px]" style={{ color: "var(--mut)" }}>
+        {o.category && <span className="truncate rounded-md px-2 py-0.5" style={{ background: "rgba(255,255,255,.06)", border: "1px solid var(--line)", color: "var(--ink)" }}>{o.category}</span>}
         <span className="truncate">{o.location ? `📍 ${o.location}` : o.seller ?? ""}</span>
-        {!compact && <span className="shrink-0">+{cashbackFor(o.price_gross, rate).toLocaleString("pl-PL", { maximumFractionDigits: 2 })} pkt</span>}
+        {!compact && <span className="ml-auto shrink-0">+{cashbackFor(o.price_gross, rate).toLocaleString("pl-PL", { maximumFractionDigits: 2 })} pkt</span>}
       </div>
     </div>
   </article>;
+}
+
+/** Zwięzła stopka strony głównej (wg wzoru): logo, istniejące strony prawne, kontakt. Bez „O nas”/„Pomoc”/social — takich stron nie ma. */
+export function HomeFooter() {
+  return <footer className="mt-12" style={{ borderTop: "1px solid var(--line)", background: "var(--header)" }}>
+    <div className="mx-auto flex max-w-[1440px] flex-wrap items-center gap-x-6 gap-y-3 px-6 py-6 text-sm xl:px-10" style={{ color: "var(--mut)" }}>
+      <a href="/" className="mr-2 flex items-center"><img src="/logo-sunrise-market-light.png" alt="Sunrise Market" className="brand-logo h-9 w-auto" /></a>
+      <a href="/legal/regulamin.html" className="navlink">Regulamin</a>
+      <a href="/legal/prywatnosc.html" className="navlink">Polityka prywatności</a>
+      <a href="/legal/ochrona-kupujacego.html" className="navlink">Ochrona Kupujących</a>
+      <a href="/legal/zwroty.html" className="navlink">Zwroty</a>
+      <a href="/legal/kontakt.html" className="navlink">Kontakt</a>
+      <span className="ml-auto text-xs">Bliżej ludzi. Bliżej możliwości. · © {new Date().getFullYear()} Sunrise Market</span>
+    </div>
+  </footer>;
 }

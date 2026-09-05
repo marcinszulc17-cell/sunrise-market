@@ -377,7 +377,7 @@ export default function SellerBookingsManage() {
         </div>
       </div>
 
-      {msg && <div className="mb-5 rounded-2xl p-4 text-sm" style={{ background: "rgba(200,150,90,.12)", border: "1px solid rgba(200,150,90,.25)" }}>{msg}</div>}
+      {msg && <div className="mb-5 rounded-2xl p-4 text-sm" style={{ background: "rgba(232,137,26,.12)", border: "1px solid rgba(232,137,26,.25)" }}>{msg}</div>}
 
       <div className="mb-6 grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
         <Stat label="Aktywne rezerwacje" value={String(stats.active)} />
@@ -407,7 +407,7 @@ export default function SellerBookingsManage() {
             </div>
             <div className="flex flex-wrap gap-2">
               {[['active','Aktywne'],['pending_approval','Do akceptacji'],['confirmed','Potwierdzone'],['pending_payment','Do opłacenia'],['completed','Zakończone'],['no_show','Nieobecni'],['cancelled','Anulowane'],['all','Wszystkie']].map(([k, l]) =>
-                <button key={k} onClick={() => setFilter(k)} className="rounded-full px-3 py-1.5 text-sm" style={{ background: filter === k ? "rgba(200,150,90,.18)" : "var(--glass)", border: "1px solid var(--line)", color: filter === k ? "var(--gold)" : "var(--ink)" }}>{l}</button>
+                <button key={k} onClick={() => setFilter(k)} className="rounded-full px-3 py-1.5 text-sm" style={{ background: filter === k ? "rgba(232,137,26,.18)" : "var(--glass)", border: "1px solid var(--line)", color: filter === k ? "var(--gold)" : "var(--ink)" }}>{l}</button>
               )}
             </div>
           </div>
@@ -435,7 +435,7 @@ export default function SellerBookingsManage() {
                     <div className="mt-1 text-sm" style={{ color: "var(--mut)" }}>{r.booking_type === "daily" ? `${dt(r.starts_at, false)} – ${dt(r.ends_at, false)} · ${rentalUnitsLabel(r.units)}` : dt(r.starts_at, true)}</div>
                     {r.resource_name && (r.resource_id ? <Link to={`/sprzedawca/rezerwacje/grafiki?resource=${encodeURIComponent(r.resource_id)}`} className="mt-1 inline-block text-xs hover:underline" style={{ color: "var(--gold)" }}>{resourceKindLabel[r.resource_kind || ""] || "Zasób"}: {r.resource_name} · otwórz grafik</Link> : <div className="mt-1 text-xs" style={{ color: "var(--gold)" }}>{resourceKindLabel[r.resource_kind || ""] || "Zasób"}: {r.resource_name}</div>)}
                   </div>
-                  <span className="rounded-full px-3 py-1 text-xs font-semibold" style={{ background: r.status === "confirmed" ? "rgba(34,197,94,.12)" : paidAwaitingApproval ? "rgba(200,150,90,.14)" : "var(--header)", border: "1px solid var(--line)", color: paidAwaitingApproval ? "var(--gold)" : undefined }}>{bookingStatusLabel(r)}</span>
+                  <span className="rounded-full px-3 py-1 text-xs font-semibold" style={{ background: r.status === "confirmed" ? "rgba(34,197,94,.12)" : paidAwaitingApproval ? "rgba(232,137,26,.14)" : "var(--header)", border: "1px solid var(--line)", color: paidAwaitingApproval ? "var(--gold)" : undefined }}>{bookingStatusLabel(r)}</span>
                 </div>
 
                 <div className={`mt-4 grid gap-2 text-sm ${hasDeposit ? "sm:grid-cols-4" : "sm:grid-cols-3"}`}>
@@ -445,7 +445,7 @@ export default function SellerBookingsManage() {
                   {hasDeposit && <div><span style={{ color: "var(--mut)" }}>Kaucja zwrotna</span><div className="font-semibold">{pln(Number(r.deposit_gross || 0))}</div><div className="text-xs" style={{ color: r.deposit_status === "failed" ? "#fca5a5" : "var(--mut)" }}>{depositStatusLabel[r.deposit_status || ""] || r.deposit_status || "—"}</div></div>}
                 </div>
 
-                {hasDeposit && <div className="mt-4 rounded-2xl p-4" style={{ background: "var(--header)", border: "1px solid rgba(200,150,90,.22)" }}>
+                {hasDeposit && <div className="mt-4 rounded-2xl p-4" style={{ background: "var(--header)", border: "1px solid rgba(232,137,26,.22)" }}>
                   <div className="flex flex-wrap items-center justify-between gap-3">
                     <div>
                       <div className="font-semibold">🔐 Rozliczenie kaucji</div>
@@ -464,14 +464,14 @@ export default function SellerBookingsManage() {
                   {r.status === "confirmed" && <button disabled={busy || rescheduleBusy || depositBusy || refundBusy} onClick={() => openReschedule(r)} className="rounded-xl px-3 py-2 text-sm font-semibold" style={{ border: "1px solid var(--gold)", color: "var(--gold)" }}>↔ Przenieś / zmień termin</button>}
                   {r.status === "confirmed" && <button disabled={busy || rescheduleBusy || depositBusy || refundBusy} onClick={() => setStatus(r.id, "completed")} className="rounded-xl px-3 py-2 text-sm font-semibold" style={{ border: "1px solid var(--line)" }}>✓ Zakończ</button>}
                   {canMarkNoShow && <button disabled={busy || rescheduleBusy || depositBusy || refundBusy} onClick={() => setStatus(r.id, "no_show")} className="rounded-xl px-3 py-2 text-sm font-semibold" style={{ border: "1px solid rgba(245,158,11,.45)", color: "#f59e0b" }}>Nie pojawił się</button>}
-                  {["held", "pending_payment"].includes(r.status) && r.paid_at && <button disabled={busy || rescheduleBusy || depositBusy || refundBusy} onClick={() => setStatus(r.id, "confirmed")} className="rounded-xl px-3 py-2 text-sm font-semibold text-black" style={{ background: "linear-gradient(135deg,#C8965A,#E8C896)" }}>Potwierdź</button>}
+                  {["held", "pending_payment"].includes(r.status) && r.paid_at && <button disabled={busy || rescheduleBusy || depositBusy || refundBusy} onClick={() => setStatus(r.id, "confirmed")} className="rounded-xl px-3 py-2 text-sm font-semibold text-black" style={{ background: "linear-gradient(135deg,#E8891A,#F5A623)" }}>Potwierdź</button>}
                   {["held", "pending_payment", "confirmed"].includes(r.status) && r.paid_at && <button disabled={busy || rescheduleBusy || depositBusy || refundBusy} onClick={() => cancelAndRefund(r)} className="rounded-xl px-3 py-2 text-sm font-semibold disabled:opacity-50" style={{ border: "1px solid rgba(239,68,68,.45)", color: "#fca5a5" }}>{refundBusy ? "Zwracam…" : "Anuluj i zwróć"}</button>}
                   {["held", "pending_payment", "confirmed"].includes(r.status) && !r.paid_at && <button disabled={busy || rescheduleBusy || depositBusy || refundBusy} onClick={() => setStatus(r.id, "cancelled")} className="rounded-xl px-3 py-2 text-sm" style={{ border: "1px solid rgba(239,68,68,.35)" }}>Anuluj</button>}
                   {r.buyer_email && <a href={`mailto:${r.buyer_email}`} className="rounded-xl px-3 py-2 text-sm" style={{ border: "1px solid var(--line)" }}>✉️ Napisz do klienta</a>}
                   <BookingChangeHistory bookingId={r.id} />
                 </div>
 
-                {r.status === "confirmed" && rescheduleId === r.id && <div className="mt-4 rounded-2xl p-4" style={{ background: "rgba(200,150,90,.07)", border: "1px solid rgba(200,150,90,.25)" }}>
+                {r.status === "confirmed" && rescheduleId === r.id && <div className="mt-4 rounded-2xl p-4" style={{ background: "rgba(232,137,26,.07)", border: "1px solid rgba(232,137,26,.25)" }}>
                   <div className="font-semibold">Przenieś rezerwację</div>
                   <div className="mt-1 text-xs" style={{ color: "var(--mut)" }}>{r.booking_type === "daily" ? `Okres: ${rentalUnitsLabel(r.units)}.` : `Czas: ${durationMinutes} min.`} {r.booking_type === "daily" ? "Czynsz" : "Cena usługi"} {pln(r.amount_gross)} jest zablokowany od momentu zakupu.</div>
 
@@ -509,7 +509,7 @@ export default function SellerBookingsManage() {
                   </div>
 
                   <div className="mt-3 grid gap-2 sm:grid-cols-2">
-                    <button disabled={rescheduleBusy || eligibleResourcesLoading || !rescheduleValue} onClick={() => reschedule(r)} className="rounded-xl py-2.5 font-semibold text-black disabled:opacity-50" style={{ background: "linear-gradient(135deg,#C8965A,#E8C896)" }}>{rescheduleBusy ? "Sprawdzam termin…" : "Sprawdź i przenieś"}</button>
+                    <button disabled={rescheduleBusy || eligibleResourcesLoading || !rescheduleValue} onClick={() => reschedule(r)} className="rounded-xl py-2.5 font-semibold text-black disabled:opacity-50" style={{ background: "linear-gradient(135deg,#E8891A,#F5A623)" }}>{rescheduleBusy ? "Sprawdzam termin…" : "Sprawdź i przenieś"}</button>
                     <button disabled={rescheduleBusy} onClick={closeReschedule} className="rounded-xl py-2.5 text-sm font-semibold" style={{ border: "1px solid var(--line)" }}>Anuluj zmianę</button>
                   </div>
                 </div>}

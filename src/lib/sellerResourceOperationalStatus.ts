@@ -69,7 +69,7 @@ function inject() {
     badge.style.color = current === "available" ? "var(--green)" : current === "failure" ? "#fca5a5" : "var(--gold)";
     for (const button of Array.from(buttons.querySelectorAll("button")) as HTMLButtonElement[]) {
       const selected = button.dataset.status === current;
-      button.style.background = selected ? "linear-gradient(135deg,#C8965A,#E8C896)" : "var(--glass)";
+      button.style.background = selected ? "linear-gradient(135deg,#E8891A,#F5A623)" : "var(--glass)";
       button.style.color = selected ? "#211406" : "var(--ink)";
       button.style.border = selected ? "1px solid transparent" : "1px solid var(--line)";
       button.disabled = busy;

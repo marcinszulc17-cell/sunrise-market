@@ -21,7 +21,7 @@ export default function MobileAppNav() {
         return (
           <Link key={it.href} to={it.href} className={active ? "active" : ""} aria-current={active ? "page" : undefined} aria-label={it.label}>
             {it.primary
-              ? <span className="pwa-bottom-nav-primary" aria-hidden="true"><Ico name="plus" size={22} stroke="#0E1729" strokeWidth={2.4} /></span>
+              ? <span className="pwa-bottom-nav-primary" aria-hidden="true"><Ico name="plus" size={22} stroke="#101012" strokeWidth={2.4} /></span>
               : <span className="pwa-bottom-nav-icon" aria-hidden="true"><Ico name={it.icon} size={22} strokeWidth={active ? 2.2 : 1.7} /></span>}
             <span>{it.label}</span>
           </Link>

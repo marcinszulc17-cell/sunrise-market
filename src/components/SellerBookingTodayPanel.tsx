@@ -51,7 +51,7 @@ export default function SellerBookingTodayPanel() {
   return <div className="rounded-2xl p-5" style={{ background: "var(--glass)", border: "1px solid var(--line)" }}>
     <div className="flex items-start justify-between gap-3">
       <div><div className="text-[10px] font-semibold tracking-[.14em]" style={{ color: "var(--gold)" }}>DZISIAJ I NAJBLIŻSZE</div><h2 className="mt-1 text-lg font-semibold">Plan rezerwacji</h2></div>
-      {awaiting > 0 && <span className="rounded-full px-2.5 py-1 text-xs font-bold" style={{ background: "rgba(200,150,90,.15)", color: "var(--gold)" }}>{awaiting} do akceptacji</span>}
+      {awaiting > 0 && <span className="rounded-full px-2.5 py-1 text-xs font-bold" style={{ background: "rgba(232,137,26,.15)", color: "var(--gold)" }}>{awaiting} do akceptacji</span>}
     </div>
     <div className="mt-4 grid grid-cols-2 gap-2">
       <button onClick={() => setView("today")} className="rounded-xl px-3 py-2 text-sm font-semibold" style={{ border: view === "today" ? "1px solid var(--gold)" : "1px solid var(--line)", color: view === "today" ? "var(--gold)" : "var(--mut)" }}>Dzisiaj ({todayRows.length})</button>

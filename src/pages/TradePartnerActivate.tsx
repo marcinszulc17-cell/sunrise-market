@@ -120,7 +120,7 @@ export default function TradePartnerActivate() {
   return <Shell>
     <div className="mx-auto max-w-3xl">
       <Link to="/sprzedawca" className="text-sm underline" style={{ color: "var(--mut)" }}>← Centrum sprzedawcy</Link>
-      <div className="mt-5 rounded-3xl p-6 sm:p-8" style={{ background: "var(--glass)", border: "1px solid rgba(200,150,90,.28)" }}>
+      <div className="mt-5 rounded-3xl p-6 sm:p-8" style={{ background: "var(--glass)", border: "1px solid rgba(232,137,26,.28)" }}>
         <div className="text-xs font-semibold tracking-[.15em]" style={{ color: "var(--gold)" }}>MYSUNRISE · SPRZEDAWCA</div>
         <h1 className="mt-2 font-display text-3xl font-semibold sm:text-4xl">Sprzedawaj swoje produkty i zarabiaj</h1>
         <p className="mt-3 text-sm leading-6 sm:text-base" style={{ color: "var(--mut)" }}>
@@ -146,10 +146,10 @@ export default function TradePartnerActivate() {
               <p className="mt-1 text-sm" style={{ color: "var(--mut)" }}>Opłać {fee.toFixed(0)} zł, aby aktywować możliwość wystawiania nowych ofert na kolejny rok.</p>
               <div className="mt-4 grid gap-3 sm:grid-cols-2">
                 <button onClick={() => renew("wallet")} disabled={busy} className="rounded-xl px-4 py-3 font-semibold disabled:opacity-50" style={{ background: "var(--header)", border: "1px solid var(--line)" }}>💳 Zapłać z Sunrise Wallet</button>
-                <button onClick={() => renew("card")} disabled={busy} className="rounded-xl px-4 py-3 font-semibold text-black disabled:opacity-50" style={{ background: "linear-gradient(135deg,#C8965A,#E8C896)" }}>Karta / BLIK / P24 →</button>
+                <button onClick={() => renew("card")} disabled={busy} className="rounded-xl px-4 py-3 font-semibold text-black disabled:opacity-50" style={{ background: "linear-gradient(135deg,#E8891A,#F5A623)" }}>Karta / BLIK / P24 →</button>
               </div>
             </>}
-            {status.can_sell && <Link to="/sprzedawca/wystaw" className="mt-4 inline-flex rounded-xl px-4 py-2.5 font-semibold text-black" style={{ background: "linear-gradient(135deg,#C8965A,#E8C896)" }}>+ Wystaw ofertę</Link>}
+            {status.can_sell && <Link to="/sprzedawca/wystaw" className="mt-4 inline-flex rounded-xl px-4 py-2.5 font-semibold text-black" style={{ background: "linear-gradient(135deg,#E8891A,#F5A623)" }}>+ Wystaw ofertę</Link>}
           </div>
         ) : status?.seller_id ? (
           <div className="mt-6 rounded-2xl p-5" style={{ background: "rgba(34,197,94,.07)", border: "1px solid rgba(34,197,94,.22)" }}>
@@ -163,17 +163,17 @@ export default function TradePartnerActivate() {
             <input value={name} onChange={(e) => setName(e.target.value)} className="mt-2 w-full rounded-xl px-3 py-3 outline-none" style={{ background: "var(--header)", border: "1px solid var(--line)", color: "var(--ink)" }} placeholder="np. Marcin" />
           </div>
 
-          <label className="mt-5 flex items-start gap-3 rounded-2xl p-4 text-sm" style={{ background: "rgba(200,150,90,.08)", border: "1px solid rgba(200,150,90,.22)" }}>
+          <label className="mt-5 flex items-start gap-3 rounded-2xl p-4 text-sm" style={{ background: "rgba(232,137,26,.08)", border: "1px solid rgba(232,137,26,.22)" }}>
             <input type="checkbox" checked={accept} onChange={(e) => setAccept(e.target.checked)} className="mt-1" />
             <span style={{ color: "var(--mut)" }}>Aktywuję konto Sprzedawcy, akceptuję zasady sprzedaży Sunrise Market i przyjmuję do wiadomości, że pierwszy rok jest bez opłaty, a po 12 miesiącach dalszy dostęp sprzedażowy kosztuje {fee.toFixed(0)} zł za rok.</span>
           </label>
 
-          <button onClick={activate} disabled={busy || !accept} className="mt-5 w-full rounded-2xl py-3.5 font-bold text-black disabled:opacity-50" style={{ background: "linear-gradient(135deg,#C8965A,#E8C896)" }}>
+          <button onClick={activate} disabled={busy || !accept} className="mt-5 w-full rounded-2xl py-3.5 font-bold text-black disabled:opacity-50" style={{ background: "linear-gradient(135deg,#E8891A,#F5A623)" }}>
             {busy ? "Aktywuję…" : "Aktywuj konto Sprzedawcy →"}
           </button>
         </>}
 
-        {msg && <div className="mt-4 rounded-xl p-3 text-sm" style={{ background: "rgba(200,150,90,.08)", color: "var(--ink)", border: "1px solid rgba(200,150,90,.20)" }}>{msg}</div>}
+        {msg && <div className="mt-4 rounded-xl p-3 text-sm" style={{ background: "rgba(232,137,26,.08)", color: "var(--ink)", border: "1px solid rgba(232,137,26,.20)" }}>{msg}</div>}
       </div>
     </div>
   </Shell>;

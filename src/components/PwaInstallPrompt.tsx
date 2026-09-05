@@ -78,7 +78,7 @@ export default function PwaInstallPrompt() {
   }
   function later() { write(SNOOZE_KEY, String(Date.now())); setVisible(false); }
 
-  return <div role="dialog" aria-label="Zapisz aplikację Sunrise Market" className="fixed inset-x-3 z-[60] rounded-2xl p-4 shadow-2xl sm:left-auto sm:right-4 sm:w-[380px]" style={{ bottom: "calc(env(safe-area-inset-bottom, 0px) + 76px)", background: "var(--header)", border: "1px solid rgba(232,200,150,.35)", color: "var(--ink)" }}>
+  return <div role="dialog" aria-label="Zapisz aplikację Sunrise Market" className="fixed inset-x-3 z-[60] rounded-2xl p-4 shadow-2xl sm:left-auto sm:right-4 sm:w-[380px]" style={{ bottom: "calc(env(safe-area-inset-bottom, 0px) + 76px)", background: "var(--header)", border: "1px solid rgba(245,166,35,.35)", color: "var(--ink)" }}>
     <div className="flex items-start gap-3">
       <img src="/icon-192x192.png" alt="" className="h-11 w-11 rounded-xl" />
       <div className="min-w-0 flex-1">
@@ -87,7 +87,7 @@ export default function PwaInstallPrompt() {
           ? <p className="mt-1 text-sm leading-5" style={{ color: "var(--mut)" }}>W Safari dotknij <b>Udostępnij</b> (ikona kwadratu ze strzałką), a potem <b>„Do ekranu początkowego”</b>. Ikona pojawi się obok innych aplikacji.</p>
           : <p className="mt-1 text-sm leading-5" style={{ color: "var(--mut)" }}>Szybszy dostęp z ekranu głównego, pełny ekran i powiadomienia o zamówieniach.</p>}
         <div className="mt-3 flex gap-2">
-          {!iosHelp && <button type="button" onClick={install} className="rounded-xl px-4 py-2 text-sm font-semibold" style={{ background: "linear-gradient(135deg,#C8965A,#E8C896)", color: "#0E1729" }}>{deferred ? "Zainstaluj" : "Jak zapisać?"}</button>}
+          {!iosHelp && <button type="button" onClick={install} className="rounded-xl px-4 py-2 text-sm font-semibold" style={{ background: "linear-gradient(135deg,#E8891A,#F5A623)", color: "#101012" }}>{deferred ? "Zainstaluj" : "Jak zapisać?"}</button>}
           <button type="button" onClick={later} className="rounded-xl px-4 py-2 text-sm" style={{ background: "var(--glass)", border: "1px solid var(--line)" }}>{iosHelp ? "Rozumiem" : "Nie teraz"}</button>
         </div>
       </div>

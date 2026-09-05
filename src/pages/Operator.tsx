@@ -51,7 +51,7 @@ export default function Operator() {
           <a href="/" className="flex items-center gap-2">
             <img src="/logo-sunrise-market-light.png" alt="Sunrise Market" className="brand-logo h-11 w-auto" onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = "none"; }} />
           </a>
-          <span className="text-sm px-2 py-0.5 rounded-full" style={{ background: "rgba(200,150,90,.12)", color: "var(--gold)" }}>Back-office</span>
+          <span className="text-sm px-2 py-0.5 rounded-full" style={{ background: "rgba(232,137,26,.12)", color: "var(--gold)" }}>Back-office</span>
           <div className="flex-1" />
           <a href="/" className="text-sm navlink">🛍️ Zakupy jako klient</a>
         </div>
@@ -60,7 +60,7 @@ export default function Operator() {
             {TABS.map((t) => (
               <button key={t.id} onClick={() => setTab(t.id)}
                       className="shrink-0 text-sm px-3 py-1.5 rounded-full whitespace-nowrap"
-                      style={tab === t.id ? { background: "linear-gradient(135deg,#C8965A,#A97B42)", color: "#000", fontWeight: 600 } : { background: "var(--glass)", border: "1px solid var(--line)", color: "var(--ink)" }}>
+                      style={tab === t.id ? { background: "linear-gradient(135deg,#E8891A,#A97B42)", color: "#000", fontWeight: 600 } : { background: "var(--glass)", border: "1px solid var(--line)", color: "var(--ink)" }}>
                 {t.label}
               </button>
             ))}
@@ -115,7 +115,7 @@ function Pulpit({ go }: { go: (t: Tab) => void }) {
   if (!o) return <p style={{ color: "var(--mut)" }}>Ładowanie…</p>;
   return (
     <>
-      <div className="rounded-2xl p-6 mb-6" style={{ background: "linear-gradient(135deg, rgba(200,150,90,.14), rgba(90,138,229,.12))", border: "1px solid rgba(200,150,90,.3)" }}>
+      <div className="rounded-2xl p-6 mb-6" style={{ background: "linear-gradient(135deg, rgba(232,137,26,.14), rgba(90,138,229,.12))", border: "1px solid rgba(232,137,26,.3)" }}>
         <div className="text-sm" style={{ color: "var(--mut)" }}>Zysk firmy — cały przychód platformy (po cashbacku i prowizji Stripe)</div>
         <div className="font-display text-4xl font-bold" style={{ color: "var(--gold)" }}>{zl(o.company)}</div>
         <div className="flex flex-wrap gap-x-5 gap-y-1 mt-3 text-sm" style={{ color: "var(--mut)" }}>
@@ -148,7 +148,7 @@ function Pulpit({ go }: { go: (t: Tab) => void }) {
             {(() => { const max = Math.max(1, ...((b.top_categories || []) as any[]).map((x) => Number(x.gmv || 0))); return ((b.top_categories || []) as any[]).map((c, i) => (
               <div key={i} className="mb-2">
                 <div className="flex justify-between text-sm mb-1"><span>{c.name}</span><span style={{ color: "var(--mut)" }}>{zl(c.gmv)}</span></div>
-                <div className="h-2 rounded-full overflow-hidden" style={{ background: "var(--line)" }}><div className="h-full" style={{ width: `${Math.round(Number(c.gmv || 0) / max * 100)}%`, background: "linear-gradient(90deg,#C8965A,#E8C896)" }} /></div>
+                <div className="h-2 rounded-full overflow-hidden" style={{ background: "var(--line)" }}><div className="h-full" style={{ width: `${Math.round(Number(c.gmv || 0) / max * 100)}%`, background: "linear-gradient(90deg,#E8891A,#F5A623)" }} /></div>
               </div>
             )); })()}
             {(!b.top_categories || b.top_categories.length === 0) && <div className="text-sm" style={{ color: "var(--mut)" }}>Brak danych sprzedażowych.</div>}
@@ -204,7 +204,7 @@ function Zamowienia() {
           <option value="">Wszystkie statusy</option>
           {ORDER_STATUSES.map((s) => <option key={s} value={s}>{statusLabel[s]}</option>)}
         </select>
-        <button onClick={load} className="px-4 py-2 rounded-lg text-sm font-semibold text-black" style={{ background: "linear-gradient(135deg,#C8965A,#E8C896)" }}>Szukaj</button>
+        <button onClick={load} className="px-4 py-2 rounded-lg text-sm font-semibold text-black" style={{ background: "linear-gradient(135deg,#E8891A,#F5A623)" }}>Szukaj</button>
         <span className="ml-auto text-sm" style={{ color: "var(--mut)" }}>{rows.length} zamówień</span>
       </div>
       {loading && <p style={{ color: "var(--mut)" }}>Ładowanie…</p>}
@@ -255,7 +255,7 @@ function Klienci() {
     <>
       <div className="flex gap-2 mb-4 items-center">
         <input value={q} onChange={(e) => setQ(e.target.value)} onKeyDown={(e) => e.key === "Enter" && load()} placeholder="Szukaj: e-mail / nazwa" className={inp} style={{ ...inpStyle, minWidth: 220 }} />
-        <button onClick={load} className="px-4 py-2 rounded-lg text-sm font-semibold text-black" style={{ background: "linear-gradient(135deg,#C8965A,#E8C896)" }}>Szukaj</button>
+        <button onClick={load} className="px-4 py-2 rounded-lg text-sm font-semibold text-black" style={{ background: "linear-gradient(135deg,#E8891A,#F5A623)" }}>Szukaj</button>
         <span className="ml-auto text-sm" style={{ color: "var(--mut)" }}>{rows.length} klientów</span>
       </div>
       {loading && <p style={{ color: "var(--mut)" }}>Ładowanie…</p>}
@@ -313,7 +313,7 @@ function Sprzedawcy() {
       )}
       <div className="flex gap-2 mb-4 items-center">
         <input value={q} onChange={(e) => setQ(e.target.value)} onKeyDown={(e) => e.key === "Enter" && load()} placeholder="Szukaj: nazwa / e-mail / NIP" className={inp} style={{ ...inpStyle, minWidth: 220 }} />
-        <button onClick={load} className="px-4 py-2 rounded-lg text-sm font-semibold text-black" style={{ background: "linear-gradient(135deg,#C8965A,#E8C896)" }}>Szukaj</button>
+        <button onClick={load} className="px-4 py-2 rounded-lg text-sm font-semibold text-black" style={{ background: "linear-gradient(135deg,#E8891A,#F5A623)" }}>Szukaj</button>
         <span className="ml-auto text-sm" style={{ color: "var(--mut)" }}>{rows.length} sprzedawców</span>
       </div>
       {loading && <p style={{ color: "var(--mut)" }}>Ładowanie…</p>}
@@ -449,9 +449,9 @@ function CjDrop() {
           <input value={keyword} onChange={(e) => setKeyword(e.target.value)} placeholder="Słowo klucz (opcjonalnie, np. lamp)" className={inp} style={{ ...inpStyle, minWidth: 240 }} />
           <input value={pageSize} onChange={(e) => setPageSize(e.target.value)} type="number" min={1} max={50} className={inp} style={{ ...inpStyle, width: 90 }} />
           <span className="text-xs" style={{ color: "var(--mut)" }}>szt./import (max 50)</span>
-          <button onClick={onImport} disabled={busy} className="px-4 py-2 rounded-lg text-sm font-semibold text-black disabled:opacity-50" style={{ background: "linear-gradient(135deg,#C8965A,#E8C896)" }}>{busy ? "Importuję…" : "Importuj z CJ →"}</button>
+          <button onClick={onImport} disabled={busy} className="px-4 py-2 rounded-lg text-sm font-semibold text-black disabled:opacity-50" style={{ background: "linear-gradient(135deg,#E8891A,#F5A623)" }}>{busy ? "Importuję…" : "Importuj z CJ →"}</button>
         </div>
-        {msg && <div className="mt-3 text-sm rounded-lg px-3 py-2" style={{ background: "rgba(200,150,90,.12)", color: "var(--gold)" }}>{msg}</div>}
+        {msg && <div className="mt-3 text-sm rounded-lg px-3 py-2" style={{ background: "rgba(232,137,26,.12)", color: "var(--gold)" }}>{msg}</div>}
       </Card>
 
       <Card className="mb-4">
@@ -467,8 +467,8 @@ function CjDrop() {
       </Card>
 
       <div className="flex items-center gap-2 mb-4">
-        <button onClick={() => setView("drafty")} className="text-sm px-4 py-2 rounded-xl font-semibold" style={view === "drafty" ? { background: "linear-gradient(135deg,#C8965A,#A97B42)", color: "#000" } : { background: "var(--glass)", border: "1px solid var(--line)", color: "var(--ink)" }}>Drafty ({drafts.length})</button>
-        <button onClick={() => setView("statystyki")} className="text-sm px-4 py-2 rounded-xl font-semibold" style={view === "statystyki" ? { background: "linear-gradient(135deg,#C8965A,#A97B42)", color: "#000" } : { background: "var(--glass)", border: "1px solid var(--line)", color: "var(--ink)" }}>📊 Statystyki</button>
+        <button onClick={() => setView("drafty")} className="text-sm px-4 py-2 rounded-xl font-semibold" style={view === "drafty" ? { background: "linear-gradient(135deg,#E8891A,#A97B42)", color: "#000" } : { background: "var(--glass)", border: "1px solid var(--line)", color: "var(--ink)" }}>Drafty ({drafts.length})</button>
+        <button onClick={() => setView("statystyki")} className="text-sm px-4 py-2 rounded-xl font-semibold" style={view === "statystyki" ? { background: "linear-gradient(135deg,#E8891A,#A97B42)", color: "#000" } : { background: "var(--glass)", border: "1px solid var(--line)", color: "var(--ink)" }}>📊 Statystyki</button>
       </div>
 
       {view === "drafty" && (
@@ -514,7 +514,7 @@ function CjDrop() {
             <input value={statSearch} onChange={(e) => setStatSearch(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") loadStats(); }} placeholder="Szukaj po nazwie… (Enter)" className="text-xs px-3 py-1.5 rounded-full outline-none" style={{ background: "var(--glass)", border: "1px solid var(--line)", color: "var(--ink)", minWidth: 170 }} />
             <span className="text-xs" style={{ color: "var(--mut)" }}>· sortuj:</span>
             {(([["sold", "🛒 sprzedaż"], ["views", "👁 wyświetlenia"], ["margin", "💰 marża zł"], ["marginPct", "% marży"], ["price", "cena"]]) as [typeof sort, string][]).map(([k, l]) => (
-              <button key={k} onClick={() => setSort(k)} className="text-xs px-3 py-1.5 rounded-full" style={sort === k ? { background: "rgba(200,150,90,.16)", border: "1px solid rgba(200,150,90,.5)", color: "var(--gold)" } : { background: "var(--glass)", border: "1px solid var(--line)", color: "var(--mut)" }}>{l}</button>
+              <button key={k} onClick={() => setSort(k)} className="text-xs px-3 py-1.5 rounded-full" style={sort === k ? { background: "rgba(232,137,26,.16)", border: "1px solid rgba(232,137,26,.5)", color: "var(--gold)" } : { background: "var(--glass)", border: "1px solid var(--line)", color: "var(--mut)" }}>{l}</button>
             ))}
           </div>
           <p className="text-xs mb-3" style={{ color: "var(--mut)" }}>Nasza marża = cena − koszt dostawcy. <b style={{ color: "var(--gold)" }}>Rynek</b> = sugerowana cena detaliczna (benchmark konkurencji), <b>Marża konk.</b> = ile zarobiłby konkurent przy tej cenie, <b>Przewaga</b> = o ile jesteśmy tańsi (zielone) lub drożsi (różowe). Pokazujemy top 200 wg sortowania — użyj szukajki dla konkretnych produktów.</p>
@@ -610,7 +610,7 @@ function Fulfillment() {
               <div className="flex items-center gap-2 shrink-0">
                 <span className="text-xs px-2.5 py-1 rounded-full" style={{ background: "var(--glass)", border: "1px solid var(--line)", color: color[b.status] ?? "var(--ink)" }}>{lbl[b.status] ?? b.status}</span>
                 {b.status === "awaiting_approval" && <>
-                  <button onClick={() => onApprove(b.bridge_id)} className="text-xs font-semibold px-3 py-1.5 rounded-lg text-black" style={{ background: "linear-gradient(135deg,#C8965A,#E8C896)" }}>Przekaż →</button>
+                  <button onClick={() => onApprove(b.bridge_id)} className="text-xs font-semibold px-3 py-1.5 rounded-lg text-black" style={{ background: "linear-gradient(135deg,#E8891A,#F5A623)" }}>Przekaż →</button>
                   <button onClick={() => onReject(b.bridge_id)} className="text-xs px-3 py-1.5 rounded-lg" style={{ background: "var(--glass)", border: "1px solid var(--line)" }}>Odrzuć</button>
                 </>}
                 {b.status === "error" && <button onClick={() => onRetry(b.bridge_id)} className="text-xs px-3 py-1.5 rounded-lg" style={{ background: "var(--glass)", border: "1px solid var(--line)" }}>Ponów</button>}
@@ -740,7 +740,7 @@ function Spory() {
                     <input value={notes[d.id] ?? ""} onChange={(e) => setNotes((m) => ({ ...m, [d.id]: e.target.value }))} placeholder="Notatka do decyzji (opcjonalnie)" className="rounded-lg px-2 py-1.5 text-xs outline-none" style={{ background: "var(--glass)", border: "1px solid var(--line)", color: "var(--ink)" }} />
                     <div className="flex flex-wrap gap-2">
                       <button disabled={busy === d.id} onClick={() => refund(d)} className="text-xs font-semibold px-3 py-1.5 rounded-lg text-black disabled:opacity-50" style={{ background: "linear-gradient(135deg,#7AB89A,#38E0F0)" }}>Zwrot kupującemu</button>
-                      <button disabled={busy === d.id} onClick={() => resolve(d, "release")} className="text-xs font-semibold px-3 py-1.5 rounded-lg text-black disabled:opacity-50" style={{ background: "linear-gradient(135deg,#C8965A,#E8C896)" }}>Zwolnij wypłatę</button>
+                      <button disabled={busy === d.id} onClick={() => resolve(d, "release")} className="text-xs font-semibold px-3 py-1.5 rounded-lg text-black disabled:opacity-50" style={{ background: "linear-gradient(135deg,#E8891A,#F5A623)" }}>Zwolnij wypłatę</button>
                       <button disabled={busy === d.id} onClick={() => resolve(d, "rejected")} className="text-xs px-3 py-1.5 rounded-lg disabled:opacity-50" style={{ background: "var(--glass)", border: "1px solid var(--line)" }}>Odrzuć</button>
                     </div>
                   </div>

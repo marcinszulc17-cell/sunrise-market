@@ -188,7 +188,7 @@ export default function SellerOfferEdit() {
       </div>
     </div>
 
-    {msg && <div className="mb-5 rounded-xl px-4 py-3 text-sm" style={{ background: "rgba(200,150,90,.12)", border: "1px solid rgba(200,150,90,.25)", color: "var(--gold)" }}>{msg}</div>}
+    {msg && <div className="mb-5 rounded-xl px-4 py-3 text-sm" style={{ background: "rgba(232,137,26,.12)", border: "1px solid rgba(232,137,26,.25)", color: "var(--gold)" }}>{msg}</div>}
 
     <div className="grid gap-5 xl:grid-cols-[1.2fr_.8fr]">
       <Card>
@@ -248,12 +248,12 @@ export default function SellerOfferEdit() {
           </div>
         </div>}
 
-        <div className="mt-5 rounded-xl p-3 text-xs leading-5" style={{ background: "rgba(200,150,90,.08)", color: "var(--mut)" }}>Kaucję, długość wynajmu, dostępność zasobów i ceny sezonowe ustawiasz w <Link className="underline" to={`/sprzedawca/rezerwacje/ustawienia/${offer.offer_id}`}>Booking / kalendarz</Link>. Kaucja pozostaje rozliczana oddzielnie od czynszu.</div>
+        <div className="mt-5 rounded-xl p-3 text-xs leading-5" style={{ background: "rgba(232,137,26,.08)", color: "var(--mut)" }}>Kaucję, długość wynajmu, dostępność zasobów i ceny sezonowe ustawiasz w <Link className="underline" to={`/sprzedawca/rezerwacje/ustawienia/${offer.offer_id}`}>Booking / kalendarz</Link>. Kaucja pozostaje rozliczana oddzielnie od czynszu.</div>
       </Card>
     </div>}
 
     <div className="mt-5 grid gap-3 sm:grid-cols-[1fr_auto]">
-      <button disabled={saving || uploading} onClick={save} className="rounded-xl py-3 font-bold text-black disabled:opacity-50" style={{ background: "linear-gradient(135deg,#C8965A,#E8C896)" }}>{saving ? "Zapisuję…" : isDaily ? "Zapisz ofertę i warunki wynajmu" : "Zapisz ofertę i zdjęcia"}</button>
+      <button disabled={saving || uploading} onClick={save} className="rounded-xl py-3 font-bold text-black disabled:opacity-50" style={{ background: "linear-gradient(135deg,#E8891A,#F5A623)" }}>{saving ? "Zapisuję…" : isDaily ? "Zapisz ofertę i warunki wynajmu" : "Zapisz ofertę i zdjęcia"}</button>
       <Link to={`/sprzedawca/rezerwacje/ustawienia/${offer.offer_id}`} className="rounded-xl px-5 py-3 text-center font-semibold" style={{ border: "1px solid var(--gold)", color: "var(--gold)" }}>Dalej: booking →</Link>
     </div>
   </Shell>;

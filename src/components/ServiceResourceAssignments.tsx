@@ -74,7 +74,7 @@ export default function ServiceResourceAssignments({ offerId, services, resource
       Jak w Booksy: przypisz usługę do konkretnych pracowników lub zasobów. Brak zaznaczenia oznacza, że usługę może obsłużyć każdy aktywny zasób przypięty do tej oferty.
     </p>
 
-    {message && <div className="mt-4 rounded-xl p-3 text-sm" style={{ background: "rgba(200,150,90,.10)", color: "var(--gold)" }}>{message}</div>}
+    {message && <div className="mt-4 rounded-xl p-3 text-sm" style={{ background: "rgba(232,137,26,.10)", color: "var(--gold)" }}>{message}</div>}
 
     <div className="mt-5 space-y-4">
       {services.map((service) => {
@@ -92,7 +92,7 @@ export default function ServiceResourceAssignments({ offerId, services, resource
           <div className="mt-3 grid gap-2 sm:grid-cols-2">
             {resources.map((resource) => {
               const checked = current.includes(resource.id);
-              return <label key={resource.id} className="flex cursor-pointer items-center gap-3 rounded-xl p-3" style={{ border: checked ? "1px solid var(--gold)" : "1px solid var(--line)", background: checked ? "rgba(200,150,90,.08)" : "transparent", opacity: resource.active === false ? .55 : 1 }}>
+              return <label key={resource.id} className="flex cursor-pointer items-center gap-3 rounded-xl p-3" style={{ border: checked ? "1px solid var(--gold)" : "1px solid var(--line)", background: checked ? "rgba(232,137,26,.08)" : "transparent", opacity: resource.active === false ? .55 : 1 }}>
                 <input type="checkbox" checked={checked} disabled={resource.active === false} onChange={() => toggle(service.id, resource.id)} />
                 <span className="min-w-0"><b className="block truncate">{resource.name}</b><span className="text-xs" style={{ color: "var(--mut)" }}>{kindLabel[resource.kind] || resource.kind}{resource.active === false ? " · wyłączony" : ""}</span></span>
               </label>;

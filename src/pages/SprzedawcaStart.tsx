@@ -46,7 +46,7 @@ const TYPES: OfferType[] = [
 function healthStyle(kind: BookingHealth["kind"]): React.CSSProperties {
   if (kind === "booked") return { background: "rgba(56,224,240,.10)", color: "#7debf5", border: "1px solid rgba(56,224,240,.24)" };
   if (kind === "active") return { background: "rgba(34,197,94,.10)", color: "var(--green)", border: "1px solid rgba(34,197,94,.24)" };
-  if (kind === "setup") return { background: "rgba(200,150,90,.12)", color: "var(--gold)", border: "1px solid rgba(200,150,90,.28)" };
+  if (kind === "setup") return { background: "rgba(232,137,26,.12)", color: "var(--gold)", border: "1px solid rgba(232,137,26,.28)" };
   if (kind === "no_availability") return { background: "rgba(239,68,68,.10)", color: "#fca5a5", border: "1px solid rgba(239,68,68,.25)" };
   return { background: "var(--header)", color: "var(--mut)", border: "1px solid var(--line)" };
 }
@@ -110,16 +110,16 @@ export default function SprzedawcaStart() {
               W jednym miejscu sprzedajesz produkty, wynajmujesz sprzęt i przyjmujesz płatne rezerwacje usług, aut oraz nieruchomości.
             </p>
           </div>
-          <Link to="/sprzedawca/wystaw" className="rounded-2xl px-5 py-3 font-semibold text-black" style={{ background: "linear-gradient(135deg,#C8965A,#E8C896)" }}>
+          <Link to="/sprzedawca/wystaw" className="rounded-2xl px-5 py-3 font-semibold text-black" style={{ background: "linear-gradient(135deg,#E8891A,#F5A623)" }}>
             + Wystaw ofertę
           </Link>
         </div>
 
         <div className="mb-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-          <a href="#twoje-oferty" className="rounded-2xl p-5" style={{ background: "rgba(200,150,90,.09)", border: "1px solid rgba(200,150,90,.28)" }}>
+          <a href="#twoje-oferty" className="rounded-2xl p-5" style={{ background: "rgba(232,137,26,.09)", border: "1px solid rgba(232,137,26,.28)" }}>
             <div className="text-2xl">🧾</div><div className="mt-2 text-lg font-semibold">Twoje oferty</div><div className="mt-1 text-sm" style={{ color: "var(--mut)" }}>Ogłoszenia, zdjęcia, cashback/prowizje, faktura VAT i wejście do kalendarza.</div>
           </a>
-          <Link to="/sprzedawca/zamowienia" className="rounded-2xl p-5" style={{ background: "rgba(200,150,90,.07)", border: "1px solid rgba(200,150,90,.24)" }}>
+          <Link to="/sprzedawca/zamowienia" className="rounded-2xl p-5" style={{ background: "rgba(232,137,26,.07)", border: "1px solid rgba(232,137,26,.24)" }}>
             <div className="text-2xl">💳</div><div className="mt-2 text-lg font-semibold">Zamówienia i faktury</div><div className="mt-1 text-sm" style={{ color: "var(--mut)" }}>Opłacone zakupy, Twoje wpływy oraz zamrożone dane firmy i NIP do faktury.</div>
           </Link>
           <Link to="/sprzedawca/rezerwacje" className="rounded-2xl p-5" style={{ background: "rgba(122,184,154,.08)", border: "1px solid rgba(122,184,154,.24)" }}>
@@ -133,7 +133,7 @@ export default function SprzedawcaStart() {
         {!offersLoading && (bookingStats.active > 0 || bookingStats.attention > 0 || bookingStats.reservations > 0) && (
           <div className="mb-8 grid gap-3 sm:grid-cols-3">
             <Link to="/sprzedawca/rezerwacje" className="rounded-2xl p-4" style={{ background: "var(--glass)", border: "1px solid var(--line)" }}><div className="text-xs" style={{ color: "var(--mut)" }}>Booking aktywny</div><div className="mt-1 text-2xl font-semibold">{bookingStats.active}</div></Link>
-            <a href="#twoje-oferty" className="rounded-2xl p-4" style={bookingStats.attention > 0 ? { background: "rgba(200,150,90,.10)", border: "1px solid rgba(200,150,90,.28)" } : { background: "var(--glass)", border: "1px solid var(--line)" }}><div className="text-xs" style={{ color: "var(--mut)" }}>Wymaga ustawienia</div><div className="mt-1 text-2xl font-semibold">{bookingStats.attention}</div></a>
+            <a href="#twoje-oferty" className="rounded-2xl p-4" style={bookingStats.attention > 0 ? { background: "rgba(232,137,26,.10)", border: "1px solid rgba(232,137,26,.28)" } : { background: "var(--glass)", border: "1px solid var(--line)" }}><div className="text-xs" style={{ color: "var(--mut)" }}>Wymaga ustawienia</div><div className="mt-1 text-2xl font-semibold">{bookingStats.attention}</div></a>
             <Link to="/sprzedawca/rezerwacje" className="rounded-2xl p-4" style={{ background: "rgba(56,224,240,.07)", border: "1px solid rgba(56,224,240,.18)" }}><div className="text-xs" style={{ color: "var(--mut)" }}>Aktywne rezerwacje klientów</div><div className="mt-1 text-2xl font-semibold">{bookingStats.reservations}</div></Link>
           </div>
         )}
@@ -153,14 +153,14 @@ export default function SprzedawcaStart() {
             <div className="rounded-2xl p-6" style={{ background: "var(--glass)", border: "1px solid var(--line)" }}>
               <div className="text-lg font-semibold">Nie masz jeszcze widocznych ofert</div>
               <p className="mt-1 text-sm" style={{ color: "var(--mut)" }}>Wystaw pierwszą ofertę. Po publikacji pojawi się tutaj i będzie można od razu dodać zdjęcia lub booking.</p>
-              <Link to="/sprzedawca/wystaw" className="mt-4 inline-flex rounded-xl px-4 py-2 font-semibold text-black" style={{ background: "linear-gradient(135deg,#C8965A,#E8C896)" }}>+ Wystaw ofertę</Link>
+              <Link to="/sprzedawca/wystaw" className="mt-4 inline-flex rounded-xl px-4 py-2 font-semibold text-black" style={{ background: "linear-gradient(135deg,#E8891A,#F5A623)" }}>+ Wystaw ofertę</Link>
             </div>
           ) : (
             <div className="grid gap-4 lg:grid-cols-2">
               {offers.slice(0, 8).map((offer) => {
                 const booking = health[offer.offer_id] ?? { kind: "none", label: "Bez bookingu", bookings: 0, activeBookings: 0 } as BookingHealth;
                 const needsAttention = booking.kind === "setup" || booking.kind === "no_availability";
-                return <article key={offer.offer_id} className="rounded-2xl p-5" style={{ background: "var(--glass)", border: needsAttention ? "1px solid rgba(200,150,90,.38)" : "1px solid var(--line)" }}>
+                return <article key={offer.offer_id} className="rounded-2xl p-5" style={{ background: "var(--glass)", border: needsAttention ? "1px solid rgba(232,137,26,.38)" : "1px solid var(--line)" }}>
                   <div className="flex items-start justify-between gap-3">
                     <div className="min-w-0">
                       <div className="text-xs" style={{ color: "var(--mut)" }}>{offer.category}</div>
@@ -177,9 +177,9 @@ export default function SprzedawcaStart() {
                     <span>Dostępność: {offer.stock}</span>
                     {booking.bookings > 0 && <span>Rezerwacje: {booking.bookings}</span>}
                   </div>
-                  {needsAttention && <div className="mt-3 rounded-xl px-3 py-2 text-xs" style={{ background: "rgba(200,150,90,.08)", color: "var(--mut)" }}>{booking.kind === "setup" ? "Dokończ konfigurację i aktywuj kalendarz, aby klienci mogli rezerwować." : "Booking jest włączony, ale nie ma godzin dostępności. Uzupełnij kalendarz."}</div>}
+                  {needsAttention && <div className="mt-3 rounded-xl px-3 py-2 text-xs" style={{ background: "rgba(232,137,26,.08)", color: "var(--mut)" }}>{booking.kind === "setup" ? "Dokończ konfigurację i aktywuj kalendarz, aby klienci mogli rezerwować." : "Booking jest włączony, ale nie ma godzin dostępności. Uzupełnij kalendarz."}</div>}
                   <div className="mt-4 grid gap-2 sm:grid-cols-3">
-                    <Link to={`/sprzedawca/oferty/${offer.offer_id}/edytuj`} className="rounded-xl px-3 py-2 text-center text-sm font-semibold text-black" style={{ background: "linear-gradient(135deg,#C8965A,#E8C896)" }}>✏️ Edytuj i zdjęcia</Link>
+                    <Link to={`/sprzedawca/oferty/${offer.offer_id}/edytuj`} className="rounded-xl px-3 py-2 text-center text-sm font-semibold text-black" style={{ background: "linear-gradient(135deg,#E8891A,#F5A623)" }}>✏️ Edytuj i zdjęcia</Link>
                     <Link to={`/sprzedawca/rezerwacje/ustawienia/${offer.offer_id}`} className="rounded-xl px-3 py-2 text-center text-sm font-semibold" style={{ border: needsAttention ? "1px solid var(--gold)" : "1px solid var(--line)", color: needsAttention ? "var(--gold)" : "var(--ink)" }}>{needsAttention ? "⚠️ Ustaw booking" : "📅 Booking"}</Link>
                     <Link to={`/produkt/${offer.offer_id}`} className="rounded-xl px-3 py-2 text-center text-sm font-semibold" style={{ border: "1px solid var(--line)" }}>Podgląd</Link>
                   </div>

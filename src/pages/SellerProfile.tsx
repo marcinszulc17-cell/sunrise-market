@@ -49,13 +49,13 @@ export default function SellerProfile() {
       <div className="mt-4 grid gap-4 lg:grid-cols-[1.4fr_1fr]">
         <div className="rounded-3xl p-6 sm:p-7" style={{ background: "var(--glass)", border: "1px solid var(--line)" }}>
           <div className="flex flex-wrap items-start gap-5">
-            <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-2xl text-xl font-bold" style={{ background: "linear-gradient(135deg,#C8965A,#E8C896)", color: "#0E1729" }}>{initials}</div>
+            <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-2xl text-xl font-bold" style={{ background: "linear-gradient(135deg,#E8891A,#F5A623)", color: "#101012" }}>{initials}</div>
             <div className="min-w-0 flex-1">
               <h1 className="text-2xl font-semibold leading-tight sm:text-3xl">{p.name}</h1>
               <div className="mt-1 text-sm" style={{ color: "var(--mut)" }}>{sellerTypeLabel(p.seller_type)} · na Sunrise od {new Date(p.since).getFullYear()}</div>
               <div className="mt-3 flex flex-wrap gap-2">
                 {p.badge && p.badge !== "Nowy" && <span className="rounded-full px-2.5 py-1 text-xs font-semibold" style={{ background: "rgba(122,184,154,.12)", color: "var(--green)" }}>{p.badge}</span>}
-                <span className="rounded-full px-2.5 py-1 text-xs font-semibold" style={{ background: "rgba(232,200,150,.12)", color: "var(--gold)" }}>🛡️ Ochrona Kupujących Sunrise</span>
+                <span className="rounded-full px-2.5 py-1 text-xs font-semibold" style={{ background: "rgba(245,166,35,.12)", color: "var(--gold)" }}>🛡️ Ochrona Kupujących Sunrise</span>
                 {p.seller_type === "business" && <span className="rounded-full px-2.5 py-1 text-xs font-semibold" style={{ background: "var(--header)", border: "1px solid var(--line)" }}>Faktura VAT</span>}
               </div>
             </div>
@@ -73,7 +73,7 @@ export default function SellerProfile() {
           <div className="mt-4 space-y-2">
             {[5, 4, 3, 2, 1].map(star => { const n = Number(p.distribution?.[String(star)] || 0); const pct = total ? Math.round((n / total) * 100) : 0; return <button key={star} type="button" onClick={() => setFilter(filter === star ? 0 : star)} className="flex w-full items-center gap-3 text-left text-sm" style={{ opacity: filter && filter !== star ? .45 : 1 }}>
               <span className="w-8 shrink-0" style={{ color: "var(--gold)" }}>{star} ★</span>
-              <span className="h-2.5 flex-1 overflow-hidden rounded-full" style={{ background: "var(--header)" }}><span className="block h-full rounded-full" style={{ width: `${pct}%`, background: "linear-gradient(90deg,#C8965A,#E8C896)" }} /></span>
+              <span className="h-2.5 flex-1 overflow-hidden rounded-full" style={{ background: "var(--header)" }}><span className="block h-full rounded-full" style={{ width: `${pct}%`, background: "linear-gradient(90deg,#E8891A,#F5A623)" }} /></span>
               <span className="w-10 shrink-0 text-right text-xs" style={{ color: "var(--mut)" }}>{n}</span>
             </button>; })}
           </div>

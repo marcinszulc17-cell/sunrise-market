@@ -56,7 +56,7 @@ export default function BulkOfferActions({ count, onRun, onClear }: { count: num
   const disabled = busy || count === 0 || (needsValue && (value === "" || Number.isNaN(Number(value)))) || (action === "promo_set" && !until);
 
   return (
-    <div className="mb-4 rounded-2xl p-4" style={{ background: "rgba(200,150,90,.08)", border: "1px solid rgba(200,150,90,.28)" }}>
+    <div className="mb-4 rounded-2xl p-4" style={{ background: "rgba(232,137,26,.08)", border: "1px solid rgba(232,137,26,.28)" }}>
       <div className="flex flex-wrap items-end gap-3">
         <div className="text-sm font-semibold" style={{ color: "var(--gold)" }}>Zaznaczone: {count}</div>
         <label className="text-xs" style={{ color: "var(--mut)" }}>Akcja
@@ -76,7 +76,7 @@ export default function BulkOfferActions({ count, onRun, onClear }: { count: num
         {action === "promo_set" && <label className="text-xs" style={{ color: "var(--mut)" }}>Koniec promocji
           <input type="datetime-local" className={`${inputClass} mt-1 block`} style={inputStyle} value={until} onChange={(e) => setUntil(e.target.value)} />
         </label>}
-        <button disabled={disabled} onClick={run} className="rounded-xl px-4 py-2 font-semibold text-black disabled:opacity-50" style={{ background: "linear-gradient(135deg,#C8965A,#E8C896)" }}>{busy ? "Wykonuję…" : "Zastosuj"}</button>
+        <button disabled={disabled} onClick={run} className="rounded-xl px-4 py-2 font-semibold text-black disabled:opacity-50" style={{ background: "linear-gradient(135deg,#E8891A,#F5A623)" }}>{busy ? "Wykonuję…" : "Zastosuj"}</button>
         <button onClick={onClear} className="rounded-xl px-3 py-2 text-sm" style={{ border: "1px solid var(--line)" }}>Odznacz</button>
       </div>
       {preview && <div className="mt-2 text-xs" style={{ color: "var(--mut)" }}>{preview}. Zmiany dotyczą tylko zaznaczonych ofert (poza archiwum i zablokowanymi).</div>}

@@ -38,7 +38,7 @@ export default function SellerPickup() {
       <div className="rounded-2xl p-5" style={{ background: "var(--glass)", border: "1px solid var(--line)" }}>
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div><div className="font-semibold">{enabled ? "🏪 Odbiór osobisty włączony" : "Odbiór osobisty wyłączony"}</div><div className="text-xs" style={{ color: "var(--mut)" }}>{enabled ? "Twoje oferty mają w koszyku opcję „Odbiór osobisty u sprzedawcy” (0 zł)." : "Klienci widzą przy Twoich ofertach tylko wysyłkę."}</div></div>
-          <button type="button" disabled={busy || (!enabled && address.trim().length < 8)} onClick={() => save(!enabled)} className="rounded-xl px-4 py-2 text-sm font-semibold disabled:opacity-50" style={enabled ? { background: "var(--header)", border: "1px solid var(--line)" } : { background: "linear-gradient(135deg,#C8965A,#E8C896)", color: "#0E1729" }}>{enabled ? "Wyłącz" : "Włącz odbiór"}</button>
+          <button type="button" disabled={busy || (!enabled && address.trim().length < 8)} onClick={() => save(!enabled)} className="rounded-xl px-4 py-2 text-sm font-semibold disabled:opacity-50" style={enabled ? { background: "var(--header)", border: "1px solid var(--line)" } : { background: "linear-gradient(135deg,#E8891A,#F5A623)", color: "#101012" }}>{enabled ? "Wyłącz" : "Włącz odbiór"}</button>
         </div>
       </div>
 
@@ -50,12 +50,12 @@ export default function SellerPickup() {
         <label className="mt-3 block text-sm"><span style={{ color: "var(--mut)" }}>Uwagi dla klienta (opcjonalnie)</span>
           <textarea value={note} onChange={(e) => setNote(e.target.value)} rows={2} maxLength={500} placeholder="np. Zamówienie czeka przy kasie — wystarczy podać numer zamówienia." className="mt-1 w-full rounded-xl px-3 py-2 text-sm outline-none" style={{ background: "var(--header)", border: "1px solid var(--line)", color: "var(--ink)" }} /></label>
         <div className="mt-3 flex flex-wrap items-center gap-2">
-          <button type="button" disabled={busy} onClick={() => save()} className="rounded-xl px-4 py-2 text-sm font-semibold disabled:opacity-50" style={{ background: "linear-gradient(135deg,#C8965A,#E8C896)", color: "#0E1729" }}>{busy ? "Zapisuję…" : "Zapisz"}</button>
+          <button type="button" disabled={busy} onClick={() => save()} className="rounded-xl px-4 py-2 text-sm font-semibold disabled:opacity-50" style={{ background: "linear-gradient(135deg,#E8891A,#F5A623)", color: "#101012" }}>{busy ? "Zapisuję…" : "Zapisz"}</button>
           {msg && <span className="text-sm" style={{ color: msg.ok ? "var(--green)" : "#f87171" }}>{msg.text}</span>}
         </div>
       </div>
 
-      <div className="rounded-2xl p-5 text-sm leading-6" style={{ background: "rgba(232,200,150,.06)", border: "1px solid rgba(232,200,150,.25)", color: "var(--mut)" }}>
+      <div className="rounded-2xl p-5 text-sm leading-6" style={{ background: "rgba(245,166,35,.06)", border: "1px solid rgba(245,166,35,.25)", color: "var(--mut)" }}>
         <b style={{ color: "var(--ink)" }}>Jak to działa</b><br />
         1. Klient wybiera w koszyku „Odbiór osobisty u sprzedawcy” i płaci (portfel Sunrise Pay albo karta/BLIK) — pieniądze są u Sunrise.<br />
         2. W Zamówieniach klikasz <b style={{ color: "var(--ink)" }}>Gotowe do odbioru</b> — klient dostaje powiadomienie z Twoim adresem i godzinami.<br />

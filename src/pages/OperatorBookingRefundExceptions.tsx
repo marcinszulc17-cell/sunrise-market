@@ -87,7 +87,7 @@ export default function OperatorBookingRefundExceptions() {
     </div>
 
     <div className="mb-5 flex flex-wrap gap-2">
-      {[["all","Wszystkie"],["blocked_bonus","Bonusy wykorzystane"],["payment_failed","Błąd płatności"],["finalize_failed","Błąd finalizacji"],["preparing","Utknęło"]].map(([value,label]) => <button key={value} onClick={()=>setFilter(value)} className="rounded-full px-3 py-1.5 text-xs" style={filter === value ? { background: "rgba(200,150,90,.18)", border: "1px solid rgba(200,150,90,.55)", color: "var(--gold)" } : { background: "var(--glass)", border: "1px solid var(--line)", color: "var(--mut)" }}>{label}</button>)}
+      {[["all","Wszystkie"],["blocked_bonus","Bonusy wykorzystane"],["payment_failed","Błąd płatności"],["finalize_failed","Błąd finalizacji"],["preparing","Utknęło"]].map(([value,label]) => <button key={value} onClick={()=>setFilter(value)} className="rounded-full px-3 py-1.5 text-xs" style={filter === value ? { background: "rgba(232,137,26,.18)", border: "1px solid rgba(232,137,26,.55)", color: "var(--gold)" } : { background: "var(--glass)", border: "1px solid var(--line)", color: "var(--mut)" }}>{label}</button>)}
       <span className="self-center text-xs" style={{ color: "var(--mut)" }}>{visible.length} przypadków</span>
     </div>
 

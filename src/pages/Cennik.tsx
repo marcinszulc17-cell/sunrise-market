@@ -65,7 +65,7 @@ export default function Cennik() {
 
 function Card({ title, children, highlight }: { title: string; children: React.ReactNode; highlight?: boolean }) {
   return (
-    <div className="rounded-2xl p-5" style={{ background: "var(--glass)", border: highlight ? "1px solid rgba(200,150,90,.4)" : "1px solid var(--line)" }}>
+    <div className="rounded-2xl p-5" style={{ background: "var(--glass)", border: highlight ? "1px solid rgba(232,137,26,.4)" : "1px solid var(--line)" }}>
       <h2 className="font-display text-xl font-semibold mb-3">{title}</h2>
       <div className="flex flex-col gap-2">{children}</div>
     </div>

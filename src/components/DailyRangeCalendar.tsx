@@ -132,7 +132,7 @@ export default function DailyRangeCalendar({ minDate, maxDate, minUnits, maxUnit
             className="relative h-10 text-sm disabled:cursor-not-allowed"
             style={{ opacity: !sameMonth ? 0 : finalDisabled ? 0.3 : 1 }}
           >
-            {inRange && <span className="absolute inset-y-1 left-0 right-0" style={{ background: "rgba(200,150,90,.15)" }} />}
+            {inRange && <span className="absolute inset-y-1 left-0 right-0" style={{ background: "rgba(232,137,26,.15)" }} />}
             <span className="relative z-10 mx-auto grid h-9 w-9 place-items-center rounded-full font-medium" style={isFrom || isTo ? { background: "var(--gold)", color: "#211406" } : undefined}>{d.getDate()}</span>
             {occupied && !isFrom && !isTo && <span className="absolute bottom-0.5 left-1/2 z-20 h-1 w-4 -translate-x-1/2 rounded-full" style={{ background: checkoutOnOccupiedDay ? "var(--gold)" : "rgba(239,68,68,.75)" }} />}
           </button>;

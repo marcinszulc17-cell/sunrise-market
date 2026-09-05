@@ -196,7 +196,7 @@ export default function SellerRentalProtocolPanel() {
   if (loading) return <div className="rounded-2xl p-5 text-sm" style={{ background: "var(--glass)", border: "1px solid var(--line)", color: "var(--mut)" }}>Ładowanie wydań i zwrotów…</div>;
   if (!rows.length) return <div className="rounded-2xl p-5" style={{ background: "var(--glass)", border: "1px solid var(--line)" }}><div className="text-[10px] font-semibold tracking-[.14em]" style={{ color: "var(--gold)" }}>WYNAJEM</div><h2 className="mt-1 text-lg font-semibold">Wydania i zwroty</h2><p className="mt-2 text-sm" style={{ color: "var(--mut)" }}>Brak opłaconych wynajmów wymagających obsługi.</p></div>;
 
-  return <div className="rounded-2xl p-5" style={{ background: "var(--glass)", border: "1px solid rgba(200,150,90,.28)" }}>
+  return <div className="rounded-2xl p-5" style={{ background: "var(--glass)", border: "1px solid rgba(232,137,26,.28)" }}>
     <div className="text-[10px] font-semibold tracking-[.14em]" style={{ color: "var(--gold)" }}>WYNAJEM · OPERACJE</div>
     <h2 className="mt-1 text-lg font-semibold">Wydania i zwroty</h2>
     <p className="mt-1 text-xs leading-5" style={{ color: "var(--mut)" }}>Protokół, zdjęcia, stan auta/sprzętu i rozliczenie kaucji w jednym miejscu.</p>
@@ -219,7 +219,7 @@ export default function SellerRentalProtocolPanel() {
         </div>
         <PhotoStrip photos={handoverPhotos} onOpen={openPhoto}/>
         <label className="mt-3 block cursor-pointer rounded-xl px-3 py-2 text-center text-xs font-semibold" style={{ border: "1px dashed var(--line)" }}>+ Zdjęcia przy wydaniu<input type="file" accept="image/jpeg,image/png,image/webp,image/heic,image/heif" multiple className="hidden" onChange={(e) => void uploadPhoto("handover", e.target.files)}/></label>
-        <button disabled={busy} onClick={() => void savePhase("handover")} className="mt-2 w-full rounded-xl py-2.5 text-sm font-semibold text-black disabled:opacity-50" style={{ background: "linear-gradient(135deg,#C8965A,#E8C896)" }}>Zapisz wydanie</button>
+        <button disabled={busy} onClick={() => void savePhase("handover")} className="mt-2 w-full rounded-xl py-2.5 text-sm font-semibold text-black disabled:opacity-50" style={{ background: "linear-gradient(135deg,#E8891A,#F5A623)" }}>Zapisz wydanie</button>
       </section>
 
       <section className="rounded-xl p-3" style={{ border: "1px solid var(--line)" }}>
@@ -237,7 +237,7 @@ export default function SellerRentalProtocolPanel() {
         <button disabled={busy} onClick={() => void savePhase("return")} className="mt-2 w-full rounded-xl py-2.5 text-sm font-semibold disabled:opacity-50" style={{ border: "1px solid var(--gold)", color: "var(--gold)" }}>Zapisz zwrot i zakończ najem</button>
       </section>
 
-      {deposit > 0 && <section className="rounded-xl p-3" style={{ border: "1px solid rgba(200,150,90,.28)" }}>
+      {deposit > 0 && <section className="rounded-xl p-3" style={{ border: "1px solid rgba(232,137,26,.28)" }}>
         <b>3. Rozliczenie kaucji</b>
         <p className="mt-1 text-xs leading-5" style={{ color: "var(--mut)" }}>{returned ? "Protokół zwrotu jest zapisany. Możesz rozliczyć kaucję." : "Najpierw zapisz protokół zwrotu. Potrącenie kaucji bez protokołu jest zablokowane."}</p>
         <textarea rows={2} className={`${input} mt-3`} style={style} placeholder="Powód / notatka do rozliczenia" value={depositNote} onChange={(e) => setDepositNote(e.target.value)}/>

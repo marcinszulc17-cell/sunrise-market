@@ -85,23 +85,23 @@ export default function PartnerDashboard() {
         <h1 className="mt-1 font-display text-3xl font-semibold sm:text-4xl">Twoje centrum zarabiania</h1>
         <p className="mt-2 max-w-2xl text-sm sm:text-base" style={{ color: "var(--mut)" }}>Własna sprzedaż i polecenia w jednym miejscu. Dane poleceń pochodzą bezpośrednio z Sunrise Ambassador Club.</p>
       </div>
-      <Link to="/sprzedawca/wystaw" className="rounded-2xl px-5 py-3 font-semibold text-black" style={{ background: "linear-gradient(135deg,#C8965A,#E8C896)" }}>+ Wystaw ofertę</Link>
+      <Link to="/sprzedawca/wystaw" className="rounded-2xl px-5 py-3 font-semibold text-black" style={{ background: "linear-gradient(135deg,#E8891A,#F5A623)" }}>+ Wystaw ofertę</Link>
     </div>
 
-    {hasAttention && <Link to="/sprzedawca/zamowienia" className="mb-5 block rounded-2xl p-4 sm:p-5" style={{ background: "linear-gradient(135deg,rgba(200,150,90,.22),rgba(200,150,90,.08))", border: "1px solid rgba(200,150,90,.42)" }}>
+    {hasAttention && <Link to="/sprzedawca/zamowienia" className="mb-5 block rounded-2xl p-4 sm:p-5" style={{ background: "linear-gradient(135deg,rgba(232,137,26,.22),rgba(232,137,26,.08))", border: "1px solid rgba(232,137,26,.42)" }}>
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-3">
-          <div className="grid h-11 w-11 place-items-center rounded-xl text-2xl" style={{ background: "rgba(200,150,90,.18)" }}>🔔</div>
+          <div className="grid h-11 w-11 place-items-center rounded-xl text-2xl" style={{ background: "rgba(232,137,26,.18)" }}>🔔</div>
           <div>
             <div className="font-semibold">{attention.unread_new_sales > 0 ? `Masz ${attention.unread_new_sales} ${attention.unread_new_sales === 1 ? "nową sprzedaż" : "nowe sprzedaże"}` : "Masz sprzedaże do realizacji"}</div>
             <div className="mt-0.5 text-sm" style={{ color: "var(--mut)" }}>{attention.pending_fulfillment > 0 ? `${attention.pending_fulfillment} ${attention.pending_fulfillment === 1 ? "pozycja czeka" : "pozycji czeka"} na wysyłkę lub przekazanie.` : "Sprawdź najnowsze sprzedaże."}</div>
           </div>
         </div>
-        <div className="rounded-xl px-4 py-2 text-sm font-semibold text-black" style={{ background: "linear-gradient(135deg,#C8965A,#E8C896)" }}>Otwórz Moje sprzedaże →</div>
+        <div className="rounded-xl px-4 py-2 text-sm font-semibold text-black" style={{ background: "linear-gradient(135deg,#E8891A,#F5A623)" }}>Otwórz Moje sprzedaże →</div>
       </div>
     </Link>}
 
-    <section className="mb-5 rounded-3xl p-6 sm:p-7" style={{ background: "linear-gradient(135deg,rgba(200,150,90,.18),rgba(56,224,240,.08))", border: "1px solid rgba(200,150,90,.3)" }}>
+    <section className="mb-5 rounded-3xl p-6 sm:p-7" style={{ background: "linear-gradient(135deg,rgba(232,137,26,.18),rgba(56,224,240,.08))", border: "1px solid rgba(232,137,26,.3)" }}>
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
           <div className="text-xs uppercase tracking-[.15em]" style={{ color: "var(--mut)" }}>Łącznie zarobione</div>
@@ -130,7 +130,7 @@ export default function PartnerDashboard() {
         <Stat label="Do realizacji" value={String(attention.pending_fulfillment || 0)} />
         <div className="mt-4 grid gap-2 sm:grid-cols-2 lg:grid-cols-1">
           <Link to="/sprzedawca/oferty" className="rounded-xl px-4 py-2.5 text-center text-sm font-semibold" style={{ background: "var(--header)", border: "1px solid var(--line)" }}>Zarządzaj ofertami</Link>
-          <Link to="/sprzedawca/zamowienia" className="relative rounded-xl px-4 py-2.5 text-center text-sm font-semibold" style={{ background: attention.pending_fulfillment > 0 ? "linear-gradient(135deg,#C8965A,#E8C896)" : "var(--header)", color: attention.pending_fulfillment > 0 ? "#000" : "var(--ink)", border: attention.pending_fulfillment > 0 ? "none" : "1px solid var(--line)" }}>
+          <Link to="/sprzedawca/zamowienia" className="relative rounded-xl px-4 py-2.5 text-center text-sm font-semibold" style={{ background: attention.pending_fulfillment > 0 ? "linear-gradient(135deg,#E8891A,#F5A623)" : "var(--header)", color: attention.pending_fulfillment > 0 ? "#000" : "var(--ink)", border: attention.pending_fulfillment > 0 ? "none" : "1px solid var(--line)" }}>
             Moje sprzedaże{attention.unread_new_sales > 0 ? ` · ${attention.unread_new_sales} nowe` : ""}
           </Link>
         </div>
@@ -141,7 +141,7 @@ export default function PartnerDashboard() {
         <Stat label="Bezpłatnie do" value={date(membership?.free_until)} />
         <Stat label="Odnowienie" value={`${Number(membership?.annual_fee_gross || 499).toFixed(0)} zł / rok`} />
         {membership?.paid_until && <Stat label="Opłacone do" value={date(membership.paid_until)} />}
-        <Link to="/sprzedawca/partner" className="mt-4 block rounded-xl px-4 py-2.5 text-center text-sm font-semibold" style={{ background: membership?.renewal_due ? "linear-gradient(135deg,#C8965A,#E8C896)" : "var(--header)", color: membership?.renewal_due ? "#000" : "var(--ink)", border: membership?.renewal_due ? "none" : "1px solid var(--line)" }}>{membership?.renewal_due ? "Odnow Partnera Handlowego" : "Status członkostwa"}</Link>
+        <Link to="/sprzedawca/partner" className="mt-4 block rounded-xl px-4 py-2.5 text-center text-sm font-semibold" style={{ background: membership?.renewal_due ? "linear-gradient(135deg,#E8891A,#F5A623)" : "var(--header)", color: membership?.renewal_due ? "#000" : "var(--ink)", border: membership?.renewal_due ? "none" : "1px solid var(--line)" }}>{membership?.renewal_due ? "Odnow Partnera Handlowego" : "Status członkostwa"}</Link>
       </Card>
 
       <Card title="Ambassador Club" icon="💸">

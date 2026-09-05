@@ -48,7 +48,7 @@ export default function SellerBusinessDashboard() {
           <h1 className="mt-1 font-display text-3xl font-semibold sm:text-4xl">Centrum sprzedawcy</h1>
           <p className="mt-2 max-w-2xl text-sm sm:text-base" style={{ color: "var(--mut)" }}>Twoje oferty, zamówienia, rezerwacje i rozliczenia w jednym miejscu.</p>
         </div>
-        <Link to="/sprzedawca/wystaw" className="rounded-2xl px-5 py-3 font-semibold text-black" style={{ background: "linear-gradient(135deg,#C8965A,#E8C896)" }}>+ Wystaw ofertę</Link>
+        <Link to="/sprzedawca/wystaw" className="rounded-2xl px-5 py-3 font-semibold text-black" style={{ background: "linear-gradient(135deg,#E8891A,#F5A623)" }}>+ Wystaw ofertę</Link>
       </div>
 
       <div className="mb-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
@@ -69,7 +69,7 @@ export default function SellerBusinessDashboard() {
         <Link to="/sprzedawca/zapytania" className="rounded-2xl p-5" style={{ background: "var(--glass)", border: "1px solid var(--line)" }}><div className="font-semibold">📈 Leady i sprzedaż</div><div className="mt-1 text-sm" style={{ color: "var(--mut)" }}>Zapytania przed zakupem i proces handlowy.</div></Link>
         <Link to="/sprzedawca/odbior" className="rounded-2xl p-5" style={{ background: "var(--glass)", border: "1px solid var(--line)" }}><div className="font-semibold">🏪 Odbiór osobisty</div><div className="mt-1 text-sm" style={{ color: "var(--mut)" }}>Włącz punkt odbioru — klient płaci w aplikacji, odbiera u Ciebie, bez kosztów wysyłki.</div></Link>
         <Link to="/sprzedawca/opinie" className="rounded-2xl p-5" style={{ background: "var(--glass)", border: "1px solid var(--line)" }}><div className="font-semibold">⭐ Opinie kupujących</div><div className="mt-1 text-sm" style={{ color: "var(--mut)" }}>Oceny z opłaconych zamówień, publiczne odpowiedzi i Twój profil sprzedawcy.</div></Link>
-        <div className="rounded-2xl p-5" style={{ background: "rgba(200,150,90,.07)", border: "1px solid rgba(200,150,90,.24)" }}><div className="font-semibold">🧾 Faktury sprzedawcy</div><div className="mt-1 text-sm leading-6" style={{ color: "var(--mut)" }}>Dane nabywcy do faktury znajdziesz przy każdym zamówieniu. Fakturę wystawiasz w swoim programie i możesz dołączyć ją bezpośrednio do zamówienia.</div></div>
+        <div className="rounded-2xl p-5" style={{ background: "rgba(232,137,26,.07)", border: "1px solid rgba(232,137,26,.24)" }}><div className="font-semibold">🧾 Faktury sprzedawcy</div><div className="mt-1 text-sm leading-6" style={{ color: "var(--mut)" }}>Dane nabywcy do faktury znajdziesz przy każdym zamówieniu. Fakturę wystawiasz w swoim programie i możesz dołączyć ją bezpośrednio do zamówienia.</div></div>
       </div>
     </div>
   </main>;

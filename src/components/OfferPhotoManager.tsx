@@ -113,8 +113,8 @@ export default function OfferPhotoManager({ images, onChange, onAddFiles, upload
       className="flex cursor-pointer flex-col items-center justify-center rounded-xl border border-dashed p-5 text-center text-sm transition"
       style={{
         borderColor: uploadDragOver ? "var(--gold)" : "var(--line)",
-        background: uploadDragOver ? "rgba(200,150,90,.10)" : "transparent",
-        boxShadow: uploadDragOver ? "0 0 0 2px rgba(200,150,90,.14) inset" : "none",
+        background: uploadDragOver ? "rgba(232,137,26,.10)" : "transparent",
+        boxShadow: uploadDragOver ? "0 0 0 2px rgba(232,137,26,.14) inset" : "none",
       }}
       onDragEnter={e=>{e.preventDefault();e.stopPropagation();setUploadDragOver(true)}}
       onDragOver={e=>{e.preventDefault();e.stopPropagation();setUploadDragOver(true);e.dataTransfer.dropEffect="copy"}}
@@ -153,10 +153,10 @@ export default function OfferPhotoManager({ images, onChange, onAddFiles, upload
           <button type="button" onClick={()=>main(i)} className="rounded-md py-1 text-[10px] font-semibold" style={{border:"1px solid var(--line)",color:i===0?"var(--gold)":"var(--ink)"}}>{i===0?"Główne":"Na główne"}</button>
           <button type="button" disabled={i===images.length-1} onClick={()=>right(i)} className="rounded-md py-1 text-xs disabled:opacity-30" style={{border:"1px solid var(--line)"}}>→</button>
         </div>
-        {onEnhanceAi&&<button type="button" disabled={aiBusyIndex!==null&&aiBusyIndex!==undefined} onClick={()=>onEnhanceAi(url,i)} className="mt-1.5 w-full rounded-md py-1.5 text-[11px] font-semibold disabled:opacity-50" style={{border:"1px solid rgba(200,150,90,.35)",color:"var(--gold)"}}>{aiBusyIndex===i?"AI poprawia…":"✨ Popraw AI"}</button>}
+        {onEnhanceAi&&<button type="button" disabled={aiBusyIndex!==null&&aiBusyIndex!==undefined} onClick={()=>onEnhanceAi(url,i)} className="mt-1.5 w-full rounded-md py-1.5 text-[11px] font-semibold disabled:opacity-50" style={{border:"1px solid rgba(232,137,26,.35)",color:"var(--gold)"}}>{aiBusyIndex===i?"AI poprawia…":"✨ Popraw AI"}</button>}
       </div>)}
     </div>
-    {images.length>=baseLimit&&images.length<maxImages&&<div className="mt-3 rounded-xl p-3 text-xs" style={{border:"1px solid rgba(200,150,90,.25)",background:"rgba(200,150,90,.08)"}}>Wykorzystano bezpłatny limit {baseLimit} zdjęć. Dodatkowe miejsca mogą być kupione jako rozszerzenie oferty.</div>}
+    {images.length>=baseLimit&&images.length<maxImages&&<div className="mt-3 rounded-xl p-3 text-xs" style={{border:"1px solid rgba(232,137,26,.25)",background:"rgba(232,137,26,.08)"}}>Wykorzystano bezpłatny limit {baseLimit} zdjęć. Dodatkowe miejsca mogą być kupione jako rozszerzenie oferty.</div>}
     {images.length>=maxImages&&onBuyMore&&<button type="button" onClick={onBuyMore} className="mt-3 w-full rounded-xl py-2.5 text-sm font-semibold" style={{border:"1px solid var(--gold)",color:"var(--gold)"}}>+ Dokup dodatkowe zdjęcia</button>}
     <div className="mt-2 text-[11px]" style={{color:"var(--mut)"}}>Dodawanie: przeciągnij pliki na pole powyżej lub kliknij. Kolejność: przeciągaj kafelki; na telefonie użyj ← / → albo „Na główne”.</div>
   </div>;

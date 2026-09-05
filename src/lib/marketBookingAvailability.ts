@@ -72,7 +72,7 @@ function insertSummary(article: HTMLElement, offerId: string, summary: MarketDis
   if (summary.available_this_weekend) {
     const b = document.createElement("span");
     b.className = "rounded-full px-2 py-1 text-[10px] font-semibold";
-    b.style.background = "rgba(200,150,90,.12)";
+    b.style.background = "rgba(232,137,26,.12)";
     b.style.color = "var(--gold)";
     b.textContent = "Dostępne w weekend";
     badges.appendChild(b);

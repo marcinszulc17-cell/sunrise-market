@@ -83,7 +83,7 @@ function Stars({ rating, reviews }: { rating: number; reviews: number }) {
 // wizual karty wg kategorii / nazwy produktu (emoji + gradient poświaty)
 function catVisual(cat: string, title = ""): { emoji: string; from: string; to: string } {
   const t = (cat + " " + title).toLowerCase();
-  const O = "#C8965A", G = "#E8C896", GR = "#7AB89A", CY = "#38E0F0", VI = "#8FB0EE", PU = "#3A6FD9", PK = "#F25CB0";
+  const O = "#E8891A", G = "#F5A623", GR = "#7AB89A", CY = "#38E0F0", VI = "#8FB0EE", PU = "#3A6FD9", PK = "#F25CB0";
   if (t.includes("panel") || t.includes("fotowolt")) return { emoji: "🔆", from: O, to: G };
   if (t.includes("magazyn") || t.includes("bateri") || t.includes("inwerter")) return { emoji: "🔋", from: GR, to: CY };
   if (t.includes("pompa") || t.includes("ogrzew") || t.includes("kolektor")) return { emoji: "♨️", from: O, to: PK };
@@ -152,7 +152,7 @@ function OfferCard({ o, fav, onToggleFav, badge }: { o: Offer; fav: boolean; onT
         {o.image_url
           ? <img src={o.image_url} alt={o.title} className="absolute inset-0 w-full h-full object-cover" loading="lazy" />
           : <span aria-hidden="true">{v.emoji}</span>}
-        {badge && <span className="absolute top-2 left-2 text-[10px] font-bold px-2 py-1 rounded-full text-black" style={{ background: "linear-gradient(135deg,#C8965A,#E8C896)" }}>{badge}</span>}
+        {badge && <span className="absolute top-2 left-2 text-[10px] font-bold px-2 py-1 rounded-full text-black" style={{ background: "linear-gradient(135deg,#E8891A,#F5A623)" }}>{badge}</span>}
         <button onClick={(e) => { e.preventDefault(); onToggleFav(o.offer_id); }}
                 aria-label={fav ? "Usuń z listy życzeń" : "Dodaj do listy życzeń"}
                 className="absolute top-2 right-2 w-8 h-8 rounded-full grid place-items-center text-sm"
@@ -184,7 +184,7 @@ function OfferCard({ o, fav, onToggleFav, badge }: { o: Offer; fav: boolean; onT
           </span>
           )}
           {freeShip && (
-            <span className="text-[11px] font-semibold px-2 py-1 rounded-full" style={{ background: "rgba(200,150,90,.12)", color: "var(--gold)" }}>
+            <span className="text-[11px] font-semibold px-2 py-1 rounded-full" style={{ background: "rgba(232,137,26,.12)", color: "var(--gold)" }}>
               Darmowa dostawa
             </span>
           )}
@@ -196,7 +196,7 @@ function OfferCard({ o, fav, onToggleFav, badge }: { o: Offer; fav: boolean; onT
                   className="flex-1 text-center text-sm font-semibold py-2 rounded-xl transition-transform active:scale-95 disabled:cursor-not-allowed"
                   style={isTest
                     ? { background: "var(--glass)", border: "1px solid var(--line)", color: "var(--mut)" }
-                    : { background: added ? "linear-gradient(135deg,#7AB89A,#1DB47A)" : "linear-gradient(135deg,#C8965A,#E8C896)", color: "#000" }}>
+                    : { background: added ? "linear-gradient(135deg,#7AB89A,#1DB47A)" : "linear-gradient(135deg,#E8891A,#F5A623)", color: "#000" }}>
             {isTest ? "Niedostępny" : added ? "Dodano do koszyka" : "Do koszyka"}
           </button>
           <a href={`/produkt/${o.offer_id}`}
@@ -430,7 +430,7 @@ export default function Market() {
                      placeholder="Szukaj produktów…"
                      className="flex-1 bg-transparent px-4 py-2 text-sm outline-none placeholder:text-zinc-500" />
               <button onClick={() => { setSOpen(false); load(q); }} className="px-5 py-2 text-sm font-semibold text-black"
-                      style={{ background: "linear-gradient(135deg,#C8965A,#A97B42)" }}>Szukaj</button>
+                      style={{ background: "linear-gradient(135deg,#E8891A,#A97B42)" }}>Szukaj</button>
             </div>
             {sOpen && q.trim().length >= 2 && (sugg.length > 0 || depts.some((d) => d.name.toLowerCase().includes(q.trim().toLowerCase()))) && (
               <div className="absolute left-0 right-0 top-full mt-2 z-30 rounded-xl overflow-hidden py-1"
@@ -503,7 +503,7 @@ export default function Market() {
         return (
           <div className="mx-auto max-w-6xl px-4 pt-5">
             <a href={b.link_url || "/"} onClick={() => bannerClick(b.id)} className="block rounded-2xl overflow-hidden relative"
-               style={{ border: "1px solid rgba(200,150,90,.28)", boxShadow: "0 18px 50px -22px rgba(200,150,90,.4)" }}>
+               style={{ border: "1px solid rgba(232,137,26,.28)", boxShadow: "0 18px 50px -22px rgba(232,137,26,.4)" }}>
               {b.image_url ? (
                 <picture>
                   <source media="(max-width: 640px)" srcSet={b.image_url.replace(/(\.\w+)$/, "_m$1")} />
@@ -512,7 +512,7 @@ export default function Market() {
                 </picture>
               ) : (
                 <div className="flex items-center px-8 py-10"
-                     style={{ background: "linear-gradient(135deg, rgba(200,150,90,.25), rgba(90,138,229,.25))" }}>
+                     style={{ background: "linear-gradient(135deg, rgba(232,137,26,.25), rgba(90,138,229,.25))" }}>
                   <div>
                     <div className="text-[11px] font-semibold tracking-wider mb-2" style={{ color: "var(--gold)" }}>SPONSOROWANE · {b.seller}</div>
                     <div className="font-display text-2xl sm:text-3xl font-semibold max-w-xl">{b.headline}</div>
@@ -671,14 +671,14 @@ export default function Market() {
               <button onClick={() => setFilterOpen((open) => !open)}
                       aria-expanded={filterOpen}
                       className="rounded-xl px-4 py-2 text-sm font-semibold"
-                      style={{ background: filterOpen ? "rgba(200,150,90,.16)" : "var(--glass)", border: "1px solid var(--line)", color: filterOpen ? "var(--gold)" : "var(--ink)" }}>
+                      style={{ background: filterOpen ? "rgba(232,137,26,.16)" : "var(--glass)", border: "1px solid var(--line)", color: filterOpen ? "var(--gold)" : "var(--ink)" }}>
                 ⚙ Filtry{(activeDept || pMin || pMax || sort !== "trafnosc" || Object.values(attrFilters).some((value) => value !== "" && value !== false)) ? " · aktywne" : ""}
               </button>
             )}
             {authed && (
               <button onClick={() => (wishMode ? setWishMode(false) : openWishlist())}
                       className="text-sm px-3 py-1.5 rounded-xl"
-                      style={{ background: wishMode ? "linear-gradient(135deg,#C8965A,#A97B42)" : "var(--glass)", border: "1px solid var(--line)", color: wishMode ? "#000" : "var(--ink)", fontWeight: wishMode ? 600 : 400 }}>
+                      style={{ background: wishMode ? "linear-gradient(135deg,#E8891A,#A97B42)" : "var(--glass)", border: "1px solid var(--line)", color: wishMode ? "#000" : "var(--ink)", fontWeight: wishMode ? 600 : 400 }}>
                 {wishMode ? "← Wróć do ofert" : `♥ Lista życzeń${favs.size ? ` (${favs.size})` : ""}`}
               </button>
             )}
@@ -746,7 +746,7 @@ export default function Market() {
                   <option value="trafnosc">Trafność</option><option value="cena_rosnaco">Cena: rosnąco</option><option value="cena_malejaco">Cena: malejąco</option><option value="oceny">Najlepiej oceniane</option><option value="najnowsze">Najnowsze</option>
                 </select>
               </label>
-              <button onClick={rerun} className="rounded-xl px-5 py-2.5 text-sm font-semibold text-black" style={{ background: "linear-gradient(135deg,#C8965A,#E8C896)" }}>Pokaż wyniki</button>
+              <button onClick={rerun} className="rounded-xl px-5 py-2.5 text-sm font-semibold text-black" style={{ background: "linear-gradient(135deg,#E8891A,#F5A623)" }}>Pokaż wyniki</button>
               <button onClick={clearFilters} className="rounded-xl px-4 py-2.5 text-sm" style={{ background: "var(--bg)", border: "1px solid var(--line)" }}>Wyczyść</button>
               <span className="ml-auto pb-2 text-sm" style={{ color: "var(--mut)" }}>{offers.length} ofert</span>
             </div>
@@ -777,7 +777,7 @@ export default function Market() {
                 <p className="text-sm mb-4" style={{ color: "var(--mut)" }}>W tej kategorii nie znaleźliśmy ofert. Zajrzyj do innej albo zobacz wszystko.</p>
                 <button onClick={() => { setActiveDept(null); setActiveSub(null); setActiveSub2(null); load(null, null); }}
                         className="text-sm font-semibold px-5 py-2 rounded-xl text-black"
-                        style={{ background: "linear-gradient(135deg,#C8965A,#E8C896)" }}>
+                        style={{ background: "linear-gradient(135deg,#E8891A,#F5A623)" }}>
                   Pokaż wszystkie oferty
                 </button>
               </div>
@@ -832,7 +832,7 @@ function Chip({ active, onClick, children }: { active: boolean; onClick: () => v
     <button onClick={onClick}
             className="shrink-0 text-sm px-3 py-1.5 rounded-full whitespace-nowrap"
             style={active
-              ? { background: "linear-gradient(135deg,#C8965A,#A97B42)", color: "#000", fontWeight: 600 }
+              ? { background: "linear-gradient(135deg,#E8891A,#A97B42)", color: "#000", fontWeight: 600 }
               : { background: "var(--glass)", border: "1px solid var(--line)", color: "var(--ink)" }}>
       {children}
     </button>

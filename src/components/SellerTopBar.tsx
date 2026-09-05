@@ -27,7 +27,7 @@ export default function SellerTopBar() {
         <nav className="flex min-w-0 flex-1 items-center gap-1 overflow-x-auto text-sm" aria-label="Sekcje centrum sprzedawcy">
           {SECTIONS.map((s) => (
             <Link key={s.href} to={s.href} className="shrink-0 rounded-lg px-3 py-1.5" aria-current={isActive(s.href) ? "page" : undefined}
-              style={isActive(s.href) ? { background: "linear-gradient(135deg,#C8965A,#E8C896)", color: "#000", fontWeight: 600 } : { color: "var(--mut)" }}>
+              style={isActive(s.href) ? { background: "linear-gradient(135deg,#E8891A,#F5A623)", color: "#000", fontWeight: 600 } : { color: "var(--mut)" }}>
               {s.label}
             </Link>
           ))}

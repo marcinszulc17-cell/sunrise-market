@@ -53,7 +53,7 @@ export default function PushToggle() {
   return <div className="rounded-2xl p-5" style={{ background: "var(--glass)", border: "1px solid var(--line)" }}>
     <div className="flex flex-wrap items-start justify-between gap-3">
       <div className="min-w-0 flex-1"><div className="text-sm" style={{ color: "var(--mut)" }}>Powiadomienia push</div><div className="mt-1 font-semibold">{state === "on" ? "🔔 Włączone" : "🔕 Wyłączone"}</div><p className="mt-1 text-sm leading-5" style={{ color: "var(--mut)" }}>{text}</p>{err && <p className="mt-2 text-xs" style={{ color: "#f87171" }}>{err}</p>}</div>
-      {(state === "off" || state === "on") && <button type="button" disabled={busy} onClick={state === "on" ? disable : enable} className="rounded-xl px-4 py-2 text-sm font-semibold" style={state === "on" ? { background: "var(--header)", border: "1px solid var(--line)", opacity: busy ? .6 : 1 } : { background: "linear-gradient(135deg,#C8965A,#E8C896)", color: "#0E1729", opacity: busy ? .6 : 1 }}>{busy ? "…" : state === "on" ? "Wyłącz" : "Włącz"}</button>}
+      {(state === "off" || state === "on") && <button type="button" disabled={busy} onClick={state === "on" ? disable : enable} className="rounded-xl px-4 py-2 text-sm font-semibold" style={state === "on" ? { background: "var(--header)", border: "1px solid var(--line)", opacity: busy ? .6 : 1 } : { background: "linear-gradient(135deg,#E8891A,#F5A623)", color: "#101012", opacity: busy ? .6 : 1 }}>{busy ? "…" : state === "on" ? "Wyłącz" : "Włącz"}</button>}
     </div>
   </div>;
 }

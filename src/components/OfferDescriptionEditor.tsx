@@ -45,7 +45,7 @@ export default function OfferDescriptionEditor({value,onChange,title,category,co
       <button type="button" title="Lista" onClick={()=>prefix("- ")} className="rounded-lg px-2.5 py-1.5 text-sm" style={{border:"1px solid var(--line)"}}>• Lista</button>
       <button type="button" title="Link" onClick={()=>wrap("[","](https://)","tekst linku")} className="rounded-lg px-2.5 py-1.5 text-sm" style={{border:"1px solid var(--line)"}}>🔗</button>
       <span className="mx-1 h-6 w-px" style={{background:"var(--line)"}} />
-      {(["generate","improve","shorten","expand"] as AiAction[]).map(a=><button key={a} type="button" disabled={!!busy} onClick={()=>ai(a)} className="rounded-lg px-2.5 py-1.5 text-xs font-semibold disabled:opacity-50" style={{border:"1px solid rgba(200,150,90,.35)",color:"var(--gold)"}}>{busy===a?"AI…":`✨ ${aiLabel[a]}`}</button>)}
+      {(["generate","improve","shorten","expand"] as AiAction[]).map(a=><button key={a} type="button" disabled={!!busy} onClick={()=>ai(a)} className="rounded-lg px-2.5 py-1.5 text-xs font-semibold disabled:opacity-50" style={{border:"1px solid rgba(232,137,26,.35)",color:"var(--gold)"}}>{busy===a?"AI…":`✨ ${aiLabel[a]}`}</button>)}
     </div>
     <textarea ref={ref} rows={compact?6:9} value={value} onChange={e=>onChange(e.target.value)} placeholder="Opisz ofertę. Możesz użyć nagłówków, pogrubień, list i linków…" className="w-full rounded-xl px-3 py-2.5 outline-none" style={{background:"var(--glass)",border:"1px solid var(--line)",color:"var(--ink)"}} />
     <div className="mt-1 flex items-center justify-between gap-3 text-[11px]" style={{color:"var(--mut)"}}><span>Formatowanie jest bezpiecznie renderowane w ogłoszeniu.</span><span>{value.length} znaków</span></div>

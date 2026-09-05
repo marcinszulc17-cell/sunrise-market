@@ -89,7 +89,7 @@ function Tier({ badge, title, fee, freeMonths, lead, features, cta, onClick, hig
   badge: string; title: string; fee: number; freeMonths: number; lead: string; features: string[]; cta: string; onClick: () => void; highlight?: boolean;
 }) {
   return (
-    <section className="flex flex-col rounded-3xl p-6 sm:p-7" style={{ background: "var(--glass)", border: highlight ? "1px solid rgba(200,150,90,.45)" : "1px solid var(--line)" }}>
+    <section className="flex flex-col rounded-3xl p-6 sm:p-7" style={{ background: "var(--glass)", border: highlight ? "1px solid rgba(232,137,26,.45)" : "1px solid var(--line)" }}>
       <div className="text-xs font-semibold tracking-[.15em]" style={{ color: "var(--gold)" }}>{badge}</div>
       <h2 className="mt-2 font-display text-2xl font-semibold">{title}</h2>
       <p className="mt-2 text-sm" style={{ color: "var(--mut)" }}>{lead}</p>
@@ -100,7 +100,7 @@ function Tier({ badge, title, fee, freeMonths, lead, features, cta, onClick, hig
       <ul className="mt-5 flex flex-1 flex-col gap-2 text-sm">
         {features.map((f) => <li key={f} className="flex gap-2"><span style={{ color: "var(--green)" }}>✓</span><span>{f}</span></li>)}
       </ul>
-      <button type="button" onClick={onClick} className="mt-6 w-full rounded-2xl py-3 font-semibold text-black" style={{ background: "linear-gradient(135deg,#C8965A,#E8C896)" }}>{cta}</button>
+      <button type="button" onClick={onClick} className="mt-6 w-full rounded-2xl py-3 font-semibold text-black" style={{ background: "linear-gradient(135deg,#E8891A,#F5A623)" }}>{cta}</button>
     </section>
   );
 }

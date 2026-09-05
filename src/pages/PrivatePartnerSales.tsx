@@ -118,7 +118,7 @@ export default function PrivatePartnerSales() {
         <Stat label="Twoje rozliczenie" value={zl(stats.payout)} />
       </div>
 
-      {msg && <div className="mb-5 rounded-xl px-4 py-3 text-sm" style={{ background: "rgba(200,150,90,.12)", border: "1px solid rgba(200,150,90,.25)", color: "var(--gold)" }}>{msg}</div>}
+      {msg && <div className="mb-5 rounded-xl px-4 py-3 text-sm" style={{ background: "rgba(232,137,26,.12)", border: "1px solid rgba(232,137,26,.25)", color: "var(--gold)" }}>{msg}</div>}
 
       <div className="mb-4 rounded-xl px-4 py-2.5 text-xs" style={{ background: "rgba(122,184,154,.08)", border: "1px solid rgba(122,184,154,.25)", color: "var(--mut)" }}>🛡 <b style={{ color: "var(--ink)" }}>Ochrona Kupujących:</b> Wypłata trafia na Twój portfel po potwierdzeniu odbioru przez kupującego lub automatycznie po 14 dniach od wysyłki.</div>
       {loading ? <p>Ładowanie sprzedaży…</p> : rows.length === 0 ? <div className="rounded-2xl p-8 text-center" style={{ background: "var(--glass)", border: "1px solid var(--line)" }}><div className="text-4xl">🛍️</div><h2 className="mt-3 text-xl font-semibold">Nie masz jeszcze sprzedaży</h2><p className="mt-2 text-sm" style={{ color: "var(--mut)" }}>Gdy klient opłaci zakup, pojawi się tutaj automatycznie.</p></div> : <div className="space-y-4">
@@ -153,7 +153,7 @@ export default function PrivatePartnerSales() {
             </div>
 
             {!done && <div className="mt-4 border-t pt-4" style={{ borderColor: "var(--line)" }}>
-              {pickup ? <button disabled={busy===row.task_id} onClick={() => setStatus(row,"hand_over")} className="rounded-xl px-5 py-2.5 font-semibold text-black disabled:opacity-50" style={{ background: "linear-gradient(135deg,#C8965A,#E8C896)" }}>✓ Przekazane kupującemu</button> : <div className="flex flex-wrap gap-2"><input value={tracking[row.task_id] ?? ""} onChange={e => setTracking({ ...tracking, [row.task_id]: e.target.value })} placeholder="Nr przesyłki (opcjonalnie)" className="min-w-[220px] flex-1 rounded-xl px-3 py-2.5 outline-none" style={{ background: "var(--header)", border: "1px solid var(--line)" }}/><button disabled={busy===row.task_id} onClick={() => setStatus(row,"ship")} className="rounded-xl px-5 py-2.5 font-semibold text-black disabled:opacity-50" style={{ background: "linear-gradient(135deg,#C8965A,#E8C896)" }}>📦 Oznacz jako wysłane</button></div>}
+              {pickup ? <button disabled={busy===row.task_id} onClick={() => setStatus(row,"hand_over")} className="rounded-xl px-5 py-2.5 font-semibold text-black disabled:opacity-50" style={{ background: "linear-gradient(135deg,#E8891A,#F5A623)" }}>✓ Przekazane kupującemu</button> : <div className="flex flex-wrap gap-2"><input value={tracking[row.task_id] ?? ""} onChange={e => setTracking({ ...tracking, [row.task_id]: e.target.value })} placeholder="Nr przesyłki (opcjonalnie)" className="min-w-[220px] flex-1 rounded-xl px-3 py-2.5 outline-none" style={{ background: "var(--header)", border: "1px solid var(--line)" }}/><button disabled={busy===row.task_id} onClick={() => setStatus(row,"ship")} className="rounded-xl px-5 py-2.5 font-semibold text-black disabled:opacity-50" style={{ background: "linear-gradient(135deg,#E8891A,#F5A623)" }}>📦 Oznacz jako wysłane</button></div>}
             </div>}
             {done && row.tracking_no && <div className="mt-3 text-xs" style={{ color: "var(--mut)" }}>Nr przesyłki: {row.tracking_no}</div>}
 

@@ -62,7 +62,7 @@ export default function Konto() {
           <div className="mx-auto max-w-4xl px-4 pb-2 flex gap-2 overflow-x-auto">
             {TABS.map((t) => (
               <button key={t.id} onClick={() => setTab(t.id)} className="shrink-0 text-sm px-3 py-1.5 rounded-full whitespace-nowrap"
-                      style={tab === t.id ? { background: "linear-gradient(135deg,#C8965A,#A97B42)", color: "#000", fontWeight: 600 } : { background: "var(--glass)", border: "1px solid var(--line)", color: "var(--ink)" }}>{t.label}</button>
+                      style={tab === t.id ? { background: "linear-gradient(135deg,#E8891A,#A97B42)", color: "#000", fontWeight: 600 } : { background: "var(--glass)", border: "1px solid var(--line)", color: "var(--ink)" }}>{t.label}</button>
             ))}
           </div>
         )}
@@ -112,30 +112,30 @@ function ClubCard({ w, ms, goTab }: { w: WalletLive | null; ms: MemberStatus | n
   const name = amb ? "AMBASSADOR CLUB" : "FAMILY CLUB";
   const sub = amb ? "Twój program partnerski Sunrise" : "Cashback dla całej rodziny";
   return (
-    <div style={{ background: amb ? "linear-gradient(140deg,#1a1206,#2a1c08 42%,#0E1729)" : "linear-gradient(140deg,#0b1a34,#0e2350 45%,#123a86)", border: "1px solid rgba(232,200,150,.3)", borderRadius: 20, padding: 22, color: "#EDE7D6", boxShadow: "0 22px 48px -24px rgba(0,0,0,.8)" }}>
+    <div style={{ background: amb ? "linear-gradient(140deg,#1a1206,#2a1c08 42%,#101012)" : "linear-gradient(140deg,#0b1a34,#0e2350 45%,#123a86)", border: "1px solid rgba(245,166,35,.3)", borderRadius: 20, padding: 22, color: "#EDE7D6", boxShadow: "0 22px 48px -24px rgba(0,0,0,.8)" }}>
       <div className="flex items-center justify-between gap-3 flex-wrap">
         <div className="flex items-center gap-3">
-          <div style={{ width: 44, height: 44, borderRadius: 13, background: "linear-gradient(135deg,#E8C896,#C8965A)", display: "grid", placeItems: "center", fontSize: 22, color: "#241606" }}>{amb ? "★" : "☀"}</div>
+          <div style={{ width: 44, height: 44, borderRadius: 13, background: "linear-gradient(135deg,#F5A623,#E8891A)", display: "grid", placeItems: "center", fontSize: 22, color: "#241606" }}>{amb ? "★" : "☀"}</div>
           <div>
-            <div style={{ fontWeight: 800, letterSpacing: ".12em", fontSize: 15 }}>SUNRISE <span style={{ color: "#E8C896" }}>{name}</span></div>
+            <div style={{ fontWeight: 800, letterSpacing: ".12em", fontSize: 15 }}>SUNRISE <span style={{ color: "#F5A623" }}>{name}</span></div>
             <div style={{ fontSize: 12.5, color: "rgba(237,231,214,.6)" }}>{sub}</div>
           </div>
         </div>
-        <a href="https://app.sunrisewallet.pl/wallet" target="_blank" rel="noopener" style={{ fontSize: 13, fontWeight: 700, padding: "8px 14px", borderRadius: 10, background: "rgba(232,200,150,.14)", border: "1px solid rgba(232,200,150,.32)", color: "#E8C896" }}>Otwórz Sunrise Wallet →</a>
+        <a href="https://app.sunrisewallet.pl/wallet" target="_blank" rel="noopener" style={{ fontSize: 13, fontWeight: 700, padding: "8px 14px", borderRadius: 10, background: "rgba(245,166,35,.14)", border: "1px solid rgba(245,166,35,.32)", color: "#F5A623" }}>Otwórz Sunrise Wallet →</a>
       </div>
       <div className="grid gap-3 sm:grid-cols-2 mt-4">
-        <div style={{ background: "rgba(232,200,150,.07)", borderRadius: 14, padding: "12px 15px", border: "1px solid rgba(232,200,150,.14)" }}>
+        <div style={{ background: "rgba(245,166,35,.07)", borderRadius: 14, padding: "12px 15px", border: "1px solid rgba(245,166,35,.14)" }}>
           <div style={{ fontSize: 12, color: "rgba(237,231,214,.6)" }}>Portfel Sunrise Pay</div>
-          <div style={{ fontSize: 26, fontWeight: 800, color: "#E8C896" }}>{zl(w?.balance ?? 0)}</div>
+          <div style={{ fontSize: 26, fontWeight: 800, color: "#F5A623" }}>{zl(w?.balance ?? 0)}</div>
         </div>
-        <div style={{ background: "rgba(232,200,150,.07)", borderRadius: 14, padding: "12px 15px", border: "1px solid rgba(232,200,150,.14)" }}>
+        <div style={{ background: "rgba(245,166,35,.07)", borderRadius: 14, padding: "12px 15px", border: "1px solid rgba(245,166,35,.14)" }}>
           <div style={{ fontSize: 12, color: "rgba(237,231,214,.6)" }}>Punkty (cashback)</div>
-          <div style={{ fontSize: 26, fontWeight: 800, color: "#9BC7AE" }}>{pkt(w?.points ?? 0)} <span style={{ fontSize: 14 }}>pkt</span>{w?.gold != null ? <span style={{ fontSize: 13, color: "#E8C896" }}> · {w.gold.toLocaleString("pl-PL")} g Gold</span> : null}</div>
+          <div style={{ fontSize: 26, fontWeight: 800, color: "#9BC7AE" }}>{pkt(w?.points ?? 0)} <span style={{ fontSize: 14 }}>pkt</span>{w?.gold != null ? <span style={{ fontSize: 13, color: "#F5A623" }}> · {w.gold.toLocaleString("pl-PL")} g Gold</span> : null}</div>
         </div>
       </div>
       {amb && ms?.referral_code && <AmbLink code={ms.referral_code} tier={ms.tier} />}
       <div className="flex mt-3">
-        <button onClick={() => goTab("portfel")} style={{ fontSize: 13, fontWeight: 700, padding: "8px 16px", borderRadius: 11, background: "linear-gradient(135deg,#E8C896,#C8965A)", color: "#241606", border: 0, cursor: "pointer" }}>Zamień punkty na zł / historia</button>
+        <button onClick={() => goTab("portfel")} style={{ fontSize: 13, fontWeight: 700, padding: "8px 16px", borderRadius: 11, background: "linear-gradient(135deg,#F5A623,#E8891A)", color: "#241606", border: 0, cursor: "pointer" }}>Zamień punkty na zł / historia</button>
       </div>
     </div>
   );
@@ -148,18 +148,18 @@ function AmbLink({ code, tier }: { code: string; tier?: string }) {
   const rungs: [string, string, string][] = [["ambassador", "Ambasador", "5%"], ["silver", "Silver", "10%"], ["gold", "Gold", "15%"], ["platinum", "Platinum", "20%"], ["diamond", "Diament", "22%"]];
   const cur = (tier ?? "").toLowerCase();
   return (
-    <div style={{ marginTop: 14, background: "rgba(232,200,150,.07)", borderRadius: 14, padding: "12px 15px", border: "1px solid rgba(232,200,150,.14)" }}>
+    <div style={{ marginTop: 14, background: "rgba(245,166,35,.07)", borderRadius: 14, padding: "12px 15px", border: "1px solid rgba(245,166,35,.14)" }}>
       <div style={{ fontSize: 12, color: "rgba(237,231,214,.6)", marginBottom: 6 }}>Twój link polecający do Marketu — prowizja od zakupów marki własnej Sunrise</div>
       <div className="flex flex-wrap items-center gap-2">
-        <input readOnly value={link} className="flex-1 min-w-[200px] rounded-lg px-3 py-2 text-sm outline-none" style={{ background: "rgba(0,0,0,.25)", border: "1px solid rgba(232,200,150,.25)", color: "#EDE7D6" }} />
-        <button onClick={copy} style={{ fontSize: 13, fontWeight: 700, padding: "8px 16px", borderRadius: 11, background: "linear-gradient(135deg,#E8C896,#C8965A)", color: "#241606", border: 0, cursor: "pointer" }}>{copied ? "Skopiowano ✓" : "Kopiuj link"}</button>
+        <input readOnly value={link} className="flex-1 min-w-[200px] rounded-lg px-3 py-2 text-sm outline-none" style={{ background: "rgba(0,0,0,.25)", border: "1px solid rgba(245,166,35,.25)", color: "#EDE7D6" }} />
+        <button onClick={copy} style={{ fontSize: 13, fontWeight: 700, padding: "8px 16px", borderRadius: 11, background: "linear-gradient(135deg,#F5A623,#E8891A)", color: "#241606", border: 0, cursor: "pointer" }}>{copied ? "Skopiowano ✓" : "Kopiuj link"}</button>
       </div>
       <div style={{ fontSize: 12, color: "rgba(237,231,214,.6)", marginTop: 12, marginBottom: 6 }}>Prowizja za polecenie (od ceny brutto), zależna od Twojej rangi ambasadora:</div>
       <div className="flex flex-wrap gap-1.5">
         {rungs.map(([k, label, rate]) => {
           const active = cur === k;
           return (
-            <span key={k} style={{ fontSize: 12, fontWeight: 700, padding: "4px 9px", borderRadius: 9, background: active ? "linear-gradient(135deg,#E8C896,#C8965A)" : "rgba(232,200,150,.08)", color: active ? "#241606" : "#EDE7D6", border: active ? "0" : "1px solid rgba(232,200,150,.2)" }}>
+            <span key={k} style={{ fontSize: 12, fontWeight: 700, padding: "4px 9px", borderRadius: 9, background: active ? "linear-gradient(135deg,#F5A623,#E8891A)" : "rgba(245,166,35,.08)", color: active ? "#241606" : "#EDE7D6", border: active ? "0" : "1px solid rgba(245,166,35,.2)" }}>
               {label} {rate}{active ? " • Ty" : ""}
             </span>
           );

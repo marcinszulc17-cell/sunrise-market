@@ -255,14 +255,14 @@ export default function BookingPurchaseModal({ offerId, config, open, onClose }:
           {activeConfig.booking_type === "appointment" ? <>
             {catalog?.services?.length ? <section>
               <StepTitle n={1} title="Wybierz usługę" />
-              <div className="mt-3 grid gap-3 sm:grid-cols-2">{catalog.services.map((s) => <button key={s.id} type="button" onClick={() => { setServiceId(s.id); setSelected(null); }} className="rounded-2xl p-4 text-left" style={{ border: serviceId === s.id ? "1px solid var(--gold)" : "1px solid var(--line)", background: serviceId === s.id ? "rgba(200,150,90,.12)" : "var(--glass)" }}><div className="flex justify-between gap-3"><div><b>{s.name}</b><div className="mt-1 text-xs" style={{ color: "var(--mut)" }}>{s.duration_minutes} min{s.description ? ` · ${s.description}` : ""}</div></div><b style={{ color: "var(--gold)" }}>{zl(s.price_gross)}</b></div></button>)}</div>
+              <div className="mt-3 grid gap-3 sm:grid-cols-2">{catalog.services.map((s) => <button key={s.id} type="button" onClick={() => { setServiceId(s.id); setSelected(null); }} className="rounded-2xl p-4 text-left" style={{ border: serviceId === s.id ? "1px solid var(--gold)" : "1px solid var(--line)", background: serviceId === s.id ? "rgba(232,137,26,.12)" : "var(--glass)" }}><div className="flex justify-between gap-3"><div><b>{s.name}</b><div className="mt-1 text-xs" style={{ color: "var(--mut)" }}>{s.duration_minutes} min{s.description ? ` · ${s.description}` : ""}</div></div><b style={{ color: "var(--gold)" }}>{zl(s.price_gross)}</b></div></button>)}</div>
             </section> : null}
 
             {catalog?.resources?.length ? <section>
               <StepTitle n={serviceStep + 1} title="Wybierz pracownika lub zasób" optional />
               <div className="mt-3 flex flex-wrap gap-2">
-                <button type="button" onClick={() => { setResourceId(null); setSelected(null); }} className="rounded-xl px-3 py-2 text-sm font-medium" style={{ border: !resourceId ? "1px solid var(--gold)" : "1px solid var(--line)", background: !resourceId ? "rgba(200,150,90,.10)" : "var(--glass)" }}>⚡ Dowolny dostępny</button>
-                {catalog.resources.map((r) => <button key={r.id} type="button" onClick={() => { setResourceId(r.id); setSelected(null); }} className="rounded-xl px-3 py-2 text-sm font-medium" style={{ border: resourceId === r.id ? "1px solid var(--gold)" : "1px solid var(--line)", background: resourceId === r.id ? "rgba(200,150,90,.10)" : "var(--glass)" }}>{resourceIcon(r.kind)} {r.name}</button>)}
+                <button type="button" onClick={() => { setResourceId(null); setSelected(null); }} className="rounded-xl px-3 py-2 text-sm font-medium" style={{ border: !resourceId ? "1px solid var(--gold)" : "1px solid var(--line)", background: !resourceId ? "rgba(232,137,26,.10)" : "var(--glass)" }}>⚡ Dowolny dostępny</button>
+                {catalog.resources.map((r) => <button key={r.id} type="button" onClick={() => { setResourceId(r.id); setSelected(null); }} className="rounded-xl px-3 py-2 text-sm font-medium" style={{ border: resourceId === r.id ? "1px solid var(--gold)" : "1px solid var(--line)", background: resourceId === r.id ? "rgba(232,137,26,.10)" : "var(--glass)" }}>{resourceIcon(r.kind)} {r.name}</button>)}
               </div>
             </section> : null}
 
@@ -283,8 +283,8 @@ export default function BookingPurchaseModal({ offerId, config, open, onClose }:
               <StepTitle n={1} title="Wybierz konkretny egzemplarz" optional />
               <p className="mt-2 text-xs" style={{ color: "var(--mut)" }}>Możesz wybrać konkretny egzemplarz albo zostawić automatyczny przydział jednego wolnego przez cały okres.</p>
               <div className="mt-3 flex flex-wrap gap-2">
-                <button type="button" onClick={() => selectRentalResource(null)} className="rounded-xl px-3 py-2 text-sm font-medium" style={{ border: !resourceId ? "1px solid var(--gold)" : "1px solid var(--line)", background: !resourceId ? "rgba(200,150,90,.10)" : "var(--glass)" }}>⚡ Dowolny dostępny</button>
-                {catalog.resources.map((r) => <button key={r.id} type="button" onClick={() => selectRentalResource(r.id)} className="rounded-xl px-3 py-2 text-sm font-medium" style={{ border: resourceId === r.id ? "1px solid var(--gold)" : "1px solid var(--line)", background: resourceId === r.id ? "rgba(200,150,90,.10)" : "var(--glass)" }}>{resourceIcon(r.kind)} {r.name}</button>)}
+                <button type="button" onClick={() => selectRentalResource(null)} className="rounded-xl px-3 py-2 text-sm font-medium" style={{ border: !resourceId ? "1px solid var(--gold)" : "1px solid var(--line)", background: !resourceId ? "rgba(232,137,26,.10)" : "var(--glass)" }}>⚡ Dowolny dostępny</button>
+                {catalog.resources.map((r) => <button key={r.id} type="button" onClick={() => selectRentalResource(r.id)} className="rounded-xl px-3 py-2 text-sm font-medium" style={{ border: resourceId === r.id ? "1px solid var(--gold)" : "1px solid var(--line)", background: resourceId === r.id ? "rgba(232,137,26,.10)" : "var(--glass)" }}>{resourceIcon(r.kind)} {r.name}</button>)}
               </div>
             </section> : null}
 
@@ -300,7 +300,7 @@ export default function BookingPurchaseModal({ offerId, config, open, onClose }:
                 unavailableDates={unavailableDays}
                 onChange={setRentalRange}
               />}
-              {availabilityWarning && <div className="mt-3 rounded-2xl px-4 py-3 text-xs" style={{ background: "rgba(200,150,90,.08)", border: "1px solid rgba(200,150,90,.22)", color: "var(--gold)" }}>{availabilityWarning}</div>}
+              {availabilityWarning && <div className="mt-3 rounded-2xl px-4 py-3 text-xs" style={{ background: "rgba(232,137,26,.08)", border: "1px solid rgba(232,137,26,.22)", color: "var(--gold)" }}>{availabilityWarning}</div>}
               <div className="mt-3 flex flex-wrap items-center justify-between gap-2 text-xs" style={{ color: "var(--mut)" }}>
                 <span>Minimalnie {activeConfig.min_units} dób · maksymalnie {activeConfig.max_units} dób</span>
                 <span>Rezerwacja do {shortDate(latest)}</span>
@@ -313,8 +313,8 @@ export default function BookingPurchaseModal({ offerId, config, open, onClose }:
           <section>
             <StepTitle n={paymentStep} title="Wybierz płatność" />
             <div className="mt-3 grid gap-3 sm:grid-cols-2">
-              <button type="button" onClick={() => setPayment("wallet")} className="rounded-2xl p-4 text-left" style={{ border: payment === "wallet" ? "1px solid var(--gold)" : "1px solid var(--line)", background: payment === "wallet" ? "rgba(200,150,90,.12)" : "var(--glass)" }}><b>Sunrise Pay</b><div className="mt-1 text-xs" style={{ color: "var(--mut)" }}>Płatność z portfela MySunrise</div></button>
-              <button type="button" onClick={() => setPayment("card")} className="rounded-2xl p-4 text-left" style={{ border: payment === "card" ? "1px solid var(--gold)" : "1px solid var(--line)", background: payment === "card" ? "rgba(200,150,90,.12)" : "var(--glass)" }}><b>Karta / BLIK / P24</b><div className="mt-1 text-xs" style={{ color: "var(--mut)" }}>Bezpieczna płatność online</div></button>
+              <button type="button" onClick={() => setPayment("wallet")} className="rounded-2xl p-4 text-left" style={{ border: payment === "wallet" ? "1px solid var(--gold)" : "1px solid var(--line)", background: payment === "wallet" ? "rgba(232,137,26,.12)" : "var(--glass)" }}><b>Sunrise Pay</b><div className="mt-1 text-xs" style={{ color: "var(--mut)" }}>Płatność z portfela MySunrise</div></button>
+              <button type="button" onClick={() => setPayment("card")} className="rounded-2xl p-4 text-left" style={{ border: payment === "card" ? "1px solid var(--gold)" : "1px solid var(--line)", background: payment === "card" ? "rgba(232,137,26,.12)" : "var(--glass)" }}><b>Karta / BLIK / P24</b><div className="mt-1 text-xs" style={{ color: "var(--mut)" }}>Bezpieczna płatność online</div></button>
             </div>
           </section>
 
@@ -341,10 +341,10 @@ export default function BookingPurchaseModal({ offerId, config, open, onClose }:
             <div className="my-5 border-t" style={{ borderColor: "var(--line)" }} />
             <div className="flex items-end justify-between gap-3"><span className="text-sm">Do zapłaty teraz</span><strong className="font-display text-3xl" style={{ color: "var(--gold)" }}>{zl(paymentTotal)}</strong></div>
             {cashback > 0 && <div className="mt-3 rounded-xl px-3 py-2 text-sm" style={{ background: "rgba(122,184,154,.12)", color: "var(--green)" }}>+ {zl(cashback)} cashbacku na portfel</div>}
-            {deposit > 0 && <div className="mt-3 rounded-xl px-3 py-2 text-xs" style={{ background: "rgba(200,150,90,.08)", border: "1px solid rgba(200,150,90,.20)", color: "var(--mut)" }}>Kaucja {zl(deposit)} jest pobierana razem z czynszem. Nie podlega cashbackowi ani prowizjom. Po zakończeniu najmu sprzedawca zwraca ją albo rozlicza zgodnie ze stanem przedmiotu/pojazdu.</div>}
+            {deposit > 0 && <div className="mt-3 rounded-xl px-3 py-2 text-xs" style={{ background: "rgba(232,137,26,.08)", border: "1px solid rgba(232,137,26,.20)", color: "var(--mut)" }}>Kaucja {zl(deposit)} jest pobierana razem z czynszem. Nie podlega cashbackowi ani prowizjom. Po zakończeniu najmu sprzedawca zwraca ją albo rozlicza zgodnie ze stanem przedmiotu/pojazdu.</div>}
             <InvoiceDetailsFields value={invoice} onChange={setInvoice} compact />
             <div className="mt-5 space-y-2 text-xs" style={{ color: "var(--mut)" }}><div>✓ Bezpieczna płatność</div><div>✓ Termin blokowany na 15 minut</div><div>✓ {activeConfig.instant_booking ? "Rezerwacja potwierdzona automatycznie po płatności" : "Rezerwacja potwierdzona po akceptacji sprzedawcy"}</div></div>
-            <button type="button" disabled={busy || paymentTotal <= 0 || !ready || !invoiceReady} onClick={pay} className="mt-5 w-full rounded-2xl py-3.5 font-bold text-black disabled:opacity-45" style={{ background: "linear-gradient(135deg,#C8965A,#E8C896)" }}>{busy ? "Rezerwuję i przekierowuję…" : !invoiceReady ? "Uzupełnij dane do faktury" : ready ? `Rezerwuję i płacę ${zl(paymentTotal)}` : activeConfig.booking_type === "appointment" ? "Najpierw wybierz termin" : "Najpierw wybierz daty"}</button>
+            <button type="button" disabled={busy || paymentTotal <= 0 || !ready || !invoiceReady} onClick={pay} className="mt-5 w-full rounded-2xl py-3.5 font-bold text-black disabled:opacity-45" style={{ background: "linear-gradient(135deg,#E8891A,#F5A623)" }}>{busy ? "Rezerwuję i przekierowuję…" : !invoiceReady ? "Uzupełnij dane do faktury" : ready ? `Rezerwuję i płacę ${zl(paymentTotal)}` : activeConfig.booking_type === "appointment" ? "Najpierw wybierz termin" : "Najpierw wybierz daty"}</button>
           </div>
         </aside>
       </div>

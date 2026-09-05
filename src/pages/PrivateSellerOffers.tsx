@@ -118,11 +118,11 @@ export default function PrivateSellerOffers() {
         </div>
         <div className="flex flex-wrap gap-2">
           <Link to="/sprzedawca/rezerwacje" className="rounded-xl px-4 py-2 font-semibold" style={{ border: "1px solid var(--gold)", color: "var(--gold)" }}>📅 Rezerwacje i kalendarz</Link>
-          <Link to="/sprzedawca/wystaw" className="rounded-xl px-4 py-2 font-semibold text-black" style={{ background: "linear-gradient(135deg,#C8965A,#E8C896)" }}>+ Dodaj ofertę</Link>
+          <Link to="/sprzedawca/wystaw" className="rounded-xl px-4 py-2 font-semibold text-black" style={{ background: "linear-gradient(135deg,#E8891A,#F5A623)" }}>+ Dodaj ofertę</Link>
         </div>
       </div>
 
-      {msg && <div className="mb-5 rounded-xl px-4 py-3 text-sm" style={{ background: "rgba(200,150,90,.12)", border: "1px solid rgba(200,150,90,.25)", color: "var(--gold)" }}>{msg}</div>}
+      {msg && <div className="mb-5 rounded-xl px-4 py-3 text-sm" style={{ background: "rgba(232,137,26,.12)", border: "1px solid rgba(232,137,26,.25)", color: "var(--gold)" }}>{msg}</div>}
 
       {edit && <section className="mb-6 rounded-2xl p-5" style={{ background: "var(--glass)", border: "1px solid var(--line)" }}>
         <div className="mb-4 flex items-center justify-between gap-3"><div><div className="text-xs" style={{ color: "var(--mut)" }}>Szybka edycja</div><h2 className="text-xl font-semibold">{edit.title}</h2></div><button onClick={() => setEdit(null)} className="text-sm underline" style={{ color: "var(--mut)" }}>Zamknij</button></div>
@@ -130,10 +130,10 @@ export default function PrivateSellerOffers() {
           <label className="text-sm">Cena brutto<input type="number" min="0.01" step="0.01" value={edit.price_gross} onChange={e => setEdit({ ...edit, price_gross: Number(e.target.value) })} className="mt-1 w-full rounded-xl px-3 py-2.5 outline-none" style={{ background: "var(--header)", border: "1px solid var(--line)" }}/></label>
           <OfferPhotoManager images={edit.image_urls} onChange={image_urls => setEdit({ ...edit, image_urls })} onAddFiles={upload} uploading={uploading} />
         </div>
-        <button disabled={saving} onClick={saveQuickEdit} className="mt-4 rounded-xl px-5 py-2.5 font-semibold text-black disabled:opacity-50" style={{ background: "linear-gradient(135deg,#C8965A,#E8C896)" }}>{saving ? "Zapisuję…" : "Zapisz cenę i zdjęcia"}</button>
+        <button disabled={saving} onClick={saveQuickEdit} className="mt-4 rounded-xl px-5 py-2.5 font-semibold text-black disabled:opacity-50" style={{ background: "linear-gradient(135deg,#E8891A,#F5A623)" }}>{saving ? "Zapisuję…" : "Zapisz cenę i zdjęcia"}</button>
       </section>}
 
-      {loading ? <p>Ładowanie ogłoszeń…</p> : rows.length === 0 ? <div className="rounded-2xl p-8 text-center" style={{ background: "var(--glass)", border: "1px solid var(--line)" }}><div className="text-4xl mb-3">📦</div><h2 className="text-xl font-semibold">Nie masz jeszcze ofert</h2><p className="mt-2 text-sm" style={{ color: "var(--mut)" }}>Możesz sprzedać produkt, dodać usługę na termin albo wynajem z kalendarzem.</p><Link to="/sprzedawca/wystaw" className="mt-4 inline-block rounded-xl px-5 py-2.5 font-semibold text-black" style={{ background: "linear-gradient(135deg,#C8965A,#E8C896)" }}>Dodaj pierwszą ofertę</Link></div> : <div className="grid gap-4 md:grid-cols-2">
+      {loading ? <p>Ładowanie ogłoszeń…</p> : rows.length === 0 ? <div className="rounded-2xl p-8 text-center" style={{ background: "var(--glass)", border: "1px solid var(--line)" }}><div className="text-4xl mb-3">📦</div><h2 className="text-xl font-semibold">Nie masz jeszcze ofert</h2><p className="mt-2 text-sm" style={{ color: "var(--mut)" }}>Możesz sprzedać produkt, dodać usługę na termin albo wynajem z kalendarzem.</p><Link to="/sprzedawca/wystaw" className="mt-4 inline-block rounded-xl px-5 py-2.5 font-semibold text-black" style={{ background: "linear-gradient(135deg,#E8891A,#F5A623)" }}>Dodaj pierwszą ofertę</Link></div> : <div className="grid gap-4 md:grid-cols-2">
         {rows.map(row => {
           const st = STATUS[row.display_status] ?? { label: row.display_status, icon: "•" };
           const canRelist = ['sold','sold_out'].includes(row.display_status);
@@ -146,7 +146,7 @@ export default function PrivateSellerOffers() {
               <Link to={`/produkt/${row.offer_id}`} className="rounded-lg px-3 py-2 text-sm" style={{ border: "1px solid var(--line)" }}>Podgląd</Link>
               <button onClick={() => startEdit(row.offer_id)} className="rounded-lg px-3 py-2 text-sm" style={{ border: "1px solid var(--line)" }}>✏️ Cena i zdjęcia</button>
               {!['archived','blocked'].includes(row.status) && <button disabled={busyId===row.offer_id} onClick={() => toggle(row)} className="rounded-lg px-3 py-2 text-sm" style={{ border: "1px solid var(--line)" }}>{row.status === 'active' ? 'Ukryj' : 'Pokaż'}</button>}
-              {canRelist && <button disabled={busyId===row.offer_id} onClick={() => relist(row)} className="rounded-lg px-3 py-2 text-sm font-semibold text-black disabled:opacity-50" style={{ background: "linear-gradient(135deg,#C8965A,#E8C896)" }}>↻ Wystaw ponownie</button>}
+              {canRelist && <button disabled={busyId===row.offer_id} onClick={() => relist(row)} className="rounded-lg px-3 py-2 text-sm font-semibold text-black disabled:opacity-50" style={{ background: "linear-gradient(135deg,#E8891A,#F5A623)" }}>↻ Wystaw ponownie</button>}
             </div>
           </article>;
         })}

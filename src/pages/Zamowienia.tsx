@@ -202,7 +202,7 @@ export default function Zamowienia() {
                   🚚 Dostawa: {o.shipping_method ?? "—"}{o.tracking_no && <> · nr przesyłki <b style={{ color: "var(--ink)" }}>{o.tracking_no}</b></>}
                 </div>
               )}
-              {Array.isArray(o.pickup) && o.pickup.length > 0 && o.pickup.map((p, i) => <div key={i} className="mb-3 rounded-xl p-3 text-sm" style={{ background: p.handed_over ? "rgba(122,184,154,.08)" : p.ready ? "rgba(122,184,154,.14)" : "rgba(232,200,150,.08)", border: `1px solid ${p.ready || p.handed_over ? "rgba(122,184,154,.4)" : "rgba(232,200,150,.3)"}` }}>
+              {Array.isArray(o.pickup) && o.pickup.length > 0 && o.pickup.map((p, i) => <div key={i} className="mb-3 rounded-xl p-3 text-sm" style={{ background: p.handed_over ? "rgba(122,184,154,.08)" : p.ready ? "rgba(122,184,154,.14)" : "rgba(245,166,35,.08)", border: `1px solid ${p.ready || p.handed_over ? "rgba(122,184,154,.4)" : "rgba(245,166,35,.3)"}` }}>
                 <div className="font-semibold">{p.handed_over ? "✅ Odebrane w punkcie" : p.ready ? "🏪 Gotowe do odbioru!" : "🏪 Odbiór osobisty — sprzedawca przygotowuje zamówienie"}</div>
                 <div className="mt-1" style={{ color: "var(--mut)" }}><b style={{ color: "var(--ink)" }}>{p.seller}</b>{p.address ? <> · {p.address}</> : null}{p.hours ? <><br />Godziny odbioru: {p.hours}</> : null}{p.note ? <><br />{p.note}</> : null}</div>
                 {!p.handed_over && <div className="mt-1 text-xs" style={{ color: "var(--mut)" }}>Przy odbiorze podaj numer zamówienia <b style={{ color: "var(--ink)" }}>#{o.order_id.slice(0, 8).toUpperCase()}</b>.{p.ready ? "" : " Dostaniesz powiadomienie, gdy będzie gotowe."}</div>}
@@ -233,7 +233,7 @@ export default function Zamowienia() {
                     <textarea rows={3} value={disputeReason} onChange={(e) => setDisputeReason(e.target.value)} placeholder="Opisz problem z zamówieniem (min. 10 znaków) — np. towar nie dotarł, jest uszkodzony lub niezgodny z opisem." className="w-full rounded-xl px-3 py-2 text-sm outline-none" style={{ background: "var(--glass)", border: "1px solid var(--line)", color: "var(--ink)" }} />
                     {disputeError && <div className="mt-1 text-xs" style={{ color: "#ef4444" }}>{disputeError}</div>}
                     <div className="mt-2 flex flex-wrap items-center gap-2">
-                      <button disabled={disputeBusy || disputeReason.trim().length < 10} onClick={() => submitDispute(o.order_id)} className="rounded-xl px-4 py-2 text-sm font-semibold text-black disabled:opacity-50" style={{ background: "linear-gradient(135deg,#C8965A,#E8C896)" }}>{disputeBusy ? "Wysyłam…" : "Wyślij zgłoszenie"}</button>
+                      <button disabled={disputeBusy || disputeReason.trim().length < 10} onClick={() => submitDispute(o.order_id)} className="rounded-xl px-4 py-2 text-sm font-semibold text-black disabled:opacity-50" style={{ background: "linear-gradient(135deg,#E8891A,#F5A623)" }}>{disputeBusy ? "Wysyłam…" : "Wyślij zgłoszenie"}</button>
                       <button onClick={() => setDisputeFormFor(null)} className="text-sm" style={{ color: "var(--mut)" }}>Anuluj</button>
                       <span className="text-xs" style={{ color: "var(--mut)" }}>Wypłata dla sprzedawcy zostanie wstrzymana do wyjaśnienia.</span>
                     </div>
