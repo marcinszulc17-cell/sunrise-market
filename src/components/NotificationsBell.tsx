@@ -31,10 +31,13 @@ export default function NotificationsBell() {
         {unread > 0 && <span className="absolute -top-1 -right-1 min-w-4 h-4 px-1 rounded-full text-[10px] grid place-items-center text-black font-bold"
                             style={{ background: "var(--primary)" }}>{unread}</span>}
       </button>
-      {open && (
-        <div className="absolute right-0 mt-2 w-80 max-w-[90vw] rounded-2xl overflow-hidden z-40"
-             style={{ background: "rgba(20,32,54,.98)", border: "1px solid var(--line)" }}>
-          <div className="px-4 py-3 text-sm font-semibold" style={{ borderBottom: "1px solid var(--line)" }}>Powiadomienia</div>
+      {open && (<>
+        {/* Na telefonie dzwonek jest przy lewej krawędzi, więc panel „right-0” wychodził poza ekran — mobilnie panel
+            jest przypięty do szerokości ekranu (fixed), na desktopie nadal pod dzwonkiem. Tło zamyka po dotknięciu. */}
+        <div className="fixed inset-0 z-30" onClick={() => setOpen(false)} aria-hidden="true" />
+        <div className="fixed inset-x-3 top-[72px] z-40 overflow-hidden rounded-2xl sm:absolute sm:inset-x-auto sm:top-auto sm:right-0 sm:mt-2 sm:w-80"
+             style={{ background: "rgba(20,32,54,.98)", border: "1px solid var(--line)", boxShadow: "0 18px 50px rgba(0,0,0,.45)" }}>
+          <div className="flex items-center justify-between px-4 py-3 text-sm font-semibold" style={{ borderBottom: "1px solid var(--line)" }}><span>Powiadomienia</span><button type="button" onClick={() => setOpen(false)} aria-label="Zamknij" className="text-base leading-none" style={{ color: "var(--mut)" }}>×</button></div>
           <div className="max-h-96 overflow-y-auto">
             {items.length === 0 && <div className="px-4 py-6 text-sm" style={{ color: "var(--mut)" }}>Brak powiadomień.</div>}
             {items.map((i) => (
@@ -46,7 +49,7 @@ export default function NotificationsBell() {
             ))}
           </div>
         </div>
-      )}
+      </>)}
     </div>
   );
 }
