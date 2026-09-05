@@ -7,7 +7,8 @@ import { zl } from "../lib/money";
 import ReviewInline, { type MyReview } from "../components/ReviewInline";
 
 type Item = { offer_id: string; title: string; qty: number; price: number };
-type Order = { order_id: string; status: string; total: number; cashback: number; created_at: string; shipping_method: string | null; tracking_no: string | null; invoice: InvoiceSnapshot; items: Item[] };
+type PickupInfo = { seller: string; address: string | null; hours: string | null; note: string | null; ready: boolean; handed_over: boolean };
+type Order = { pickup?: PickupInfo[] | null; order_id: string; status: string; total: number; cashback: number; created_at: string; shipping_method: string | null; tracking_no: string | null; invoice: InvoiceSnapshot; items: Item[] };
 type TimelineEvent = { event_type: string; details: Record<string, unknown>; created_at: string };
 type ItemTimeline = { task_id: string; offer_id: string; title: string; task_status: string; tracking_no: string | null; events: TimelineEvent[] };
 
@@ -201,6 +202,11 @@ export default function Zamowienia() {
                   🚚 Dostawa: {o.shipping_method ?? "—"}{o.tracking_no && <> · nr przesyłki <b style={{ color: "var(--ink)" }}>{o.tracking_no}</b></>}
                 </div>
               )}
+              {Array.isArray(o.pickup) && o.pickup.length > 0 && o.pickup.map((p, i) => <div key={i} className="mb-3 rounded-xl p-3 text-sm" style={{ background: p.handed_over ? "rgba(122,184,154,.08)" : p.ready ? "rgba(122,184,154,.14)" : "rgba(232,200,150,.08)", border: `1px solid ${p.ready || p.handed_over ? "rgba(122,184,154,.4)" : "rgba(232,200,150,.3)"}` }}>
+                <div className="font-semibold">{p.handed_over ? "✅ Odebrane w punkcie" : p.ready ? "🏪 Gotowe do odbioru!" : "🏪 Odbiór osobisty — sprzedawca przygotowuje zamówienie"}</div>
+                <div className="mt-1" style={{ color: "var(--mut)" }}><b style={{ color: "var(--ink)" }}>{p.seller}</b>{p.address ? <> · {p.address}</> : null}{p.hours ? <><br />Godziny odbioru: {p.hours}</> : null}{p.note ? <><br />{p.note}</> : null}</div>
+                {!p.handed_over && <div className="mt-1 text-xs" style={{ color: "var(--mut)" }}>Przy odbiorze podaj numer zamówienia <b style={{ color: "var(--ink)" }}>#{o.order_id.slice(0, 8).toUpperCase()}</b>.{p.ready ? "" : " Dostaniesz powiadomienie, gdy będzie gotowe."}</div>}
+              </div>)}
               {o.invoice?.requested && <div className="mb-3"><InvoiceSnapshotCard invoice={o.invoice} compact /></div>}
               <SalesDocumentsPanel orderId={o.order_id} mode="buyer" invoiceRequested={Boolean(o.invoice?.requested)} />
 

@@ -14,6 +14,7 @@ const FREE_SHIP = 149;
 const laneMeta: Record<string, { title: string; icon: string; note: string }> = {
   ours: { title: "Sunrise — magazyn / dropship", icon: "☀", note: "Wysyłamy my (Sunrise). Kurier do Ciebie." },
   seller: { title: "Sprzedawcy Sunrise Market", icon: "📦", note: "Wysyłka od partnera — Paczkomat lub kurier." },
+  seller_pickup: { title: "Sprzedawcy Sunrise Market", icon: "🏪", note: "Wysyłka albo bezpłatny odbiór osobisty w punkcie sprzedawcy — adres i godziny zobaczysz przy zamówieniu." },
   private_shipping: { title: "Sprzedający prywatny", icon: "📦", note: "Ta oferta jest dostępna wyłącznie z wysyłką." },
   private_pickup: { title: "Sprzedający prywatny", icon: "🤝", note: "Ta oferta jest dostępna wyłącznie z odbiorem osobistym." },
   private_both: { title: "Sprzedający prywatny", icon: "📦", note: "Wybierz wysyłkę albo bezpłatny odbiór osobisty." },
@@ -89,7 +90,9 @@ export default function Koszyk() {
       for (const lane of presentLanes) {
         if (next[lane] && methods.some((m) => m.code === next[lane] && m.lanes.includes(lane))) continue;
         const opt = methods.filter((m) => m.lanes.includes(lane));
-        if (opt[0]) next[lane] = opt[0].code;
+        // Domyślnie wysyłka; odbiór osobisty u sprzedawcy klient wybiera świadomie (0 zł, ale trzeba pojechać).
+        const pref = lane === "seller_pickup" || lane === "private_both" ? (opt.find((m) => !["seller_pickup", "private_pickup"].includes(m.code)) ?? opt[0]) : opt[0];
+        if (pref) next[lane] = pref.code;
       }
       for (const k of Object.keys(next)) if (!presentLanes.includes(k)) delete next[k];
       return next;
@@ -99,7 +102,8 @@ export default function Koszyk() {
   const total = cartTotal();
   const freeShip = total >= FREE_SHIP;
   const selectedCodes = presentLanes.map((l) => selected[l]).filter(Boolean) as string[];
-  const pickupOnly = presentLanes.length > 0 && presentLanes.every((lane) => selected[lane] === "private_pickup");
+  const PICKUP_CODES = ["private_pickup", "seller_pickup", "pickup"];
+  const pickupOnly = presentLanes.length > 0 && presentLanes.every((lane) => PICKUP_CODES.includes(selected[lane] ?? ""));
   const deliveryReady = pickupOnly || addrOk;
   const rawShip = selectedCodes.reduce((a, c) => a + Number(methods.find((m) => m.code === c)?.price_gross ?? 0), 0);
   const shipCost = freeShip ? 0 : rawShip;
@@ -325,7 +329,7 @@ export default function Koszyk() {
             </div>
 
             <div className="rounded-2xl p-5 h-fit" style={{ background: "var(--glass)", border: "1px solid var(--line)" }}>
-              {pickupOnly ? <div className="mb-4 rounded-xl px-3 py-3 text-sm" style={{ background: "rgba(122,184,154,.10)", border: "1px solid rgba(122,184,154,.35)" }}><b>🤝 Odbiór osobisty</b><div className="mt-1 text-xs" style={{ color: "var(--mut)" }}>Adres dostawy nie jest potrzebny. Szczegóły odbioru znajdziesz przy zamówieniu po opłaceniu.</div></div> : <div className="mb-4"><div className="text-sm mb-2" style={{ color: "var(--mut)" }}>Adres dostawy</div><div className="flex flex-col gap-2">{([["name", "Imię i nazwisko"], ["street", "Ulica i nr"], ["city", "Miasto"], ["postal", "Kod pocztowy"], ["phone", "Telefon (opcjonalnie)"]] as const).map(([k, ph]) => <input key={k} value={(addr as any)[k]} onChange={(e) => setAddr({ ...addr, [k]: e.target.value })} placeholder={ph} className="rounded-lg px-3 py-2 text-sm outline-none" style={{ background: "var(--glass)", border: "1px solid var(--line)" }} />)}</div></div>}
+              {pickupOnly ? <div className="mb-4 rounded-xl px-3 py-3 text-sm" style={{ background: "rgba(122,184,154,.10)", border: "1px solid rgba(122,184,154,.35)" }}><b>🏪 Odbiór osobisty</b><div className="mt-1 text-xs" style={{ color: "var(--mut)" }}>Adres dostawy nie jest potrzebny. Po opłaceniu dostaniesz powiadomienie „gotowe do odbioru” z adresem i godzinami punktu.</div></div> : <div className="mb-4"><div className="text-sm mb-2" style={{ color: "var(--mut)" }}>Adres dostawy</div><div className="flex flex-col gap-2">{([["name", "Imię i nazwisko"], ["street", "Ulica i nr"], ["city", "Miasto"], ["postal", "Kod pocztowy"], ["phone", "Telefon (opcjonalnie)"]] as const).map(([k, ph]) => <input key={k} value={(addr as any)[k]} onChange={(e) => setAddr({ ...addr, [k]: e.target.value })} placeholder={ph} className="rounded-lg px-3 py-2 text-sm outline-none" style={{ background: "var(--glass)", border: "1px solid var(--line)" }} />)}</div></div>}
 
               <InvoiceDetailsFields value={invoice} onChange={setInvoice} compact />
               {!invoiceReady && <div className="mt-2 text-xs" style={{ color: "var(--gold)" }}>Uzupełnij komplet danych firmy i poprawny NIP, aby zamówić fakturę.</div>}

@@ -286,7 +286,7 @@ Deno.serve(async (req) => {
     const inv = ord0?.invoice_snapshot_at ? {} : invoiceSnapshot(invoice);
 
     await sb.from("orders").update({
-      shipping_method: shipLabel, shipping_cost: shipCost, total_gross: finalTotal,
+      shipping_method: shipLabel, shipping_codes: codes, shipping_cost: shipCost, total_gross: finalTotal,
       coupon_code: couponCode, discount_amount: discount, cashback_amount: cashback,
       ship_name: shipping?.name ?? null, ship_phone: shipping?.phone ?? null,
       ship_street: shipping?.street ?? null, ship_city: shipping?.city ?? null,

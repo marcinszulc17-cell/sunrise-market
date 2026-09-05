@@ -99,3 +99,14 @@ pierwszeństwo przy każdej zmianie kodu. Nie wolno ich naruszać ani obchodzić
 - **Limity doładowania portfela**: `platform_config.topup_min_pln` / `topup_max_pln` (10 / 25 000 zł), publikowane
   przez `public_market_config`. Gdy brak w portfelu przekracza limit, koszyk pokazuje od razu płatność kartą (Stripe).
   `wallet-topup` honoruje `return_to` (koszyk wraca do `/koszyk?topup=success` i sam kończy zakup).
+
+## 8. Odbiór osobisty u sprzedawcy (decyzja właściciela 2026-09-05)
+
+- Sprzedawca włącza punkt odbioru w `/sprzedawca/odbior` (`sellers.pickup_enabled/pickup_address/pickup_hours/pickup_note`,
+  RPC `my_pickup_settings` / `set_pickup_settings`). Wtedy jego oferty mają w koszyku tor `seller_pickup`
+  (`cart_lanes`) z metodą `seller_pickup` (0 zł) obok wysyłki; domyślnie wybrana jest wysyłka.
+- `checkout` zapisuje `orders.shipping_codes`; `create_fulfillment_tasks` ustawia `fulfillment_tasks.delivery='pickup'`
+  dla pozycji do odbioru. Sprzedawca w Zamówieniach: `mark_pickup(p_order,'ready')` → status `ready_for_pickup`
+  + powiadomienie klienta z adresem; `mark_pickup(p_order,'hand_over')` → `handed_over` → zamówienie `delivered`
+  (Ochrona Kupujących 14 dni jak przy kurierze). Kupujący widzi punkt, godziny i status w `my_orders.pickup`.
+- Sprzedający prywatny (`private_partner_set_fulfillment`) rozpoznaje odbiór po `fulfillment_tasks.delivery` / kodach.

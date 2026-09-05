@@ -1,0 +1,67 @@
+// Centrum sprzedaży → Odbiór osobisty: sprzedawca włącza punkt odbioru (adres, godziny, uwagi).
+// Po włączeniu jego oferty dostają w koszyku bezpłatną opcję „Odbiór osobisty u sprzedawcy” obok wysyłki
+// (RPC my_pickup_settings / set_pickup_settings; tor koszyka seller_pickup w cart_lanes).
+import { useEffect, useState } from "react";
+import { Link } from "react-router-dom";
+import { supabase } from "../lib/supabase";
+
+type Settings = { enabled: boolean; address: string | null; hours: string | null; note: string | null; seller_type?: string };
+
+export default function SellerPickup() {
+  const [s, setS] = useState<Settings | null>(null);
+  const [enabled, setEnabled] = useState(false); const [address, setAddress] = useState(""); const [hours, setHours] = useState(""); const [note, setNote] = useState("");
+  const [busy, setBusy] = useState(false); const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
+
+  useEffect(() => {
+    supabase.schema("market").rpc("my_pickup_settings").then(({ data }) => {
+      const d = (data ?? null) as Settings | null; setS(d);
+      if (d) { setEnabled(!!d.enabled); setAddress(d.address ?? ""); setHours(d.hours ?? ""); setNote(d.note ?? ""); }
+    });
+  }, []);
+
+  async function save(next?: boolean) {
+    const en = next ?? enabled; setBusy(true); setMsg(null);
+    const { data, error } = await supabase.schema("market").rpc("set_pickup_settings", { p_enabled: en, p_address: address, p_hours: hours, p_note: note });
+    setBusy(false);
+    if (error) { setMsg({ ok: false, text: error.message }); return; }
+    const d = data as Settings; setS(d); setEnabled(!!d.enabled);
+    setMsg({ ok: true, text: d.enabled ? "Odbiór osobisty włączony — klienci widzą go w koszyku przy Twoich ofertach." : "Odbiór osobisty wyłączony." });
+  }
+
+  return <main className="min-h-screen px-4 py-8 sm:px-6" style={{ background: "var(--bg)", color: "var(--ink)" }}><div className="mx-auto max-w-3xl">
+    <div className="mb-6 flex flex-wrap items-start justify-between gap-4">
+      <div><div className="text-sm font-semibold" style={{ color: "var(--gold)" }}>Centrum sprzedaży</div><h1 className="text-2xl font-semibold">Odbiór osobisty</h1><p className="mt-1 text-sm" style={{ color: "var(--mut)" }}>Klient kupuje i płaci w aplikacji (z cashbackiem), a odbiera u Ciebie — bez kosztów wysyłki. Ty oznaczasz „Gotowe do odbioru” i „Przekazane klientowi” w Zamówieniach.</p></div>
+      <Link to="/sprzedawca" className="rounded-xl px-4 py-2 text-sm font-semibold" style={{ background: "var(--header)", border: "1px solid var(--line)" }}>← Panel</Link>
+    </div>
+
+    {s === null ? <div className="rounded-2xl p-5 text-sm" style={{ background: "var(--glass)", border: "1px solid var(--line)", color: "var(--mut)" }}>Wczytuję…</div> : <div className="grid gap-4">
+      <div className="rounded-2xl p-5" style={{ background: "var(--glass)", border: "1px solid var(--line)" }}>
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div><div className="font-semibold">{enabled ? "🏪 Odbiór osobisty włączony" : "Odbiór osobisty wyłączony"}</div><div className="text-xs" style={{ color: "var(--mut)" }}>{enabled ? "Twoje oferty mają w koszyku opcję „Odbiór osobisty u sprzedawcy” (0 zł)." : "Klienci widzą przy Twoich ofertach tylko wysyłkę."}</div></div>
+          <button type="button" disabled={busy || (!enabled && address.trim().length < 8)} onClick={() => save(!enabled)} className="rounded-xl px-4 py-2 text-sm font-semibold disabled:opacity-50" style={enabled ? { background: "var(--header)", border: "1px solid var(--line)" } : { background: "linear-gradient(135deg,#C8965A,#E8C896)", color: "#0E1729" }}>{enabled ? "Wyłącz" : "Włącz odbiór"}</button>
+        </div>
+      </div>
+
+      <div className="rounded-2xl p-5" style={{ background: "var(--glass)", border: "1px solid var(--line)" }}>
+        <label className="block text-sm"><span style={{ color: "var(--mut)" }}>Adres punktu odbioru *</span>
+          <input value={address} onChange={(e) => setAddress(e.target.value)} placeholder="np. ul. Poznańska 12, 64-300 Nowy Tomyśl (wejście od podwórza)" className="mt-1 w-full rounded-xl px-3 py-2 text-sm outline-none" style={{ background: "var(--header)", border: "1px solid var(--line)", color: "var(--ink)" }} /></label>
+        <label className="mt-3 block text-sm"><span style={{ color: "var(--mut)" }}>Godziny odbioru</span>
+          <input value={hours} onChange={(e) => setHours(e.target.value)} placeholder="np. pon.–pt. 8:00–18:00, sob. 8:00–14:00" className="mt-1 w-full rounded-xl px-3 py-2 text-sm outline-none" style={{ background: "var(--header)", border: "1px solid var(--line)", color: "var(--ink)" }} /></label>
+        <label className="mt-3 block text-sm"><span style={{ color: "var(--mut)" }}>Uwagi dla klienta (opcjonalnie)</span>
+          <textarea value={note} onChange={(e) => setNote(e.target.value)} rows={2} maxLength={500} placeholder="np. Zamówienie czeka przy kasie — wystarczy podać numer zamówienia." className="mt-1 w-full rounded-xl px-3 py-2 text-sm outline-none" style={{ background: "var(--header)", border: "1px solid var(--line)", color: "var(--ink)" }} /></label>
+        <div className="mt-3 flex flex-wrap items-center gap-2">
+          <button type="button" disabled={busy} onClick={() => save()} className="rounded-xl px-4 py-2 text-sm font-semibold disabled:opacity-50" style={{ background: "linear-gradient(135deg,#C8965A,#E8C896)", color: "#0E1729" }}>{busy ? "Zapisuję…" : "Zapisz"}</button>
+          {msg && <span className="text-sm" style={{ color: msg.ok ? "var(--green)" : "#f87171" }}>{msg.text}</span>}
+        </div>
+      </div>
+
+      <div className="rounded-2xl p-5 text-sm leading-6" style={{ background: "rgba(232,200,150,.06)", border: "1px solid rgba(232,200,150,.25)", color: "var(--mut)" }}>
+        <b style={{ color: "var(--ink)" }}>Jak to działa</b><br />
+        1. Klient wybiera w koszyku „Odbiór osobisty u sprzedawcy” i płaci (portfel Sunrise Pay albo karta/BLIK) — pieniądze są u Sunrise.<br />
+        2. W Zamówieniach klikasz <b style={{ color: "var(--ink)" }}>Gotowe do odbioru</b> — klient dostaje powiadomienie z Twoim adresem i godzinami.<br />
+        3. Przy odbiorze klient podaje numer zamówienia; klikasz <b style={{ color: "var(--ink)" }}>Przekazane klientowi</b>.<br />
+        4. Wypłata na Twój portfel po potwierdzeniu odbioru przez klienta albo automatycznie po 14 dniach (Ochrona Kupujących).
+      </div>
+    </div>}
+  </div></main>;
+}
