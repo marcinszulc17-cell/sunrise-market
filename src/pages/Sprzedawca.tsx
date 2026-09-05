@@ -514,7 +514,7 @@ function Shell({ children, tabs }: { children: React.ReactNode; tabs?: { tab: Ta
       <header className="sticky top-0 z-20 backdrop-blur" style={{ background: "var(--header)", borderBottom: "1px solid var(--line)" }}>
         <div className="mx-auto max-w-7xl px-4 py-3 flex items-center gap-3">
           <a href="/" className="flex items-center gap-2">
-            <img src="/logo-sunrise-market.png" alt="Sunrise Market" className="h-8 w-auto rounded-lg bg-white p-1" onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = "none"; }} />
+            <img src="/logo-sunrise-market.png" alt="Sunrise Market" className="h-12 w-auto rounded-xl bg-white p-1.5" onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = "none"; }} />
           </a>
           <div className="flex-1" />
           <a href="/konto" onClick={() => setMode("buyer")} className="text-sm font-semibold px-3 py-1.5 rounded-lg" style={{ background: "linear-gradient(135deg,#E8C896,#C8965A)", color: "#241606" }}>👤 Moje konto</a>

@@ -70,7 +70,7 @@ export default function Portfel() {
   return (
     <div className="mx-auto max-w-3xl px-4 py-8">
       <div className="flex items-center gap-2 mb-6">
-        <a href="/" className="flex items-center gap-2"><img src="/logo-sunrise-market.png" alt="Sunrise Market" className="h-7 w-auto rounded-lg bg-white p-1" onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = "none"; }} /></a>
+        <a href="/" className="flex items-center gap-2"><img src="/logo-sunrise-market.png" alt="Sunrise Market" className="h-12 w-auto rounded-xl bg-white p-1.5" onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = "none"; }} /></a>
         <div className="flex-1" />
         <a href="/koszyk" className="navlink text-sm">🛒 Koszyk</a>
         <a href="/zamowienia" className="navlink text-sm">Zamówienia</a>

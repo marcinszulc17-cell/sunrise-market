@@ -20,7 +20,7 @@ const LOGIN_CSS = `.sl-root{position:relative;min-height:100dvh;overflow:hidden;
 .sl-fade{position:absolute;inset:0;background:linear-gradient(180deg,rgba(5,7,12,0) 58%,rgba(5,7,12,.9) 100%)}
 .sl-wrap{position:relative;padding:0 16px 20px;margin-top:-56px;display:flex;justify-content:center}
 .sl-card{width:100%;max-width:440px;border-radius:26px;padding:24px;background:rgba(9,13,20,.62);border:1px solid rgba(255,255,255,.15);-webkit-backdrop-filter:blur(26px) saturate(150%);backdrop-filter:blur(26px) saturate(150%);box-shadow:0 44px 120px rgba(0,0,0,.66),inset 0 1px 0 rgba(255,255,255,.10)}
-.sl-logo{height:38px;width:auto;max-width:200px;border-radius:11px;background:#fff;padding:5px 8px;display:block}
+.sl-logo{height:56px;width:auto;max-width:280px;border-radius:11px;background:#fff;padding:5px 8px;display:block}
 .sl-h1{font-size:25px;line-height:1.15;margin:16px 0 6px;font-weight:800;letter-spacing:-.02em;color:#fff}
 .sl-sub{margin:0;font-size:13.5px;line-height:1.5;color:rgba(255,255,255,.55)}
 .sl-label{display:block;font-size:12px;font-weight:600;color:rgba(255,255,255,.6);margin:0 0 7px}

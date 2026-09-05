@@ -22,7 +22,7 @@ export default function SellerTopBar() {
           <span aria-hidden="true">←</span> Sklep
         </Link>
         <Link to="/" className="hidden shrink-0 sm:block" aria-label="Sunrise Market — strona główna">
-          <img src="/logo-sunrise-market.png" alt="Sunrise Market" className="h-8 w-auto rounded-lg bg-white p-1" />
+          <img src="/logo-sunrise-market.png" alt="Sunrise Market" className="h-12 w-auto rounded-xl bg-white p-1.5" />
         </Link>
         <nav className="flex min-w-0 flex-1 items-center gap-1 overflow-x-auto text-sm" aria-label="Sekcje centrum sprzedawcy">
           {SECTIONS.map((s) => (
