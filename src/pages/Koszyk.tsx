@@ -371,7 +371,8 @@ function SmartCard() {
   async function buy() {
     setBusy(true); setMsg(null);
     try { const r: any = await smartSubscribe(); if (r?.need_topup) setMsg("Za mało środków w portfelu — doładuj Sunrise Pay."); else setMember(true); }
-    catch (e) { setMsg((e as Error).message); } finally { setBusy(false); }
+    catch (e: any) { if (e?.code === "not_logged_in") { window.location.href = "/login?next=" + encodeURIComponent("/koszyk"); return; } setMsg(e?.message ?? "Nie udało się kupić Sunrise Smart."); }
+    finally { setBusy(false); }
   }
   return <div className="mt-3 rounded-xl p-3" style={{ background: "linear-gradient(140deg,#061434,#123a86)", border: "1px solid rgba(232,200,150,.4)" }}><div className="text-sm font-semibold" style={{ color: "#E8C896" }}>⚡ Sunrise Smart — darmowe wysyłki</div><div className="text-xs mt-1" style={{ color: "rgba(255,255,255,.75)" }}>Darmowa dostawa InPost na wszystkie zamówienia od 49 zł. 59 zł/rok.</div><button onClick={buy} disabled={busy} className="mt-2 text-sm font-semibold px-3 py-1.5 rounded-lg text-black disabled:opacity-50" style={{ background: "linear-gradient(135deg,#C8965A,#E8C896)" }}>{busy ? "Kupuję…" : "Kup Sunrise Smart (59 zł/rok)"}</button>{msg && <div className="text-xs mt-1" style={{ color: "#F8A8D2" }}>{msg}</div>}</div>;
 }

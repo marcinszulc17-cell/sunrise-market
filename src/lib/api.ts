@@ -539,8 +539,17 @@ export async function smartStatus(): Promise<boolean> {
   return !exp || new Date(exp) > new Date();
 }
 export async function smartSubscribe() {
-  const { data, error } = await supabase.functions.invoke("smart-subscribe", { body: {} });
-  if (error) throw error; return data;
+  // Bez sesji funkcja dostałaby klucz anon i odpowiedziała 401 („non-2xx”) — sprawdzamy logowanie po stronie klienta.
+  const { data: { session } } = await supabase.auth.getSession();
+  if (!session) { const e: any = new Error("Zaloguj się, aby kupić Sunrise Smart."); e.code = "not_logged_in"; throw e; }
+  const { data, error } = await supabase.functions.invoke("smart-subscribe", { body: {}, headers: { Authorization: `Bearer ${session.access_token}` } });
+  if (error) {
+    let body: any = null;
+    try { const ctx = (error as any)?.context; body = ctx?.clone ? await ctx.clone().json() : ctx?.json ? await ctx.json() : null; } catch { /* brak JSON */ }
+    if (body?.need_topup) return body;
+    throw new Error(body?.error ?? "Nie udało się kupić Sunrise Smart — spróbuj ponownie.");
+  }
+  return data;
 }
 export async function adRates() {
   const { data, error } = await supabase.rpc("ad_rates_list");
