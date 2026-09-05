@@ -166,6 +166,7 @@ function OfferCard({ o, fav, onToggleFav, badge }: { o: Offer; fav: boolean; onT
         <Stars rating={o.rating} reviews={o.reviews} />
         <a href={`/produkt/${o.offer_id}`} className="font-semibold leading-snug flex-1 hover:text-amber-300">{shownTitle}</a>
 
+        {(() => { const promo = (o.attributes as { promo?: { old_price?: number; percent?: number } } | null | undefined)?.promo; return promo?.old_price ? <div className="flex items-center gap-2"><span className="text-sm line-through" style={{ color: "var(--mut)" }}>{zl(promo.old_price)}</span><span className="text-[11px] font-bold px-2 py-0.5 rounded-full" style={{ background: "rgba(242,92,176,.16)", color: "#F8A8D2" }}>−{promo.percent}%</span></div> : null; })()}
         <div className="font-display text-2xl font-semibold">{zl(o.price_gross)}{sub && <span className="text-sm font-medium" style={{ color: "var(--mut)" }}> {sub.priceSuffix}</span>}</div>
         {sub && <div className="text-[11px] font-semibold px-2 py-1 rounded-full self-start" title={sub.note} style={{ background: "rgba(56,224,240,.12)", color: "#7FE7F0" }}>🔁 {sub.badge} · płatna z góry</div>}
 

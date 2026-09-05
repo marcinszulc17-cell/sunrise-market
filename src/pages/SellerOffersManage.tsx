@@ -6,6 +6,7 @@ import { getOfferForManage, updateOfferManage, type ManagedOffer } from "../lib/
 import { supabase } from "../lib/supabase";
 import OfferDescriptionEditor from "../components/OfferDescriptionEditor";
 import OfferPhotoManager from "../components/OfferPhotoManager";
+import BulkOfferActions, { runBulkAction, type BulkAction } from "../components/BulkOfferActions";
 
 type OfferRow = {
   offer_id: string;
@@ -15,6 +16,7 @@ type OfferRow = {
   status: string;
   category: string;
   created_at?: string;
+  promo?: { percent?: number; old_price?: number; until?: string } | null;
 };
 
 type EditState = ManagedOffer & { full_vat_invoice: boolean; vat_rate: string };
@@ -50,6 +52,7 @@ export default function SellerOffersManage() {
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [actionOfferId, setActionOfferId] = useState<string | null>(null);
+  const [selected, setSelected] = useState<Set<string>>(new Set());
 
   async function reload() {
     setLoading(true);
@@ -147,6 +150,28 @@ export default function SellerOffersManage() {
   }
 
   if (authed === null) return <Shell><p>Ładowanie…</p></Shell>;
+  function toggleSelect(id: string) {
+    setSelected((prev) => { const n = new Set(prev); if (n.has(id)) n.delete(id); else n.add(id); return n; });
+  }
+  function toggleSelectAllVisible() {
+    setSelected((prev) => {
+      const ids = visible.filter((r) => r.status !== "archived" && r.status !== "blocked").map((r) => r.offer_id);
+      const all = ids.every((id) => prev.has(id));
+      const n = new Set(prev);
+      ids.forEach((id) => all ? n.delete(id) : n.add(id));
+      return n;
+    });
+  }
+  async function runBulk(action: BulkAction, value?: number | null, until?: string | null) {
+    setMsg(null);
+    try {
+      const r = await runBulkAction(Array.from(selected), action, value, until);
+      await reload();
+      setSelected(new Set());
+      setMsg(`Gotowe: zmieniono ${r.updated ?? 0} z ${r.selected ?? selected.size} zaznaczonych ofert. ✅`);
+    } catch (e) { setMsg((e as Error).message); }
+  }
+
   if (!authed) return <Shell><p>Zaloguj się, aby zarządzać ofertami. <Link to="/login" className="underline">Logowanie</Link></p></Shell>;
 
   return <Shell>
@@ -201,12 +226,13 @@ export default function SellerOffersManage() {
     </div>}
 
     <Card>
+      {selected.size > 0 && <BulkOfferActions count={selected.size} onRun={runBulk} onClear={() => setSelected(new Set())} />}
       <div className="mb-4 grid gap-3 md:grid-cols-[1fr_180px_auto]">
         <input className={inputClass} style={inputStyle} placeholder="Szukaj po nazwie, kategorii lub ID…" value={query} onChange={e=>setQuery(e.target.value)}/>
         <select className={inputClass} style={inputStyle} value={status} onChange={e=>setStatus(e.target.value)}><option value="all">Wszystkie statusy</option><option value="active">Aktywne</option><option value="paused">Ukryte</option><option value="hidden">Ukryte (import)</option><option value="draft">Szkice</option><option value="blocked">Zablokowane</option><option value="archived">Archiwum</option></select>
         <div className="flex items-center text-sm" style={{ color: "var(--mut)" }}>{visible.length} z {rows.length}</div>
       </div>
-      {loading ? <p>Ładowanie ofert…</p> : <div className="overflow-x-auto"><table className="w-full min-w-[980px] text-sm"><thead><tr className="text-left" style={{ color: "var(--mut)" }}><th className="pb-3">Oferta</th><th className="pb-3">Kategoria</th><th className="pb-3">Cena</th><th className="pb-3">Stan</th><th className="pb-3">Status</th><th className="pb-3"></th></tr></thead><tbody>{visible.map(r => { const busy = actionOfferId === r.offer_id; return <tr key={r.offer_id} style={{ borderTop: "1px solid var(--line)" }}><td className="py-3 pr-3"><div className="max-w-md font-medium">{r.title}</div><div className="mt-1 font-mono text-[10px]" style={{ color: "var(--mut)" }}>{r.offer_id}</div></td><td className="py-3 pr-3">{r.category}</td><td className="py-3 pr-3 whitespace-nowrap">{Number(r.price_gross).toLocaleString("pl-PL")} zł</td><td className="py-3 pr-3">{r.stock}</td><td className="py-3 pr-3">{statusLabel(r.status)}</td><td className="py-3 text-right"><div className="flex flex-wrap justify-end gap-2"><Link to={`/produkt/${r.offer_id}`} className="rounded-lg px-3 py-1.5" style={{ border:"1px solid var(--line)" }}>Podgląd</Link><button onClick={()=>openEdit(r.offer_id)} className="rounded-lg px-3 py-1.5 font-semibold text-black" style={{ background:"linear-gradient(135deg,#C8965A,#E8C896)" }}>Edytuj</button>{canToggleVisibility(r.status) && <button disabled={busy} onClick={()=>toggleVisibility(r)} className="rounded-lg px-3 py-1.5 disabled:opacity-50" style={{ border:"1px solid var(--line)" }}>{busy ? "…" : r.status === "active" ? "Ukryj" : "Pokaż"}</button>}{r.status !== "archived" && r.status !== "blocked" && <button disabled={busy} onClick={()=>removeOffer(r)} className="rounded-lg px-3 py-1.5 font-semibold disabled:opacity-50" style={{ border:"1px solid rgba(239,68,68,.35)", color:"#fca5a5" }}>Usuń</button>}</div></td></tr>; })}</tbody></table>{visible.length===0 && <p className="py-6 text-center" style={{ color:"var(--mut)" }}>Brak ofert spełniających kryteria.</p>}</div>}
+      {loading ? <p>Ładowanie ofert…</p> : <div className="overflow-x-auto"><table className="w-full min-w-[980px] text-sm"><thead><tr className="text-left" style={{ color: "var(--mut)" }}><th className="pb-3 pr-2"><input type="checkbox" aria-label="Zaznacz wszystkie widoczne" onChange={toggleSelectAllVisible} checked={visible.length > 0 && visible.filter(r => r.status !== "archived" && r.status !== "blocked").every(r => selected.has(r.offer_id))} /></th><th className="pb-3">Oferta</th><th className="pb-3">Kategoria</th><th className="pb-3">Cena</th><th className="pb-3">Stan</th><th className="pb-3">Status</th><th className="pb-3"></th></tr></thead><tbody>{visible.map(r => { const busy = actionOfferId === r.offer_id; return <tr key={r.offer_id} style={{ borderTop: "1px solid var(--line)", background: selected.has(r.offer_id) ? "rgba(200,150,90,.06)" : undefined }}><td className="py-3 pr-2"><input type="checkbox" aria-label="Zaznacz ofertę" checked={selected.has(r.offer_id)} disabled={r.status === "archived" || r.status === "blocked"} onChange={() => toggleSelect(r.offer_id)} /></td><td className="py-3 pr-3"><div className="max-w-md font-medium">{r.title}</div>{r.promo && <div className="mt-1 inline-block rounded-full px-2 py-0.5 text-[11px] font-semibold" style={{ background: "rgba(242,92,176,.14)", color: "#F8A8D2" }}>PROMOCJA −{r.promo.percent}% do {r.promo.until ? new Date(r.promo.until).toLocaleDateString("pl-PL") : "—"}</div>}<div className="mt-1 font-mono text-[10px]" style={{ color: "var(--mut)" }}>{r.offer_id}</div></td><td className="py-3 pr-3">{r.category}</td><td className="py-3 pr-3 whitespace-nowrap">{r.promo?.old_price ? <span className="mr-1 line-through" style={{ color: "var(--mut)" }}>{Number(r.promo.old_price).toLocaleString("pl-PL")} zł</span> : null}{Number(r.price_gross).toLocaleString("pl-PL")} zł</td><td className="py-3 pr-3">{r.stock}</td><td className="py-3 pr-3">{statusLabel(r.status)}</td><td className="py-3 text-right"><div className="flex flex-wrap justify-end gap-2"><Link to={`/produkt/${r.offer_id}`} className="rounded-lg px-3 py-1.5" style={{ border:"1px solid var(--line)" }}>Podgląd</Link><button onClick={()=>openEdit(r.offer_id)} className="rounded-lg px-3 py-1.5 font-semibold text-black" style={{ background:"linear-gradient(135deg,#C8965A,#E8C896)" }}>Edytuj</button>{canToggleVisibility(r.status) && <button disabled={busy} onClick={()=>toggleVisibility(r)} className="rounded-lg px-3 py-1.5 disabled:opacity-50" style={{ border:"1px solid var(--line)" }}>{busy ? "…" : r.status === "active" ? "Ukryj" : "Pokaż"}</button>}{r.status !== "archived" && r.status !== "blocked" && <button disabled={busy} onClick={()=>removeOffer(r)} className="rounded-lg px-3 py-1.5 font-semibold disabled:opacity-50" style={{ border:"1px solid rgba(239,68,68,.35)", color:"#fca5a5" }}>Usuń</button>}</div></td></tr>; })}</tbody></table>{visible.length===0 && <p className="py-6 text-center" style={{ color:"var(--mut)" }}>Brak ofert spełniających kryteria.</p>}</div>}
     </Card>
   </Shell>;
 }

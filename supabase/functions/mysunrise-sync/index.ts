@@ -6,6 +6,7 @@
 // 2026-09-05: oferta UKRYTA ręcznie w Market (status 'paused') zostaje ukryta — sync nie
 //   przywraca jej statusu 'active'. Opis z MySunrise (pełny, z sunriserewards.pl) nadpisuje opis w Market.
 //   Produkty z shop_products.subscription_interval dostają attributes.subscription (płatne z góry, ciągłe).
+//   Atrybuty są SCALANE (VAT, promo, price_locked zostają); cena z MySunrise pomijana przy price_locked/promo.
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "jsr:@supabase/supabase-js@2";
 
@@ -65,16 +66,22 @@ Deno.serve(async (req) => {
       const img = (typeof p.image_url === "string" && p.image_url.length > 20) ? p.image_url : svgFor(p.name);
       const price = Number(p.price_pln) || 0;
       const descr = (p.description && String(p.description).length > 5) ? String(p.description) : `${p.name} — produkt Sunrise Energy. Zakupy w Sunrise Market: płatność Sunrise Pay, pełny program partnerski (MLM).`;
-      const { data: existing } = await admin.from("offers").select("id,status").eq("fulfillment_provider", "mysunrise").or(`attributes->>mysunrise_id.eq.${p.id},title.eq.${p.name.replace(/,/g," ")}`).limit(1).maybeSingle();
+      const { data: existing } = await admin.from("offers").select("id,status,attributes").eq("fulfillment_provider", "mysunrise").or(`attributes->>mysunrise_id.eq.${p.id},title.eq.${p.name.replace(/,/g," ")}`).limit(1).maybeSingle();
       let match = existing;
-      if (!match) { const { data: bytitle } = await admin.from("offers").select("id,status").eq("fulfillment_provider", "mysunrise").eq("title", p.name).limit(1).maybeSingle(); match = bytitle; }
+      if (!match) { const { data: bytitle } = await admin.from("offers").select("id,status,attributes").eq("fulfillment_provider", "mysunrise").eq("title", p.name).limit(1).maybeSingle(); match = bytitle; }
       // Subskrypcja: miesięczna/roczna, płatna z góry, z ciągłością (auto-odnawianie). Front pokazuje to klientowi.
       const subscription = (p.subscription_interval === "month" || p.subscription_interval === "year")
         ? { interval: p.subscription_interval, prepaid: true, continuous: true }
         : null;
       const attrs = { source: "mysunrise", mysunrise_id: p.id, mysunrise_sku: p.sku ?? null, own_brand: true, enriched: true, ...(subscription ? { subscription } : {}) };
       if (match) {
-        const patch = { title: p.name, description: descr, price_gross: price, image_url: img, category_id: cid, commission_model: "mlm_full", attributes: attrs, updated_at: new Date().toISOString() };
+        // Zachowujemy to, co sprzedawca ustawił w Market (VAT, faktura, promocja, blokada ceny) —
+        // sync nadpisuje tylko pola pochodzące z MySunrise.
+        const prev = (match.attributes && typeof match.attributes === "object") ? match.attributes : {};
+        const mergedAttrs = { ...prev, ...attrs };
+        const patch = { title: p.name, description: descr, image_url: img, category_id: cid, commission_model: "mlm_full", attributes: mergedAttrs, updated_at: new Date().toISOString() };
+        // Cena z MySunrise tylko gdy nie ma ręcznej zmiany (price_locked) ani aktywnej promocji.
+        if (!prev.price_locked && !prev.promo) { patch.price_gross = price; }
         // Ręcznie ukryta/zablokowana/zarchiwizowana oferta zachowuje swój status.
         if (STATUSY_RECZNE.has(match.status)) { keptHidden++; } else { patch.status = "active"; }
         await admin.from("offers").update(patch).eq("id", match.id);
