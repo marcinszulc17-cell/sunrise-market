@@ -2,6 +2,8 @@ import { FormEvent, useEffect, useMemo, useState } from "react";
 import { offerDetailHref } from "../lib/bookingLink";
 import { supabase } from "../lib/supabase";
 import { zl } from "../lib/money";
+import { Ico, HomeFooter } from "../components/home/HomeShared";
+import { SiteHeader } from "../components/home/SiteChrome";
 
 type Offer = { offer_id:string; title:string; price_gross:number; category:string; category_slug:string; seller:string; image_url:string|null; attributes:Record<string,any> };
 type Category = { id:string; slug:string; name:string; parent_id:string|null; sort_order?:number|null };
@@ -64,6 +66,7 @@ export default function AdvancedSearchUniversal(){
   const [busy,setBusy]=useState(false);
   const [loadingFilters,setLoadingFilters]=useState(false);
   const [msg,setMsg]=useState<string|null>(null);
+  const [showFilters,setShowFilters]=useState(false); // telefon: filtry zwijane, wyniki od razu
 
   // Parametry z adresu (ekran startowy / linki): ?q=… ?kat=slug ?tryb=appointment|daily — po wczytaniu od razu szukamy.
   const [autoRun,setAutoRun]=useState(false);
@@ -114,35 +117,47 @@ export default function AdvancedSearchUniversal(){
 
   function reset(){setQ("");setPriceMin("");setPriceMax("");setSort("trafnosc");setSelected("");setMode("");setFilters({});setDefs([]);setRows([]);setMsg(null);}
 
-  return <main className="min-h-screen px-4 py-6 sm:px-6" style={{background:"var(--bg)",color:"var(--ink)"}}><div className="mx-auto max-w-7xl">
-    <div className="mb-6 flex items-center gap-3"><a href="/" className="text-sm">← Market</a><div><div className="text-xs font-semibold" style={{color:"var(--gold)"}}>SUNRISE MARKET</div><h1 className="text-3xl font-semibold">Wyszukiwarka zaawansowana</h1><p className="mt-1 text-sm" style={{color:"var(--mut)"}}>Produkty, usługi, rezerwacje, wynajem, samochody, nieruchomości i wszystkie pozostałe kategorie w jednym miejscu.</p></div></div>
+  const title=mode==="appointment"?"Rezerwacje":mode==="daily"?"Wynajem":selectedCategory?selectedCategory.name:"Wyszukiwarka";
+  const subtitle=mode==="appointment"?"Usługi z terminarzem — wybierz dzień i godzinę, zapłać od razu.":mode==="daily"?"Wynajem na dni — wybierz okres od–do.":"Produkty, usługi, rezerwacje, wynajem, samochody i nieruchomości w jednym miejscu.";
+  const chip=(on:boolean):React.CSSProperties=>on?{background:"rgba(245,166,35,.14)",border:"1px solid var(--gold)",color:"var(--gold)"}:{background:"rgba(255,255,255,.04)",border:"1px solid var(--line)",color:"var(--ink)"};
 
-    <section className="mb-5 rounded-3xl p-4 sm:p-5" style={box}>
-      <div className="mb-3 flex items-center justify-between gap-3"><b>Wybierz dział</b>{selected&&<button type="button" onClick={()=>{setSelected("");setFilters({});setDefs([]);}} className="text-xs" style={{color:"var(--gold)"}}>Wszystkie kategorie</button>}</div>
-      <div className="flex gap-2 overflow-x-auto pb-2"><button type="button" onClick={()=>setSelected("")} className="shrink-0 rounded-xl px-4 py-3 text-sm font-semibold" style={!selected?{background:"linear-gradient(135deg,#E8891A,#F5A623)",color:"#000"}:box}>☰ Wszystko</button>{roots.map(r=><button type="button" key={r.id} onClick={()=>setSelected(r.slug)} className="shrink-0 rounded-xl px-4 py-3 text-sm font-semibold" style={selected===r.slug?{background:"linear-gradient(135deg,#E8891A,#F5A623)",color:"#000"}:box}>{emoji(r.name)} {r.name}</button>)}</div>
-      {selectedCategory&&children(selectedCategory.id).length>0&&<div className="mt-3 flex gap-2 overflow-x-auto border-t pt-3" style={{borderColor:"var(--line)"}}>{children(selectedCategory.id).map(c=><button type="button" key={c.id} onClick={()=>setSelected(c.slug)} className="shrink-0 rounded-xl px-3 py-2 text-sm" style={selected===c.slug?{background:"rgba(232,137,26,.18)",border:"1px solid var(--gold)"}:box}>{c.name}</button>)}</div>}
-    </section>
+  return <main className="min-h-screen pb-24 sm:pb-0" style={{background:"var(--bg)",color:"var(--ink)"}}>
+    <SiteHeader active={mode==="appointment"?"booking":selected==="uslugi-i-reklama"?"services":selected==="oze-i-energia"?"energy":selected==="nieruchomosci"?"property":selected==="motoryzacja"?"car":undefined} />
+    <div className="mx-auto max-w-[1440px] px-4 py-5 sm:px-6 xl:px-10">
+    <div className="grid gap-6 lg:grid-cols-[290px_minmax(0,1fr)]">
+      {/* ── Filtry ─────────────────────────────────────────── */}
+      <aside className={`${showFilters?"":"hidden"} order-last h-fit rounded-2xl p-4 lg:order-none lg:block lg:sticky lg:top-24`} style={box} id="filtry">
+        <div className="flex items-center justify-between"><div className="text-lg font-bold">Filtry</div><button type="button" onClick={reset} className="text-xs underline" style={{color:"var(--mut)"}}>Wyczyść wszystkie</button></div>
+        <form onSubmit={search} className="mt-4 grid gap-4">
+          <Field label="Szukaj"><input value={q} onChange={e=>setQ(e.target.value)} placeholder="Czego szukasz?"/></Field>
+          <div><div className="mb-2 text-sm font-semibold">Jak chcesz skorzystać?</div><div className="grid gap-1.5">{MODE_FILTERS.map(item=><button type="button" key={item.id||"all"} onClick={()=>setMode(item.id)} className="flex min-h-[44px] items-center gap-2 rounded-xl px-3 py-2 text-left text-sm" style={chip(mode===item.id)}><span>{item.icon}</span><span className="font-semibold">{item.label}</span><span className="ml-auto text-[11px]" style={{color:"var(--mut)"}}>{item.description}</span></button>)}</div></div>
+          <div><div className="mb-2 flex items-center justify-between text-sm font-semibold"><span>Kategoria</span>{selected&&<button type="button" onClick={()=>{setSelected("");setFilters({});setDefs([]);}} className="text-xs font-normal" style={{color:"var(--gold)"}}>Wszystkie</button>}</div>
+            <div className="grid max-h-72 gap-1 overflow-y-auto pr-1">{roots.map(r=><div key={r.id}><button type="button" onClick={()=>setSelected(selected===r.slug?"":r.slug)} className="flex min-h-[40px] w-full items-center gap-2 rounded-lg px-2 text-left text-sm" style={chip(selected===r.slug||selectedCategory?.parent_id===r.id)}><span>{emoji(r.name)}</span><span className="truncate">{r.name}</span></button>
+              {(selected===r.slug||selectedCategory?.parent_id===r.id)&&children(r.id).length>0&&<div className="ml-6 mt-1 grid gap-0.5">{children(r.id).map(c=><button type="button" key={c.id} onClick={()=>setSelected(c.slug)} className="min-h-[36px] rounded-lg px-2 text-left text-xs" style={{color:selected===c.slug?"var(--gold)":"var(--mut)",background:selected===c.slug?"rgba(245,166,35,.1)":"transparent"}}>{c.name}</button>)}</div>}</div>)}</div>
+          </div>
+          <div><div className="mb-2 text-sm font-semibold">Cena</div><div className="grid grid-cols-2 gap-2"><Field label="Od"><input type="number" min="0" value={priceMin} onChange={e=>setPriceMin(e.target.value)} placeholder="zł"/></Field><Field label="Do"><input type="number" min="0" value={priceMax} onChange={e=>setPriceMax(e.target.value)} placeholder="zł"/></Field></div></div>
+          {defs.length>0&&<div><div className="mb-2 text-sm font-semibold">Szczegóły</div><div className="grid gap-2">{defs.map(d=><DynamicField key={d.key} def={d} value={filters[d.key]??""} onChange={v=>setFilter(d.key,v)}/>)}</div></div>}
+          {loadingFilters&&<div className="text-xs" style={{color:"var(--mut)"}}>Pobieram filtry dla tej kategorii…</div>}
+          <button disabled={busy} className="flex h-11 items-center justify-center gap-2 rounded-xl font-bold" style={{background:"linear-gradient(135deg,#E8891A,#F5A623)",color:"#101012"}}><Ico name="search" size={18} strokeWidth={2.2}/>{busy?"Szukam…":"Pokaż oferty"}</button>
+        </form>
+      </aside>
 
-    <section className="mb-5 rounded-3xl p-4 sm:p-5" style={box}>
-      <div className="mb-3"><b>Jak chcesz skorzystać?</b><div className="mt-1 text-xs" style={{color:"var(--mut)"}}>Ten filtr działa w każdej kategorii — także dla aut, nieruchomości, sprzętu i usług.</div></div>
-      <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">{MODE_FILTERS.map(item=><button type="button" key={item.id||"all"} onClick={()=>setMode(item.id)} className="rounded-2xl px-4 py-3 text-left" style={mode===item.id?{background:"rgba(232,137,26,.16)",border:"1px solid var(--gold)"}:box}><div className="font-semibold">{item.icon} {item.label}</div><div className="mt-1 text-xs" style={{color:"var(--mut)"}}>{item.description}</div></button>)}</div>
-    </section>
-
-    <form onSubmit={search} className="rounded-3xl p-5 sm:p-6" style={box}><div className="grid gap-3 md:grid-cols-4">
-      <Field label="Szukaj"><input value={q} onChange={e=>setQ(e.target.value)} placeholder="Czego szukasz?"/></Field>
-      <Field label="Kategoria"><select value={selected} onChange={e=>setSelected(e.target.value)}><option value="">Wszystkie kategorie</option>{roots.map(r=><CategoryOptions key={r.id} root={r} categories={categories}/>)}</select></Field>
-      <Field label="Cena od"><input type="number" min="0" value={priceMin} onChange={e=>setPriceMin(e.target.value)}/></Field>
-      <Field label="Cena do"><input type="number" min="0" value={priceMax} onChange={e=>setPriceMax(e.target.value)}/></Field>
-      <Field label="Sortowanie"><select value={sort} onChange={e=>setSort(e.target.value)}><option value="trafnosc">Trafność</option><option value="cena_rosnaco">Cena: rosnąco</option><option value="cena_malejaco">Cena: malejąco</option><option value="najnowsze">Najnowsze</option></select></Field>
-      {defs.map(d=><DynamicField key={d.key} def={d} value={filters[d.key]??""} onChange={v=>setFilter(d.key,v)}/>) }
+      {/* ── Wyniki ─────────────────────────────────────────── */}
+      <section className="min-w-0">
+        <div className="flex flex-wrap items-end justify-between gap-3">
+          <div><h1 className="text-3xl font-bold">{title}</h1><p className="mt-1 text-sm" style={{color:"var(--mut)"}}>{subtitle}</p></div>
+          <div className="flex items-center gap-2"><button type="button" onClick={()=>{setShowFilters(v=>!v); if(!showFilters) setTimeout(()=>document.getElementById("filtry")?.scrollIntoView({behavior:"smooth",block:"start"}),50);}} className="flex h-11 items-center gap-2 rounded-xl px-3 text-sm font-semibold lg:hidden" style={box} aria-expanded={showFilters} aria-controls="filtry">☰ Filtry</button><label className="flex h-11 items-center gap-2 rounded-xl px-3 text-sm" style={box}><span style={{color:"var(--mut)"}}>Sortowanie</span><select value={sort} onChange={e=>setSort(e.target.value)} className="bg-transparent font-semibold outline-none" style={{color:"var(--ink)"}}><option value="trafnosc">Najtrafniejsze</option><option value="najnowsze">Najnowsze</option><option value="cena_rosnaco">Cena: rosnąco</option><option value="cena_malejaco">Cena: malejąco</option></select></label></div>
+        </div>
+        {rows.length>0&&<div className="mt-4 text-sm" style={{color:"var(--mut)"}}>Znaleziono <b style={{color:"var(--ink)"}}>{rows.length}</b> {rows.length===1?"ofertę":rows.length<5?"oferty":"ofert"}</div>}
+        {msg&&<div className="mt-5 rounded-2xl p-6 text-sm" style={{...box,color:"var(--mut)"}}>{msg}</div>}
+        {rows.length===0&&!msg&&!busy&&<div className="mt-5 rounded-2xl p-6 text-sm" style={{...box,color:"var(--mut)"}}>Ustaw filtry po lewej i kliknij <b style={{color:"var(--ink)"}}>Pokaż oferty</b> — albo wpisz frazę w wyszukiwarce u góry.</div>}
+        {busy&&rows.length===0&&<div className="mt-5 grid gap-4 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">{[0,1,2,3].map(i=><div key={i} className="aspect-[4/5] animate-pulse rounded-2xl" style={box}/>)}</div>}
+        {rows.length>0&&<div className="mt-4 grid gap-4 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">{rows.map(o=>{const action=resultMode(o);const href=action.booking?offerDetailHref(o.offer_id,true):`/produkt/${o.offer_id}`;const loc=typeof o.attributes?.location==="string"?o.attributes.location:null;const pm=String(o.attributes?.purchase_mode||"");return <a href={href} key={o.offer_id} className="group flex flex-col overflow-hidden rounded-2xl transition hover:-translate-y-0.5" style={box}><div className="relative aspect-[4/3] overflow-hidden" style={{background:"var(--header)"}}>{o.image_url?<img src={o.image_url} alt="" loading="lazy" className="h-full w-full object-cover transition duration-500 group-hover:scale-[1.04]"/>:<div className="grid h-full place-items-center text-5xl">{emoji(o.category||o.category_slug||"")}</div>}{action.booking&&<span className="absolute left-3 top-3 rounded-lg px-2 py-1 text-[11px] font-semibold backdrop-blur" style={{background:"rgba(11,11,13,.75)",border:"1px solid rgba(255,255,255,.15)",color:"#fff"}}>{action.label}</span>}</div><div className="flex flex-1 flex-col p-4"><div className="text-lg font-bold" style={{color:"var(--gold)"}}>{zl(o.price_gross)}{pm==="daily"&&<span className="text-xs font-medium" style={{color:"var(--mut)"}}> / dobę</span>}{pm==="appointment"&&<span className="text-xs font-medium" style={{color:"var(--mut)"}}> / termin</span>}</div><div className="mt-0.5 line-clamp-2 text-sm font-semibold leading-5">{o.title}</div><div className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-[11px]" style={{color:"var(--mut)"}}>{o.category&&<span className="rounded-md px-2 py-0.5" style={{background:"rgba(255,255,255,.06)",border:"1px solid var(--line)",color:"var(--ink)"}}>{o.category}</span>}<span className="truncate">{loc?`📍 ${loc}`:o.seller}</span></div><div className="mt-auto pt-3"><div className="flex h-10 items-center justify-center rounded-xl text-sm font-semibold" style={action.booking?{background:"linear-gradient(135deg,#E8891A,#F5A623)",color:"#101012"}:{border:"1px solid var(--line)",color:"var(--ink)"}}>{action.cta} →</div></div></div></a>;})}</div>}
+      </section>
     </div>
-    {loadingFilters&&<div className="mt-4 text-sm" style={{color:"var(--mut)"}}>Pobieram filtry dla tej kategorii…</div>}
-    {selectedCategory&&!loadingFilters&&defs.length===0&&<div className="mt-4 text-sm" style={{color:"var(--mut)"}}>Ta kategoria nie wymaga dodatkowych filtrów. Możesz wyszukiwać po nazwie i cenie.</div>}
-    <div className="mt-5 flex flex-wrap gap-2"><button disabled={busy} className="rounded-xl px-5 py-3 font-semibold text-black" style={{background:"linear-gradient(135deg,#E8891A,#F5A623)"}}>{busy?"Szukam…":"Pokaż oferty"}</button><button type="button" onClick={reset} className="rounded-xl px-4 py-3 text-sm" style={box}>Wyczyść</button></div></form>
-
-    {msg&&<div className="mt-5 text-sm" style={{color:"var(--mut)"}}>{msg}</div>}
-    {rows.length>0&&<section className="mt-7"><div className="mb-4 text-sm" style={{color:"var(--mut)"}}>Znaleziono: {rows.length}</div><div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">{rows.map(o=>{const action=resultMode(o);const href=action.booking?offerDetailHref(o.offer_id,true):`/produkt/${o.offer_id}`;return <a href={href} key={o.offer_id} className="overflow-hidden rounded-2xl transition-transform hover:-translate-y-0.5" style={box}><div className="relative h-44 overflow-hidden" style={{background:"var(--glass)"}}>{o.image_url?<img src={o.image_url} alt={o.title} className="h-full w-full object-cover"/>:<div className="grid h-full place-items-center text-5xl">{emoji(o.category||o.category_slug||"")}</div>}<span className="absolute left-2 top-2 rounded-full px-2.5 py-1 text-[11px] font-semibold" style={{background:"rgba(10,18,36,.75)",border:"1px solid rgba(255,255,255,.18)",color:"#fff"}}>{action.label}</span></div><div className="p-4"><div className="text-xs" style={{color:"var(--mut)"}}>{o.category}</div><div className="mt-1 font-semibold">{o.title}</div><div className="mt-2 text-2xl font-bold">{zl(o.price_gross)}</div><div className="mt-3 rounded-xl px-3 py-2 text-center text-sm font-semibold" style={action.booking?{background:"linear-gradient(135deg,#E8891A,#F5A623)",color:"#000"}:{border:"1px solid var(--line)",color:"var(--ink)"}}>{action.cta} →</div></div></a>;})}</div></section>}
-  </div></main>;
+    </div>
+    <HomeFooter />
+  </main>;
 }
 
 function CategoryOptions({root,categories}:{root:Category;categories:Category[]}){
@@ -160,5 +175,5 @@ function DynamicField({def,value,onChange}:{def:AttrDef;value:string|boolean;onC
   if(def.data_type==="number") return <Field label={def.label}><input type="number" value={String(value||"")} onChange={e=>onChange(e.target.value)}/></Field>;
   return <Field label={def.label}><input value={String(value||"")} onChange={e=>onChange(e.target.value)}/></Field>;
 }
-function Field({label,children}:{label:string;children:React.ReactElement}){return <label className="text-sm"><span className="mb-1 block" style={{color:"var(--mut)"}}>{label}</span><div className="[&_input]:w-full [&_select]:w-full [&_input]:rounded-xl [&_select]:rounded-xl [&_input]:px-3 [&_select]:px-3 [&_input]:py-2.5 [&_select]:py-2.5 [&_input]:outline-none [&_select]:outline-none [&_input]:bg-transparent [&_select]:bg-transparent" style={{border:"1px solid var(--line)",borderRadius:12}}>{children}</div></label>;
+function Field({label,children}:{label:string;children:React.ReactElement}){return <label className="block text-sm"><span className="mb-1 block text-xs" style={{color:"var(--mut)"}}>{label}</span><div className="[&_input]:w-full [&_select]:w-full [&_input]:rounded-xl [&_select]:rounded-xl [&_input]:px-3 [&_select]:px-3 [&_input]:py-2.5 [&_select]:py-2.5 [&_input]:outline-none [&_select]:outline-none [&_input]:bg-transparent [&_select]:bg-transparent [&_input]:min-h-[44px] [&_select]:min-h-[44px]" style={{border:"1px solid var(--line)",borderRadius:12,background:"rgba(255,255,255,.04)"}}>{children}</div></label>;
 }

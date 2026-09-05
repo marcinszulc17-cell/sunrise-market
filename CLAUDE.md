@@ -120,6 +120,11 @@ pierwszeństwo przy każdej zmianie kodu. Nie wolno ich naruszać ani obchodzić
   `?kat=oze-i-energia`), poziomy carousel „Dla Ciebie” (zalogowany, `recommended_offers`) / „Polecane” (gość: `home_promoted`
   → `search_offers_v2`) z ♡, chipy „Popularne” (kategorie z ofertami), karta Rezerwacje (`/szukaj?tryb=appointment`, `/rezerwacje`),
   widget cashback ze stawką z `public_market_config`, wejście „Sprzedawaj na Sunrise Market”.
+- Wspólna „rama” stron w `src/components/home/SiteChrome.tsx`: `SiteHeader` (duży ekran: logo · wyszukiwarka · Moje konto · Ulubione ·
+  Dodaj ogłoszenie + pasek działów z podświetleniem `active`; telefon: niski pasek logo · dzwonek · koszyk · konto), `Breadcrumbs`,
+  `SectionTitle` (pomarańczowa belka), `SideNav`. Używają jej: Home, Ulubione (`/obserwowane`), `/szukaj` (filtry w lewej kolumnie),
+  strony ofert (`Product`, `SpecializedProduct`), portale Motoryzacja/Nieruchomości, Moje konto. Panel Partnera (`PartnerDashboard`)
+  ma lewy panel sekcji sprzedawcy i tonowane kafle statystyk. Nowe strony budujemy na tej ramie — nie piszemy własnych nagłówków.
 - Wspólne elementy desktop/mobile w `src/components/home/HomeShared.tsx`: ikony SVG, `SECTIONS` (działy i trasy), `RecoCard`,
   `useHomeFeed`, `usePopularCategories`. Nowe sekcje strony głównej budujemy z nich — nie duplikujemy kart/ikon.
 - **Duży ekran sunrisemarket.pl** (> 640 px): `Home.tsx` — premium landing (ciemne tło, złoty akcent): nagłówek z centralną

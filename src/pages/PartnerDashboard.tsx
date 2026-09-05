@@ -1,6 +1,8 @@
 import { useEffect, useState } from "react";
 import { Link, Navigate } from "react-router-dom";
 import { supabase } from "../lib/supabase";
+import { SideNav } from "../components/home/SiteChrome";
+import { Ico, TINTS, type Tint, GOLD_GRAD, CARD } from "../components/home/HomeShared";
 
 type DashboardData = {
   seller: { id: string; type: string; status: string } | null;
@@ -78,14 +80,20 @@ export default function PartnerDashboard() {
   const partnerActive = membership?.can_sell === true;
   const hasAttention = attention.pending_fulfillment > 0 || attention.unread_new_sales > 0;
 
-  return <Shell>
+  return <Shell attention={attention}>
     <div className="mb-6 flex flex-wrap items-start justify-between gap-4">
       <div>
-        <div className="text-sm font-semibold" style={{ color: "var(--gold)" }}>MYSUNRISE · SPRZEDAWCA</div>
-        <h1 className="mt-1 font-display text-3xl font-semibold sm:text-4xl">Twoje centrum zarabiania</h1>
-        <p className="mt-2 max-w-2xl text-sm sm:text-base" style={{ color: "var(--mut)" }}>Własna sprzedaż i polecenia w jednym miejscu. Dane poleceń pochodzą bezpośrednio z Sunrise Ambassador Club.</p>
+        <h1 className="text-3xl font-bold">Witaj, Partnerze! 👋</h1>
+        <p className="mt-1 text-sm" style={{ color: "var(--mut)" }}>Tu znajdziesz najważniejsze informacje o swoich ogłoszeniach i sprzedaży. Dane poleceń pochodzą z Sunrise Ambassador Club.</p>
       </div>
-      <Link to="/sprzedawca/wystaw" className="rounded-2xl px-5 py-3 font-semibold text-black" style={{ background: "linear-gradient(135deg,#E8891A,#F5A623)" }}>+ Wystaw ofertę</Link>
+      <div className="flex items-center gap-3 rounded-2xl px-3 py-2" style={CARD}><div className="grid h-10 w-10 place-items-center rounded-full text-sm font-bold" style={{ background: "rgba(245,166,35,.16)", color: "var(--gold)" }}>PH</div><div className="text-sm"><div className="font-bold">Partner Handlowy</div><div className="text-xs" style={{ color: partnerActive ? "var(--green)" : "#fca5a5" }}>{partnerActive ? "● Aktywny" : "● Wymaga odnowienia"}</div></div></div>
+    </div>
+
+    <div className="mb-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+      <StatTile to="/sprzedawca/oferty" tint="amber" icon="bag" value={String(data.offers?.active || 0)} label="Aktywne ogłoszenia" sub={`Wszystkie: ${data.offers?.total || 0}`} />
+      <StatTile to="/sprzedawca/zamowienia" tint="blue" icon="cart" value={String(data.sales?.count || 0)} label="Opłacone sprzedaże" sub={attention.pending_fulfillment > 0 ? `${attention.pending_fulfillment} do realizacji` : "Wszystko zrealizowane"} />
+      <StatTile to="/sprzedawca/rezerwacje" tint="violet" icon="calendar" value="→" label="Rezerwacje" sub="Terminy usług i wynajmu" />
+      <StatTile to="/sprzedawca/rozliczenia" tint="green" icon="sun" value={pln(totalIncome)} label="Łącznie zarobione" sub={`Ten miesiąc: ${pln(data.sales?.earned_month)}`} />
     </div>
 
     {hasAttention && <Link to="/sprzedawca/zamowienia" className="mb-5 block rounded-2xl p-4 sm:p-5" style={{ background: "linear-gradient(135deg,rgba(232,137,26,.22),rgba(232,137,26,.08))", border: "1px solid rgba(232,137,26,.42)" }}>
@@ -100,20 +108,6 @@ export default function PartnerDashboard() {
         <div className="rounded-xl px-4 py-2 text-sm font-semibold text-black" style={{ background: "linear-gradient(135deg,#E8891A,#F5A623)" }}>Otwórz Moje sprzedaże →</div>
       </div>
     </Link>}
-
-    <section className="mb-5 rounded-3xl p-6 sm:p-7" style={{ background: "linear-gradient(135deg,rgba(232,137,26,.18),rgba(56,224,240,.08))", border: "1px solid rgba(232,137,26,.3)" }}>
-      <div className="flex flex-wrap items-end justify-between gap-4">
-        <div>
-          <div className="text-xs uppercase tracking-[.15em]" style={{ color: "var(--mut)" }}>Łącznie zarobione</div>
-          <div className="mt-1 text-4xl font-bold sm:text-5xl">{pln(totalIncome)}</div>
-          <div className="mt-2 text-sm" style={{ color: "var(--mut)" }}>Sprzedaż własna {pln(own)} + prowizje z poleceń {pln(referralEarnings)}</div>
-        </div>
-        <div className="rounded-2xl px-4 py-3 text-sm" style={{ background: "var(--header)", border: "1px solid var(--line)" }}>
-          <div style={{ color: "var(--mut)" }}>Status sprzedaży</div>
-          <div className="mt-1 font-semibold" style={{ color: partnerActive ? "var(--green)" : "#fca5a5" }}>{partnerActive ? "● Aktywny" : "● Wymaga odnowienia"}</div>
-        </div>
-      </div>
-    </section>
 
     <div className="mb-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
       <Kpi icon="🛍️" label="Z własnej sprzedaży" value={pln(data.sales?.earned_all)} sub={`Ten miesiąc: ${pln(data.sales?.earned_month)}`} />
@@ -168,10 +162,10 @@ export default function PartnerDashboard() {
 }
 
 function Kpi({ icon, label, value, sub }: { icon: string; label: string; value: string; sub: string }) {
-  return <div className="rounded-2xl p-5" style={{ background: "var(--glass)", border: "1px solid var(--line)" }}><div className="text-2xl">{icon}</div><div className="mt-2 text-xs" style={{ color: "var(--mut)" }}>{label}</div><div className="mt-1 text-2xl font-semibold">{value}</div><div className="mt-1 text-xs" style={{ color: "var(--mut)" }}>{sub}</div></div>;
+  return <div className="rounded-2xl p-5" style={CARD}><div className="text-2xl">{icon}</div><div className="mt-2 text-xs" style={{ color: "var(--mut)" }}>{label}</div><div className="mt-1 text-2xl font-bold" style={{ color: "var(--gold)" }}>{value}</div><div className="mt-1 text-xs" style={{ color: "var(--mut)" }}>{sub}</div></div>;
 }
 function Card({ title, icon, children }: { title: string; icon: string; children: React.ReactNode }) {
-  return <div className="rounded-2xl p-5" style={{ background: "var(--glass)", border: "1px solid var(--line)" }}><div className="flex items-center gap-2 text-lg font-semibold"><span>{icon}</span>{title}</div><div className="mt-4 space-y-2">{children}</div></div>;
+  return <div className="rounded-2xl p-5" style={CARD}><div className="flex items-center gap-2 border-l-4 pl-3 text-lg font-bold" style={{ borderColor: "var(--gold)" }}><span>{icon}</span>{title}</div><div className="mt-4 space-y-2">{children}</div></div>;
 }
 function Stat({ label, value }: { label: string; value: string }) {
   return <div className="flex items-center justify-between gap-3 text-sm"><span style={{ color: "var(--mut)" }}>{label}</span><b className="text-right">{value}</b></div>;
@@ -179,6 +173,35 @@ function Stat({ label, value }: { label: string; value: string }) {
 function Quick({ to, icon, title, text }: { to: string; icon: string; title: string; text: string }) {
   return <Link to={to} className="rounded-2xl p-4" style={{ background: "var(--header)", border: "1px solid var(--line)" }}><div className="text-2xl">{icon}</div><div className="mt-2 font-semibold">{title}</div><div className="mt-1 text-xs" style={{ color: "var(--mut)" }}>{text}</div></Link>;
 }
-function Shell({ children }: { children: React.ReactNode }) {
-  return <main className="min-h-screen px-4 py-8 sm:px-6" style={{ background: "var(--bg)", color: "var(--ink)" }}><div className="mx-auto max-w-6xl">{children}</div></main>;
+const SELLER_NAV = (a: Attention) => [
+  { to: "/sprzedawca/partner/pulpit", label: "Panel główny", icon: <Ico name="home" size={18} /> },
+  { to: "/sprzedawca/oferty", label: "Moje ogłoszenia", icon: <Ico name="bag" size={18} /> },
+  { to: "/sprzedawca/zamowienia", label: "Zamówienia", icon: <Ico name="cart" size={18} />, badge: a.pending_fulfillment || undefined },
+  { to: "/sprzedawca/rezerwacje", label: "Rezerwacje", icon: <Ico name="calendar" size={18} /> },
+  { to: "/sprzedawca/zapytania", label: "Zapytania", icon: <Ico name="user" size={18} /> },
+  { to: "/sprzedawca/opinie", label: "Opinie", icon: <Ico name="heart" size={18} /> },
+  { to: "/sprzedawca/odbior", label: "Odbiór osobisty", icon: <Ico name="house" size={18} /> },
+  { to: "/sprzedawca/rozliczenia", label: "Rozliczenia", icon: <Ico name="sun" size={18} /> },
+  { to: "/sprzedawca/partner", label: "Ustawienia partnera", icon: <Ico name="wrench" size={18} /> },
+];
+function StatTile({ to, tint, icon, value, label, sub }: { to: string; tint: Tint; icon: "bag" | "cart" | "calendar" | "sun"; value: string; label: string; sub: string }) {
+  const t = TINTS[tint];
+  return <Link to={to} className="group flex items-center gap-4 rounded-2xl p-5 transition hover:-translate-y-0.5" style={{ background: `linear-gradient(135deg, ${t.bg} 0%, rgba(24,24,27,.85) 70%)`, border: `1px solid ${t.bd}` }}>
+    <div className="grid h-12 w-12 shrink-0 place-items-center rounded-xl" style={{ background: t.bg, color: t.c }}><Ico name={icon} size={24} /></div>
+    <div className="min-w-0 flex-1"><div className={`truncate font-bold ${value.length > 9 ? "text-xl" : "text-2xl"}`}>{value}</div><div className="text-sm font-semibold">{label}</div><div className="text-xs" style={{ color: "var(--mut)" }}>{sub}</div></div>
+    <span aria-hidden="true" className="text-xl transition group-hover:translate-x-0.5" style={{ color: "var(--mut)" }}>›</span>
+  </Link>;
+}
+function Shell({ children, attention }: { children: React.ReactNode; attention?: Attention }) {
+  return <main className="min-h-screen px-4 py-6 sm:px-6 xl:px-10" style={{ background: "var(--bg)", color: "var(--ink)" }}>
+    <div className="mx-auto grid max-w-[1440px] gap-6 lg:grid-cols-[260px_minmax(0,1fr)]">
+      <aside className="hidden h-fit rounded-2xl p-4 lg:sticky lg:top-24 lg:block" style={CARD}>
+        <div className="mb-4 flex items-center gap-3 border-b pb-4" style={{ borderColor: "var(--line)" }}><div className="grid h-10 w-10 place-items-center rounded-xl" style={{ background: "rgba(245,166,35,.16)", color: "var(--gold)" }}><Ico name="bag" size={20} /></div><div><div className="font-bold leading-tight">Panel Partnera</div><div className="text-xs" style={{ color: "var(--mut)" }}>Sunrise Market</div></div></div>
+        <SideNav items={SELLER_NAV(attention || { pending_fulfillment: 0, unread_new_sales: 0 })} current="/sprzedawca/partner/pulpit" />
+        <Link to="/sprzedawca/wystaw" className="mt-4 flex h-11 items-center justify-center gap-2 rounded-xl text-sm font-bold" style={{ background: GOLD_GRAD, color: "#101012" }}><Ico name="plus" size={16} strokeWidth={2.4} />Dodaj ogłoszenie</Link>
+        <div className="mt-4 rounded-xl p-3 text-xs" style={{ background: "rgba(255,255,255,.04)", border: "1px solid var(--line)", color: "var(--mut)" }}><div className="font-semibold" style={{ color: "var(--ink)" }}>Potrzebujesz pomocy?</div><div className="mt-1">Nasz zespół jest do Twojej dyspozycji.</div><a href="/legal/kontakt.html" className="mt-2 inline-block font-semibold" style={{ color: "var(--gold)" }}>Skontaktuj się →</a></div>
+      </aside>
+      <div className="min-w-0">{children}</div>
+    </div>
+  </main>;
 }

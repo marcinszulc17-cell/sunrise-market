@@ -4,25 +4,12 @@
 // Wyłącznie warstwa UI — dane z istniejących RPC przez HomeShared; pełny katalog (filtry, banery, Strefa Energii) pod /sklep.
 // Na telefonie (≤ 640 px) pokazywany jest Start.tsx. Świadomie pominięte (brak takich funkcji/stron): lokalizacja użytkownika,
 // „Porady i artykuły”, „Pomoc”, „O nas”, social media, „x godz. temu” (RPC nie zwracają daty).
-import { useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
-import ThemeToggle from "../components/ThemeToggle";
-import NotificationsBell from "../components/NotificationsBell";
-import { useCart } from "../lib/cart";
+import { Link } from "react-router-dom";
 import { useSeo } from "../lib/seo";
 import { Ico, IconTile, SECTIONS, RecoCard, HomeFooter, useHomeFeed, usePopularCategories, tileStyle, GOLD_GRAD, CARD } from "../components/home/HomeShared";
+import { SiteHeader } from "../components/home/SiteChrome";
 
 // Pasek działów — tylko istniejące trasy. Po prawej: Dla firm (/sprzedawca/dolacz), Kontakt (/legal/kontakt.html).
-const MENU: { to: string; label: string; home?: boolean }[] = [
-  { to: "/", label: "Strona główna", home: true },
-  { to: "/sklep", label: "Zakupy" },
-  { to: "/szukaj?tryb=appointment", label: "Rezerwacje" },
-  { to: "/nieruchomosci", label: "Nieruchomości" },
-  { to: "/motoryzacja", label: "Motoryzacja" },
-  { to: "/szukaj?kat=uslugi-i-reklama", label: "Usługi" },
-  { to: "/szukaj?kat=oze-i-energia", label: "OZE i Energia" },
-];
-
 function SunriseArt() {
   // Oryginalna grafika: niebo o zmierzchu, tarcza słońca z poświatą i trzy plany wzgórz — lekki SVG zamiast zdjęcia.
   return <svg aria-hidden="true" className="absolute inset-0 h-full w-full" viewBox="0 0 1440 520" preserveAspectRatio="xMidYMid slice">
@@ -44,47 +31,14 @@ function SunriseArt() {
 }
 
 export default function Home() {
-  const navigate = useNavigate();
-  const cart = useCart();
-  const cartN = cart.reduce((n, x) => n + x.qty, 0);
-  const [q, setQ] = useState("");
   const { rows: reco, personalized, watched, heart, rate } = useHomeFeed(8);
   const popular = usePopularCategories();
   useSeo("Sunrise Market — wszystko, czego potrzebujesz w jednym miejscu", "Zakupy, rezerwacje, nieruchomości, motoryzacja i usługi. Płać Sunrise Pay, odbieraj 3% cashbacku, kupuj z Ochroną Kupujących.", "/");
-  function submit(e: React.FormEvent) { e.preventDefault(); navigate(q.trim() ? `/szukaj?q=${encodeURIComponent(q.trim())}` : "/szukaj"); }
 
   const tiles = SECTIONS.slice(0, 5);
-  const navBtn = "flex h-11 items-center gap-2 rounded-xl px-3 text-sm font-medium transition hover:opacity-90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#F5A623]";
 
   return <main className="min-h-screen" style={{ background: "var(--bg)", color: "var(--ink)" }}>
-    {/* ── Nagłówek ──────────────────────────────────────────────── */}
-    <header className="sticky top-0 z-30 backdrop-blur" style={{ background: "var(--header)", borderBottom: "1px solid var(--line)" }}>
-      <div className="mx-auto flex max-w-[1440px] flex-wrap items-center gap-3 px-6 py-3 lg:flex-nowrap lg:gap-5 xl:px-10">
-        <a href="/" className="flex shrink-0 items-center"><img src="/logo-sunrise-market-light.png" alt="Sunrise Market" className="brand-logo h-12 w-auto" /></a>
-        <form onSubmit={submit} role="search" className="order-last flex w-full max-w-2xl basis-full items-center overflow-hidden rounded-xl lg:order-none lg:mx-auto lg:basis-auto" style={{ background: "rgba(255,255,255,.06)", border: "1px solid var(--line)" }}>
-          <span className="pl-4" style={{ color: "var(--mut)" }}><Ico name="search" size={20} /></span>
-          <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Szukaj produktów, usług, ogłoszeń…" className="min-w-0 flex-1 bg-transparent px-3 py-3 text-sm outline-none" style={{ color: "var(--ink)" }} aria-label="Szukaj" />
-          <button type="submit" className="h-11 shrink-0 px-5 text-sm font-bold" style={{ background: GOLD_GRAD, color: "#101012" }}>Szukaj</button>
-        </form>
-        <nav className="ml-auto flex shrink-0 items-center gap-1" aria-label="Konto">
-          <ThemeToggle />
-          <NotificationsBell />
-          <Link to="/koszyk" aria-label={cartN > 0 ? `Koszyk, ${cartN} szt.` : "Koszyk"} className={`icon-btn relative ${navBtn}`}><Ico name="cart" size={20} />{cartN > 0 && <span className="absolute right-0 top-1 grid h-4 min-w-4 place-items-center rounded-full px-1 text-[10px] font-bold" style={{ background: "var(--gold)", color: "#101012" }}>{cartN}</span>}</Link>
-          <Link to="/konto" className={navBtn}><Ico name="user" size={20} /><span className="hidden xl:inline">Moje konto</span></Link>
-          <Link to="/obserwowane" className={navBtn}><Ico name="heart" size={20} /><span className="hidden xl:inline">Ulubione</span></Link>
-          <Link to="/sprzedawca/wystaw" className="ml-2 flex h-11 items-center gap-2 rounded-xl px-4 text-sm font-bold shadow-[0_6px_20px_rgba(232,137,26,.3)] transition hover:brightness-105" style={{ background: GOLD_GRAD, color: "#101012" }}><span className="grid h-5 w-5 place-items-center rounded-full" style={{ background: "rgba(0,0,0,.2)" }}><Ico name="plus" size={12} strokeWidth={2.6} /></span><span className="hidden md:inline">Dodaj ogłoszenie</span><span className="md:hidden">Dodaj</span></Link>
-        </nav>
-      </div>
-      <div style={{ borderTop: "1px solid var(--line)", background: "rgba(255,255,255,.03)" }}><div className="mx-auto flex max-w-[1440px] items-center px-6 xl:px-10">
-        <nav className="flex items-center gap-1 overflow-x-auto text-sm" aria-label="Działy" style={{ scrollbarWidth: "none" }}>
-          {MENU.map((m) => <Link key={m.label} to={m.to} aria-current={m.home ? "page" : undefined} className="flex h-11 items-center gap-1.5 whitespace-nowrap px-3 font-medium transition hover:text-[var(--ink)]" style={{ color: m.home ? "var(--gold)" : "var(--mut)", boxShadow: m.home ? "inset 0 -2px 0 var(--gold)" : "none" }}>{m.home && <Ico name="home" size={16} />}{m.label}</Link>)}
-        </nav>
-        <nav className="ml-auto hidden items-center gap-1 text-sm lg:flex" aria-label="Więcej">
-          <Link to="/sprzedawca/dolacz" className="flex h-11 items-center px-3 font-medium navlink">Dla firm</Link>
-          <a href="/legal/kontakt.html" className="flex h-11 items-center px-3 font-medium navlink">Kontakt</a>
-        </nav>
-      </div></div>
-    </header>
+    <SiteHeader active="home" />
 
     <div className="mx-auto max-w-[1440px] px-6 xl:px-10">
       {/* ── Hero ───────────────────────────────────────────────── */}

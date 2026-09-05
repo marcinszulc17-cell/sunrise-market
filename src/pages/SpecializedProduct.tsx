@@ -8,6 +8,8 @@ import { pushRecent } from "../lib/recent";
 import { displayImageUrl } from "../lib/imageUrl";
 import OfferDescription from "../components/OfferDescription";
 import { addToCart } from "../lib/cart";
+import { SiteHeader, Breadcrumbs, SectionTitle } from "../components/home/SiteChrome";
+import { CARD } from "../components/home/HomeShared";
 
 type Offer = {
   offer_id: string;
@@ -121,12 +123,10 @@ export default function SpecializedProduct() {
   if (err || !o) return <main className="min-h-screen px-4 py-10" style={{ background: "var(--bg)", color: "var(--ink)" }}>Nie udało się wczytać oferty.</main>;
 
   return <div className="min-h-screen" style={{ background: "var(--bg)", color: "var(--ink)" }}>
-    <header className="sticky top-0 z-30 backdrop-blur" style={{ background: "var(--header)", borderBottom: "1px solid var(--line)" }}>
-      <div className="mx-auto flex max-w-7xl items-center gap-3 px-4 py-3"><a href="/"><img src="/logo-sunrise-market-light.png" alt="Sunrise Market" className="brand-logo h-11 w-auto" /></a><div className="flex-1" /><button onClick={() => navigator.share?.({ title: o.title, url: window.location.href })} className="rounded-xl px-3 py-2 text-sm" style={{ border: "1px solid var(--line)" }}>Udostępnij</button><a href="/" className="text-sm">← Wróć</a></div>
-    </header>
+    <SiteHeader active={isCar ? "car" : isProperty ? "property" : "services"} />
 
-    <main className="mx-auto max-w-7xl px-4 py-6 sm:py-8">
-      <div className="mb-4 text-sm" style={{ color: "var(--mut)" }}>{o.category} · {o.seller}</div>
+    <main className="mx-auto max-w-[1440px] px-4 py-5 sm:px-6 xl:px-10">
+      <div className="mb-5"><Breadcrumbs back={isCar ? "/motoryzacja" : isProperty ? "/nieruchomosci" : "/szukaj"} items={[{ label: "Strona główna", to: "/" }, { label: isCar ? "Motoryzacja" : isProperty ? "Nieruchomości" : "Usługi", to: isCar ? "/motoryzacja" : isProperty ? "/nieruchomosci" : "/szukaj?kat=uslugi-i-reklama" }, { label: o.category }, { label: o.title }]} /></div>
       <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_390px]">
         <section>
           <div className="group relative overflow-hidden rounded-3xl" style={{ border: "1px solid var(--line)", background: "rgba(0,0,0,.16)" }} onTouchStart={(e)=>{ swipeStartX.current=e.touches[0]?.clientX ?? null; }} onTouchEnd={(e)=>{ const start=swipeStartX.current; const end=e.changedTouches[0]?.clientX; swipeStartX.current=null; if(start===null || end===undefined) return; const dx=end-start; if(Math.abs(dx)>45) dx<0?nextPhoto():prevPhoto(); }}>
@@ -137,16 +137,16 @@ export default function SpecializedProduct() {
           {imgs.length > 1 && <div className="mt-3 flex gap-2 overflow-x-auto pb-2">{imgs.map((u,i) => <button key={u} onClick={() => choosePhoto(i)} className="h-20 w-24 shrink-0 overflow-hidden rounded-xl" style={{ border: active===i ? "2px solid var(--gold)" : "1px solid var(--line)", background:"rgba(0,0,0,.16)" }}><img src={displayImageUrl(u,320)} className="h-full w-full object-contain" alt="" /></button>)}</div>}
           {heroStats.length > 0 && <div className="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-3">{heroStats.map(([k,v]) => <div key={k} className="rounded-2xl p-4" style={{ background: "var(--glass)", border: "1px solid var(--line)" }}><div className="text-xs" style={{ color: "var(--mut)" }}>{k}</div><div className="mt-1 font-semibold">{v}</div></div>)}</div>}
           {isCar && A.vin && <div className="mt-4 rounded-2xl p-4 text-sm" style={{ background:"rgba(56,224,240,.07)", border:"1px solid rgba(56,224,240,.20)" }}><b>VIN:</b> dostępny do weryfikacji w Sunrise Verify. Pełny numer nie jest publikowany w ogłoszeniu.</div>}
-          {bools.length > 0 && <section className="mt-8"><h2 className="mb-4 text-2xl font-semibold">Najważniejsze cechy</h2><div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">{bools.map(([k]) => <div key={k} className="rounded-xl px-4 py-3 text-sm" style={{ background: "rgba(122,184,154,.10)", border: "1px solid rgba(122,184,154,.28)" }}>✓ {BOOLEAN_LABELS[k]}</div>)}</div></section>}
-          {details.length > 0 && <section className="mt-8"><h2 className="mb-4 text-2xl font-semibold">{isCar ? "Dane pojazdu" : isProperty ? "Dane nieruchomości" : "Szczegóły"}</h2><div className="overflow-hidden rounded-2xl" style={{ border: "1px solid var(--line)" }}>{details.map(([k,v],i) => <div key={k} className="grid grid-cols-[140px_1fr] gap-4 px-4 py-3 text-sm" style={{ background: i%2 ? "transparent" : "var(--glass)", borderBottom: "1px solid var(--line)" }}><span style={{ color: "var(--mut)" }}>{LABELS[k] || k.split("_").join(" ")}</span><span className="font-medium">{(k === "mileage_km" || k === "mileage") ? `${Number(v).toLocaleString("pl-PL")} km` : k === "area_m2" ? `${v} m²` : k === "rent_pln" ? `${Number(v).toLocaleString("pl-PL")} zł` : String(v)}</span></div>)}</div></section>}
-          {o.description && <section className="mt-8"><h2 className="mb-4 text-2xl font-semibold">Opis</h2><OfferDescription value={o.description} /></section>}
+          {bools.length > 0 && <section className="mt-8 rounded-2xl p-5" style={CARD}><SectionTitle className="mb-4">Najważniejsze cechy</SectionTitle><div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">{bools.map(([k]) => <div key={k} className="rounded-xl px-4 py-3 text-sm" style={{ background: "rgba(122,184,154,.10)", border: "1px solid rgba(122,184,154,.28)" }}>✓ {BOOLEAN_LABELS[k]}</div>)}</div></section>}
+          {details.length > 0 && <section className="mt-6 rounded-2xl p-5" style={CARD}><SectionTitle className="mb-4">{isCar ? "Dane pojazdu" : isProperty ? "Dane nieruchomości" : "Najważniejsze informacje"}</SectionTitle><div className="overflow-hidden rounded-2xl" style={{ border: "1px solid var(--line)" }}>{details.map(([k,v],i) => <div key={k} className="grid grid-cols-[140px_1fr] gap-4 px-4 py-3 text-sm" style={{ background: i%2 ? "transparent" : "var(--glass)", borderBottom: "1px solid var(--line)" }}><span style={{ color: "var(--mut)" }}>{LABELS[k] || k.split("_").join(" ")}</span><span className="font-medium">{(k === "mileage_km" || k === "mileage") ? `${Number(v).toLocaleString("pl-PL")} km` : k === "area_m2" ? `${v} m²` : k === "rent_pln" ? `${Number(v).toLocaleString("pl-PL")} zł` : String(v)}</span></div>)}</div></section>}
+          {o.description && <section className="mt-6 rounded-2xl p-5" style={CARD}><SectionTitle className="mb-4">{isProperty ? "Opis nieruchomości" : isCar ? "Opis pojazdu" : "Opis"}</SectionTitle><OfferDescription value={o.description} /></section>}
         </section>
 
         <aside className="lg:sticky lg:top-24 lg:h-fit">
           <div className="rounded-3xl p-5 shadow-2xl sm:p-6" style={{ background: "var(--glass)", border: "1px solid rgba(232,137,26,.22)" }}>
             <div className="text-xs font-semibold tracking-[.14em]" style={{color:"var(--gold)"}}>SUNRISE MARKET</div>
             <h1 className="mt-2 text-3xl font-semibold leading-tight">{o.title}</h1>
-            <div className="mt-5 flex flex-wrap items-end justify-between gap-3"><div><div className="text-xs" style={{color:"var(--mut)"}}>Cena</div><div className="text-4xl font-bold">{zl(o.price_gross)}</div></div>{A.location&&<div className="rounded-full px-3 py-1 text-xs" style={{background:"var(--header)",border:"1px solid var(--line)"}}>📍 {A.location}</div>}</div>
+            <div className="mt-5 flex flex-wrap items-end justify-between gap-3"><div><div className="text-xs" style={{color:"var(--mut)"}}>Cena</div><div className="text-4xl font-extrabold" style={{color:"var(--gold)"}}>{zl(o.price_gross)}</div></div>{A.location&&<div className="rounded-full px-3 py-1 text-xs" style={{background:"var(--header)",border:"1px solid var(--line)"}}>📍 {A.location}</div>}</div>
             {isProperty && A.area_m2 && <div className="mt-1 text-sm" style={{ color: "var(--mut)" }}>{Math.round(o.price_gross / Number(A.area_m2)).toLocaleString("pl-PL")} zł/m²</div>}
             <div className="mt-4 grid gap-2 sm:grid-cols-2 lg:grid-cols-1">
               <div className="rounded-2xl p-4" style={{ background: "rgba(122,184,154,.10)", border: "1px solid rgba(122,184,154,.28)" }}><div className="text-xs" style={{ color: "var(--mut)" }}>Cashback po zakupie</div><div className="mt-1 text-2xl font-bold" style={{ color: "var(--green)" }}>+{cashback.toLocaleString("pl-PL")} pkt</div></div>
@@ -166,7 +166,7 @@ export default function SpecializedProduct() {
         </aside>
       </div>
 
-      {similar.length > 0 && <section className="mt-12"><h2 className="mb-4 text-2xl font-semibold">Podobne oferty</h2><div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">{similar.map((s:any)=><a key={s.offer_id} href={`/produkt/${s.offer_id}`} className="overflow-hidden rounded-2xl" style={{ background: "var(--glass)", border: "1px solid var(--line)" }}><div className="h-44 overflow-hidden" style={{background:"rgba(0,0,0,.16)"}}>{s.image_url ? <img src={displayImageUrl(s.image_url,720)} className="h-full w-full object-contain" alt={s.title}/> : <div className="grid h-full place-items-center text-4xl">🌅</div>}</div><div className="p-4"><div className="font-semibold">{s.title}</div><div className="mt-2 text-xl font-bold">{zl(s.price_gross)}</div></div></a>)}</div></section>}
+      {similar.length > 0 && <section className="mt-10"><SectionTitle className="mb-4">Podobne ogłoszenia</SectionTitle><div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">{similar.map((s:any)=>{const loc=typeof s.attributes?.location==="string"?s.attributes.location:null;return <a key={s.offer_id} href={`/produkt/${s.offer_id}`} className="group overflow-hidden rounded-2xl transition hover:-translate-y-0.5" style={CARD}><div className="aspect-[4/3] overflow-hidden" style={{background:"var(--header)"}}>{s.image_url ? <img src={displayImageUrl(s.image_url,720)} className="h-full w-full object-cover transition duration-500 group-hover:scale-[1.04]" alt="" loading="lazy"/> : <div className="grid h-full place-items-center text-4xl">🌅</div>}</div><div className="p-4"><div className="text-lg font-bold" style={{color:"var(--gold)"}}>{zl(s.price_gross)}</div><div className="mt-0.5 line-clamp-2 text-sm font-semibold leading-5">{s.title}</div>{loc&&<div className="mt-1 text-[11px]" style={{color:"var(--mut)"}}>📍 {loc}</div>}</div></a>;})}</div></section>}
     </main>
 
     {lightboxOpen && mainImage && <div className="fixed inset-0 z-[70] bg-black/95" onMouseDown={(e)=>{if(e.target===e.currentTarget){setLightboxOpen(false);resetZoom();}}}>
