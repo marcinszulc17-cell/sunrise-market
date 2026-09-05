@@ -176,13 +176,16 @@ export default function BookingPurchaseModal({ offerId, config, open, onClose }:
   const invoiceReady = invoiceComplete(invoice);
   const isDaily = activeConfig.booking_type === "daily";
   const isVehicle = isDaily && (selectedResource?.kind === "vehicle" || ["samochod", "car"].includes(String(offerFacts?.attributes?.offer_type || "")) || String(offerFacts?.attributes?.brand || "") !== "");
-  const renterReady = !isDaily || (renter.full_name.trim().length >= 3 && renter.phone.trim().length >= 7 && renter.doc_number.trim().length >= 4 && (!isVehicle || (renter.license_number.trim().length >= 4 && /^\d{4}$/.test(renter.license_since_year.trim()))));
+  const minLicenseYears = isVehicle ? Number((offerFacts?.attributes?.rental_operations as any)?.min_license_years ?? 2) || 0 : 0;
+  const licenseYearOk = /^\d{4}$/.test(renter.license_since_year.trim()) && Number(renter.license_since_year) <= new Date().getFullYear() - minLicenseYears && Number(renter.license_since_year) >= 1950;
+  const renterReady = !isDaily || (renter.full_name.trim().length >= 3 && renter.phone.trim().length >= 7 && renter.doc_number.trim().length >= 4 && (!isVehicle || (renter.license_number.trim().length >= 4 && licenseYearOk)));
   const agreementText = isDaily ? rentalAgreementText({
     item: offerFacts?.title || "Przedmiot najmu", sellerName: offerFacts?.seller || "Wynajmujący", from: shortDate(fromDay), to: shortDate(toDay), units: rentalUnits,
     rent: rentalBase, deposit, fees, isVehicle,
     kmLimitPerDay: Number(offerFacts?.attributes?.km_limit_per_day || (offerFacts?.attributes?.rental_operations as any)?.included_km_per_day || offerFacts?.attributes?.mileage_limit || 0) || null,
     extraKmRate: Number((offerFacts?.attributes?.rental_operations as any)?.excess_km_fee || 0) || null,
-    minDriverAge: Number(offerFacts?.attributes?.min_driver_age || 0) || null,
+    minDriverAge: Number(offerFacts?.attributes?.min_driver_age || (offerFacts?.attributes?.rental_operations as any)?.min_driver_age || 0) || null,
+    minLicenseYears: minLicenseYears || null,
     pickupLocation: String(offerFacts?.attributes?.pickup_location || offerFacts?.attributes?.location || "") || null,
   }, renter) : "";
 
@@ -375,6 +378,7 @@ export default function BookingPurchaseModal({ offerId, config, open, onClose }:
                 <input className="w-full rounded-xl px-3 py-2 text-sm" style={{ background: "var(--bg)", border: "1px solid var(--line)" }} placeholder="Telefon *" value={renter.phone} onChange={(e) => setRenter({ ...renter, phone: e.target.value })} autoComplete="tel" inputMode="tel" />
                 <div className="grid grid-cols-[auto_1fr] gap-2"><select className="rounded-xl px-2 py-2 text-sm" style={{ background: "var(--bg)", border: "1px solid var(--line)" }} value={renter.doc_type} onChange={(e) => setRenter({ ...renter, doc_type: e.target.value as RenterData["doc_type"] })}><option>dowód osobisty</option><option>paszport</option></select><input className="w-full rounded-xl px-3 py-2 text-sm" style={{ background: "var(--bg)", border: "1px solid var(--line)" }} placeholder="Numer dokumentu *" value={renter.doc_number} onChange={(e) => setRenter({ ...renter, doc_number: e.target.value })} /></div>
                 {isVehicle && <div className="grid grid-cols-[1fr_auto] gap-2"><input className="w-full rounded-xl px-3 py-2 text-sm" style={{ background: "var(--bg)", border: "1px solid var(--line)" }} placeholder="Nr prawa jazdy *" value={renter.license_number} onChange={(e) => setRenter({ ...renter, license_number: e.target.value })} /><input className="w-24 rounded-xl px-3 py-2 text-sm" style={{ background: "var(--bg)", border: "1px solid var(--line)" }} placeholder="od roku *" inputMode="numeric" maxLength={4} value={renter.license_since_year} onChange={(e) => setRenter({ ...renter, license_since_year: e.target.value.replace(/\D/g, "") })} /></div>}
+                {isVehicle && minLicenseYears > 0 && <div className="text-[11px]" style={{ color: /^\d{4}$/.test(renter.license_since_year) && !licenseYearOk ? "#fca5a5" : "var(--mut)" }}>Wymagane prawo jazdy kat. B od co najmniej {minLicenseYears} lat{/^\d{4}$/.test(renter.license_since_year) && !licenseYearOk ? " — ten staż nie spełnia warunku wynajmu." : "."}</div>}
                 <input className="w-full rounded-xl px-3 py-2 text-sm" style={{ background: "var(--bg)", border: "1px solid var(--line)" }} placeholder="Adres (opcjonalnie)" value={renter.address} onChange={(e) => setRenter({ ...renter, address: e.target.value })} autoComplete="street-address" />
               </div>
               <button type="button" onClick={() => setAgreementOpen((v) => !v)} className="mt-2 text-xs font-semibold underline" style={{ color: "var(--gold)" }}>{agreementOpen ? "Zwiń umowę" : "Przeczytaj umowę najmu (wersja " + RENTAL_AGREEMENT_VERSION + ")"}</button>
