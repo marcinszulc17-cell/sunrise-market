@@ -112,11 +112,19 @@ Deno.serve(async (req) => {
       return json({ error: `Nieobsługiwana metoda płatności: ${provider || "brak"}` }, 400);
     }
 
-    // TODO: cofnięcie cashbacku (pay-credit-points) — MySunrise nie udostępnia endpointu pay-debit-points;
-    // punkty cashback (orders.cashback_amount) pozostają u kupującego do czasu dodania takiego endpointu.
-    if (Number(order.cashback_amount) > 0) console.warn(`order-refund: cashback ${order.cashback_amount} pkt za zamówienie ${order.id} nie został cofnięty (brak endpointu debit-points)`);
+    // Cofnięcie cashbacku: MySunrise `pay-debit-points` (ujemny wpis 'cashback_reversal', idempotentnie per zamówienie).
+    // Nie blokuje zwrotu — pieniądze wracają zawsze; brak cofnięcia trafia do notatki sporu.
+    let cashbackNote = "";
+    if (Number(order.cashback_amount) > 0 && buyerEmail) {
+      try {
+        const debited = await pay(await resolveSunrisePayToken(), "pay-debit-points", { user_ref: buyerEmail, order_ref: order.id, reason: "refund_buyer_protection" });
+        cashbackNote = debited.status === 200 && debited.data?.ok === true
+          ? `, cofnięto cashback ${Number(debited.data?.reversed ?? 0)} pkt`
+          : `, UWAGA: cashback ${order.cashback_amount} pkt nie cofnięty (${debited.data?.error ?? debited.status})`;
+      } catch (e) { cashbackNote = `, UWAGA: cashback nie cofnięty (${String((e as Error).message ?? e)})`; }
+    }
 
-    const note = `Zwrot ${(amountGrosz / 100).toFixed(2)} zł (${provider}${externalRef ? `, ref ${externalRef}` : ""}) — operator ${user.email ?? user.id}`;
+    const note = `Zwrot ${(amountGrosz / 100).toFixed(2)} zł (${provider}${externalRef ? `, ref ${externalRef}` : ""}${cashbackNote}) — operator ${user.email ?? user.id}`;
     const { data: resolved, error: rErr } = await sb.rpc("resolve_dispute", { p_dispute: dispute_id, p_outcome: "refund", p_note: note });
     if (rErr || resolved?.ok !== true) {
       return json({ ok: false, error: "refund_paid_finalize_pending", message: "Pieniądze zostały zwrócone, ale finalizacja sporu wymaga ponowienia. Nie wykonuj drugiego zwrotu.", external_ref: externalRef, detail: rErr?.message ?? resolved }, 500);

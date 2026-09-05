@@ -70,7 +70,8 @@ pierwszeństwo przy każdej zmianie kodu. Nie wolno ich naruszać ani obchodzić
   `my_order_disputes()`, `operator_disputes()`.
 - **Zwroty** wykonuje operator edge fn `order-refund` ({dispute_id}): Stripe `refunds.create`
   lub `pay-credit` na portfel kupującego, potem `resolve_dispute(...,'refund')` → zamówienie `cancelled`,
-  settlements `cancelled`. Cashback nie jest cofany (brak endpointu debit-points w MySunrise — TODO).
+  settlements `cancelled`, a cashback jest **cofany** przez MySunrise `pay-debit-points` (RPC `sfc_reverse_cashback_by_email`,
+  ujemny wpis `cashback_reversal` w `sfc_points_ledger`, idempotentnie per zamówienie; brak cofnięcia nie blokuje zwrotu).
 - Zamówienia `paid` niewysłane 30 dni: kupujący dostaje powiadomienie, że może anulować — **bez auto-anulowania**.
 
 ## 6. Opinie o sprzedawcach (decyzja właściciela 2026-09-05)
