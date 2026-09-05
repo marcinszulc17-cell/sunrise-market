@@ -55,9 +55,9 @@ export default function ProductRouter() {
   if (kind === "private") return <><PrivateProduct /><MarketFooter /></>;
   return <>
     {kind === "special" ? <SpecializedProduct /> : <Product />}
+    {id&&verifyKind&&<VerifyOfferButton offerId={id} kind={verifyKind}/>}
     {id && <ProductPageExtras offerId={id} verifyKind={verifyKind} />}
     <MarketFooter />
     {id && !isSubscription && <BuyerOfferActions offerId={id} categorySlug={categorySlug} priceGross={priceGross} purchaseMode={purchaseMode} />}
-    {id&&verifyKind&&<VerifyOfferButton offerId={id} kind={verifyKind}/>} 
   </>;
 }
