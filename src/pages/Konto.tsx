@@ -1,6 +1,7 @@
 import { pkt } from "../lib/money";
 import { SiteHeader } from "../components/home/SiteChrome";
 import PushToggle from "../components/PushToggle";
+import { ThemeSettings } from "../components/ThemeToggle";
 import PasskeyCard, { PasskeyNudge } from "../components/PasskeyCard";
 import { useEffect, useState } from "react";
 import { supabase } from "../lib/supabase";
@@ -205,7 +206,7 @@ function Zgody() {
 }
 
 function Ustawienia({ email, seller, isOp, onLogout }: { email: string; seller: any; isOp: boolean; onLogout: () => void }) {
-  return <div className="space-y-4"><Card><div className="text-sm" style={{ color: "var(--mut)" }}>E-mail</div><div className="font-semibold mt-1">{email}</div></Card><PasskeyCard /><PushToggle /><Zgody /><Card><div className="text-sm" style={{ color: "var(--mut)" }}>Rola</div><div className="font-semibold mt-1">{isOp ? "Operator" : seller ? (seller.seller_type === "business" || seller.seller_type === "sunrise" ? "Partner Handlowy" : "Sprzedawca") : "Klient"}</div></Card><button onClick={onLogout} className="text-sm px-4 py-2 rounded-xl" style={{ background: "var(--glass)", border: "1px solid var(--line)" }}>Wyloguj</button></div>;
+  return <div className="space-y-4"><Card><div className="text-sm" style={{ color: "var(--mut)" }}>E-mail</div><div className="font-semibold mt-1">{email}</div></Card><ThemeSettings /><PasskeyCard /><PushToggle /><Zgody /><Card><div className="text-sm" style={{ color: "var(--mut)" }}>Rola</div><div className="font-semibold mt-1">{isOp ? "Operator" : seller ? (seller.seller_type === "business" || seller.seller_type === "sunrise" ? "Partner Handlowy" : "Sprzedawca") : "Klient"}</div></Card><button onClick={onLogout} className="text-sm px-4 py-2 rounded-xl" style={{ background: "var(--glass)", border: "1px solid var(--line)" }}>Wyloguj</button></div>;
 }
 
 function PolecajPV() {

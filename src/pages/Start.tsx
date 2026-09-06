@@ -6,6 +6,7 @@
 import SearchBox from "../components/SearchBox";
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
+import ThemeToggle from "../components/ThemeToggle";
 import { useCart } from "../lib/cart";
 import { useSeo } from "../lib/seo";
 import NotificationsBell from "../components/NotificationsBell";
@@ -28,6 +29,7 @@ export default function Start() {
       <div className="mx-auto flex max-w-3xl items-center gap-2 px-4 py-2">
         <a href="/" className="flex items-center" aria-label="Sunrise Market — strona główna"><img src="/logo-sunrise-market-light.png" alt="Sunrise Market" className="brand-logo h-10 w-auto" /></a>
         <div className="flex-1" />
+        <ThemeToggle size={11} />
         <NotificationsBell />
         <Link to="/koszyk" aria-label={cartN > 0 ? `Koszyk, ${cartN} szt.` : "Koszyk"} className="icon-btn relative grid h-11 w-11 place-items-center rounded-xl" style={CARD}><Ico name="cart" size={20} />{cartN > 0 && <span className="absolute -right-1 -top-1 grid h-4 min-w-4 place-items-center rounded-full px-1 text-[10px] font-bold text-black" style={{ background: "var(--gold)" }}>{cartN}</span>}</Link>
         <Link to="/konto" aria-label="Moje konto" className="grid h-11 w-11 place-items-center rounded-xl" style={CARD}><Ico name="user" size={20} /></Link>

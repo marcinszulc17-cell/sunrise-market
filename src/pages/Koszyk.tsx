@@ -12,8 +12,10 @@ import { zl, pkt } from "../lib/money";
 import { subscriptionInfo } from "../lib/subscription";
 const FREE_SHIP = 149;
 
+const PICKUP_CODES = ["private_pickup", "seller_pickup", "pickup"];
 const laneMeta: Record<string, { title: string; icon: string; note: string }> = {
-  ours: { title: "Sunrise — magazyn / dropship", icon: "☀", note: "Wysyłamy my (Sunrise). Kurier do Ciebie." },
+  ours: { title: "Sunrise — magazyn własny", icon: "☀", note: "Wysyłamy my (Sunrise): kurier do Ciebie albo bezpłatny odbiór osobisty w Nowym Tomyślu — adres i termin dostaniesz w powiadomieniu „Gotowe do odbioru”." },
+  dropship: { title: "Sunrise — wysyłka od dostawcy", icon: "✈", note: "Towar leci prosto od dostawcy do Ciebie — bez odbioru osobistego." },
   seller: { title: "Sprzedawcy Sunrise Market", icon: "📦", note: "Wysyłka od partnera — Paczkomat lub kurier." },
   seller_pickup: { title: "Sprzedawcy Sunrise Market", icon: "🏪", note: "Wysyłka albo bezpłatny odbiór osobisty w punkcie sprzedawcy — adres i godziny zobaczysz przy zamówieniu." },
   private_shipping: { title: "Sprzedający prywatny", icon: "📦", note: "Ta oferta jest dostępna wyłącznie z wysyłką." },
@@ -92,7 +94,7 @@ export default function Koszyk() {
         if (next[lane] && methods.some((m) => m.code === next[lane] && m.lanes.includes(lane))) continue;
         const opt = methods.filter((m) => m.lanes.includes(lane));
         // Domyślnie wysyłka; odbiór osobisty u sprzedawcy klient wybiera świadomie (0 zł, ale trzeba pojechać).
-        const pref = lane === "seller_pickup" || lane === "private_both" ? (opt.find((m) => !["seller_pickup", "private_pickup"].includes(m.code)) ?? opt[0]) : opt[0];
+        const pref = ["seller_pickup", "private_both", "ours"].includes(lane) ? (opt.find((m) => !PICKUP_CODES.includes(m.code)) ?? opt[0]) : opt[0]; // domyślnie wysyłka, odbiór do wyboru
         if (pref) next[lane] = pref.code;
       }
       for (const k of Object.keys(next)) if (!presentLanes.includes(k)) delete next[k];
@@ -103,7 +105,6 @@ export default function Koszyk() {
   const total = cartTotal();
   const freeShip = total >= FREE_SHIP;
   const selectedCodes = presentLanes.map((l) => selected[l]).filter(Boolean) as string[];
-  const PICKUP_CODES = ["private_pickup", "seller_pickup", "pickup"];
   const pickupOnly = presentLanes.length > 0 && presentLanes.every((lane) => PICKUP_CODES.includes(selected[lane] ?? ""));
   const deliveryReady = pickupOnly || addrOk;
   const rawShip = selectedCodes.reduce((a, c) => a + Number(methods.find((m) => m.code === c)?.price_gross ?? 0), 0);

@@ -63,6 +63,7 @@ export function SiteHeader({ active, compact = false, back = false }: { active?:
       {back && <FloatingBack />}
       <a href="/" className="flex items-center" aria-label="Sunrise Market — strona główna"><img src="/logo-sunrise-market-light.png" alt="Sunrise Market" className="brand-logo h-10 w-auto" /></a>
       <div className="flex-1" />
+      <ThemeToggle size={11} />
       <NotificationsBell />
       <Link to="/wiadomosci" aria-label="Wiadomości" className="relative grid h-11 w-11 place-items-center rounded-xl" style={CARD}><Ico name="mail" size={20} />{mailBadge}</Link>
       <Link to="/koszyk" aria-label={cartN > 0 ? `Koszyk, ${cartN} szt.` : "Koszyk"} className="icon-btn relative grid h-11 w-11 place-items-center rounded-xl" style={CARD}><Ico name="cart" size={20} />{badge}</Link>
