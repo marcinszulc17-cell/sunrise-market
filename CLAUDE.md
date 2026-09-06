@@ -135,7 +135,8 @@ pierwszeństwo przy każdej zmianie kodu. Nie wolno ich naruszać ani obchodzić
   Pełny katalog z filtrami/banerami/Strefą Energii (`MarketEnhanced`) jest pod `/sklep`; `/?q=` nadal otwiera katalog.
   Bez lokalizacji użytkownika, „O nas” i social — takich funkcji/stron nie ma; nie wymyślamy ich.
 - Dolny pasek aplikacji (`MobileAppNav`, ikony SVG, cele ≥ 44 px): Start · Szukaj · ＋ Dodaj (`/sprzedawca/wystaw`, złote kółko) · Ulubione (`/obserwowane`) · Konto.
-- `/szukaj` czyta parametry `q`, `kat` (slug kategorii), `tryb` (purchase|appointment|daily) i od razu szuka.
+- `/szukaj` czyta parametry `q`, `kat` (slug kategorii), `tryb` (purchase|appointment|daily), `lok` przy KAŻDEJ zmianie adresu (pasek działów, kafle) i od razu szuka;
+  zmiana kategorii/trybu/sortowania w filtrach szuka sama i cicho aktualizuje adres (`replaceState`). Drzewo kategorii cache'owane w module (2026-09-06).
 
 ## 10. Wiadomości, kontakt, lokalizacja, wyświetlenia (decyzja właściciela 2026-09-06)
 
@@ -164,12 +165,14 @@ pierwszeństwo przy każdej zmianie kodu. Nie wolno ich naruszać ani obchodzić
 - Jasny motyw: hero na stronie głównej ma zawsze jasny tekst (grafika jest ciemna), kafle tonowane kończą się na `var(--glass)`.
 - Oferty marki własnej Sunrise bez miejscowości dostały „Nowy Tomyśl, wielkopolskie” (migracja 20260906130000).
 
-## 12. Obszar działania marek własnych — 500 km i SEO miast (decyzja właściciela 2026-09-06, 200 → 500 km)
+## 12. Obszar działania marek własnych — CAŁA POLSKA i SEO miast (decyzja właściciela 2026-09-06: 200 → 500 → „cały kraj”)
 
-- Marki własne Sunrise są dostępne w promieniu **500 km od Nowego Tomyśla** (praktycznie cała Polska, 15 województw).
-  Oferty `seller_type='sunrise'` mają `attributes.service_radius_km=500`, `service_lat/lon` (Nowy Tomyśl); karty pokazują
-  „📍 Nowy Tomyśl · +500 km”, `LocationMap` — notkę o zasięgu. Promień: `SERVICE_RADIUS_KM` (cities.ts) i `RADIUS_KM` (api/_shared.ts).
-- `market.service_cities` (66 miast ≤ 500 km, z lat/lon) = `src/lib/cities.ts` = `api/_shared.ts` — zmieniać razem.
+- Marki własne Sunrise **montują w całej Polsce**. Technicznie: `attributes.service_radius_km=600`, `service_lat/lon` (Nowy Tomyśl) —
+  600 km obejmuje każde miasto w kraju (najdalsze Przemyśl ≈ 545 km). W treściach piszemy „montaż w całej Polsce” (bez kilometrów);
+  karty przy zasięgu ≥ 600 pokazują „📍 Nowy Tomyśl · cała Polska”, `LocationMap` — „Montaż i dojazd w całej Polsce”.
+  Stałe: `SERVICE_RADIUS_KM` (cities.ts) i `RADIUS_KM` (api/_shared.ts) = 600; opcja sprzedawcy `RADIUS_OPTIONS` 600 = „Cała Polska”.
+- `market.service_cities` (78 miast, w tym wschód: Suwałki, Ełk, Ostrołęka, Biała Podlaska, Chełm, Zamość, Stalowa Wola, Tarnobrzeg,
+  Mielec, Przemyśl, Krosno, Sanok) = `src/lib/cities.ts` = `api/_shared.ts` — zmieniać razem (migracja 20260907140000).
   `market.offer_serves(attrs, loc)`: lokalizacja pasuje tekstowo ALBO miasto/województwo leży w promieniu oferty
   (`km_between`). Używane w filtrze `location` `search_offers_v2` i w `city_offers(p_slug)`.
 - **Sunrise Market jest platformą DLA WSZYSTKICH** (sprzedawcy prywatni, firmy, marki własne) — strony miast i SEO nie mogą
@@ -180,7 +183,8 @@ pierwszeństwo przy każdej zmianie kodu. Nie wolno ich naruszać ani obchodzić
   Linki do miast: sekcja „Sunrise Market w Twoim mieście” na stronie głównej i w stopce (`HomeFooter`).
 - Każdy sprzedawca może ustawić własny **zasięg dojazdu** (pole „Dojazd do klienta w promieniu (km)” w kreatorach i edycji →
   `attributes.service_radius_km` + `service_lat/lon` geokodowane z miejscowości przez Nominatim) — wtedy jego oferta trafia
-  na strony miast i do filtra lokalizacji w promieniu. Nie dodajemy miast spoza promienia bez decyzji właściciela.
+  na strony miast i do filtra lokalizacji w promieniu.
+- W treściach o płatności piszemy „portfel Sunrise Pay lub karta” — bez BLIK/P24 (§1).
 
 ## 13. Wynajem na dni — umowa, protokół „na żywo”, zegarek (decyzje właściciela 2026-09-06)
 - **Umowa najmu akceptowana na początku, w momencie zapłaty z góry razem z kaucją.** `src/lib/rentalAgreement.ts` (wersja `RENTAL_AGREEMENT_VERSION`, tekst rygorystyczny — wzór bez prawnika, do sprawdzenia). W `BookingPurchaseModal` klient podaje dane najemcy (imię, telefon, dokument; dla pojazdu prawo jazdy + od roku) i zaznacza akceptację → `market.accept_rental_agreement(booking, wersja, sha256 tekstu, renter, UA)` → `market.booking_agreements`. Edge fn `checkout` odrzuca rezerwację dobową bez zaakceptowanej umowy. Podgląd: `market.my_rental_agreement` (klient i sprzedawca) — `RentalAgreementBadge`.

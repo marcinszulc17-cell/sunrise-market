@@ -82,7 +82,7 @@ export default function SellerPickup() {
 
       <div className="rounded-2xl p-5 text-sm leading-6" style={{ background: "rgba(245,166,35,.06)", border: "1px solid rgba(245,166,35,.25)", color: "var(--mut)" }}>
         <b style={{ color: "var(--ink)" }}>Jak to działa</b><br />
-        1. Klient wybiera w koszyku „Odbiór osobisty u sprzedawcy” i płaci (portfel Sunrise Pay albo karta/BLIK) — pieniądze są u Sunrise.<br />
+        1. Klient wybiera w koszyku „Odbiór osobisty u sprzedawcy” i płaci (portfel Sunrise Pay albo karta) — pieniądze są u Sunrise.<br />
         2. W Zamówieniach klikasz <b style={{ color: "var(--ink)" }}>Gotowe do odbioru</b> — klient dostaje powiadomienie z Twoim adresem i godzinami.<br />
         3. Przy odbiorze klient podaje numer zamówienia; klikasz <b style={{ color: "var(--ink)" }}>Przekazane klientowi</b>.<br />
         4. Wypłata na Twój portfel po potwierdzeniu odbioru przez klienta albo automatycznie po 14 dniach (Ochrona Kupujących).

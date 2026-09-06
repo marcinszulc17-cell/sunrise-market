@@ -1,6 +1,6 @@
 // Strony miast (SEO, decyzja właściciela 2026-09-06): /miasto/<slug> — „Sunrise Market w …: ogłoszenia, usługi, nieruchomości, OZE”.
 // Sunrise Market jest platformą DLA WSZYSTKICH sprzedawców — strona pokazuje prawdziwe oferty obsługujące miasto
-// (RPC city_offers: lokalizacja tekstowa albo zasięg dojazdu), a marki własne Sunrise (OZE, zasięg SERVICE_RADIUS_KM) są jedną
+// (RPC city_offers: lokalizacja tekstowa albo zasięg dojazdu), a marki własne Sunrise (OZE, montaż w całej Polsce) są jedną
 // z sekcji, nie całością. FAQ, linki do pozostałych miast, CTA dla lokalnych sprzedawców. Roboty dostają tę samą treść z api/miasto.ts.
 // /miasto bez sluga = lista miast. Stare /oze i /oze/<slug> przekierowują.
 import { useEffect, useState } from "react";
@@ -8,7 +8,7 @@ import { Link, useParams } from "react-router-dom";
 import { supabase } from "../lib/supabase";
 import { zl } from "../lib/money";
 import { useSeo } from "../lib/seo";
-import { CITIES, BASE_CITY, SERVICE_RADIUS_KM, SERVICE_REGIONS, cityBySlug, inCity } from "../lib/cities";
+import { CITIES, BASE_CITY, SERVICE_REGIONS, cityBySlug, inCity } from "../lib/cities";
 import { SiteHeader, Breadcrumbs, SectionTitle } from "../components/home/SiteChrome";
 import { Ico, IconTile, HomeFooter, GOLD_GRAD, CARD, timeAgo } from "../components/home/HomeShared";
 
@@ -23,7 +23,7 @@ export default function CityLanding() {
   const city = slug ? cityBySlug(slug) : undefined;
   const [rows, setRows] = useState<Row[] | null>(null);
   const title = city ? `Sunrise Market ${inCity(city.name)} — ogłoszenia, usługi, nieruchomości, OZE` : "Sunrise Market w Twoim mieście — ogłoszenia i usługi w całej Polsce";
-  const desc = city ? `Kupuj i sprzedawaj ${inCity(city.name)}: produkty, usługi z terminarzem, nieruchomości, motoryzacja oraz fotowoltaika i pompy ciepła z montażem. Cashback 3% i Ochrona Kupujących przy każdej transakcji.` : `Sunrise Market to marketplace dla wszystkich — lokalnych sprzedawców, firm i marek własnych Sunrise (OZE z dojazdem do ${SERVICE_RADIUS_KM} km). Wybierz swoje miasto.`;
+  const desc = city ? `Kupuj i sprzedawaj ${inCity(city.name)}: produkty, usługi z terminarzem, nieruchomości, motoryzacja oraz fotowoltaika i pompy ciepła z montażem. Cashback 3% i Ochrona Kupujących przy każdej transakcji.` : `Sunrise Market to marketplace dla wszystkich — lokalnych sprzedawców, firm i marek własnych Sunrise (OZE z montażem w całej Polsce). Wybierz swoje miasto.`;
   useSeo(title, desc, city ? `/miasto/${city.slug}` : "/miasto");
 
   useEffect(() => {
@@ -71,14 +71,14 @@ export default function CityLanding() {
         </section>
 
         <section className="mt-10 grid gap-4 md:grid-cols-3">
-          {[["Kto sprzedaje " + inCity(city.name) + "?", "Lokalni sprzedawcy prywatni, firmy (Partnerzy Handlowi) i marki własne Sunrise. Każdy sprzedawca akceptuje regulamin, a opinie pochodzą wyłącznie od klientów po zakupie."], ["Jak wygląda montaż OZE " + inCity(city.name) + "?", "Po zakupie lub rezerwacji doboru kontaktuje się instalator Sunrise i przyjeżdża z Nowego Tomyśla (" + city.km + " km). W promieniu " + SERVICE_RADIUS_KM + " km dojazd jest w cenie."], ["Jak płacę i co, jeśli coś pójdzie nie tak?", "Płacisz przez Sunrise Market (portfel Sunrise Pay, karta, BLIK) z cashbackiem 3%. Pieniądze trafiają do sprzedawcy dopiero po Twoim odbiorze — to Ochrona Kupujących; spór rozstrzyga operator."]].map(([q, a]) => <div key={q} className="rounded-2xl p-5" style={CARD}><div className="font-bold">{q}</div><p className="mt-2 text-sm leading-6" style={{ color: "var(--mut)" }}>{a}</p></div>)}
+          {[["Kto sprzedaje " + inCity(city.name) + "?", "Lokalni sprzedawcy prywatni, firmy (Partnerzy Handlowi) i marki własne Sunrise. Każdy sprzedawca akceptuje regulamin, a opinie pochodzą wyłącznie od klientów po zakupie."], ["Jak wygląda montaż OZE " + inCity(city.name) + "?", "Po zakupie lub rezerwacji doboru kontaktuje się instalator Sunrise i przyjeżdża z Nowego Tomyśla (" + city.km + " km). Montujemy w całej Polsce — dojazd jest w cenie."], ["Jak płacę i co, jeśli coś pójdzie nie tak?", "Płacisz przez Sunrise Market (portfel Sunrise Pay lub karta) z cashbackiem 3%. Pieniądze trafiają do sprzedawcy dopiero po Twoim odbiorze — to Ochrona Kupujących; spór rozstrzyga operator."]].map(([q, a]) => <div key={q} className="rounded-2xl p-5" style={CARD}><div className="font-bold">{q}</div><p className="mt-2 text-sm leading-6" style={{ color: "var(--mut)" }}>{a}</p></div>)}
         </section>
 
-        <section className="mt-10"><SectionTitle sub={`Sunrise Market działa w całej Polsce; marki własne Sunrise (OZE) dojeżdżają do ${SERVICE_RADIUS_KM} km od ${BASE_CITY.name}.`}>Inne miasta</SectionTitle><CityLinks current={city.slug} className="mt-4" /></section>
+        <section className="mt-10"><SectionTitle sub={`Sunrise Market działa w całej Polsce; marki własne Sunrise (OZE) montują w całej Polsce (baza: ${BASE_CITY.name}).`}>Inne miasta</SectionTitle><CityLinks current={city.slug} className="mt-4" /></section>
       </> : <>
         <div className="mt-5 text-[11px] font-semibold tracking-[.3em]" style={{ color: "var(--gold)" }}>SUNRISE MARKET W TWOIM MIEŚCIE</div>
         <h1 className="mt-3 text-3xl font-extrabold leading-tight xl:text-4xl">Platforma dla wszystkich — <span style={{ color: "var(--gold)" }}>w całej Polsce</span></h1>
-        <p className="mt-4 max-w-3xl text-base leading-7" style={{ color: "var(--mut)" }}>Produkty, usługi, nieruchomości i motoryzacja od lokalnych sprzedawców i firm, a do tego fotowoltaika i pompy ciepła marek własnych Sunrise z montażem do {SERVICE_RADIUS_KM} km od Nowego Tomyśla ({SERVICE_REGIONS.length} województw). Wybierz swoje miasto:</p>
+        <p className="mt-4 max-w-3xl text-base leading-7" style={{ color: "var(--mut)" }}>Produkty, usługi, nieruchomości i motoryzacja od lokalnych sprzedawców i firm, a do tego fotowoltaika i pompy ciepła marek własnych Sunrise z montażem w całej Polsce ({CITIES.length} miast, {SERVICE_REGIONS.length} województw). Wybierz swoje miasto:</p>
         <CityLinks className="mt-6" />
         <div className="mt-8 flex items-center gap-2 text-sm" style={{ color: "var(--mut)" }}><Ico name="pin" size={16} stroke="var(--gold)" />Nie ma Twojego miasta? <Link to="/szukaj" style={{ color: "var(--gold)" }}>Szukaj ofert</Link> — wpisz miejscowość w filtrze lokalizacji.</div>
       </>}

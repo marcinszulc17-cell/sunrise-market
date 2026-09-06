@@ -3,8 +3,8 @@
 // search_offers_v2 → market.offer_serves() dopasowuje ofertę do szukanego miasta/województwa, gdy leży w promieniu.
 import { CITIES } from "./cities";
 
-export const RADIUS_OPTIONS = [0, 25, 50, 100, 200, 300, 500] as const;
-export function radiusLabel(km: number) { return km <= 0 ? "Tylko w mojej miejscowości" : `Dojazd do ${km} km${km >= 500 ? " (cała Polska)" : ""}`; }
+export const RADIUS_OPTIONS = [0, 25, 50, 100, 200, 300, 600] as const; // 600 = cała Polska (z Nowego Tomyśla najdalsze miasto ≈ 545 km)
+export function radiusLabel(km: number) { return km <= 0 ? "Tylko w mojej miejscowości" : km >= 600 ? "Cała Polska" : `Dojazd do ${km} km${km >= 500 ? " (prawie cała Polska)" : ""}`; }
 
 const norm = (s: string) => s.toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/ł/g, "l").trim();
 

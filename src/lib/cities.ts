@@ -1,9 +1,10 @@
-// Obszar działania marek własnych Sunrise (decyzja właściciela 2026-09-06): promień 500 km od Nowego Tomyśla (praktycznie cała Polska).
+// Obszar działania marek własnych Sunrise (decyzja właściciela 2026-09-06, „cały kraj”): montaż w całej Polsce.
+// Technicznie: promień 600 km od Nowego Tomyśla — obejmuje każde miasto w kraju (najdalsze: Przemyśl/Sanok ≈ 530 km). W treściach piszemy „w całej Polsce”.
 // Lista = market.service_cities (ta sama kolejność: od najbliższych). Używana przez strony miast /oze/<slug>, stopkę,
 // stronę główną i api/miasto.ts (HTML dla robotów) oraz api/sitemap.ts.
 export type City = { slug: string; name: string; region: string; lat: number; lon: number; km: number };
 export const BASE_CITY = { name: "Nowy Tomyśl", lat: 52.3181, lon: 16.1283 };
-export const SERVICE_RADIUS_KM = 500;
+export const SERVICE_RADIUS_KM = 600;
 export const CITIES: City[] = [
   { slug: "nowy-tomysl", name: "Nowy Tomyśl", region: "wielkopolskie", lat: 52.3181, lon: 16.1283, km: 0 },
   { slug: "grodzisk-wielkopolski", name: "Grodzisk Wielkopolski", region: "wielkopolskie", lat: 52.227, lon: 16.364, km: 19 },
@@ -64,16 +65,28 @@ export const CITIES: City[] = [
   { slug: "kielce", name: "Kielce", region: "świętokrzyskie", lat: 50.8661, lon: 20.6286, km: 350 },
   { slug: "radom", name: "Radom", region: "mazowieckie", lat: 51.4027, lon: 21.1471, km: 359 },
   { slug: "krakow", name: "Kraków", region: "małopolskie", lat: 50.0647, lon: 19.945, km: 365 },
+  { slug: "ostroleka", name: "Ostrołęka", region: "mazowieckie", lat: 53.0855, lon: 21.575, km: 377 },
   { slug: "lomza", name: "Łomża", region: "podlaskie", lat: 53.178, lon: 22.0591, km: 410 },
   { slug: "siedlce", name: "Siedlce", region: "mazowieckie", lat: 52.1676, lon: 22.2902, km: 420 },
   { slug: "tarnow", name: "Tarnów", region: "małopolskie", lat: 50.0121, lon: 20.9858, km: 425 },
+  { slug: "tarnobrzeg", name: "Tarnobrzeg", region: "podkarpackie", lat: 50.573, lon: 21.6794, km: 431 },
+  { slug: "mielec", name: "Mielec", region: "podkarpackie", lat: 50.2871, lon: 21.4239, km: 432 },
   { slug: "nowy-sacz", name: "Nowy Sącz", region: "małopolskie", lat: 49.6249, lon: 20.6915, km: 438 },
+  { slug: "elk", name: "Ełk", region: "warmińsko-mazurskie", lat: 53.8282, lon: 22.3647, km: 449 },
+  { slug: "stalowa-wola", name: "Stalowa Wola", region: "podkarpackie", lat: 50.5827, lon: 22.0532, km: 453 },
   { slug: "lublin", name: "Lublin", region: "lubelskie", lat: 51.2465, lon: 22.5684, km: 459 },
+  { slug: "biala-podlaska", name: "Biała Podlaska", region: "lubelskie", lat: 52.0324, lon: 23.1165, km: 477 },
   { slug: "rzeszow", name: "Rzeszów", region: "podkarpackie", lat: 50.0412, lon: 21.9991, km: 481 },
-  { slug: "bialystok", name: "Białystok", region: "podlaskie", lat: 53.1325, lon: 23.1688, km: 482 }
+  { slug: "bialystok", name: "Białystok", region: "podlaskie", lat: 53.1325, lon: 23.1688, km: 482 },
+  { slug: "krosno", name: "Krosno", region: "podkarpackie", lat: 49.6886, lon: 21.7705, km: 491 },
+  { slug: "suwalki", name: "Suwałki", region: "podlaskie", lat: 54.1114, lon: 22.9312, km: 495 },
+  { slug: "chelm", name: "Chełm", region: "lubelskie", lat: 51.1431, lon: 23.4716, km: 522 },
+  { slug: "zamosc", name: "Zamość", region: "lubelskie", lat: 50.7231, lon: 23.2518, km: 524 },
+  { slug: "sanok", name: "Sanok", region: "podkarpackie", lat: 49.5553, lon: 22.2054, km: 525 },
+  { slug: "przemysl", name: "Przemyśl", region: "podkarpackie", lat: 49.7838, lon: 22.7676, km: 543 }
 ];
 export const SERVICE_REGIONS = Array.from(new Set(CITIES.map((c) => c.region)));
 export function cityBySlug(slug: string): City | undefined { return CITIES.find((c) => c.slug === slug); }
 /** Miejscownik dla nagłówków: „w Poznaniu”. Uproszczona odmiana + wyjątki. */
-const LOC: Record<string, string> = { "Poznań": "Poznaniu", "Zielona Góra": "Zielonej Górze", "Gorzów Wielkopolski": "Gorzowie Wielkopolskim", "Leszno": "Lesznie", "Wrocław": "Wrocławiu", "Bydgoszcz": "Bydgoszczy", "Toruń": "Toruniu", "Szczecin": "Szczecinie", "Kalisz": "Kaliszu", "Konin": "Koninie", "Piła": "Pile", "Legnica": "Legnicy", "Głogów": "Głogowie", "Gniezno": "Gnieźnie", "Ostrów Wielkopolski": "Ostrowie Wielkopolskim", "Świebodzin": "Świebodzinie", "Nowy Tomyśl": "Nowym Tomyślu", "Grodzisk Wielkopolski": "Grodzisku Wielkopolskim", "Wolsztyn": "Wolsztynie", "Międzyrzecz": "Międzyrzeczu", "Szamotuły": "Szamotułach", "Śrem": "Śremie", "Kościan": "Kościanie", "Lubin": "Lubinie", "Nowa Sól": "Nowej Soli", "Żary": "Żarach", "Inowrocław": "Inowrocławiu", "Warszawa": "Warszawie", "Kraków": "Krakowie", "Gdańsk": "Gdańsku", "Gdynia": "Gdyni", "Katowice": "Katowicach", "Lublin": "Lublinie", "Białystok": "Białymstoku", "Kielce": "Kielcach", "Olsztyn": "Olsztynie", "Częstochowa": "Częstochowie", "Radom": "Radomiu", "Płock": "Płocku", "Słupsk": "Słupsku", "Elbląg": "Elblągu", "Tarnów": "Tarnowie", "Bielsko-Biała": "Bielsku-Białej", "Gliwice": "Gliwicach", "Rybnik": "Rybniku", "Włocławek": "Włocławku", "Wałbrzych": "Wałbrzychu", "Jelenia Góra": "Jeleniej Górze", "Grudziądz": "Grudziądzu", "Siedlce": "Siedlcach", "Nowy Sącz": "Nowym Sączu", "Rzeszów": "Rzeszowie", "Łomża": "Łomży", "Piotrków Trybunalski": "Piotrkowie Trybunalskim", "Sieradz": "Sieradzu", "Zgierz": "Zgierzu", "Brzeg": "Brzegu", "Nysa": "Nysie", "Stargard": "Stargardzie", "Kołobrzeg": "Kołobrzegu", "Świnoujście": "Świnoujściu", "Tczew": "Tczewie", "Ciechanów": "Ciechanowie", "Zamość": "Zamościu" };
+const LOC: Record<string, string> = { "Poznań": "Poznaniu", "Zielona Góra": "Zielonej Górze", "Gorzów Wielkopolski": "Gorzowie Wielkopolskim", "Leszno": "Lesznie", "Wrocław": "Wrocławiu", "Bydgoszcz": "Bydgoszczy", "Toruń": "Toruniu", "Szczecin": "Szczecinie", "Kalisz": "Kaliszu", "Konin": "Koninie", "Piła": "Pile", "Legnica": "Legnicy", "Głogów": "Głogowie", "Gniezno": "Gnieźnie", "Ostrów Wielkopolski": "Ostrowie Wielkopolskim", "Świebodzin": "Świebodzinie", "Nowy Tomyśl": "Nowym Tomyślu", "Grodzisk Wielkopolski": "Grodzisku Wielkopolskim", "Wolsztyn": "Wolsztynie", "Międzyrzecz": "Międzyrzeczu", "Szamotuły": "Szamotułach", "Śrem": "Śremie", "Kościan": "Kościanie", "Lubin": "Lubinie", "Nowa Sól": "Nowej Soli", "Żary": "Żarach", "Inowrocław": "Inowrocławiu", "Warszawa": "Warszawie", "Kraków": "Krakowie", "Gdańsk": "Gdańsku", "Gdynia": "Gdyni", "Katowice": "Katowicach", "Lublin": "Lublinie", "Białystok": "Białymstoku", "Kielce": "Kielcach", "Olsztyn": "Olsztynie", "Częstochowa": "Częstochowie", "Radom": "Radomiu", "Płock": "Płocku", "Słupsk": "Słupsku", "Elbląg": "Elblągu", "Tarnów": "Tarnowie", "Bielsko-Biała": "Bielsku-Białej", "Gliwice": "Gliwicach", "Rybnik": "Rybniku", "Włocławek": "Włocławku", "Wałbrzych": "Wałbrzychu", "Jelenia Góra": "Jeleniej Górze", "Grudziądz": "Grudziądzu", "Siedlce": "Siedlcach", "Nowy Sącz": "Nowym Sączu", "Rzeszów": "Rzeszowie", "Łomża": "Łomży", "Piotrków Trybunalski": "Piotrkowie Trybunalskim", "Sieradz": "Sieradzu", "Zgierz": "Zgierzu", "Brzeg": "Brzegu", "Nysa": "Nysie", "Stargard": "Stargardzie", "Kołobrzeg": "Kołobrzegu", "Świnoujście": "Świnoujściu", "Tczew": "Tczewie", "Ciechanów": "Ciechanowie", "Zamość": "Zamościu", "Suwałki": "Suwałkach", "Ełk": "Ełku", "Ostrołęka": "Ostrołęce", "Biała Podlaska": "Białej Podlaskiej", "Chełm": "Chełmie", "Stalowa Wola": "Stalowej Woli", "Tarnobrzeg": "Tarnobrzegu", "Mielec": "Mielcu", "Przemyśl": "Przemyślu", "Krosno": "Krośnie", "Sanok": "Sanoku" };
 export function inCity(name: string) { return `w ${LOC[name] ?? name}`; }

@@ -8,7 +8,7 @@ import { Link } from "react-router-dom";
 import { useSeo } from "../lib/seo";
 import { Ico, IconTile, SECTIONS, RecoCard, HomeFooter, useHomeFeed, usePopularCategories, tileStyle, GOLD_GRAD, CARD } from "../components/home/HomeShared";
 import { SiteHeader } from "../components/home/SiteChrome";
-import { CITIES, SERVICE_RADIUS_KM, SERVICE_REGIONS } from "../lib/cities";
+import { CITIES, SERVICE_REGIONS } from "../lib/cities";
 
 // Pasek działów — tylko istniejące trasy. Po prawej: Dla firm (/sprzedawca/dolacz), Kontakt (/legal/kontakt.html).
 function SunriseArt() {
@@ -89,10 +89,10 @@ export default function Home() {
         </div>
       </section>}
 
-      {/* ── Obszar działania OZE (SEO, SERVICE_RADIUS_KM) ─────────── */}
+      {/* ── Obszar działania (SEO): cała Polska ─────────── */}
       <section className="mt-10" aria-labelledby="area-h">
         <div className="flex items-end justify-between gap-4">
-          <div className="border-l-4 pl-4" style={{ borderColor: "var(--gold)" }}><h2 id="area-h" className="text-2xl font-bold">Sunrise Market w Twoim mieście</h2><p className="mt-0.5 text-sm" style={{ color: "var(--mut)" }}>Ogłoszenia lokalnych sprzedawców i firm w całej Polsce, a do tego fotowoltaika i pompy ciepła marek własnych Sunrise z montażem do {SERVICE_RADIUS_KM} km od Nowego Tomyśla ({SERVICE_REGIONS.length} województw).</p></div>
+          <div className="border-l-4 pl-4" style={{ borderColor: "var(--gold)" }}><h2 id="area-h" className="text-2xl font-bold">Sunrise Market w Twoim mieście</h2><p className="mt-0.5 text-sm" style={{ color: "var(--mut)" }}>Ogłoszenia lokalnych sprzedawców i firm w całej Polsce, a do tego fotowoltaika i pompy ciepła marek własnych Sunrise z montażem w całej Polsce — {CITIES.length} miast, {SERVICE_REGIONS.length} województw.</p></div>
           <Link to="/miasto" className="flex h-10 items-center rounded-xl px-4 text-sm font-semibold" style={CARD}>Wszystkie miasta ›</Link>
         </div>
         <div className="mt-5 flex flex-wrap gap-2">{CITIES.slice(0, 24).map((c) => <Link key={c.slug} to={`/miasto/${c.slug}`} className="flex h-10 items-center rounded-xl px-3 text-sm font-medium transition hover:-translate-y-0.5" style={CARD}>{c.name}</Link>)}<Link to="/miasto" className="flex h-10 items-center rounded-xl px-3 text-sm font-semibold" style={{ color: "var(--gold)" }}>+{CITIES.length - 24} miast ›</Link></div>
@@ -100,7 +100,7 @@ export default function Home() {
 
       {/* ── Sprzedawaj ────────────────────────────────────────── */}
       <section className="mt-10 flex flex-wrap items-center justify-between gap-6 rounded-2xl px-8 py-8" style={{ background: "linear-gradient(135deg,rgba(232,137,26,.16),rgba(232,137,26,.03))", border: "1px solid rgba(245,166,35,.3)" }}>
-        <div className="max-w-2xl"><div className="text-xl font-bold">Sprzedajesz? Wystaw ogłoszenie w kilka minut.</div><p className="mt-1 text-sm leading-6" style={{ color: "var(--mut)" }}>Produkt, usługa, auto albo mieszkanie — pierwszy rok bez opłat. Pieniądze zabezpiecza Ochrona Kupujących, klient płaci Sunrise Pay, kartą albo BLIK-iem i dostaje 3% cashbacku.</p></div>
+        <div className="max-w-2xl"><div className="text-xl font-bold">Sprzedajesz? Wystaw ogłoszenie w kilka minut.</div><p className="mt-1 text-sm leading-6" style={{ color: "var(--mut)" }}>Produkt, usługa, auto albo mieszkanie — pierwszy rok bez opłat. Pieniądze zabezpiecza Ochrona Kupujących, klient płaci Sunrise Pay albo kartą i dostaje 3% cashbacku.</p></div>
         <Link to="/sprzedawca/wystaw" className="flex h-11 items-center rounded-xl px-6 text-sm font-bold shadow-[0_8px_24px_rgba(232,137,26,.3)] transition hover:brightness-105" style={{ background: GOLD_GRAD, color: "#101012" }}>Dodaj ogłoszenie</Link>
       </section>
     </div>

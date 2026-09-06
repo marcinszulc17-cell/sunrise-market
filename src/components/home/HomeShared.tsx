@@ -150,7 +150,7 @@ export function RecoCard({ o, fav, onFav, rate, compact = false, className = "",
       <Link to={href} className="mt-0.5 line-clamp-2 text-sm font-semibold leading-5 focus-visible:underline">{o.title}</Link>
       <div className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-[11px]" style={{ color: "var(--mut)" }}>
         {o.category && <span className="truncate rounded-md px-2 py-0.5" style={{ background: "rgba(255,255,255,.06)", border: "1px solid var(--line)", color: "var(--ink)" }}>{o.category}</span>}
-        <span className="truncate">{o.location ? `📍 ${o.location}${o.radius_km ? ` · +${o.radius_km} km` : ""}` : o.seller ?? ""}</span>
+        <span className="truncate">{o.location ? `📍 ${o.location}${o.radius_km ? o.radius_km >= 600 ? " · cała Polska" : ` · +${o.radius_km} km` : ""}` : o.seller ?? ""}</span>
         {timeAgo(o.created_at) && <span className="ml-auto shrink-0">🕒 {timeAgo(o.created_at)}</span>}
       </div>
     </div>

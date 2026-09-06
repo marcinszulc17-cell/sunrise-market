@@ -78,7 +78,7 @@ export default function Start() {
       {/* Cashback — subtelny widget, stawka z konfiguracji */}
       <section className="mt-3 flex items-center gap-3 rounded-2xl p-4" style={{ background: "linear-gradient(135deg,rgba(232,137,26,.16),rgba(232,137,26,.04))", border: "1px solid rgba(232,137,26,.35)" }}>
         <IconTile name="sun" size={44} />
-        <div className="min-w-0 flex-1"><div className="font-semibold">Kupuj i zyskuj cashback {pct}%</div><p className="text-xs" style={{ color: "var(--mut)" }}>Przy każdej płatności — portfelem Sunrise Pay, kartą albo BLIK-iem. Zakupy objęte Ochroną Kupujących.</p></div>
+        <div className="min-w-0 flex-1"><div className="font-semibold">Kupuj i zyskuj cashback {pct}%</div><p className="text-xs" style={{ color: "var(--mut)" }}>Przy każdej płatności — portfelem Sunrise Pay albo kartą. Zakupy objęte Ochroną Kupujących.</p></div>
         <Link to={authed ? "/portfel" : `/login?next=${encodeURIComponent("/portfel")}`} className="grid h-11 w-11 shrink-0 place-items-center rounded-xl" style={{ background: "var(--header)", border: "1px solid var(--line)" }} aria-label="Portfel Sunrise Pay">›</Link>
       </section>
 
