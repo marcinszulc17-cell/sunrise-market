@@ -5,23 +5,21 @@ export function isHeicUrl(url: string | null | undefined): boolean {
 }
 
 /**
- * Keep the original Storage URL in the database, but render HEIC/HEIF files
- * through Supabase Image Transformations so browsers receive a web-friendly image.
- * A square contain box preserves the whole frame. Render dimensions are capped
- * so fullscreen zoom stays responsive on mobile devices while keeping useful detail.
+ * Zdjęcia ze Storage serwujemy przez transformację Supabase (/render/image):
+ *  • przekodowuje formaty, których przeglądarki nie wyświetlają (HEIC/HEIF z iPhone'a),
+ *  • zmniejsza plik do potrzebnego rozmiaru (miniatura nie ciągnie 3 MB oryginału).
+ * Adres w bazie zostaje oryginalny; tu tylko budujemy adres do wyświetlenia.
  */
 export function displayImageUrl(url: string | null | undefined, width = 1600, height?: number): string {
   if (!url) return "";
-  if (!isHeicUrl(url)) return url;
-  if (!url.includes("/storage/v1/object/public/")) return url;
+  const isObject = url.includes("/storage/v1/object/public/");
+  const isRender = url.includes("/storage/v1/render/image/public/");
+  if (!isObject && !isRender) return url;
 
-  const rendered = url.replace(
-    "/storage/v1/object/public/",
-    "/storage/v1/render/image/public/",
-  );
   const maxRender = 1800;
   const w = Math.min(maxRender, Math.max(64, Math.round(width)));
-  const h = Math.min(maxRender, Math.max(64, Math.round(height ?? width)));
-  const separator = rendered.includes("?") ? "&" : "?";
-  return `${rendered}${separator}width=${w}&height=${h}&resize=contain&quality=84`;
+  const base = (isObject ? url.replace("/storage/v1/object/public/", "/storage/v1/render/image/public/") : url).split("?")[0];
+  const q = new URLSearchParams({ width: String(w), quality: "84" });
+  if (height) { q.set("height", String(Math.min(maxRender, Math.max(64, Math.round(height))))); q.set("resize", "contain"); }
+  return `${base}?${q}`;
 }

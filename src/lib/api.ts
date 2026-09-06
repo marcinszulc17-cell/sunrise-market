@@ -425,13 +425,41 @@ export async function createOffer(args: { title: string; description: string; pr
   if (error) throw error;
   return data as string;
 }
-// Upload zdjęcia produktu do Storage (publiczny bucket) → zwraca publiczny URL
+// Upload zdjęcia produktu do Storage (publiczny bucket) → zwraca adres przez /render/image.
+// 2026-09-06: zdjęcia z iPhone'a (HEIC) nie wyświetlały się w przeglądarkach poza Safari. Dwa zabezpieczenia:
+//  1) jeśli przeglądarka umie odczytać plik — zmniejszamy do 2000 px i zapisujemy jako JPEG (mniejszy, uniwersalny),
+//  2) adres zawsze idzie przez transformację Supabase (/render/image), która przekodowuje także HEIC do JPEG.
+const IMG_BUCKET = "product-images";
+/** Publiczny adres zdjęcia przez transformację (działa dla HEIC/HEIF; szerokość i kadr wg potrzeby). */
+export function productImageUrl(path: string, opts?: { width?: number; height?: number; cover?: boolean }): string {
+  const base = supabase.storage.from(IMG_BUCKET).getPublicUrl(path).data.publicUrl.replace("/storage/v1/object/public/", "/storage/v1/render/image/public/");
+  const q = new URLSearchParams({ width: String(opts?.width ?? 1600), quality: "82" });
+  if (opts?.height) { q.set("height", String(opts.height)); if (opts.cover !== false) q.set("resize", "cover"); }
+  return `${base}?${q}`;
+}
+/** Zmniejszenie i konwersja do JPEG w przeglądarce; gdy się nie uda (np. HEIC w Chrome) — wysyłamy oryginał. */
+async function toJpeg(file: File, maxSide = 2000): Promise<{ blob: Blob; ext: string }> {
+  try {
+    if (typeof createImageBitmap !== "function") throw new Error("no bitmap");
+    const bmp = await createImageBitmap(file);
+    const scale = Math.min(1, maxSide / Math.max(bmp.width, bmp.height));
+    const w = Math.max(1, Math.round(bmp.width * scale)), h = Math.max(1, Math.round(bmp.height * scale));
+    const canvas = document.createElement("canvas"); canvas.width = w; canvas.height = h;
+    const ctx = canvas.getContext("2d"); if (!ctx) throw new Error("no ctx");
+    ctx.drawImage(bmp, 0, 0, w, h); bmp.close?.();
+    const blob = await new Promise<Blob | null>((res) => canvas.toBlob(res, "image/jpeg", 0.85));
+    if (!blob) throw new Error("no blob");
+    return { blob, ext: "jpg" };
+  } catch {
+    return { blob: file, ext: (file.name.split(".").pop() || "jpg").toLowerCase().replace(/[^a-z0-9]/g, "") || "jpg" };
+  }
+}
 export async function uploadProductImage(file: File): Promise<string> {
-  const ext = file.name.split(".").pop() || "jpg";
+  const { blob, ext } = await toJpeg(file);
   const path = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`;
-  const { error } = await supabase.storage.from("product-images").upload(path, file, { upsert: false });
+  const { error } = await supabase.storage.from(IMG_BUCKET).upload(path, blob, { upsert: false, contentType: blob.type || undefined });
   if (error) throw error;
-  return supabase.storage.from("product-images").getPublicUrl(path).data.publicUrl;
+  return productImageUrl(path);
 }
 // ŻYWE saldo Sunrise Pay z MySunrise (server-to-server, źródło prawdy)
 export type WalletLive = { linked: boolean; balance: number; points: number; gold: number | null; currency: string };

@@ -37,6 +37,9 @@ pierwszeństwo przy każdej zmianie kodu. Nie wolno ich naruszać ani obchodzić
   `pay_subscriptions.annual_fee`).
 - Wybór poziomu: `/sprzedawca/dolacz`. Prowizja platformy: **7,9%** (Sunrise Pay),
   **12,9%** (Stripe). Akceptacja regulaminów wymagana przy aktywacji.
+- **Metodę płatności wybiera KUPUJĄCY, nie sprzedawca** (decyzja właściciela 2026-09-06): sprzedawca nie może wyłączyć
+  karty ani portfela — każdy sprzedawca przyjmuje obie metody, różni się tylko prowizja. Nie budujemy przełącznika
+  „akceptuję tylko X” (blokowałby część klientów i rozbijał koszyk z wieloma sprzedawcami).
 - Subskrypcje produktowe (np. Protect Plus): zawsze **miesięczne, płatne z góry,
   z ciągłością** (`shop_products.subscription_interval` → `attributes.subscription`).
 - Sekret `SUNRISE_MARKET_SERVICE_TOKEN`: gdy brak w env, funkcje czytają
@@ -190,6 +193,16 @@ pierwszeństwo przy każdej zmianie kodu. Nie wolno ich naruszać ani obchodzić
   `attributes.service_radius_km` + `service_lat/lon` geokodowane z miejscowości przez Nominatim) — wtedy jego oferta trafia
   na strony miast i do filtra lokalizacji w promieniu.
 - W treściach o płatności piszemy „portfel Sunrise Pay lub karta” — bez BLIK/P24 (§1).
+
+### Zdjęcia ofert (2026-09-06)
+- Zdjęcia trzymamy w buckecie `product-images`; **do wyświetlania zawsze przez `/storage/v1/render/image/public/...`**
+  (`src/lib/imageUrl.ts` → `displayImageUrl(url, width, height?)`): transformacja zmniejsza plik i przekodowuje formaty,
+  których przeglądarki nie znają. **HEIC/HEIF z iPhone'a nie wyświetla się nigdzie poza Safari** — dlatego
+  `uploadProductImage` (api.ts) najpierw próbuje przekodować plik w przeglądarce (canvas → JPEG, maks. 2000 px),
+  a adres i tak zwraca przez `/render/image` (`productImageUrl`). Edge fn `heic-to-jpg` (auth X-Sunrise-Service-Token)
+  konwertuje zaległe pliki HEIC w bazie na `.jpg` i podmienia adresy (uruchomiona 2026-09-06: 7 plików Forda).
+- `market.offer_images(p_offer)` zwraca główne zdjęcie **bez kadrowania** (`?width=1600&quality=82`), żeby galeria nie
+  pokazywała przyciętego kadru z karty (karty nadal używają `offers.image_url` z `resize=cover`).
 
 ## 13. Wynajem na dni — umowa, protokół „na żywo”, zegarek (decyzje właściciela 2026-09-06)
 - **Umowa najmu akceptowana na początku, w momencie zapłaty z góry razem z kaucją.** `src/lib/rentalAgreement.ts` (wersja `RENTAL_AGREEMENT_VERSION`, tekst rygorystyczny — wzór bez prawnika, do sprawdzenia). W `BookingPurchaseModal` klient podaje dane najemcy (imię, telefon, dokument; dla pojazdu prawo jazdy + od roku) i zaznacza akceptację → `market.accept_rental_agreement(booking, wersja, sha256 tekstu, renter, UA)` → `market.booking_agreements`. Edge fn `checkout` odrzuca rezerwację dobową bez zaakceptowanej umowy. Podgląd: `market.my_rental_agreement` (klient i sprzedawca) — `RentalAgreementBadge`.
