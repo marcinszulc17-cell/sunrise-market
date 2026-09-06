@@ -41,7 +41,7 @@ export default function Start() {
       <SearchBox value={q} onChange={setQ} onSubmit={(v) => navigate(v ? `/szukaj?q=${encodeURIComponent(v)}` : "/szukaj")} className="mt-4 flex items-center gap-1 rounded-2xl focus-within:shadow-[0_0_0_2px_rgba(245,166,35,.35)]" style={CARD} />
       {/* Hero (grafika właściciela 2026-09-06 — ta sama, co na dużym ekranie; cały obrazek, bez przycinania napisów) */}
       <Link to="/szukaj" className="mt-3 block overflow-hidden rounded-2xl" style={{ border: "1px solid var(--line)", background: "#0b0b0d" }} aria-label="Wszystko, czego potrzebujesz w jednym miejscu — przeglądaj oferty">
-        <picture><source srcSet="/hero/home-hero.webp" type="image/webp" /><img src="/hero/home-hero.jpg" alt="Sunrise Market — zakupy, rezerwacje, nieruchomości, motoryzacja, usługi, OZE i energia" width={1728} height={770} className="block h-auto w-full" fetchPriority="high" decoding="async" draggable={false} /></picture>
+        <picture><source srcSet="/hero/home-hero-mobile.webp" type="image/webp" /><img src="/hero/home-hero-mobile.jpg" alt="Sunrise Market — zakupy, rezerwacje, nieruchomości, motoryzacja, usługi, OZE i energia" width={1716} height={766} className="block h-auto w-full" fetchPriority="high" decoding="async" draggable={false} /></picture>
       </Link>
       <p className="mt-3 text-center text-[11px] font-semibold tracking-[.26em]" style={{ color: "var(--gold)" }}>KUPUJ. REZERWUJ. ZARABIAJ.</p>
 
