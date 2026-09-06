@@ -1,5 +1,6 @@
 import { CSSProperties, FormEvent, useEffect, useMemo, useState } from "react";
 import { supabase } from "../lib/supabase";
+import { loginWithPasskey, passkeyLabel, passkeysAvailable } from "../lib/passkeys";
 
 /**
  * Ekran logowania Sunrise Market.
@@ -39,6 +40,11 @@ const LOGIN_CSS = `.sl-root{position:relative;min-height:100dvh;overflow:hidden;
 .sl-btn:hover{filter:brightness(1.08)}
 .sl-btn:disabled{opacity:.6;cursor:default}
 .sl-err{margin-top:14px;border-radius:14px;padding:11px 14px;font-size:13px;background:rgba(239,68,68,.12);border:1px solid rgba(239,68,68,.28);color:#fecaca}
+.sl-bio{margin-top:12px;width:100%;height:50px;border-radius:14px;font-size:15px;font-weight:700;color:#fff;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.18);cursor:pointer;font-family:inherit;display:flex;align-items:center;justify-content:center;gap:10px}
+.sl-bio:hover{background:rgba(255,255,255,.13)}
+.sl-bio:disabled{opacity:.6;cursor:default}
+.sl-or{display:flex;align-items:center;gap:10px;margin-top:14px;font-size:12px;color:rgba(255,255,255,.4)}
+.sl-or:before,.sl-or:after{content:"";flex:1;height:1px;background:rgba(255,255,255,.12)}
 .sl-foot{margin-top:14px;text-align:center;font-size:12.5px;color:rgba(255,255,255,.45)}
 @media (min-width:640px){
 .sl-banner{padding:0 clamp(16px,4vw,52px)}
@@ -84,6 +90,13 @@ function EyeIcon({ off }: { off: boolean }) {
   );
 }
 
+function FaceIcon() {
+  return <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    <path d="M4 8V6a2 2 0 0 1 2-2h2M16 4h2a2 2 0 0 1 2 2v2M20 16v2a2 2 0 0 1-2 2h-2M8 20H6a2 2 0 0 1-2-2v-2" />
+    <path d="M9 10h.01M15 10h.01M12 10v3.5a1 1 0 0 1-1 1" /><path d="M9 15.5c.8.9 1.8 1.4 3 1.4s2.2-.5 3-1.4" />
+  </svg>;
+}
+
 export default function Login() {
   const next = useMemo(() => safeNext(), []);
   const [email, setEmail] = useState("");
@@ -92,6 +105,23 @@ export default function Login() {
   const [remember, setRemember] = useState(true);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [bio, setBio] = useState(false);
+  const bioLabel = useMemo(() => passkeyLabel(), []);
+  useEffect(() => { passkeysAvailable().then(setBio); }, []);
+
+  // Face ID / Touch ID (passkey) — bez hasła, to samo konto Sunrise (decyzja właściciela 2026-09-06)
+  async function loginBio() {
+    if (busy) return;
+    setBusy(true); setError(null);
+    try {
+      const { email: e } = await loginWithPasskey(email.trim() || undefined);
+      try { if (remember) window.localStorage.setItem(REMEMBER_KEY, e); } catch { /* ignorujemy */ }
+      window.location.replace(next);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err));
+      setBusy(false);
+    }
+  }
 
   useEffect(() => {
     try {
@@ -195,6 +225,13 @@ export default function Login() {
             <button className="sl-btn" type="submit" disabled={busy}>
               {busy ? "Logowanie…" : "Zaloguj się"}
             </button>
+
+            {bio && <>
+              <div className="sl-or">albo</div>
+              <button type="button" className="sl-bio" disabled={busy} onClick={loginBio} aria-label={`Zaloguj przez ${bioLabel}`}>
+                <FaceIcon /> Zaloguj przez {bioLabel}
+              </button>
+            </>}
 
             <div className="sl-foot">Jedno konto Sunrise działa w całym ekosystemie.</div>
           </form>
