@@ -1,3 +1,4 @@
+import { ProductSkeleton } from "../components/Skeleton";
 import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
 import ShareOfferButton from "../components/ShareOfferButton";
 import MessageSellerButton from "../components/MessageSellerButton";
@@ -122,7 +123,7 @@ export default function SpecializedProduct() {
     setLeadBusy(false); if (error) { setLeadError(error.message); return; } setLeadDone(true);
   }
 
-  if (loading) return <main className="min-h-screen px-4 py-10" style={{ background: "var(--bg)", color: "var(--mut)" }}>Ładowanie…</main>;
+  if (loading) return <ProductSkeleton />;
   if (err || !o) return <main className="min-h-screen px-4 py-10" style={{ background: "var(--bg)", color: "var(--ink)" }}>Nie udało się wczytać oferty.</main>;
 
   return <div className="min-h-screen" style={{ background: "var(--bg)", color: "var(--ink)" }}>

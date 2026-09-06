@@ -62,10 +62,21 @@ export async function similarOffers(offerId: string, limit = 8) {
   return (data ?? []).map((r: any) => (typeof r === "string" ? JSON.parse(r) : r));
 }
 // Szczegóły jednej oferty (RPC get_offer — security definer, omija RLS)
+// Oferta: online → RPC (i kopia do cache SW, żeby ostatnio oglądane działały offline); offline → kopia z cache SW.
 export async function getOffer(id: string) {
-  const { data, error } = await supabase.rpc("get_offer", { p_id: id });
-  if (error) throw error;
-  return (data && data[0]) ?? null;
+  try {
+    const { data, error } = await supabase.rpc("get_offer", { p_id: id });
+    if (error) throw error;
+    const row = (data && data[0]) ?? null;
+    if (row) { try { navigator.serviceWorker?.controller?.postMessage({ type: "cache-offer", id, payload: row }); } catch { /* bez SW */ } }
+    return row;
+  } catch (e) {
+    if (typeof navigator !== "undefined" && navigator.onLine === false && "caches" in window) {
+      const hit = await caches.open("sunrise-market-data-v1").then((c) => c.match(`/__offer/${id}`)).catch(() => null);
+      if (hit) return await hit.json();
+    }
+    throw e;
+  }
 }
 // Galeria zdjęć oferty (główne + dodatkowe)
 export async function offerImages(id: string): Promise<string[]> {

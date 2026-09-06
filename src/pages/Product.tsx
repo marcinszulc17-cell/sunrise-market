@@ -1,3 +1,4 @@
+import { Skeleton } from "../components/Skeleton";
 import { useEffect, useState } from "react";
 import ShareOfferButton from "../components/ShareOfferButton";
 import MessageSellerButton from "../components/MessageSellerButton";
@@ -114,7 +115,7 @@ export default function Product() {
     <SiteHeader back active={o?.category_slug?.startsWith("oze") ? "energy" : o?.category_slug?.startsWith("uslugi") ? "services" : "shop"} />
 
     <main className="mx-auto max-w-[1440px] px-4 py-5 sm:px-6 xl:px-10">
-      {loading && <p style={{ color: "var(--mut)" }}>Ładowanie…</p>}
+      {loading && <div className="mt-5 grid gap-8 lg:grid-cols-[minmax(0,1.15fr)_minmax(0,1fr)]" aria-busy="true"><Skeleton className="aspect-[4/3] w-full rounded-2xl" /><div className="space-y-3"><Skeleton className="h-8 w-3/4" /><Skeleton className="h-10 w-40" /><Skeleton className="h-24" /><Skeleton className="h-12" /></div></div>}
       {err && <p className="text-rose-400">Błąd: {err}</p>}
       {!loading && !o && <p style={{ color: "var(--mut)" }}>Nie znaleziono produktu. <a href="/" className="text-amber-400 underline">Wróć do sklepu</a>.</p>}
 

@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&display=swap');
+/* Fonty ładowane nieblokująco z index.html (preconnect + media=print→all) — decyzja 2026-09-06: Lighthouse/LCP. */
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -179,3 +179,12 @@ img[src*="/storage/v1/render/image/public/"][src*="resize=contain"] {
 /* Logo bez białego tła: jasna wersja (kremowa) na ciemnym motywie, granatowy oryginał na jasnym. */
 .brand-logo { display: block; }
 html[data-theme="light"] .brand-logo { content: url("/logo-sunrise-market-navy.png"); }
+
+/* Przejścia między stronami (View Transitions API, nawigacje pełne — window.location) + wejście widoku w SPA. */
+@view-transition { navigation: auto; }
+::view-transition-old(root) { animation: 120ms ease-out both sm-fade-out; }
+::view-transition-new(root) { animation: 180ms ease-out both sm-fade-in; }
+@keyframes sm-fade-in { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+@keyframes sm-fade-out { from { opacity: 1; } to { opacity: 0; } }
+.page-enter { animation: 180ms ease-out both sm-fade-in; }
+@media (prefers-reduced-motion: reduce) { ::view-transition-old(root), ::view-transition-new(root), .page-enter { animation: none; } }

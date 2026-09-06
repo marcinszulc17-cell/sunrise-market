@@ -1,3 +1,4 @@
+import { ProductSkeleton } from "../components/Skeleton";
 import { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
 import { getOffer, countOfferView } from "../lib/api";
@@ -51,7 +52,7 @@ export default function ProductRouter() {
   useSeo(seoOffer?.title||"Oferta Sunrise Market",seoDescription,id?`/produkt/${id}`:"");
   useProductJsonLd(seoOffer&&id?{id,name:seoOffer.title,price:Number(seoOffer.price_gross||0),image:seoOffer.image_url||null,rating:Number(seoOffer.rating||0),reviews:Number(seoOffer.reviews||0)}:null);
 
-  if (kind === null) return <main className="min-h-screen px-4 py-10" style={{ background: "var(--bg)", color: "var(--mut)" }}>Ładowanie…</main>;
+  if (kind === null) return <ProductSkeleton />;
   if (kind === "private") return <><PrivateProduct /><MarketFooter /></>;
   return <>
     {kind === "special" ? <SpecializedProduct /> : <Product />}
