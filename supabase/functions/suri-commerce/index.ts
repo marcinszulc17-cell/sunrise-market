@@ -54,9 +54,45 @@ async function llm(sb: any, system: string, turns: Turn[], opts: { json?: boolea
   return { text: null, error: "ai_unavailable" };
 }
 
-function fallbackReply(offers: any[], message: string): string {
-  if (offers.length) return `Znalazłem ${offers.length === 1 ? "jedną ofertę" : `${offers.length} oferty`} pasujące do „${message.slice(0, 60)}” — zobacz poniżej. Chcesz zawęzić (budżet, miasto, kategoria)?`;
-  return `Nie mam jeszcze oferty na „${message.slice(0, 60)}”. Spróbuj inaczej opisać, wybierz kategorię w wyszukiwarce albo zapisz wyszukiwanie — dam znać, gdy coś się pojawi.`;
+// Słowa kluczowe → kategoria / tryb / budżet (bez AI). Slugi = market.categories.
+const CAT_SLUGS = { car: "motoryzacja", home: "nieruchomosci", oze: "oze-i-energia", services: "uslugi-i-reklama", stay: "noclegi", garden: "dom-i-ogrod", electronics: "elektronika" } as const;
+const STOP = new Set(["szukam", "szukać", "chcę", "chce", "chciałbym", "chciałabym", "potrzebuję", "potrzebuje", "poproszę", "prosze", "proszę", "jakieś", "jakiś", "jakaś", "coś", "cos", "dla", "mnie", "sobie", "może", "moze", "na", "do", "za", "od", "w", "z", "i", "o", "a", "tys", "zł", "zl", "pln", "tysięcy", "tysiecy", "tanio", "tanie", "taniego", "okolicy", "okolice"]);
+function parseIntent(message: string): { query: string; budget: number | null; category_slug: string | null; mode: string | null } {
+  const t = ` ${String(message ?? "").toLowerCase()} `;
+  let category_slug: string | null = null, mode: string | null = null, budget: number | null = null;
+  if (/\b(auto|auta|aut|samoch|osobów|kombi|suv|hatchback|sedan|motocykl|skuter|bmw|audi|ford|toyota|skoda|volkswagen|vw|opel|renault|hyundai|kia|mercedes|fiat|peugeot|citroen|nissan|mazda|honda|volvo)/.test(t)) category_slug = CAT_SLUGS.car;
+  if (/\b(mieszkani|dom(u|ek|ku|y)?\b|działk|dzialk|lokal|kawalerk|nieruchom|apartament)/.test(t)) category_slug = CAT_SLUGS.home;
+  if (/\b(fotowolta|panele|panel pv|\bpv\b|pomp[aęy] ciep|magazyn energii|falownik|kocioł|kociol|pellet|termostat|oze|energi)/.test(t)) category_slug = CAT_SLUGS.oze;
+  if (/\b(remont|hydraulik|elektryk|transport|przeprowadzk|sprząta|sprzata|fryzjer|kosmety|masaż|masaz|korepety|naprawa|serwis|montaż|montaz|fachow|wykonawc)/.test(t)) category_slug = category_slug ?? CAT_SLUGS.services;
+  if (/\b(nocleg|hotel|pensjonat|apartament na|pokój|pokoj|kwater)/.test(t)) category_slug = CAT_SLUGS.stay;
+  if (/\b(wynaj|wypożycz|wypozycz|na weekend|na dzień|na dzien|na dni|na tydzień|na tydzien|na dobę|na dobe)/.test(t)) mode = "daily";
+  else if (/\b(termin|umów|umow|wizyt|zapisać|zapisac|rezerwac)/.test(t) && category_slug !== CAT_SLUGS.car) mode = "appointment";
+  else if (/\b(kupi[ćc]|kupno|kupię|kupie|zakup)/.test(t)) mode = "purchase";
+  const m = t.match(/(?:do|za|max(?:ymalnie)?|budżet|budzet|około|okolo)?\s*(\d{1,3}(?:[ \.]\d{3})+|\d+(?:[,.]\d+)?)\s*(tys\.?|tysięcy|tysiecy|k\b|zł|zl|pln)/);
+  if (m) { const n = Number(m[1].replace(/[ \.]/g, "").replace(",", ".")); if (Number.isFinite(n)) budget = /^(tys|tysi|k)/.test(m[2]) ? n * 1000 : n; }
+  if (!mode && budget != null && budget >= 1000) mode = "purchase"; // „auto do 20 tys.” = zakup, nie wynajem za dobę
+  const query = t.replace(/[^\p{L}\p{N}\s]/gu, " ").split(/\s+/).filter((w) => w && !STOP.has(w) && !/^\d+$/.test(w)).slice(0, 5).join(" ");
+  return { query, budget, category_slug, mode };
+}
+
+// Odpowiedzi na częste pytania bez AI (te same fakty, co w SYSTEM).
+const FAQ: [RegExp, string][] = [
+  [/ochron[aęy] kupuj|bezpiecz|oszust|gwarancj/i, "Ochrona Kupujących: każda transakcja idzie przez Sunrise — sprzedawca dostaje pieniądze dopiero po tym, jak potwierdzisz odbiór (albo automatycznie po 14 dniach). Jeśli coś jest nie tak, otwierasz spór w Zamówieniach i rozstrzyga go operator. 🛡"],
+  [/cashback|punkt|zwrot.*(%|procent)/i, "Cashback to 3% wartości każdego zakupu — wraca na Twój portfel Sunrise Pay przy każdej metodzie płatności (portfel albo karta) i możesz go wydać na kolejne zakupy."],
+  [/płatno|platno|zapłac|zaplac|karta|kart[ąa]|blik|przelew|portfel/i, "Płacisz portfelem Sunrise Pay (promowany) albo kartą przez Stripe. Przy każdej metodzie dostajesz 3% cashbacku, a pieniądze trafiają do sprzedawcy dopiero po Twoim odbiorze."],
+  [/dostaw|wysył|wysyl|kurier|przesył|przesyl|odbiór osob|odbior osob/i, "Dostawa kurierem (darmowa od 149 zł) albo odbiór osobisty u sprzedawcy, jeśli go włączył — wybierasz w koszyku. Status przesyłki śledzisz w Zamówieniach."],
+  [/wynaj|kaucj|umow[aęy] najmu|protok/i, "Wynajem na dni: wybierasz okres od–do, płacisz z góry razem z kaucją i akceptujesz umowę najmu. Przy wydaniu i zwrocie jest protokół ze zdjęciami i kod SMS/QR, a kaucja wraca po zwrocie."],
+  [/sprzeda(wa|ć|c)|wystaw|ogłoszeni|ogloszeni|prowizj|partner handlowy/i, "Sprzedawać może każdy: Sprzedawca (bez NIP, 299 zł/rok) albo Partner Handlowy (firma, 499 zł/rok) — pierwszy rok gratis. Prowizja 7,9% przy Sunrise Pay i 12,9% przy karcie. Zacznij od „Dodaj ogłoszenie”."],
+  [/zwrot|reklamac|odst[ąa]pi/i, "Zwrot lub reklamację zgłaszasz w Zamówieniach (spór w oknie Ochrony Kupujących). Operator rozstrzyga i w razie potrzeby zwraca pieniądze na kartę albo portfel Sunrise Pay."],
+  [/face id|touch id|logow|hasł|haslo|konto/i, "Jedno konto Sunrise (MySunrise) działa w całym ekosystemie. W Moje konto → Ustawienia możesz włączyć logowanie Face ID / Touch ID."],
+];
+function faqReply(message: string): string | null { for (const [re, a] of FAQ) if (re.test(message)) return a; return null; }
+
+function fallbackReply(offers: any[], message: string, intent?: any): string {
+  if (!offers.length && !intent?.category_slug && !intent?.mode) { const f = faqReply(message); if (f) return f; }
+  const what = [intent?.mode === "daily" ? "wynajem" : intent?.mode === "appointment" ? "usługa z terminem" : null, intent?.category_slug ? ({ motoryzacja: "motoryzacja", nieruchomosci: "nieruchomości", "oze-i-energia": "OZE i energia", "uslugi-i-reklama": "usługi", noclegi: "noclegi" } as Record<string, string>)[intent.category_slug] ?? intent.category_slug : null, intent?.budget ? `do ${Math.round(intent.budget).toLocaleString("pl-PL")} zł` : null].filter(Boolean).join(", ");
+  if (offers.length) return `Rozumiem: ${what || `„${message.slice(0, 60)}”`}. Mam ${offers.length === 1 ? "jedną ofertę" : `${offers.length} oferty`} — zobacz poniżej. Chcesz zawęzić (budżet, miasto, rocznik)?`;
+  return `Rozumiem: ${what || `„${message.slice(0, 60)}”`} — na razie nie mam takiej oferty. Zmień kryteria albo zapisz wyszukiwanie w wyszukiwarce, a dam znać, gdy coś się pojawi.`;
 }
 
 Deno.serve(async (req) => {
@@ -110,17 +146,19 @@ Deno.serve(async (req) => {
     if (user_id) {
       try { const { data: hist } = await sb.rpc("buyer_pref_categories", { p_user: user_id, p_limit: 5 }); if (hist?.length) prefs = `Preferencje klienta (ostatnie kategorie): ${hist.map((h: any) => h.name).join(", ")}.`; } catch { /* brak */ }
     }
-    // intencja (budżet / kategoria) — przez AI, a bez AI: prosty parser kwoty
-    let intent: any = { query: message };
-    const im = await llm(sb, 'Wyciągnij z wiadomości JSON: {"query": string, "budget": number|null, "category_slug": string|null}. Zwróć TYLKO JSON.', [{ role: "user", content: message }], { json: true, max_tokens: 120, temperature: 0 });
-    if (im.text) { try { intent = { ...intent, ...JSON.parse(im.text.replace(/```json|```/g, "")) }; } catch { /* zostaje query */ } }
-    else { const m = message.match(/(\d[\d\s]{2,})\s*(zł|tys)/i); if (m) intent.budget = Number(m[1].replace(/\s/g, "")) * (/tys/i.test(m[2]) ? 1000 : 1); }
-    const { data: offers } = await sb.rpc("suri_recommend", { p_query: intent.query ?? message, p_budget: intent.budget ?? null, p_category_slug: intent.category_slug ?? null, p_limit: 4 });
+    // intencja (kategoria / tryb / budżet / fraza): najpierw parser słów kluczowych (działa zawsze, także bez AI), potem AI może doprecyzować.
+    let intent: any = parseIntent(message);
+    const im = await llm(sb, `Wyciągnij z wiadomości klienta JSON: {"query": string (2-4 słowa kluczowe produktu, bez „szukam/chcę”), "budget": number|null (zł), "category_slug": ${JSON.stringify(Object.values(CAT_SLUGS))}|null, "mode": "purchase"|"appointment"|"daily"|null (daily = wynajem na dni, appointment = usługa z terminem)}. Zwróć TYLKO JSON.`, [{ role: "user", content: message }], { json: true, max_tokens: 140, temperature: 0 });
+    if (im.text) { try { const j = JSON.parse(im.text.replace(/```json|```/g, "")); intent = { query: j.query || intent.query, budget: j.budget ?? intent.budget, category_slug: j.category_slug ?? intent.category_slug, mode: j.mode ?? intent.mode }; } catch { /* zostaje parser */ } }
+    // Pytanie o zasady (Ochrona Kupujących, cashback, dostawa…) bez kategorii → odpowiedź z FAQ, bez listy ofert.
+    const isQuestion = !intent.category_slug && (/\?/.test(message) || /^\s*(jak|co|czy|ile|gdzie|kiedy|dlaczego|po co)\b/i.test(message));
+    const faq = isQuestion ? faqReply(message) : null;
+    const { data: offers } = faq ? { data: [] as any[] } : await sb.rpc("suri_recommend", { p_query: intent.query || null, p_budget: intent.budget ?? null, p_category_slug: intent.category_slug ?? null, p_limit: 4, p_mode: intent.mode ?? null });
     const list = offers ?? [];
 
     const turns: Turn[] = [...convo, { role: "user", content: `${prefs}\nPytanie klienta: ${message}\nOferty z bazy (użyj tylko tych): ${JSON.stringify(list)}` }];
     const out = await llm(sb, SYSTEM, turns, { max_tokens: 450, temperature: 0.5 });
-    const text = out.text ?? fallbackReply(list, message);
+    const text = out.text ?? faq ?? fallbackReply(list, message, intent);
 
     if (session_id) {
       try {
