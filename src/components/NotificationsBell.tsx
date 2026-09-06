@@ -2,7 +2,8 @@ import { useEffect, useState } from "react";
 import { supabase } from "../lib/supabase";
 import { myNotifications, markNotificationsRead } from "../lib/api";
 
-type N = { id: string; type: string; title: string; body: string; read: boolean; created_at: string };
+type N = { id: string; type: string; title: string; body: string; read: boolean; created_at: string; href?: string; action?: string };
+const ICON: Record<string, string> = { booking: "📅", order_paid: "🧾", new_sale: "💰", order_shipped: "📦", order_item_shipped: "📦", order_ready_for_pickup: "🏪", order_item_handed_over: "🤝", review_request: "⭐", seller_review: "⭐", order_dispute: "⚖️", message: "💬", new_lead: "📩", search: "🔔", price_drop: "📉" };
 
 export default function NotificationsBell() {
   const [authed, setAuthed] = useState(false);
@@ -40,14 +41,18 @@ export default function NotificationsBell() {
           <div className="flex items-center justify-between px-4 py-3 text-sm font-semibold" style={{ borderBottom: "1px solid var(--line)" }}><span>Powiadomienia</span><button type="button" onClick={() => setOpen(false)} aria-label="Zamknij" className="text-base leading-none" style={{ color: "var(--mut)" }}>×</button></div>
           <div className="max-h-96 overflow-y-auto">
             {items.length === 0 && <div className="px-4 py-6 text-sm" style={{ color: "var(--mut)" }}>Brak powiadomień.</div>}
-            {items.map((i) => (
-              <div key={i.id} className="px-4 py-3" style={{ borderBottom: "1px solid var(--line)" }}>
-                <div className="text-sm font-medium">{i.title}</div>
-                <div className="text-xs mt-0.5" style={{ color: "var(--mut)" }}>{i.body}</div>
-                <div className="text-[10px] mt-1" style={{ color: "var(--soft,#5E5E75)" }}>{new Date(i.created_at).toLocaleString("pl-PL")}</div>
-              </div>
+            {items.slice(0, 8).map((i) => (
+              <a key={i.id} href={i.href || "/powiadomienia"} className="flex gap-3 px-4 py-3 transition hover:bg-white/5" style={{ borderBottom: "1px solid var(--line)" }}>
+                <span className="grid h-9 w-9 shrink-0 place-items-center rounded-lg text-base" style={{ background: "var(--glass)" }}>{ICON[i.type] || "🔔"}</span>
+                <span className="min-w-0 flex-1">
+                  <span className="block truncate text-sm font-medium">{i.title}</span>
+                  <span className="mt-0.5 block line-clamp-2 text-xs" style={{ color: "var(--mut)" }}>{i.body}</span>
+                  <span className="mt-1 flex items-center justify-between text-[10px]" style={{ color: "var(--soft,#5E5E75)" }}><span>{new Date(i.created_at).toLocaleString("pl-PL", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}</span>{i.action && <span className="font-semibold" style={{ color: "var(--gold)" }}>{i.action} →</span>}</span>
+                </span>
+              </a>
             ))}
           </div>
+          <a href="/powiadomienia" className="block px-4 py-3 text-center text-sm font-semibold" style={{ color: "var(--gold)", borderTop: "1px solid var(--line)" }}>Wszystkie powiadomienia i akcje →</a>
         </div>
       </>)}
     </div>

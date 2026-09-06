@@ -428,7 +428,7 @@ export default function SellerBookingsManage() {
               const depositBusy = depositBusyId === r.id;
               const refundBusy = refundBusyId === r.id;
               const paidAwaitingApproval = ["held", "pending_payment"].includes(r.status) && !!r.paid_at;
-              return <article id={`booking-${r.id}`} key={r.id} className="scroll-mt-24 rounded-2xl p-5" style={{ background: "var(--glass)", border: "1px solid var(--line)" }}>
+              return <article id={`b-${r.id}`} key={r.id} className="scroll-mt-24 rounded-2xl p-5" style={{ background: "var(--glass)", border: "1px solid var(--line)" }}>
                 <div className="flex flex-wrap items-start justify-between gap-4">
                   <div>
                     <Link to={`/produkt/${r.offer_id}`} className="font-semibold hover:underline">{r.title}</Link>
