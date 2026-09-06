@@ -159,3 +159,29 @@ export function BuyerHandoverCode({ bookingId, phase }: { bookingId: string; pha
     <div className="text-[10px]" style={{ color: "var(--mut)" }}>ważny do {new Date(row.expires_at).toLocaleTimeString("pl-PL", { timeStyle: "short" })}</div>
   </div>;
 }
+
+/** Sprzedawca: kod QR do zeskanowania przez klienta (decyzja właściciela 2026-09-06 — „jak w wypożyczalni hulajnóg”).
+ *  Skan → /odbior/<token> → tożsamość potwierdzona + protokół klienta (zdjęcia, potwierdzenie). Token ważny 15 min. */
+export function HandoverQr({ bookingId, phase, disabled }: { bookingId: string; phase: "handover" | "return"; disabled?: boolean }) {
+  const [png, setPng] = useState<string | null>(null);
+  const [url, setUrl] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState("");
+  async function show() {
+    setBusy(true); setErr("");
+    try {
+      const { data, error } = await supabase.rpc("issue_handover_link", { p_booking: bookingId, p_phase: phase });
+      if (error) throw error;
+      const link = `${window.location.origin}/odbior/${data}`;
+      const QR = await import("qrcode");
+      setPng(await QR.toDataURL(link, { width: 480, margin: 1, color: { dark: "#101012", light: "#ffffff" } }));
+      setUrl(link);
+    } catch (e: any) { setErr(e?.message || "Nie udało się wygenerować kodu QR"); }
+    finally { setBusy(false); }
+  }
+  return <div className="mt-2">
+    {!png ? <button type="button" disabled={disabled || busy} onClick={show} className="w-full rounded-lg px-3 py-2 text-[11px] font-semibold disabled:opacity-50" style={{ border: "1px solid var(--line)" }}>{busy ? "…" : "▦ Pokaż klientowi kod QR (zamiast kodu SMS)"}</button>
+      : <div className="rounded-xl bg-white p-3 text-center text-black"><img src={png} alt="Kod QR do zeskanowania przez klienta" className="mx-auto w-full max-w-[260px]" /><div className="mt-1 text-[11px] font-semibold">Klient skanuje aparatem telefonu</div><div className="text-[10px] text-neutral-500">Ważny 15 min · {phase === "handover" ? "wydanie" : "zwrot"}</div><button type="button" onClick={show} className="mt-1 text-[10px] underline">odśwież</button><input readOnly value={url} className="sr-only" aria-hidden="true" /></div>}
+    {err && <div className="mt-1 text-[11px]" style={{ color: "#f87171" }}>{err}</div>}
+  </div>;
+}
