@@ -24,6 +24,13 @@ function guestSid(): string {
 
 export default function SuriChat({ initialPrompt }: { initialPrompt?: string }) {
   const [open, setOpen] = useState(false);
+  // Ekran startowy na telefonie: przycisk zasłaniał kafel „OZE i Energia” (prawy dolny) — pokazujemy go dopiero po przewinięciu kafli.
+  const [hidden, setHidden] = useState(() => typeof window !== "undefined" && window.location.pathname === "/" && window.innerWidth < 640);
+  useEffect(() => {
+    const check = () => setHidden(window.location.pathname === "/" && window.innerWidth < 640 && window.scrollY < 260);
+    check(); window.addEventListener("scroll", check, { passive: true }); window.addEventListener("popstate", check);
+    return () => { window.removeEventListener("scroll", check); window.removeEventListener("popstate", check); };
+  }, []);
   const [msgs, setMsgs] = useState<Msg[]>([GREETING]);
   const [recs, setRecs] = useState<Rec[]>([]);
   const [input, setInput] = useState("");
@@ -60,7 +67,7 @@ export default function SuriChat({ initialPrompt }: { initialPrompt?: string }) 
   }
 
   return <>
-    <button type="button" onClick={() => setOpen((o) => !o)} aria-label={open ? "Zamknij asystenta" : `${ASSISTANT_NAME} — asystent Suri`} aria-expanded={open}
+    <button type="button" onClick={() => setOpen((o) => !o)} aria-label={open ? "Zamknij asystenta" : `${ASSISTANT_NAME} — asystent Suri`} aria-expanded={open} hidden={hidden && !open}
       className="fixed right-4 z-[45] grid h-14 w-14 place-items-center rounded-full text-black shadow-2xl transition active:scale-95 sm:bottom-6 sm:right-6"
       style={{ bottom: "calc(84px + env(safe-area-inset-bottom))", background: "linear-gradient(135deg,#F5A623,#E8891A)", boxShadow: "0 12px 30px -8px rgba(232,137,26,.75)", border: "2px solid rgba(255,255,255,.35)" }}>
       {open ? <span className="text-2xl leading-none">×</span> : <img src="/sunny/sunny-head.png" alt="" className="h-12 w-12 object-contain drop-shadow" draggable={false} />}
