@@ -432,10 +432,10 @@ export async function createOffer(args: { title: string; description: string; pr
 const IMG_BUCKET = "product-images";
 /** Publiczny adres zdjęcia przez transformację (działa dla HEIC/HEIF; szerokość i kadr wg potrzeby). */
 export function productImageUrl(path: string, opts?: { width?: number; height?: number; cover?: boolean }): string {
+  // Zawsze width + height + resize (przy samym width transformacja gubi proporcje plików HEIC).
   const base = supabase.storage.from(IMG_BUCKET).getPublicUrl(path).data.publicUrl.replace("/storage/v1/object/public/", "/storage/v1/render/image/public/");
-  const q = new URLSearchParams({ width: String(opts?.width ?? 1600), quality: "82" });
-  if (opts?.height) { q.set("height", String(opts.height)); if (opts.cover !== false) q.set("resize", "cover"); }
-  return `${base}?${q}`;
+  const w = opts?.width ?? 1600, h = opts?.height ?? w;
+  return `${base}?width=${w}&height=${h}&resize=${opts?.cover ? "cover" : "contain"}&quality=82`;
 }
 /** Zmniejszenie i konwersja do JPEG w przeglądarce; gdy się nie uda (np. HEIC w Chrome) — wysyłamy oryginał. */
 async function toJpeg(file: File, maxSide = 2000): Promise<{ blob: Blob; ext: string }> {

@@ -195,12 +195,16 @@ pierwszeństwo przy każdej zmianie kodu. Nie wolno ich naruszać ani obchodzić
 - W treściach o płatności piszemy „portfel Sunrise Pay lub karta” — bez BLIK/P24 (§1).
 
 ### Zdjęcia ofert (2026-09-06)
+- **Transformacja Supabase MUSI dostać `width` + `height` + `resize`** (`contain` dla galerii, `cover` dla kart). Przy samym
+  `width` zwraca obraz o zepsutych proporcjach (HEIC 4032×3024 → 2000×4284, JPEG → wąski pasek). Pilnują tego
+  `displayImageUrl` (imageUrl.ts) i `productImageUrl` (api.ts) — nie budujemy adresów `?width=` ręcznie.
 - Zdjęcia trzymamy w buckecie `product-images`; **do wyświetlania zawsze przez `/storage/v1/render/image/public/...`**
   (`src/lib/imageUrl.ts` → `displayImageUrl(url, width, height?)`): transformacja zmniejsza plik i przekodowuje formaty,
   których przeglądarki nie znają. **HEIC/HEIF z iPhone'a nie wyświetla się nigdzie poza Safari** — dlatego
   `uploadProductImage` (api.ts) najpierw próbuje przekodować plik w przeglądarce (canvas → JPEG, maks. 2000 px),
   a adres i tak zwraca przez `/render/image` (`productImageUrl`). Edge fn `heic-to-jpg` (auth X-Sunrise-Service-Token)
-  konwertuje zaległe pliki HEIC w bazie na `.jpg` i podmienia adresy (uruchomiona 2026-09-06: 7 plików Forda).
+  konwertuje zaległe pliki HEIC na `.jpg` (`mode:"convert"`) i robi kopie pod nową nazwą, gdy trzeba ominąć roczny cache CDN
+  (`mode:"revision"` → `<base>-v2.jpg`). Uruchomiona 2026-09-06 dla 7 zdjęć Forda.
 - `market.offer_images(p_offer)` zwraca główne zdjęcie **bez kadrowania** (`?width=1600&quality=82`), żeby galeria nie
   pokazywała przyciętego kadru z karty (karty nadal używają `offers.image_url` z `resize=cover`).
 
