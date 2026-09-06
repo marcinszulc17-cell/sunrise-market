@@ -24,10 +24,10 @@ function guestSid(): string {
 
 export default function SuriChat({ initialPrompt }: { initialPrompt?: string }) {
   const [open, setOpen] = useState(false);
-  // Ekran startowy na telefonie: przycisk zasłaniał kafel „OZE i Energia” (prawy dolny) — pokazujemy go dopiero po przewinięciu kafli.
+  // Ekran startowy na telefonie: przycisk zasłaniał kafel „OZE i Energia” (prawy dolny) — pokazujemy go dopiero po przewinięciu kafli (hero + 3 rzędy ≈ 430 px).
   const [hidden, setHidden] = useState(() => typeof window !== "undefined" && window.location.pathname === "/" && window.innerWidth < 640);
   useEffect(() => {
-    const check = () => setHidden(window.location.pathname === "/" && window.innerWidth < 640 && window.scrollY < 260);
+    const check = () => setHidden(window.location.pathname === "/" && window.innerWidth < 640 && window.scrollY < 430);
     check(); window.addEventListener("scroll", check, { passive: true }); window.addEventListener("popstate", check);
     return () => { window.removeEventListener("scroll", check); window.removeEventListener("popstate", check); };
   }, []);
@@ -67,11 +67,12 @@ export default function SuriChat({ initialPrompt }: { initialPrompt?: string }) 
   }
 
   return <>
-    <button type="button" onClick={() => setOpen((o) => !o)} aria-label={open ? "Zamknij asystenta" : `${ASSISTANT_NAME} — asystent Suri`} aria-expanded={open} hidden={hidden && !open}
+    {/* Uwaga: atrybut hidden nie działa z klasą .grid (Tailwind), dlatego warunkowe renderowanie. */}
+    {!(hidden && !open) && <button type="button" onClick={() => setOpen((o) => !o)} aria-label={open ? "Zamknij asystenta" : `${ASSISTANT_NAME} — asystent Suri`} aria-expanded={open}
       className="fixed right-4 z-[45] grid h-14 w-14 place-items-center rounded-full text-black shadow-2xl transition active:scale-95 sm:bottom-6 sm:right-6"
       style={{ bottom: "calc(84px + env(safe-area-inset-bottom))", background: "linear-gradient(135deg,#F5A623,#E8891A)", boxShadow: "0 12px 30px -8px rgba(232,137,26,.75)", border: "2px solid rgba(255,255,255,.35)" }}>
       {open ? <span className="text-2xl leading-none">×</span> : <img src="/sunny/sunny-head.png" alt="" className="h-12 w-12 object-contain drop-shadow" draggable={false} />}
-    </button>
+    </button>}
 
     {open && <div role="dialog" aria-label={`${ASSISTANT_NAME} — asystent Suri`} className="fixed inset-x-0 z-[46] flex max-h-[78dvh] flex-col overflow-hidden rounded-t-3xl sm:inset-auto sm:!bottom-24 sm:right-6 sm:h-[560px] sm:w-[380px] sm:rounded-3xl" style={{ bottom: "calc(72px + env(safe-area-inset-bottom))", background: "var(--bg)", border: "1px solid var(--line)", boxShadow: "0 30px 80px rgba(0,0,0,.5)" }}>
       <div className="flex items-center gap-3 px-4 py-3" style={{ borderBottom: "1px solid var(--line)" }}>
