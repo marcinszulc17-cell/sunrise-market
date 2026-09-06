@@ -129,8 +129,8 @@ pierwszeństwo przy każdej zmianie kodu. Nie wolno ich naruszać ani obchodzić
 - Wspólne elementy desktop/mobile w `src/components/home/HomeShared.tsx`: ikony SVG, `SECTIONS` (działy i trasy), `RecoCard`,
   `useHomeFeed`, `usePopularCategories`. Nowe sekcje strony głównej budujemy z nich — nie duplikujemy kart/ikon.
 - **Duży ekran sunrisemarket.pl** (> 640 px): `Home.tsx` — premium landing (ciemne tło, złoty akcent): nagłówek z centralną
-  wyszukiwarką → `/szukaj?q=`, menu kategorii (tylko istniejące sekcje), hero „Wszystko, czego potrzebujesz w jednym miejscu.”,
-  6 kafli, „Polecane ogłoszenia” (RPC `recommended_offers` + `home_promoted`, 4 kolumny, ♡ watchlist),
+  wyszukiwarką → `/szukaj?q=`, menu kategorii (tylko istniejące sekcje), hero „Wszystko, czego potrzebujesz w jednym miejscu.” z grafiką właściciela (`public/hero/home-hero.webp/.jpg`, wycięta
+  z makiety 2026-09-06; tekst i przyciski żywe po lewej, gradient), 6 kafli działów (= pasek działów; `SECTIONS` w całości), „Polecane ogłoszenia” (RPC `recommended_offers` + `home_promoted`, 4 kolumny, ♡ watchlist),
   „Popularne kategorie” (kategorie główne z `category_counts` > 0), stopka z realnymi stronami `/legal/*`.
   Pełny katalog z filtrami/banerami/Strefą Energii (`MarketEnhanced`) jest pod `/sklep`; `/?q=` nadal otwiera katalog.
   Bez lokalizacji użytkownika, „O nas” i social — takich funkcji/stron nie ma; nie wymyślamy ich.

@@ -1,6 +1,6 @@
 // Strona główna na dużym ekranie sunrisemarket.pl — wg wzoru właściciela (2026-09-05): prawie czarne tło, akcent amber,
-// nagłówek z centralną wyszukiwarką, pasek działów, hero z grafiką „wschód słońca” (SVG, bez zdjęć stockowych),
-// 5 kafli działów w rzędzie, „Polecane ogłoszenia” (4 kolumny), „Popularne kategorie”, zwięzła stopka.
+// nagłówek z centralną wyszukiwarką, pasek działów, hero z grafiką właściciela (2026-09-06: public/hero/home-hero.webp — miasto, dom,
+// auto, PV, wiatrak, 6 kafli działów; tekst i przyciski nadal żywe, po lewej; gradient chroni czytelność), 6 kafli działów w rzędzie, „Polecane ogłoszenia” (4 kolumny), „Popularne kategorie”, zwięzła stopka.
 // Wyłącznie warstwa UI — dane z istniejących RPC przez HomeShared; pełny katalog (filtry, banery, Strefa Energii) pod /sklep.
 // Na telefonie (≤ 640 px) pokazywany jest Start.tsx. Świadomie pominięte (brak takich funkcji/stron): lokalizacja użytkownika,
 // „Porady i artykuły”, „Pomoc”, „O nas”, social media, „x godz. temu” (RPC nie zwracają daty).
@@ -11,41 +11,26 @@ import { SiteHeader } from "../components/home/SiteChrome";
 import { CITIES, SERVICE_REGIONS } from "../lib/cities";
 
 // Pasek działów — tylko istniejące trasy. Po prawej: Dla firm (/sprzedawca/dolacz), Kontakt (/legal/kontakt.html).
-function SunriseArt() {
-  // Oryginalna grafika: niebo o zmierzchu, tarcza słońca z poświatą i trzy plany wzgórz — lekki SVG zamiast zdjęcia.
-  return <svg aria-hidden="true" className="absolute inset-0 h-full w-full" viewBox="0 0 1440 520" preserveAspectRatio="xMidYMid slice">
-    <defs>
-      <linearGradient id="sky" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stopColor="#0C0E14" /><stop offset=".25" stopColor="#1C1B22" /><stop offset=".38" stopColor="#6B3A12" /><stop offset=".46" stopColor="#D9761C" /><stop offset=".6" stopColor="#4A2C10" /></linearGradient>
-      <radialGradient id="glow" cx="1080" cy="215" r="460" gradientUnits="userSpaceOnUse"><stop offset="0" stopColor="#FFE3A6" stopOpacity="1" /><stop offset=".1" stopColor="#F5A623" stopOpacity=".9" /><stop offset=".4" stopColor="#E8891A" stopOpacity=".45" /><stop offset="1" stopColor="#E8891A" stopOpacity="0" /></radialGradient>
-      <linearGradient id="fade" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stopColor="#0B0B0D" stopOpacity=".88" /><stop offset=".42" stopColor="#0B0B0D" stopOpacity=".3" /><stop offset="1" stopColor="#0B0B0D" stopOpacity="0" /></linearGradient>
-      <linearGradient id="bottom" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stopColor="#0B0B0D" stopOpacity="0" /><stop offset="1" stopColor="#0B0B0D" stopOpacity=".55" /></linearGradient>
-    </defs>
-    <rect width="1440" height="520" fill="url(#sky)" />
-    <circle cx="1080" cy="215" r="460" fill="url(#glow)" />
-    <path d="M0 330 C120 300 220 310 330 285 C450 258 540 292 660 280 C800 266 880 262 990 275 C1100 288 1180 266 1290 272 C1360 276 1400 282 1440 278 L1440 520 L0 520 Z" fill="#241A12" />
-    <path d="M0 380 C140 350 260 372 380 345 C520 314 620 352 760 342 C900 332 980 296 1100 318 C1240 344 1330 322 1440 312 L1440 520 L0 520 Z" fill="#17120C" />
-    <path d="M0 440 C160 410 280 438 400 412 C540 382 640 428 780 420 C920 412 1010 380 1130 400 C1270 424 1350 402 1440 392 L1440 520 L0 520 Z" fill="#0C0A08" />
-    <rect width="1440" height="520" fill="url(#fade)" />
-    <rect width="1440" height="520" fill="url(#bottom)" />
-    <circle cx="1080" cy="218" r="26" fill="#FFF3D0" />
-  </svg>;
-}
 
 export default function Home() {
   const { rows: reco, personalized, watched, heart, rate } = useHomeFeed(8);
   const popular = usePopularCategories();
   useSeo("Sunrise Market — wszystko, czego potrzebujesz w jednym miejscu", "Zakupy, rezerwacje, nieruchomości, motoryzacja i usługi. Płać Sunrise Pay, odbieraj 3% cashbacku, kupuj z Ochroną Kupujących.", "/");
 
-  const tiles = SECTIONS.slice(0, 5);
+  const tiles = SECTIONS; // wszystkie 6 działów — tyle samo, co w pasku działów
 
   return <main className="min-h-screen" style={{ background: "var(--bg)", color: "var(--ink)" }}>
     <SiteHeader active="home" />
 
     <div className="mx-auto max-w-[1440px] px-6 xl:px-10">
       {/* ── Hero ───────────────────────────────────────────────── */}
-      <section className="relative mt-5 overflow-hidden rounded-2xl" style={{ border: "1px solid var(--line)", minHeight: 320 }}>
-        <SunriseArt />
-        <div className="relative flex min-h-[300px] flex-col justify-center px-10 py-12 xl:min-h-[340px] xl:px-14">
+      <section className="relative mt-5 overflow-hidden rounded-2xl" style={{ border: "1px solid var(--line)", minHeight: 320, background: "#0b0b0d" }}>
+        <picture>
+          <source srcSet="/hero/home-hero.webp" type="image/webp" />
+          <img src="/hero/home-hero.jpg" alt="" aria-hidden="true" fetchPriority="high" decoding="async" draggable={false} className="pointer-events-none absolute inset-y-0 right-0 h-full w-auto max-w-none select-none" />
+        </picture>
+        <div aria-hidden="true" className="absolute inset-0" style={{ background: "linear-gradient(90deg, #0b0b0d 0%, #0b0b0d 26%, rgba(11,11,13,.86) 38%, rgba(11,11,13,.35) 50%, rgba(11,11,13,0) 62%)" }} />
+        <div className="relative flex min-h-[300px] flex-col justify-center px-10 py-12 xl:min-h-[385px] xl:px-14">
           <h1 className="max-w-2xl text-4xl font-extrabold leading-[1.08] tracking-tight xl:text-5xl" style={{ color: "#F5F5F7" }}>Wszystko,<br /><span style={{ color: "var(--gold)" }}>czego potrzebujesz</span><br />w jednym miejscu.</h1>
           <p className="mt-4 max-w-xl text-sm leading-6 xl:text-base" style={{ color: "rgba(245,245,247,.82)" }}>Zakupy. Rezerwacje. Nieruchomości. Motoryzacja. Usługi.<br />Sunrise Market — bliżej Twoich spraw.</p>
           <div className="mt-6 flex flex-wrap gap-3">
@@ -53,14 +38,13 @@ export default function Home() {
             <Link to="/sprzedawca/wystaw" className="flex h-11 items-center rounded-xl px-6 text-sm font-semibold backdrop-blur transition hover:opacity-90" style={{ background: "rgba(255,255,255,.1)", border: "1px solid rgba(255,255,255,.25)", color: "#F5F5F7" }}>Dodaj ogłoszenie</Link>
           </div>
         </div>
-        <div aria-hidden="true" className="font-display pointer-events-none absolute right-12 top-1/2 hidden -translate-y-1/2 -rotate-6 text-right text-2xl italic leading-tight lg:block xl:text-3xl" style={{ color: "#FFE0A8", textShadow: "0 2px 12px rgba(0,0,0,.6)" }}>Więcej możliwości<br />na każdy dzień.</div>
       </section>
 
       {/* ── Kafle działów ─────────────────────────────────────── */}
-      <section className="mt-5 grid gap-4 md:grid-cols-2 xl:grid-cols-5" aria-label="Działy">
+      <section className="mt-5 grid gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6" aria-label="Działy">
         {tiles.map((t) => <Link key={t.title} to={t.to} className="group flex items-center gap-3 rounded-2xl p-4 transition hover:-translate-y-0.5 hover:brightness-110 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#F5A623]" style={tileStyle(t.tint)}>
-          <IconTile name={t.icon} tint={t.tint} size={52} />
-          <div className="min-w-0 flex-1"><div className="font-bold">{t.title}</div><div className="mt-0.5 line-clamp-2 text-xs leading-4" style={{ color: "var(--mut)" }}>{t.desc}</div></div>
+          <IconTile name={t.icon} tint={t.tint} size={46} />
+          <div className="min-w-0 flex-1"><div className="whitespace-nowrap font-bold">{t.title}</div><div className="mt-0.5 line-clamp-2 text-xs leading-4" style={{ color: "var(--mut)" }}>{t.desc}</div></div>
           <span aria-hidden="true" className="text-xl transition group-hover:translate-x-0.5" style={{ color: "var(--mut)" }}>›</span>
         </Link>)}
       </section>
