@@ -1,100 +1,135 @@
+// Asystent Suri w Sunrise Market (decyzja właściciela 2026-09-06): Suri jest mózgiem operacyjnym ekosystemu (hub MySunrise),
+// w Market działa jej asystent — persona „Sunny”. Model językowy: hub MySunrise `mkt-ai` (X-Sunrise-Service-Token), a gdy hub
+// nie odpowie — ANTHROPIC_API_KEY (jeśli ustawiony). Bez AI asystent nadal działa: pokazuje dopasowane oferty (suri_recommend).
+// Akcje: chat (domyślna) | history | seller_reply (podpowiedź odpowiedzi sprzedawcy w Wiadomościach; wymaga JWT).
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-import Anthropic from "https://esm.sh/@anthropic-ai/sdk@0.27.0";
-const cors = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
-};
-const SERVICE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? Deno.env.get("SUPABASE_SERVICE_KEY");
-const MODEL_FAST = "claude-haiku-4-5-20251001";
-const MODEL_SMART = "claude-sonnet-4-6";
 
-const SURI_SYSTEM = `Jesteś Suri — energiczna, kompetentna ekspertka zakupowa Sunrise Market (marketplace ekosystemu Sunrise). Mówisz po polsku: ciepło, z entuzjazmem, ale konkretnie i szczerze — zawsze w interesie KUPUJĄCEGO. Masz lekki, żywy ton (możesz użyć 1 emoji), bez lania wody.
+const cors = { "Access-Control-Allow-Origin": "*", "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type" };
+const json = (o: unknown, status = 200) => new Response(JSON.stringify(o), { status, headers: { ...cors, "Content-Type": "application/json" } });
+const SUPA = Deno.env.get("SUPABASE_URL")!;
+const SERVICE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? Deno.env.get("SUPABASE_SERVICE_KEY") ?? "";
+const HUB = (Deno.env.get("MYSUNRISE_PAY_BASE_URL") ?? "https://lvmrhgpxhqvfuoftblky.supabase.co/functions/v1").replace(/\/$/, "");
+export const ASSISTANT_NAME = "Sunny";
 
-Znasz Sunrise od podszewki:
-• Płatność WYŁĄCZNIE portfelem Sunrise Pay — klient najpierw doładowuje portfel, a po zakupie 3% cashbacku wraca na saldo.
-• Portfel doładowujesz kartą i możesz połączyć z aplikacją MySunrise.
-• Produkty Sunrise (nasze, dropship) — wysyłka z magazynu partnera, realny termin 15–25 dni roboczych, kurierem pod adres.
-• Produkty sprzedawców zewnętrznych — własny magazyn, zwykle Paczkomat InPost, darmowa dostawa od 149 zł.
+const SYSTEM = `Jesteś ${ASSISTANT_NAME} — asystent Suri w Sunrise Market. Suri to mózg operacyjny ekosystemu Sunrise; Ty pomagasz klientom w Sunrise Market (sunrisemarket.pl) — marketplace dla wszystkich: sprzedawcy prywatni, firmy i marki własne Sunrise. Mówisz po polsku, ciepło i konkretnie, zawsze w interesie kupującego; 1 emoji maksymalnie, bez lania wody. Krótko: 2–5 zdań.
 
-Doradzasz na podstawie preferencji i historii klienta, proponujesz podobne i lepsze okazje, ale nie naciskasz. Pamiętasz, co klient mówił wcześniej w tej rozmowie, i nawiązujesz do tego. Nie wymyślasz produktów spoza podanej listy ofert. Przy cenie jesteś szczera. Krótko, żywo, rzeczowo.`;
+Fakty o Sunrise Market (nie wymyślaj innych):
+• Płatność: portfel Sunrise Pay (promowany) albo karta przez Stripe. Cashback 3% wraca na portfel przy KAŻDEJ metodzie płatności.
+• Ochrona Kupujących: każda transakcja idzie przez Sunrise — sprzedawca dostaje pieniądze dopiero po potwierdzeniu odbioru (albo automatycznie po 14 dniach); spór można otworzyć w Zamówieniach.
+• Rezerwacje: usługi z terminem (wybór dnia i godziny) oraz wynajem na dni (od–do, kaucja, umowa najmu akceptowana przy płatności, protokół wydania/zwrotu ze zdjęciami i kodem SMS).
+• Odbiór osobisty u sprzedawcy, jeśli sprzedawca go włączył. Darmowa dostawa od 149 zł.
+• Wiadomości do sprzedawcy, „Pokaż numer”, umawianie oględzin (auta) i prezentacji (nieruchomości), Sunrise Verify (raport pojazdu / analiza nieruchomości).
+• Ulubione, porównywarka, zapisane wyszukiwania z alertem o nowych ogłoszeniach, logowanie Face ID.
+• Sprzedawanie: Sprzedawca (bez NIP, 299 zł/rok) i Partner Handlowy (firma, 499 zł/rok) — pierwszy rok gratis; prowizja 7,9% (Sunrise Pay) / 12,9% (karta).
+• Jedno konto Sunrise (MySunrise) działa w całym ekosystemie.
+Proponuj wyłącznie oferty z podanej listy (z ceną), nie obiecuj terminów dostawy ani parametrów, których nie ma. Gdy lista jest pusta, powiedz to wprost i zaproponuj doprecyzowanie (kategoria, budżet, miasto) albo zapisanie wyszukiwania. Pamiętaj, co klient mówił wcześniej.`;
 
-function json(o: unknown, status = 200) {
-  return new Response(JSON.stringify(o), { status, headers: { ...cors, "Content-Type": "application/json" } });
+async function serviceToken(sb: any): Promise<string> {
+  const env = Deno.env.get("SUNRISE_MARKET_SERVICE_TOKEN"); if (env) return env;
+  const { data } = await sb.from("internal_secrets").select("value").eq("key", "sunrise_pay_service_token").maybeSingle();
+  return String(data?.value ?? "");
+}
+
+type Turn = { role: "user" | "assistant"; content: string };
+/** Model: najpierw hub MySunrise (mkt-ai), potem Anthropic (jeśli klucz). Zwraca null, gdy AI niedostępne. */
+async function llm(sb: any, system: string, turns: Turn[], opts: { json?: boolean; max_tokens?: number; temperature?: number } = {}): Promise<{ text: string | null; error?: string }> {
+  try {
+    const token = await serviceToken(sb);
+    if (token) {
+      const r = await fetch(`${HUB}/mkt-ai`, { method: "POST", headers: { "Content-Type": "application/json", "X-Sunrise-Service-Token": token }, body: JSON.stringify({ system, messages: turns, json: opts.json === true, max_tokens: opts.max_tokens ?? 450, temperature: opts.temperature ?? 0.5 }) });
+      const d = await r.json().catch(() => ({}));
+      if (r.ok && d?.ok && d.text) return { text: String(d.text) };
+      if (d?.error) console.warn("mkt-ai:", d.error);
+    }
+  } catch (e) { console.warn("mkt-ai fetch failed", (e as Error).message); }
+  const key = Deno.env.get("ANTHROPIC_API_KEY");
+  if (key) {
+    try {
+      const r = await fetch("https://api.anthropic.com/v1/messages", { method: "POST", headers: { "Content-Type": "application/json", "x-api-key": key, "anthropic-version": "2023-06-01" }, body: JSON.stringify({ model: "claude-sonnet-4-6", max_tokens: opts.max_tokens ?? 450, system, messages: turns }) });
+      const d = await r.json().catch(() => ({}));
+      if (r.ok && d?.content?.[0]?.text) return { text: String(d.content[0].text) };
+      return { text: null, error: String(d?.error?.message ?? r.status) };
+    } catch (e) { return { text: null, error: (e as Error).message }; }
+  }
+  return { text: null, error: "ai_unavailable" };
+}
+
+function fallbackReply(offers: any[], message: string): string {
+  if (offers.length) return `Znalazłem ${offers.length === 1 ? "jedną ofertę" : `${offers.length} oferty`} pasujące do „${message.slice(0, 60)}” — zobacz poniżej. Chcesz zawęzić (budżet, miasto, kategoria)?`;
+  return `Nie mam jeszcze oferty na „${message.slice(0, 60)}”. Spróbuj inaczej opisać, wybierz kategorię w wyszukiwarce albo zapisz wyszukiwanie — dam znać, gdy coś się pojawi.`;
 }
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: cors });
-  const sb = createClient(Deno.env.get("SUPABASE_URL")!, SERVICE_KEY!, { db: { schema: "market" } });
+  const sb = createClient(SUPA, SERVICE_KEY, { db: { schema: "market" } });
   try {
     const body = await req.json();
     const { action, message, session_id, user_id } = body ?? {};
 
-    // --- historia rozmowy: do wczytania po ponownym otwarciu czatu ---
     if (action === "history") {
       if (!session_id) return json({ messages: [] });
-      const { data } = await sb.from("suri_messages")
-        .select("role, content, created_at")
-        .eq("session_id", session_id)
-        .order("created_at", { ascending: true })
-        .limit(50);
+      const { data } = await sb.from("suri_messages").select("role, content, created_at").eq("session_id", session_id).order("created_at", { ascending: true }).limit(50);
       return json({ messages: data ?? [] });
     }
 
-    const key = Deno.env.get("ANTHROPIC_API_KEY");
-    if (!key) return json({ reply: "Przepraszam, chwilowo nie moge odpowiadac — administrator nie wlaczyl jeszcze mojego silnika AI.", offers: [] });
-    const claude = new Anthropic({ apiKey: key });
-
-    // lekka personalizacja: ostatnie kategorie kupione przez klienta
-    let prefs = "";
-    if (user_id) {
-      try {
-        const { data: hist } = await sb.rpc("buyer_pref_categories", { p_user: user_id, p_limit: 5 });
-        if (hist && hist.length) prefs = `Preferencje klienta (ostatnie kategorie): ${hist.map((h: any) => h.name).join(", ")}.`;
-      } catch { /* brak historii */ }
+    // Podpowiedź odpowiedzi dla sprzedawcy (Wiadomości) — tylko zalogowany, tylko własny wątek
+    if (action === "seller_reply") {
+      const jwt = (req.headers.get("Authorization") ?? "").replace(/^Bearer\s+/i, "");
+      const { data: u } = await createClient(SUPA, SERVICE_KEY).auth.getUser(jwt);
+      if (!u.user) return json({ error: "Brak autoryzacji" }, 401);
+      const conversationId = String(body.conversation_id ?? "");
+      const { data: conv } = await sb.from("conversations").select("id,offer_id,seller_id,buyer_id").eq("id", conversationId).maybeSingle();
+      if (!conv) return json({ error: "Nie znaleziono wątku" }, 404);
+      const { data: seller } = await sb.from("sellers").select("id").eq("auth_user_id", u.user.id).maybeSingle();
+      const isSeller = seller && String(seller.id) === String(conv.seller_id);
+      const isBuyer = String(conv.buyer_id) === u.user.id;
+      if (!isSeller && !isBuyer) return json({ error: "Brak dostępu" }, 403);
+      const { data: offer } = await sb.from("offers").select("title,price_gross,description,attributes").eq("id", conv.offer_id).maybeSingle();
+      const { data: msgs } = await sb.from("messages").select("sender_user,body,created_at").eq("conversation_id", conversationId).order("created_at", { ascending: true }).limit(20);
+      const me = u.user.id;
+      const thread = (msgs ?? []).map((m: any) => `${m.sender_user === me ? "JA" : "ROZMÓWCA"}: ${String(m.body).slice(0, 400)}`).join("\n");
+      const sys = `Jesteś ${ASSISTANT_NAME}, asystent Suri w Sunrise Market. Pomagasz ${isSeller ? "SPRZEDAWCY" : "KUPUJĄCEMU"} napisać odpowiedź w rozmowie o ofercie. Po polsku, uprzejmie, konkretnie, 1–3 zdania na propozycję, bez wymyślania faktów (cen, terminów, parametrów), których nie ma w ofercie ani w rozmowie. Zwróć TYLKO JSON: {"replies":["...","..."]} — 2 różne propozycje (np. rzeczowa i krótka).`;
+      const ctx = `Oferta: ${offer?.title ?? "?"} — ${offer?.price_gross ?? "?"} zł.\nOpis (fragment): ${String(offer?.description ?? "").slice(0, 600)}\nAtrybuty: ${JSON.stringify(offer?.attributes ?? {}).slice(0, 500)}\n\nRozmowa:\n${thread || "(pusta)"}\n\nNapisz propozycje odpowiedzi na ostatnią wiadomość rozmówcy.`;
+      const out = await llm(sb, sys, [{ role: "user", content: ctx }], { json: true, max_tokens: 400, temperature: 0.6 });
+      if (!out.text) return json({ error: "Asystent jest chwilowo niedostępny", replies: [] }, 503);
+      let replies: string[] = [];
+      try { replies = JSON.parse(out.text.replace(/```json|```/g, "")).replies ?? []; } catch { replies = [out.text]; }
+      return json({ replies: replies.slice(0, 2) });
     }
 
-    // pamiec rozmowy: ostatnie wiadomosci tej sesji jako kontekst dla modelu
-    let convo: { role: "user" | "assistant"; content: string }[] = [];
+    // --- czat kupującego ---
+    if (!message || typeof message !== "string") return json({ reply: "Napisz, czego szukasz 🙂", offers: [] });
+    let convo: Turn[] = [];
     if (session_id) {
       try {
-        const { data: prev } = await sb.from("suri_messages")
-          .select("role, content")
-          .eq("session_id", session_id)
-          .order("created_at", { ascending: true })
-          .limit(20);
-        convo = (prev ?? []).map((m: any) => ({ role: m.role === "user" ? "user" : "assistant", content: String(m.content ?? "") }))
-          .filter((m: any) => m.content.length > 0);
+        const { data: prev } = await sb.from("suri_messages").select("role, content").eq("session_id", session_id).order("created_at", { ascending: true }).limit(20);
+        convo = (prev ?? []).map((m: any) => ({ role: m.role === "user" ? "user" : "assistant", content: String(m.content ?? "") } as Turn)).filter((m) => m.content.length > 0);
       } catch { /* brak historii */ }
     }
-
-    let intent: any = {};
-    try {
-      const im = await claude.messages.create({ model: MODEL_FAST, max_tokens: 200,
-        system: "Wyciagnij z wiadomosci JSON: {query, budget (liczba lub null), category_slug (lub null)}. Zwroc TYLKO JSON.",
-        messages: [{ role: "user", content: message }] });
-      intent = JSON.parse((im.content[0] as any).text);
-    } catch { intent = { query: message }; }
+    let prefs = "";
+    if (user_id) {
+      try { const { data: hist } = await sb.rpc("buyer_pref_categories", { p_user: user_id, p_limit: 5 }); if (hist?.length) prefs = `Preferencje klienta (ostatnie kategorie): ${hist.map((h: any) => h.name).join(", ")}.`; } catch { /* brak */ }
+    }
+    // intencja (budżet / kategoria) — przez AI, a bez AI: prosty parser kwoty
+    let intent: any = { query: message };
+    const im = await llm(sb, 'Wyciągnij z wiadomości JSON: {"query": string, "budget": number|null, "category_slug": string|null}. Zwróć TYLKO JSON.', [{ role: "user", content: message }], { json: true, max_tokens: 120, temperature: 0 });
+    if (im.text) { try { intent = { ...intent, ...JSON.parse(im.text.replace(/```json|```/g, "")) }; } catch { /* zostaje query */ } }
+    else { const m = message.match(/(\d[\d\s]{2,})\s*(zł|tys)/i); if (m) intent.budget = Number(m[1].replace(/\s/g, "")) * (/tys/i.test(m[2]) ? 1000 : 1); }
     const { data: offers } = await sb.rpc("suri_recommend", { p_query: intent.query ?? message, p_budget: intent.budget ?? null, p_category_slug: intent.category_slug ?? null, p_limit: 4 });
+    const list = offers ?? [];
 
-    const turns = [...convo, { role: "user" as const, content: `${prefs}\nPytanie klienta: ${message}\nOferty z bazy (użyj tylko tych): ${JSON.stringify(offers)}` }];
-    const reply = await claude.messages.create({
-      model: MODEL_SMART, max_tokens: 450,
-      system: SURI_SYSTEM,
-      messages: turns,
-    });
-    const text = (reply.content[0] as any).text;
+    const turns: Turn[] = [...convo, { role: "user", content: `${prefs}\nPytanie klienta: ${message}\nOferty z bazy (użyj tylko tych): ${JSON.stringify(list)}` }];
+    const out = await llm(sb, SYSTEM, turns, { max_tokens: 450, temperature: 0.5 });
+    const text = out.text ?? fallbackReply(list, message);
 
-    // zapis rozmowy (najpierw upewnij sie ze sesja istnieje - FK). Zapis nie moze psuc odpowiedzi.
     if (session_id) {
       try {
         await sb.from("suri_sessions").upsert({ id: session_id, user_id: user_id ?? null }, { onConflict: "id", ignoreDuplicates: true });
         await sb.from("suri_messages").insert([{ session_id, role: "user", content: message }, { session_id, role: "suri", content: text }]);
-      } catch (_e) { /* pamiec best-effort */ }
+      } catch { /* pamięć best-effort */ }
     }
-    return json({ reply: text, offers: offers ?? [] });
+    return json({ reply: text, offers: list, ai: Boolean(out.text) });
   } catch (err) {
-    const m = String((err as any)?.message ?? err);
-    const friendly = (m.includes("authentication") || m.includes("x-api-key")) ? "Moj silnik AI ma nieprawidlowy klucz — popros administratora o poprawienie ANTHROPIC_API_KEY." : (m.includes("credit") ? "Brak kredytow AI — administrator musi doladowac konto Anthropic." : "Ups, cos poszlo nie tak. Sprobuj jeszcze raz.");
-    return json({ reply: friendly, offers: [] });
+    return json({ reply: "Ups, coś poszło nie tak. Spróbuj jeszcze raz.", offers: [], error: String((err as any)?.message ?? err) });
   }
 });

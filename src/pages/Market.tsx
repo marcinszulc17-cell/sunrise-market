@@ -7,7 +7,6 @@ import { getRecent } from "../lib/recent";
 import { searchOffers, searchOffersWithAttributes, homePromoted, categoryCounts, recommendedOffers, sponsoredOffers, toggleWatch, watchedIds, myWatchlist, bannersFor, bannerView, bannerClick } from "../lib/api";
 import { supabase } from "../lib/supabase";
 import { useCart, addToCart, isTestProduct, cleanTitle } from "../lib/cart";
-import SuriChat from "../components/SuriChat";
 import NotificationsBell from "../components/NotificationsBell";
 import { useSeo } from "../lib/seo";
 
@@ -772,7 +771,6 @@ export default function Market() {
         </div>
         Sunrise Market · Opłaty: 7,9% Sunrise Pay · 12,9% Stripe (karta) · cashback 3% zawarty · Sprzedawca 299 zł/rok, Partner Handlowy 499 zł/rok (pierwszy rok gratis)
       </footer>
-      <SuriChat />
     </div>
   );
 }

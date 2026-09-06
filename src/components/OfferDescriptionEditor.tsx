@@ -1,11 +1,11 @@
 import { useRef, useState } from "react";
 import { supabase } from "../lib/supabase";
 
-type Props = { value:string; onChange:(value:string)=>void; title:string; category?:string; compact?:boolean };
+type Props = { value:string; onChange:(value:string)=>void; title:string; category?:string; compact?:boolean; images?:string[] };
 
 type AiAction = "generate"|"improve"|"shorten"|"expand";
 
-export default function OfferDescriptionEditor({value,onChange,title,category,compact}:Props) {
+export default function OfferDescriptionEditor({value,onChange,title,category,compact,images}:Props) {
   const ref = useRef<HTMLTextAreaElement>(null);
   const [busy,setBusy] = useState<AiAction|null>(null);
   const [msg,setMsg] = useState("");
@@ -30,13 +30,13 @@ export default function OfferDescriptionEditor({value,onChange,title,category,co
     if(!title.trim() && action==="generate") { setMsg("Najpierw wpisz tytuł oferty."); return; }
     if(action!=="generate" && !value.trim()) { setMsg("Najpierw wpisz choć krótki opis."); return; }
     setBusy(action); setMsg("");
-    const {data,error}=await supabase.functions.invoke("gen-description",{body:{title,category,mode:"pro",action,current_description:value}});
+    const {data,error}=await supabase.functions.invoke("gen-description",{body:{title,category,mode:"pro",action,current_description:value,image_urls:images??[]}});
     setBusy(null);
     if(error || !data?.description) { setMsg(data?.error || error?.message || "Nie udało się przygotować opisu."); return; }
     onChange(String(data.description));
   }
 
-  const aiLabel:Record<AiAction,string>={generate:"Napisz z AI",improve:"Popraw",shorten:"Skróć",expand:"Rozwiń"};
+  const aiLabel:Record<AiAction,string>={generate:"✨ Napisz (asystent Suri)",improve:"Popraw",shorten:"Skróć",expand:"Rozwiń"};
   return <div>
     <div className="mb-2 flex flex-wrap items-center gap-1.5">
       <button type="button" title="Pogrubienie" onClick={()=>wrap("**")} className="rounded-lg px-2.5 py-1.5 text-sm font-bold" style={{border:"1px solid var(--line)"}}>B</button>

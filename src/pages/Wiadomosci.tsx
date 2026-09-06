@@ -16,6 +16,17 @@ export default function Wiadomosci() {
   const [active, setActive] = useState<string | null>(() => new URLSearchParams(window.location.search).get("w"));
   const [msgs, setMsgs] = useState<Message[] | null>(null);
   const [text, setText] = useState(""); const [busy, setBusy] = useState(false); const [err, setErr] = useState<string | null>(null);
+  // Podpowiedź odpowiedzi od asystenta Suri (Sunny) — 2 propozycje do wstawienia w pole (decyzja właściciela 2026-09-06)
+  const [hints, setHints] = useState<string[] | null>(null); const [hintBusy, setHintBusy] = useState(false);
+  async function suggest() {
+    if (!active) return; setHintBusy(true); setHints(null);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const { data, error } = await supabase.functions.invoke("suri-commerce", { body: { action: "seller_reply", conversation_id: active }, headers: session ? { Authorization: `Bearer ${session.access_token}` } : {} });
+      if (error || data?.error) throw new Error(data?.error || error?.message);
+      setHints((data?.replies ?? []) as string[]);
+    } catch (e2) { setErr((e2 as Error).message || "Asystent jest chwilowo niedostępny"); } finally { setHintBusy(false); }
+  }
   const bottom = useRef<HTMLDivElement>(null);
 
   async function loadList() { try { setList(await myConversations()); } catch { setList([]); } }
@@ -24,7 +35,7 @@ export default function Wiadomosci() {
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => { if (!data.session) { setAuthed(false); return; } setAuthed(true); loadList(); });
   }, []);
-  useEffect(() => { if (!authed || !active) { setMsgs(null); return; } loadThread(active); const t = setInterval(() => { loadThread(active); loadList(); }, 15000); return () => clearInterval(t); }, [authed, active]);
+  useEffect(() => { setHints(null); if (!authed || !active) { setMsgs(null); return; } loadThread(active); const t = setInterval(() => { loadThread(active); loadList(); }, 15000); return () => clearInterval(t); }, [authed, active]);
   useEffect(() => { bottom.current?.scrollIntoView({ block: "end" }); }, [msgs?.length]);
 
   function open(id: string) { setActive(id); setErr(null); navigate(`/wiadomosci?w=${id}`, { replace: true }); }
@@ -65,7 +76,9 @@ export default function Wiadomosci() {
               {msgs === null ? <div className="text-sm" style={{ color: "var(--mut)" }}>Wczytuję…</div> : msgs.map((m) => <div key={m.id} className={`flex ${m.mine ? "justify-end" : "justify-start"}`}><div className="max-w-[80%] rounded-2xl px-4 py-2.5 text-sm leading-6" style={m.mine ? { background: "rgba(245,166,35,.16)", border: "1px solid rgba(245,166,35,.3)" } : { background: "rgba(255,255,255,.06)", border: "1px solid var(--line)" }}><div className="whitespace-pre-wrap break-words">{m.body}</div><div className="mt-1 text-[10px]" style={{ color: "var(--mut)" }}>{new Date(m.created_at).toLocaleString("pl-PL", { dateStyle: "short", timeStyle: "short" })}</div></div></div>)}
               <div ref={bottom} />
             </div>
+            {hints && hints.length > 0 && <div className="flex flex-col gap-1.5 px-3 pt-3">{hints.map((h, i) => <button key={i} type="button" onClick={() => { setText(h); setHints(null); }} className="rounded-xl px-3 py-2 text-left text-sm" style={{ background: "rgba(245,166,35,.10)", border: "1px solid rgba(245,166,35,.35)" }}>✨ {h}</button>)}</div>}
             <form onSubmit={send} className="flex items-end gap-2 p-3" style={{ borderTop: "1px solid var(--line)" }}>
+              <button type="button" onClick={suggest} disabled={hintBusy || !msgs?.length} title="Podpowiedz odpowiedź (asystent Suri)" aria-label="Podpowiedz odpowiedź" className="grid h-11 w-11 shrink-0 place-items-center rounded-xl text-lg disabled:opacity-40" style={{ background: "rgba(255,255,255,.05)", border: "1px solid var(--line)" }}>{hintBusy ? "…" : "✨"}</button>
               <textarea value={text} onChange={(e) => setText(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); (e.currentTarget.form as HTMLFormElement)?.requestSubmit(); } }} rows={2} maxLength={4000} placeholder="Napisz wiadomość… (Enter — wyślij, Shift+Enter — nowa linia)" className="min-h-[44px] flex-1 resize-none rounded-xl px-3 py-2.5 text-sm outline-none" style={{ background: "rgba(255,255,255,.05)", border: "1px solid var(--line)", color: "var(--ink)" }} aria-label="Treść wiadomości" />
               <button type="submit" disabled={busy || !text.trim()} className="grid h-11 w-11 shrink-0 place-items-center rounded-xl disabled:opacity-50" style={{ background: GOLD_GRAD, color: "#101012" }} aria-label="Wyślij"><Ico name="send" size={18} strokeWidth={2} /></button>
             </form>

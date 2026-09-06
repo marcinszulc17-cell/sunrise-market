@@ -46,6 +46,7 @@ import Konto from "./pages/Konto";
 import Rezerwacje from "./pages/Rezerwacje";
 import PwaInstallPrompt from "./components/PwaInstallPrompt";
 import MobileAppNav from "./components/MobileAppNav";
+import SuriChat from "./components/SuriChat";
 import SellerTopBar from "./components/SellerTopBar";
 import { supabase } from "./lib/supabase";
 import { initTheme } from "./lib/theme";
@@ -134,7 +135,9 @@ function AppChrome() {
   }, [isAppDomain]);
   const authScreen = pathname === "/login" || pathname === "/sso" || (pathname === "/" && isAppDomain && authed !== true);
   if (authScreen) return null;
-  return <><MobileAppNav /><PwaInstallPrompt /></>;
+  // Asystent Suri (Sunny) na stronach klienta; nie w panelu sprzedawcy/operatora ani w koszyku (nie zasłania płatności)
+  const assistant = !/^\/(sprzedawca|operator|koszyk|verify|potwierdz-zakup)/.test(pathname);
+  return <><MobileAppNav /><PwaInstallPrompt />{assistant && <SuriChat />}</>;
 }
 
 ReactDOM.createRoot(document.getElementById("root")!).render(
