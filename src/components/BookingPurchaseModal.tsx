@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useState, type ReactNode, useRef } from "react";
 import { getOffer, type BookingConfig } from "../lib/api";
 import { supabase } from "../lib/supabase";
 import { EMPTY_RENTER, RENTAL_AGREEMENT_VERSION, rentalAgreementText, sha256Text, type RenterData } from "../lib/rentalAgreement";
@@ -56,6 +56,24 @@ export default function BookingPurchaseModal({ offerId, config, open, onClose }:
   const [agreementAccepted, setAgreementAccepted] = useState(false);
   const [agreementOpen, setAgreementOpen] = useState(false);
   const [offerFacts, setOfferFacts] = useState<{ title: string; seller: string; attributes: Record<string, unknown> } | null>(null);
+  // „Wróć” działa jak w aplikacji: otwarcie okna dokłada wpis historii, gest/przycisk wstecz telefonu, Esc i przycisk „Wróć”
+  // zamykają okno i wracają do oferty (decyzja właściciela 2026-09-06 — „przy rezerwacji nie ma możliwości powrotu”).
+  const closingRef = useRef(false);
+  useEffect(() => {
+    if (!open) return;
+    closingRef.current = false;
+    try { window.history.pushState({ smBooking: true }, ""); } catch { /* ignoruj */ }
+    const onPop = () => { closingRef.current = true; onClose(); };
+    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") goBack(); };
+    window.addEventListener("popstate", onPop); window.addEventListener("keydown", onKey);
+    return () => { window.removeEventListener("popstate", onPop); window.removeEventListener("keydown", onKey); };
+  }, [open]); // eslint-disable-line react-hooks/exhaustive-deps
+  function goBack() {
+    if (closingRef.current) return;
+    closingRef.current = true;
+    if (window.history.state?.smBooking) { window.history.back(); return; }
+    onClose();
+  }
   useEffect(() => {
     if (!open || config.booking_type !== "daily") return;
     getOffer(offerId).then((o: any) => o && setOfferFacts({ title: String(o.title || ""), seller: String(o.seller_name || o.seller || ""), attributes: (o.attributes || {}) as Record<string, unknown> })).catch(() => {});
@@ -270,15 +288,15 @@ export default function BookingPurchaseModal({ offerId, config, open, onClose }:
   const dailyDateStep = dailyResourceStep + 1;
   const paymentStep = activeConfig.booking_type === "appointment" ? appointmentDateStep + 1 : dailyDateStep + 1;
 
-  return <div className="fixed inset-0 z-[70] bg-black/75 p-0 sm:grid sm:place-items-center sm:p-4" onMouseDown={onClose}>
-    <div className="flex h-full w-full flex-col overflow-hidden sm:h-auto sm:max-h-[92vh] sm:max-w-5xl sm:rounded-3xl" onMouseDown={(e) => e.stopPropagation()} style={{ background: "var(--header)", border: "1px solid var(--line)" }}>
+  return <div className="fixed inset-0 z-[70] bg-black/75 p-0 sm:grid sm:place-items-center sm:p-4" onMouseDown={goBack}>
+    <div className="flex h-full w-full flex-col overflow-hidden sm:h-auto sm:max-h-[92vh] sm:max-w-5xl sm:rounded-3xl" onMouseDown={(e) => e.stopPropagation()} style={{ background: "var(--bg)", border: "1px solid var(--line)" }}>
       <header className="flex items-start justify-between gap-4 border-b px-5 py-4 sm:px-7" style={{ borderColor: "var(--line)" }}>
         <div>
           <div className="text-[11px] font-semibold tracking-[.16em]" style={{ color: "var(--gold)" }}>{activeConfig.booking_type === "appointment" ? "REZERWACJA TERMINU" : "REZERWACJA WYNAJMU"}</div>
           <h2 className="mt-1 font-display text-2xl font-semibold">{activeConfig.booking_type === "appointment" ? "Wybierz usługę i termin" : catalog?.resources?.length ? "Wybierz egzemplarz i daty" : "Wybierz daty wynajmu"}</h2>
           <p className="mt-1 text-sm" style={{ color: "var(--mut)" }}>{activeConfig.booking_type === "appointment" ? "Po wyborze blokujemy termin na 15 minut na czas płatności." : `Cena bazowa: ${zl(Number(activeConfig.price_per_unit || 0))} / dobę. Po wyborze dat zobaczysz czynsz za cały okres${Number(activeConfig.deposit_gross || 0) > 0 ? " oraz kaucję" : ""}.`}</p>
         </div>
-        <button type="button" onClick={onClose} className="rounded-xl px-3 py-2 text-lg" style={{ background: "var(--glass)", border: "1px solid var(--line)" }} aria-label="Zamknij">✕</button>
+        <button type="button" onClick={goBack} className="flex h-11 shrink-0 items-center gap-1.5 rounded-xl px-3 text-sm font-semibold" style={{ background: "var(--glass)", border: "1px solid var(--line)" }} aria-label="Wróć do oferty"><span aria-hidden="true">←</span> Wróć</button>
       </header>
 
       <div className="grid flex-1 overflow-y-auto lg:grid-cols-[1fr_330px]">
@@ -346,7 +364,7 @@ export default function BookingPurchaseModal({ offerId, config, open, onClose }:
             <StepTitle n={paymentStep} title="Wybierz płatność" />
             <div className="mt-3 grid gap-3 sm:grid-cols-2">
               <button type="button" onClick={() => setPayment("wallet")} className="rounded-2xl p-4 text-left" style={{ border: payment === "wallet" ? "1px solid var(--gold)" : "1px solid var(--line)", background: payment === "wallet" ? "rgba(232,137,26,.12)" : "var(--glass)" }}><b>Sunrise Pay</b><div className="mt-1 text-xs" style={{ color: "var(--mut)" }}>Płatność z portfela MySunrise</div></button>
-              <button type="button" onClick={() => setPayment("card")} className="rounded-2xl p-4 text-left" style={{ border: payment === "card" ? "1px solid var(--gold)" : "1px solid var(--line)", background: payment === "card" ? "rgba(232,137,26,.12)" : "var(--glass)" }}><b>Karta / BLIK / P24</b><div className="mt-1 text-xs" style={{ color: "var(--mut)" }}>Bezpieczna płatność online</div></button>
+              <button type="button" onClick={() => setPayment("card")} className="rounded-2xl p-4 text-left" style={{ border: payment === "card" ? "1px solid var(--gold)" : "1px solid var(--line)", background: payment === "card" ? "rgba(232,137,26,.12)" : "var(--glass)" }}><b>Karta (Stripe)</b><div className="mt-1 text-xs" style={{ color: "var(--mut)" }}>Bezpieczna płatność online</div></button>
             </div>
           </section>
 

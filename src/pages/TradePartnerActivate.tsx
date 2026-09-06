@@ -146,7 +146,7 @@ export default function TradePartnerActivate() {
               <p className="mt-1 text-sm" style={{ color: "var(--mut)" }}>Opłać {fee.toFixed(0)} zł, aby aktywować możliwość wystawiania nowych ofert na kolejny rok.</p>
               <div className="mt-4 grid gap-3 sm:grid-cols-2">
                 <button onClick={() => renew("wallet")} disabled={busy} className="rounded-xl px-4 py-3 font-semibold disabled:opacity-50" style={{ background: "var(--header)", border: "1px solid var(--line)" }}>💳 Zapłać z Sunrise Wallet</button>
-                <button onClick={() => renew("card")} disabled={busy} className="rounded-xl px-4 py-3 font-semibold text-black disabled:opacity-50" style={{ background: "linear-gradient(135deg,#E8891A,#F5A623)" }}>Karta / BLIK / P24 →</button>
+                <button onClick={() => renew("card")} disabled={busy} className="rounded-xl px-4 py-3 font-semibold text-black disabled:opacity-50" style={{ background: "linear-gradient(135deg,#E8891A,#F5A623)" }}>Karta (Stripe) →</button>
               </div>
             </>}
             {status.can_sell && <Link to="/sprzedawca/wystaw" className="mt-4 inline-flex rounded-xl px-4 py-2.5 font-semibold text-black" style={{ background: "linear-gradient(135deg,#E8891A,#F5A623)" }}>+ Wystaw ofertę</Link>}

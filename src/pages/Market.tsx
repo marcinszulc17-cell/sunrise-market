@@ -770,7 +770,7 @@ export default function Market() {
           <a href="/legal/prywatnosc.html" className="hover:text-amber-300">Prywatność (RODO)</a>
           <a href="/legal/cookies.html" className="hover:text-amber-300">Cookies</a>
         </div>
-        Sunrise Market · Opłaty: 7,9% Sunrise Pay · 12,9% Stripe (karta / BLIK / P24) · cashback 3% zawarty · Sprzedawca 299 zł/rok, Partner Handlowy 499 zł/rok (pierwszy rok gratis)
+        Sunrise Market · Opłaty: 7,9% Sunrise Pay · 12,9% Stripe (karta) · cashback 3% zawarty · Sprzedawca 299 zł/rok, Partner Handlowy 499 zł/rok (pierwszy rok gratis)
       </footer>
       <SuriChat />
     </div>

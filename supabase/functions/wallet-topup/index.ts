@@ -73,7 +73,6 @@ Deno.serve(async (req) => {
     const origin = Deno.env.get("PUBLIC_WEB_URL") ?? req.headers.get("origin") ?? "";
     const session = await stripe.checkout.sessions.create({
       mode: "payment",
-      payment_method_types: ["card", "p24", "blik"],
       currency: "pln",
       line_items: [{
         price_data: {

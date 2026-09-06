@@ -9,7 +9,7 @@ import { Ico, IconTile, HomeFooter, GOLD_GRAD, CARD, type IconName, type Tint } 
 
 const PILLARS: { icon: IconName; tint: Tint; title: string; text: string }[] = [
   { icon: "shield", tint: "green", title: "Ochrona Kupujących", text: "Każda płatność idzie przez Sunrise. Sprzedawca dostaje pieniądze dopiero, gdy potwierdzisz odbiór — albo automatycznie po 14 dniach, jeśli nie zgłosisz problemu. Spór rozstrzyga operator." },
-  { icon: "sun", tint: "amber", title: "Cashback 3% przy każdej płatności", text: "Portfel Sunrise Pay, karta, BLIK czy P24 — po każdym zakupie 3% wartości wraca na Twój portfel. Bez programów lojalnościowych i drobnego druku." },
+  { icon: "sun", tint: "amber", title: "Cashback 3% przy każdej płatności", text: "Portfel Sunrise Pay czy karta — po każdym zakupie 3% wartości wraca na Twój portfel. Bez programów lojalnościowych i drobnego druku." },
   { icon: "bag", tint: "violet", title: "Zakupy, rezerwacje i ogłoszenia w jednym", text: "Produkty, usługi z terminarzem, wynajem, nieruchomości, motoryzacja, OZE — jedno konto, jeden koszyk, jedna historia zamówień." },
   { icon: "user", tint: "blue", title: "Zweryfikowani sprzedawcy", text: "Sprzedawcy prywatni i Partnerzy Handlowi z NIP akceptują regulamin, a ich opinie pochodzą wyłącznie od klientów, którzy naprawdę kupili. Sunrise Verify sprawdza auta i nieruchomości." },
 ];

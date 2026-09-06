@@ -39,7 +39,7 @@ Deno.serve(async(req)=>{
   if(rErr) throw rErr;
   const stripe=new Stripe(await resolveStripeKey(),{apiVersion:"2024-06-20",httpClient:Stripe.createFetchHttpClient()});
   const origin=Deno.env.get("PUBLIC_WEB_URL")??req.headers.get("origin")??"https://sunrisemarket.pl";
-  const session=await stripe.checkout.sessions.create({mode:"payment",payment_method_types:["card","p24","blik"],currency:"pln",line_items:[{price_data:{currency:"pln",product_data:{name:kind==="vehicle"?"Sunrise Verify — raport pojazdu":"Sunrise Verify — analiza nieruchomości"},unit_amount:Math.round(price*100)},quantity:1}],metadata:{verification_request_id:r.id,user_id:user.id,kind,offer_id},success_url:`${origin}/verify/${r.id}?session_id={CHECKOUT_SESSION_ID}`,cancel_url:`${origin}/produkt/${offer_id}?verify=cancel`});
+  const session=await stripe.checkout.sessions.create({mode:"payment",currency:"pln",line_items:[{price_data:{currency:"pln",product_data:{name:kind==="vehicle"?"Sunrise Verify — raport pojazdu":"Sunrise Verify — analiza nieruchomości"},unit_amount:Math.round(price*100)},quantity:1}],metadata:{verification_request_id:r.id,user_id:user.id,kind,offer_id},success_url:`${origin}/verify/${r.id}?session_id={CHECKOUT_SESSION_ID}`,cancel_url:`${origin}/produkt/${offer_id}?verify=cancel`});
   await sb.from("verification_requests").update({stripe_session_id:session.id}).eq("id",r.id);
   return json({url:session.url,request_id:r.id});
  }catch(e){return json({error:String((e as Error).message??e)},400)}

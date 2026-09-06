@@ -98,7 +98,7 @@ Deno.serve(async(req)=>{
     }
 
     const origin=Deno.env.get("PUBLIC_WEB_URL")??req.headers.get("origin")??"https://sunrisemarket.pl";
-    const session=await stripe.checkout.sessions.create({mode:"payment",payment_method_types:["card","p24","blik"],currency:"pln",line_items:[{price_data:{currency:"pln",product_data:{name:"Partner Handlowy MySunrise — odnowienie na 12 miesięcy"},unit_amount:Math.round(amount*100)},quantity:1}],metadata:{trade_partner_renewal_id:String(renewal.id),seller_id:String(seller.id),user_id:user.id,user_email:user.email},customer_email:user.email,success_url:`${origin}/sprzedawca/partner?renewal=success&session_id={CHECKOUT_SESSION_ID}`,cancel_url:`${origin}/sprzedawca/partner?renewal=cancel`},{idempotencyKey:`trade-partner-renewal:${renewal.id}`});
+    const session=await stripe.checkout.sessions.create({mode:"payment",currency:"pln",line_items:[{price_data:{currency:"pln",product_data:{name:"Partner Handlowy MySunrise — odnowienie na 12 miesięcy"},unit_amount:Math.round(amount*100)},quantity:1}],metadata:{trade_partner_renewal_id:String(renewal.id),seller_id:String(seller.id),user_id:user.id,user_email:user.email},customer_email:user.email,success_url:`${origin}/sprzedawca/partner?renewal=success&session_id={CHECKOUT_SESSION_ID}`,cancel_url:`${origin}/sprzedawca/partner?renewal=cancel`},{idempotencyKey:`trade-partner-renewal:${renewal.id}`});
     await sb.from("partner_membership_renewals").update({payment_reference:session.id}).eq("id",renewal.id);
     return json({ok:true,payment:"card",url:session.url,renewal_id:renewal.id,amount,period_start:periodStart,period_end:periodEnd});
   }catch(e){return json({error:String((e as Error).message??e)},400)}

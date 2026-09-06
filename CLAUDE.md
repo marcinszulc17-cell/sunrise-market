@@ -6,8 +6,8 @@ pierwszeństwo przy każdej zmianie kodu. Nie wolno ich naruszać ani obchodzić
 ## 1. Płatności: portfel promowany + karta do wyboru (decyzja właściciela 2026-08-11, cashback dla wszystkich metod 2026-09-05)
 
 - **Zakupy jednorazowe**: portfel Sunrise Pay jest metodą **promowaną**
-  (główny przycisk) + do wyboru **karta/P24/BLIK przez Stripe** (drugi przycisk).
-- **Cashback 3% przy KAŻDEJ metodzie płatności** — portfel, karta/BLIK/P24,
+  (główny przycisk) + do wyboru **karta przez Stripe** (drugi przycisk; P24/BLIK nie są włączone — sesje Stripe bez `payment_method_types`, metody wg ustawień w Dashboardzie Stripe; w UI piszemy „Karta (Stripe)”, decyzja właściciela 2026-09-06).
+- **Cashback 3% przy KAŻDEJ metodzie płatności** — portfel, karta,
   subskrypcje i ich odnowienia (decyzja właściciela 2026-09-05; wcześniej tylko portfel).
 - **Subskrypcje**: rozliczane **wyłącznie przez Stripe** (cashback za każdy opłacony miesiąc).
 - Płatność kartą: edge `checkout` z `payment_method='card'` tworzy sesję
@@ -190,3 +190,5 @@ pierwszeństwo przy każdej zmianie kodu. Nie wolno ich naruszać ani obchodzić
 - `get_offer` NIE wycina `purchase_mode`/`offer_type` (2026-09-06) — bez nich oferta wynajmu renderowała się jak zwykły produkt.
 - **Podpis kodem** przy wydaniu/zwrocie: sprzedawca „Wyślij kod klientowi” (`issue_code` → `market.issue_handover_code`: 6 cyfr, in-app + e-mail, 15 min, 5 prób; tabela `booking_handover_codes`), klient widzi kod w rezerwacji (`active_handover_code`), sprzedawca wpisuje → `verify_code` → `handover_code_verified_at`/`return_code_verified_at`. SMS działa: `market.send_market_sms(phone, body, kind)` → pg_net → hub MySunrise `mkt-sms` (auth X-Sunrise-Service-Token = `sunrise_pay_service_token`) → `send-sms` (SMSAPI). Kod idzie SMS-em na `booking_agreements.renter.phone`; `rental_protocol_tick` wysyła też SMS „dziś odbiór/zwrot” (dedupe w `market.sms_log`). Kopia kodu funkcji huba: `docs/mysunrise-edge/mkt-sms.index.ts` (źródło w repo mysunrise-source). SMS-y bez polskich znaków (1 segment GSM).
 - **Rabaty za długość najmu** (do 10% dla Fiesty: od 4 dni −5%, od 8 dni −10%): `booking_offers.length_discounts`, `booking_length_discount()` w wycenie i holdzie (od czynszu, nie od kaucji), ustawienia sprzedawcy w bookingu. Wymóg 2 lat prawa jazdy: `rental_operations.min_license_years` (domyślnie 2). Stopka: profile social ekosystemu (Facebook Sunrise Energy, Instagram sunriseenergy.pl) — `SOCIAL_LINKS` w HomeShared.
+- **Faktura na firmę = NIP podkłada dane** (decyzja właściciela 2026-09-06): `InvoiceDetailsFields` (koszyk i rezerwacje) po wpisaniu 10 cyfr NIP woła `src/lib/nip.ts` → edge fn `nip-lookup` (Biała Lista MF) i wypełnia nazwę, ulicę, kod, miasto (`splitPlAddress`); suma kontrolna NIP sprawdzana lokalnie. Pola można poprawić ręcznie.
+- **Okno rezerwacji ma „Wróć”**: `BookingPurchaseModal` dokłada wpis historii (`history.pushState`) — gest/przycisk wstecz telefonu, Esc, tło i przycisk „← Wróć” zamykają okno i wracają do oferty.

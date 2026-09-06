@@ -15,13 +15,13 @@ export default function Cennik() {
 
       <main className="mx-auto max-w-4xl px-4 py-10">
         <h1 className="font-display text-4xl font-semibold mb-2">Cennik</h1>
-        <p className="mb-8" style={{ color: "var(--mut)" }}>Przejrzyste zasady. Portfel Sunrise Pay z cashbackiem albo karta/BLIK/P24 przez Stripe.</p>
+        <p className="mb-8" style={{ color: "var(--mut)" }}>Przejrzyste zasady. Portfel Sunrise Pay z cashbackiem albo karta przez Stripe.</p>
 
         {p && (
           <div className="grid gap-5 md:grid-cols-2">
             <Card title="Sprzedaż" highlight>
               <Row k="Prowizja — płatność Sunrise Pay" v={pct(p.commission_rate)} note="cashback 3% dla kupującego zawarty" />
-              <Row k="Prowizja — karta / BLIK / P24 (Stripe)" v={pct(p.stripe_commission_rate ?? 0.129)} note="cashback zawarty" />
+              <Row k="Prowizja — karta (Stripe)" v={pct(p.stripe_commission_rate ?? 0.129)} note="cashback zawarty" />
               <Row k="Cashback dla kupującego" v={pct(p.cashback_rate)} note="wraca na portfel Sunrise Pay" />
               <Row k="Wypłata dla sprzedawcy" v="na portfel Sunrise Pay" note="Ochrona Kupujących: środki są przechowywane przez Sunrise do potwierdzenia odbioru (maks. 14 dni od wysyłki)" />
             </Card>

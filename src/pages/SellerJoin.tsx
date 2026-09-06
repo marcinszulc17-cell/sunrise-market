@@ -78,7 +78,7 @@ export default function SellerJoin() {
         </div>
 
         <p className="mt-6 text-center text-xs" style={{ color: "var(--mut)" }}>
-          Prowizja od sprzedaży: 7,9% przy płatności Sunrise Pay (cashback dla klienta zawarty), 12,9% przy płatności kartą/BLIK/P24 (Stripe). Szczegóły w <Link to="/cennik" className="underline">cenniku</Link>.
+          Prowizja od sprzedaży: 7,9% przy płatności Sunrise Pay (cashback dla klienta zawarty), 12,9% przy płatności kartą (Stripe). Szczegóły w <Link to="/cennik" className="underline">cenniku</Link>.
         </p>
       </div>
     </main>

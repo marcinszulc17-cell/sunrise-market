@@ -12,14 +12,14 @@ type Group = { id: string; icon: IconName; tint: Tint; title: string; items: Faq
 
 const GROUPS: Group[] = [
   { id: "zakupy", icon: "cart", tint: "amber", title: "Zakupy i płatności", items: [
-    { q: "Jak mogę zapłacić?", a: "Portfelem Sunrise Pay (metoda promowana — główny przycisk w koszyku) albo kartą, BLIK-iem lub P24 przez Stripe. Subskrypcje (np. Protect Plus) rozliczamy wyłącznie kartą, co miesiąc z góry." },
+    { q: "Jak mogę zapłacić?", a: "Portfelem Sunrise Pay (metoda promowana — główny przycisk w koszyku) albo kartą przez Stripe. Subskrypcje (np. Protect Plus) rozliczamy wyłącznie kartą, co miesiąc z góry." },
     { q: "Co jeśli w portfelu brakuje środków?", a: "Koszyk zaproponuje doładowanie (od 10 zł do 25 000 zł) i sam dokończy zakup po powrocie, albo od razu pokaże płatność kartą, gdy brakująca kwota przekracza limit doładowania." },
     { q: "Czy dostanę fakturę?", a: "Partnerzy Handlowi (firmy z NIP) wystawiają faktury z panelu sprzedawcy; przy ofertach oznaczonych „Pełna faktura VAT” dokument otrzymasz do zamówienia. Sprzedawcy prywatni wystawiają dowód sprzedaży." },
     { q: "Jak skontaktować się ze sprzedawcą?", a: <>Na stronie oferty kliknij <b>Napisz do sprzedawcy</b> — rozmowa trafia do <Link to="/wiadomosci" style={{ color: "var(--gold)" }}>Wiadomości</Link>, a sprzedawca dostaje powiadomienie. Jeśli sprzedawca udostępnił numer, zalogowani zobaczą przycisk <b>Pokaż numer</b>. Przy autach i nieruchomościach jest też <b>Umów oględziny / prezentację</b> z wyborem terminu.</> },
     { q: "Ile kosztuje dostawa?", a: "Zależy od sprzedawcy i metody: Paczkomat InPost, kurier InPost lub DPD. Przy ofertach z odbiorem osobistym wybierzesz w koszyku „Odbiór osobisty u sprzedawcy” za 0 zł." },
   ] },
   { id: "cashback", icon: "sun", tint: "orange", title: "Cashback i portfel Sunrise Pay", items: [
-    { q: "Ile wynosi cashback i kiedy go dostanę?", a: "3% wartości zakupu przy każdej metodzie płatności — portfel, karta, BLIK, P24, a także przy każdym odnowieniu subskrypcji. Punkty trafiają na Twój portfel Sunrise Pay po opłaceniu zamówienia." },
+    { q: "Ile wynosi cashback i kiedy go dostanę?", a: "3% wartości zakupu przy każdej metodzie płatności — portfel lub karta, a także przy każdym odnowieniu subskrypcji. Punkty trafiają na Twój portfel Sunrise Pay po opłaceniu zamówienia." },
     { q: "Czy cashback przepada przy zwrocie?", a: "Tak — przy zwrocie zamówienia cofamy również naliczony cashback za to zamówienie. Nigdy nie schodzimy poniżej zera na Twoim saldzie z innych zakupów." },
     { q: "Gdzie sprawdzę saldo i historię?", a: <>W zakładce <Link to="/portfel" style={{ color: "var(--gold)" }}>Portfel</Link> widzisz saldo, punkty cashback, doładowania i wypłaty. Portfel jest wspólny dla całego ekosystemu MySunrise.</> },
   ] },
@@ -39,7 +39,7 @@ const GROUPS: Group[] = [
     { q: "Co pokazać przy odbiorze?", a: "Numer zamówienia z zakładki Zamówienia. Sprzedawca oznacza „Przekazane klientowi”, a Ty możesz potwierdzić odbiór — wtedy sprzedawca dostaje wypłatę." },
   ] },
   { id: "sprzedaz", icon: "bag", tint: "amber", title: "Sprzedawanie w Sunrise Market", items: [
-    { q: "Ile kosztuje sprzedawanie?", a: <>Pierwsze 12 miesięcy bez opłat. Potem <b>Sprzedawca</b> (bez NIP) płaci 299 zł / rok, a <b>Partner Handlowy</b> (firma z NIP) 499 zł / rok. Prowizja od sprzedaży: 7,9% przy płatności Sunrise Pay, 12,9% przy karcie/BLIK/P24. Szczegóły w <Link to="/cennik" style={{ color: "var(--gold)" }}>Cenniku</Link>.</> },
+    { q: "Ile kosztuje sprzedawanie?", a: <>Pierwsze 12 miesięcy bez opłat. Potem <b>Sprzedawca</b> (bez NIP) płaci 299 zł / rok, a <b>Partner Handlowy</b> (firma z NIP) 499 zł / rok. Prowizja od sprzedaży: 7,9% przy płatności Sunrise Pay, 12,9% przy karcie (Stripe). Szczegóły w <Link to="/cennik" style={{ color: "var(--gold)" }}>Cenniku</Link>.</> },
     { q: "Jak wystawić ogłoszenie?", a: <>Kliknij <Link to="/sprzedawca/wystaw" style={{ color: "var(--gold)" }}>Dodaj ogłoszenie</Link> i wybierz typ: produkt, usługa z terminarzem, wynajem, samochód lub nieruchomość. Kreator poprowadzi Cię przez zdjęcia, cenę, dostawę i szczegóły kategorii.</> },
     { q: "Kiedy dostanę pieniądze za sprzedaż?", a: "Po potwierdzeniu odbioru przez kupującego, doręczeniu przez kuriera albo automatycznie po 14 dniach (Ochrona Kupujących). Sprzedawca prywatny dostaje wypłatę na prywatny portfel Sunrise Pay, Partner Handlowy — na saldo firmowe." },
     { q: "Czy mogę odpowiadać na opinie?", a: <>Tak — w <Link to="/sprzedawca/opinie" style={{ color: "var(--gold)" }}>Centrum sprzedaży → Opinie</Link> odpowiadasz publicznie. Opinie wystawiają wyłącznie klienci po opłaconym zakupie; nie da się ich edytować ani usunąć.</> },
