@@ -26,6 +26,23 @@ export function readRegion(): string { try { return localStorage.getItem(REGION_
 
 const navBtn = "flex h-11 items-center gap-2 rounded-xl px-3 text-sm font-medium transition hover:opacity-90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#F5A623]";
 
+/** Telefon: pływający, półprzezroczysty przycisk „wróć” pod nagłówkiem (decyzja właściciela 2026-09-06 — nie zasłania logo
+ *  ani paska akcji). Po przewinięciu strony robi się bardziej przezroczysty i mniejszy; wraca do pełnej widoczności na górze. */
+function FloatingBack() {
+  const [scrolled, setScrolled] = useState(false);
+  useEffect(() => {
+    const on = () => setScrolled(window.scrollY > 120);
+    on(); window.addEventListener("scroll", on, { passive: true });
+    return () => window.removeEventListener("scroll", on);
+  }, []);
+  return <button type="button" onClick={() => { if (window.history.length > 1) window.history.back(); else window.location.href = "/"; }}
+    aria-label="Wróć do poprzedniej strony"
+    className="fixed left-3 z-40 grid h-10 w-10 place-items-center rounded-full backdrop-blur-md transition-all duration-300 active:scale-95 sm:hidden"
+    style={{ top: "calc(70px + env(safe-area-inset-top))", background: scrolled ? "rgba(16,16,18,.38)" : "rgba(16,16,18,.62)", border: "1px solid rgba(255,255,255,.22)", color: "#fff", opacity: scrolled ? 0.6 : 1, transform: scrolled ? "scale(.88)" : "none", boxShadow: "0 4px 16px rgba(0,0,0,.25)" }}>
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M15 18l-6-6 6-6" /></svg>
+  </button>;
+}
+
 /** Nagłówek serwisu. `active` = klucz pozycji paska działów do podświetlenia. */
 export function SiteHeader({ active, compact = false, back = false }: { active?: string; compact?: boolean; back?: boolean }) {
   const navigate = useNavigate();
@@ -43,8 +60,8 @@ export function SiteHeader({ active, compact = false, back = false }: { active?:
   return <header className="sticky top-0 z-30 backdrop-blur" style={{ background: "var(--header)", borderBottom: "1px solid var(--line)" }}>
     {/* Telefon: niski pasek */}
     <div className="mx-auto flex max-w-3xl items-center gap-2 px-4 py-2 sm:hidden">
-      {back && <button type="button" onClick={() => { if (window.history.length > 1) window.history.back(); else window.location.href = "/"; }} aria-label="Wróć do poprzedniej strony" className="grid h-11 w-11 shrink-0 place-items-center rounded-xl text-xl" style={CARD}>←</button>}
-      <a href="/" className="flex items-center" aria-label="Sunrise Market — strona główna"><img src="/logo-sunrise-market-light.png" alt="Sunrise Market" className={`brand-logo w-auto ${back ? "h-8" : "h-10"}`} /></a>
+      {back && <FloatingBack />}
+      <a href="/" className="flex items-center" aria-label="Sunrise Market — strona główna"><img src="/logo-sunrise-market-light.png" alt="Sunrise Market" className="brand-logo h-10 w-auto" /></a>
       <div className="flex-1" />
       <NotificationsBell />
       <Link to="/wiadomosci" aria-label="Wiadomości" className="relative grid h-11 w-11 place-items-center rounded-xl" style={CARD}><Ico name="mail" size={20} />{mailBadge}</Link>
@@ -85,7 +102,8 @@ export function SiteHeader({ active, compact = false, back = false }: { active?:
 
 /** Okruszki: [{label, to?}] — ostatni element bez linku. */
 export function Breadcrumbs({ items, back }: { items: { label: string; to?: string }[]; back?: string }) {
-  return <nav aria-label="Okruszki" className="flex flex-wrap items-center gap-x-2 gap-y-1 text-sm" style={{ color: "var(--mut)" }}>
+  // Telefon: pływający „wróć” (FloatingBack w SiteHeader) siedzi po lewej na wysokości okruszków — robimy mu miejsce.
+  return <nav aria-label="Okruszki" className={`flex flex-wrap items-center gap-x-2 gap-y-1 text-sm ${back ? "min-h-10 pl-12 sm:pl-0" : ""}`} style={{ color: "var(--mut)" }}>
     {back && <Link to={back} className="mr-2 hidden h-9 items-center gap-1 rounded-lg px-3 text-xs font-semibold sm:flex" style={CARD}>← Wróć</Link>}
     {items.map((it, i) => <span key={i} className="flex items-center gap-2">{i > 0 && <span aria-hidden="true">›</span>}{it.to ? <Link to={it.to} className="navlink">{it.label}</Link> : <span style={{ color: "var(--ink)" }}>{it.label}</span>}</span>)}
   </nav>;
