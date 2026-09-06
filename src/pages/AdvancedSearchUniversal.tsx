@@ -1,4 +1,5 @@
 import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
+import { useLocation } from "react-router-dom";
 import SearchBox from "../components/SearchBox";
 import SavedSearchButton, { ActiveFilterChips } from "../components/SavedSearches";
 import { offerDetailHref } from "../lib/bookingLink";
@@ -47,6 +48,13 @@ function emoji(name:string){
   return "📦";
 }
 
+// Drzewo kategorii pobieramy raz na sesję (kolejne wejścia na /szukaj nie czekają na bazę).
+let categoriesCache:Promise<Category[]>|null=null;
+function loadCategories():Promise<Category[]>{
+  if(!categoriesCache) categoriesCache=(async()=>{ const {data,error}=await supabase.from("categories").select("id,slug,name,parent_id,sort_order").order("sort_order").order("name"); if(error||!data){ categoriesCache=null; return []; } return data as Category[]; })();
+  return categoriesCache;
+}
+
 function normalizeOptions(options:any):string[]{
   if(Array.isArray(options)) return options.map(String);
   if(Array.isArray(options?.values)) return options.values.map(String);
@@ -71,11 +79,19 @@ export default function AdvancedSearchUniversal(){
   const [showFilters,setShowFilters]=useState(false);
   const [loc,setLoc]=useState(""); // lokalizacja: ?lok= z nagłówka (województwo) albo wpisana w filtrach — attributes.location ilike // telefon: filtry zwijane, wyniki od razu
 
-  // Parametry z adresu (ekran startowy / linki): ?q=… ?kat=slug ?tryb=appointment|daily — po wczytaniu od razu szukamy.
-  const [autoRun,setAutoRun]=useState(false);
+  // Parametry z adresu (ekran startowy / linki / pasek działów): ?q=… ?kat=slug ?tryb=appointment|daily — po wczytaniu od razu szukamy.
+  // Reagujemy na KAŻDĄ zmianę adresu (2026-09-06: przełączanie działów w nagłówku, gdy /szukaj już był otwarty, nie zmieniało wyników).
+  const location=useLocation();
+  // Licznik uruchomień (nie flaga): kilka „szukaj” w jednym cyklu nie może się zgubić ani zawiesić na true.
+  const [run,setRun]=useState(0);
+  const setAutoRun=(v:boolean)=>{ if(v) setRun(r=>r+1); };
+  const fromUrl=useRef(false);
   const pendingFilters=useRef<Record<string,string|boolean>|null>(null); // filtry zapisanego wyszukiwania — nakładane po wczytaniu kategorii
+  const mounted=useRef(false);
   useEffect(()=>{
-    const sp=new URLSearchParams(window.location.search);
+    const sp=new URLSearchParams(location.search);
+    if(mounted.current){ setPriceMin("");setPriceMax("");setFilters({});setDefs([]);setMsg(null); } // nowe kryteria z linku — czyścimy poprzednie
+    mounted.current=true; fromUrl.current=true;
     const pq=sp.get("q")||"", pk=sp.get("kat")||"", pm=sp.get("tryb")||"", pl=sp.get("lok")||readRegion();
     const saved=sp.get("zapisane");
     if(saved){ // zapisane wyszukiwanie z powiadomienia / Ulubionych → odtwarzamy kryteria i zerujemy licznik „nowe”
@@ -84,16 +100,31 @@ export default function AdvancedSearchUniversal(){
         const f={...(s.filters||{})}; if(f.purchase_mode){ setMode(f.purchase_mode); delete f.purchase_mode; } if(f.location){ setLoc(String(f.location)); delete f.location; } setSort("najnowsze");
         if(s.category_slug){ pendingFilters.current=f; } else { setFilters(f); setAutoRun(true); }
         supabase.rpc("touch_saved_search",{p_id:saved}).then(()=>{},()=>{}); });
-      supabase.from("categories").select("id,slug,name,parent_id,sort_order").order("sort_order").order("name").then(({data})=>setCategories((data||[]) as Category[]));
+      loadCategories().then(setCategories);
       return;
     }
     if(pl) setLoc(pl);
-    if(pq) setQ(pq); if(pk) setSelected(pk); if(pm==="appointment"||pm==="daily"||pm==="purchase") setMode(pm as PurchaseModeFilter);
+    setQ(pq); setSelected(pk); setMode(pm==="appointment"||pm==="daily"||pm==="purchase"?pm as PurchaseModeFilter:"");
     setAutoRun(true); // zawsze pokazujemy oferty od razu (bez parametrów: wszystkie, wg trafności)
-    supabase.from("categories").select("id,slug,name,parent_id,sort_order").order("sort_order").order("name")
-      .then(({data})=>setCategories((data||[]) as Category[]));
-  },[]);
-  useEffect(()=>{ if(autoRun){ setAutoRun(false); search(); } },[autoRun]);
+    loadCategories().then(setCategories);
+  },[location.search]); // eslint-disable-line react-hooks/exhaustive-deps
+  // Kategoria / tryb / sortowanie: wyniki odświeżają się same (bez „Pokaż oferty”); adres aktualizujemy cicho (replaceState, bez przeładowania).
+  // Zmiana, która przyszła z adresu (fromUrl), już uruchamia szukanie w efekcie wyżej — tu ją pomijamy. Ten efekt musi być PRZED efektem [run].
+  const firstCrit=useRef(true);
+  useEffect(()=>{
+    if(firstCrit.current){ firstCrit.current=false; return; }
+    if(fromUrl.current){ fromUrl.current=false; return; }
+    if(pendingFilters.current) return; // zapisane wyszukiwanie — szukamy po nałożeniu filtrów
+    const sp=new URLSearchParams(window.location.search); const before=sp.toString();
+    if(q.trim()) sp.set("q",q.trim()); else sp.delete("q");
+    if(selected) sp.set("kat",selected); else sp.delete("kat");
+    if(mode) sp.set("tryb",mode); else sp.delete("tryb");
+    if(loc.trim()) sp.set("lok",loc.trim()); else sp.delete("lok");
+    sp.delete("zapisane");
+    if(sp.toString()!==before) window.history.replaceState(window.history.state,"",`${window.location.pathname}${sp.toString()?`?${sp}`:""}`);
+    setAutoRun(true);
+  },[selected,mode,sort]); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(()=>{ if(run>0){ fromUrl.current=false; search(); } },[run]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const selectedCategory=useMemo(()=>categories.find(c=>c.slug===selected)||null,[categories,selected]);
   const roots=useMemo(()=>categories.filter(c=>!c.parent_id),[categories]);
