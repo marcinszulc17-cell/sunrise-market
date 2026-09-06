@@ -1,4 +1,6 @@
-import { FormEvent, useEffect, useMemo, useState } from "react";
+import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
+import SearchBox from "../components/SearchBox";
+import SavedSearchButton, { ActiveFilterChips } from "../components/SavedSearches";
 import { offerDetailHref } from "../lib/bookingLink";
 import { supabase } from "../lib/supabase";
 import { zl } from "../lib/money";
@@ -71,9 +73,20 @@ export default function AdvancedSearchUniversal(){
 
   // Parametry z adresu (ekran startowy / linki): ?q=… ?kat=slug ?tryb=appointment|daily — po wczytaniu od razu szukamy.
   const [autoRun,setAutoRun]=useState(false);
+  const pendingFilters=useRef<Record<string,string|boolean>|null>(null); // filtry zapisanego wyszukiwania — nakładane po wczytaniu kategorii
   useEffect(()=>{
     const sp=new URLSearchParams(window.location.search);
     const pq=sp.get("q")||"", pk=sp.get("kat")||"", pm=sp.get("tryb")||"", pl=sp.get("lok")||readRegion();
+    const saved=sp.get("zapisane");
+    if(saved){ // zapisane wyszukiwanie z powiadomienia / Ulubionych → odtwarzamy kryteria i zerujemy licznik „nowe”
+      supabase.rpc("my_saved_searches").then(({data})=>{ const s=((data||[]) as any[]).find(x=>x.id===saved); if(!s) return;
+        setQ(s.query||""); setSelected(s.category_slug||""); setPriceMin(s.price_min!=null?String(s.price_min):""); setPriceMax(s.price_max!=null?String(s.price_max):"");
+        const f={...(s.filters||{})}; if(f.purchase_mode){ setMode(f.purchase_mode); delete f.purchase_mode; } if(f.location){ setLoc(String(f.location)); delete f.location; } setSort("najnowsze");
+        if(s.category_slug){ pendingFilters.current=f; } else { setFilters(f); setAutoRun(true); }
+        supabase.rpc("touch_saved_search",{p_id:saved}).then(()=>{},()=>{}); });
+      supabase.from("categories").select("id,slug,name,parent_id,sort_order").order("sort_order").order("name").then(({data})=>setCategories((data||[]) as Category[]));
+      return;
+    }
     if(pl) setLoc(pl);
     if(pq) setQ(pq); if(pk) setSelected(pk); if(pm==="appointment"||pm==="daily"||pm==="purchase") setMode(pm as PurchaseModeFilter);
     setAutoRun(true); // zawsze pokazujemy oferty od razu (bez parametrów: wszystkie, wg trafności)
@@ -87,11 +100,12 @@ export default function AdvancedSearchUniversal(){
   const children=(id:string)=>categories.filter(c=>c.parent_id===id);
 
   useEffect(()=>{
-    setFilters({}); setDefs([]);
+    const pend=pendingFilters.current; pendingFilters.current=null;
+    setFilters(pend||{}); setDefs([]);
     if(!selectedCategory?.id) return;
     let alive=true; setLoadingFilters(true);
     supabase.from("category_attributes").select("key,label,data_type,options").eq("category_id",selectedCategory.id).order("label")
-      .then(({data})=>{ if(alive){setDefs(((data||[]) as AttrDef[]).filter(d=>!PRIVATE_FILTER_KEYS.has(d.key)));setLoadingFilters(false);} },()=>{if(alive){setDefs([]);setLoadingFilters(false);}});
+      .then(({data})=>{ if(alive){setDefs(((data||[]) as AttrDef[]).filter(d=>!PRIVATE_FILTER_KEYS.has(d.key)));setLoadingFilters(false); if(pend) setAutoRun(true);} },()=>{if(alive){setDefs([]);setLoadingFilters(false); if(pend) setAutoRun(true);}});
     return()=>{alive=false;};
   },[selectedCategory?.id]);
 
@@ -149,16 +163,24 @@ export default function AdvancedSearchUniversal(){
       {/* ── Wyniki ─────────────────────────────────────────── */}
       <section className="min-w-0">
         {/* Telefon: pole wyszukiwania nad wynikami (nagłówek mobilny nie ma wyszukiwarki) */}
-        <form onSubmit={search} role="search" className="mb-4 flex items-center gap-2 rounded-2xl pl-4 pr-1.5 lg:hidden" style={box}>
-          <span style={{color:"var(--mut)"}}><Ico name="search" size={20}/></span>
-          <input value={q} onChange={e=>setQ(e.target.value)} placeholder="Szukaj produktów, usług, ogłoszeń…" aria-label="Szukaj" className="min-w-0 flex-1 bg-transparent py-3 text-base outline-none" style={{color:"var(--ink)"}} enterKeyHint="search"/>
-          <button type="submit" disabled={busy} className="grid h-11 w-11 place-items-center rounded-xl" style={{background:"linear-gradient(135deg,#E8891A,#F5A623)",color:"#101012"}} aria-label="Szukaj"><Ico name="search" size={20} strokeWidth={2.2}/></button>
-        </form>
+        <SearchBox value={q} onChange={setQ} onSubmit={()=>setAutoRun(true)} className="mb-4 flex items-center gap-1 rounded-2xl lg:hidden" style={box} />
         <div className="flex flex-wrap items-end justify-between gap-3">
           <div><h1 className="text-3xl font-bold">{title}</h1><p className="mt-1 text-sm" style={{color:"var(--mut)"}}>{subtitle}</p></div>
           <div className="flex w-full items-center gap-2 sm:w-auto"><button type="button" onClick={()=>{setShowFilters(v=>!v); if(!showFilters) setTimeout(()=>document.getElementById("filtry")?.scrollIntoView({behavior:"smooth",block:"start"}),50);}} className="flex h-11 items-center gap-2 rounded-xl px-3 text-sm font-semibold lg:hidden" style={box} aria-expanded={showFilters} aria-controls="filtry">☰ Filtry</button><label className="flex h-11 min-w-0 flex-1 items-center gap-2 rounded-xl px-3 text-sm sm:flex-none" style={box}><span className="shrink-0" style={{color:"var(--mut)"}}>Sortowanie</span><select value={sort} onChange={e=>setSort(e.target.value)} className="min-w-0 flex-1 bg-transparent font-semibold outline-none" style={{color:"var(--ink)"}}><option value="trafnosc">Najtrafniejsze</option><option value="najnowsze">Najnowsze</option><option value="popularne">Najczęściej oglądane</option><option value="cena_rosnaco">Cena: rosnąco</option><option value="cena_malejaco">Cena: malejąco</option></select></label></div>
         </div>
-        {rows.length>0&&<div className="mt-4 text-sm" style={{color:"var(--mut)"}}>Znaleziono <b style={{color:"var(--ink)"}}>{rows.length}</b> {rows.length===1?"ofertę":rows.length<5?"oferty":"ofert"}</div>}
+        <ActiveFilterChips items={[
+          ...(q.trim()?[{key:"q",label:`„${q.trim()}”`,clear:()=>{setQ("");setAutoRun(true);}}]:[]),
+          ...(mode?[{key:"mode",label:MODE_FILTERS.find(m=>m.id===mode)?.label||mode,clear:()=>{setMode("");setAutoRun(true);}}]:[]),
+          ...(selectedCategory?[{key:"kat",label:selectedCategory.name,clear:()=>{setSelected("");setFilters({});setDefs([]);setAutoRun(true);}}]:[]),
+          ...(loc.trim()?[{key:"loc",label:`📍 ${loc.trim()}`,clear:()=>{setLoc("");setAutoRun(true);}}]:[]),
+          ...((priceMin||priceMax)?[{key:"price",label:`${priceMin?`od ${priceMin} zł`:""}${priceMin&&priceMax?" ":""}${priceMax?`do ${priceMax} zł`:""}`,clear:()=>{setPriceMin("");setPriceMax("");setAutoRun(true);}}]:[]),
+          ...Object.entries(filters).filter(([,v])=>v!==""&&v!==false).map(([k,v])=>({key:k,label:`${defs.find(d=>d.key===k)?.label||k}${v===true?"":`: ${v}`}`,clear:()=>{setFilter(k,"");setAutoRun(true);}})),
+        ]} onClearAll={()=>{reset();setAutoRun(true);}} />
+        <div className="mt-3 flex flex-wrap items-center gap-3">
+          {rows.length>0&&<div className="text-sm" style={{color:"var(--mut)"}}>Znaleziono <b style={{color:"var(--ink)"}}>{rows.length}</b> {rows.length===1?"ofertę":rows.length<5?"oferty":"ofert"}</div>}
+          <SavedSearchButton name={[q.trim(),selectedCategory?.name,loc.trim()].filter(Boolean).join(" · ")||title} query={q.trim()} categorySlug={selected} priceMin={priceMin?Number(priceMin):null} priceMax={priceMax?Number(priceMax):null} filters={(()=>{const f:Record<string,string|boolean>={};for(const [k,v] of Object.entries(filters)) if(v!==""&&v!==false) f[k]=v; if(mode) f.purchase_mode=mode; if(loc.trim()) f.location=loc.trim(); return f;})()} />
+        </div>
+        {false&&<div className="mt-4 text-sm" style={{color:"var(--mut)"}}>Znaleziono <b style={{color:"var(--ink)"}}>{rows.length}</b> {rows.length===1?"ofertę":rows.length<5?"oferty":"ofert"}</div>}
         {msg&&<div className="mt-5 rounded-2xl p-6 text-sm" style={{...box,color:"var(--mut)"}}>{msg}</div>}
         {rows.length===0&&!msg&&!busy&&<div className="mt-5 rounded-2xl p-6 text-sm" style={{...box,color:"var(--mut)"}}>Wpisz frazę w wyszukiwarce albo wybierz kategorię w <b style={{color:"var(--ink)"}}>Filtrach</b>.</div>}
         {busy&&rows.length===0&&<div className="mt-5 grid gap-4 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">{[0,1,2,3].map(i=><div key={i} className="aspect-[4/5] animate-pulse rounded-2xl" style={box}/>)}</div>}

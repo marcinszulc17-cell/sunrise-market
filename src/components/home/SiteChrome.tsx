@@ -9,6 +9,7 @@ import { useCart } from "../../lib/cart";
 import { supabase } from "../../lib/supabase";
 import { unreadMessagesCount } from "../../lib/api";
 import { Ico, GOLD_GRAD, CARD } from "./HomeShared";
+import SearchBox from "../SearchBox";
 
 export const MENU: { to: string; label: string; key: string }[] = [
   { to: "/", label: "Strona główna", key: "home" },
@@ -54,7 +55,6 @@ export function SiteHeader({ active, compact = false, back = false }: { active?:
   useEffect(() => { let alive = true; supabase.auth.getSession().then(({ data }) => { if (data.session) unreadMessagesCount().then((n) => { if (alive) setUnread(n); }); }); return () => { alive = false; }; }, []);
   const mailBadge = unread > 0 && <span className="absolute -right-1 -top-1 grid h-4 min-w-4 place-items-center rounded-full px-1 text-[10px] font-bold" style={{ background: "var(--gold)", color: "#101012" }}>{unread}</span>;
   function pickRegion(v: string) { setRegion(v); try { if (v) localStorage.setItem(REGION_KEY, v); else localStorage.removeItem(REGION_KEY); } catch { /* prywatny tryb */ } }
-  function submit(e: React.FormEvent) { e.preventDefault(); const sp = new URLSearchParams(); if (q.trim()) sp.set("q", q.trim()); if (region) sp.set("lok", region); navigate(`/szukaj${sp.toString() ? `?${sp}` : ""}`); }
   const badge = cartN > 0 && <span className="absolute -right-1 -top-1 grid h-4 min-w-4 place-items-center rounded-full px-1 text-[10px] font-bold" style={{ background: "var(--gold)", color: "#101012" }}>{cartN}</span>;
 
   return <header className="sticky top-0 z-30 backdrop-blur" style={{ background: "var(--header)", borderBottom: "1px solid var(--line)" }}>
@@ -71,12 +71,9 @@ export function SiteHeader({ active, compact = false, back = false }: { active?:
     {/* Duży ekran */}
     <div className="mx-auto hidden max-w-[1440px] flex-wrap items-center gap-3 px-6 py-3 sm:flex lg:flex-nowrap lg:gap-5 xl:px-10">
       <a href="/" className="flex shrink-0 items-center"><img src="/logo-sunrise-market-light.png" alt="Sunrise Market" className="brand-logo h-12 w-auto" /></a>
-      <form onSubmit={submit} role="search" className="order-last flex w-full max-w-2xl basis-full items-center overflow-hidden rounded-xl lg:order-none lg:mx-auto lg:basis-auto" style={{ background: "rgba(255,255,255,.06)", border: "1px solid var(--line)" }}>
-        <span className="pl-4" style={{ color: "var(--mut)" }}><Ico name="search" size={20} /></span>
-        <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Szukaj produktów, usług, ogłoszeń…" className="min-w-0 flex-1 bg-transparent px-3 py-3 text-sm outline-none" style={{ color: "var(--ink)" }} aria-label="Szukaj" />
-        <label className="hidden h-11 items-center gap-1.5 px-3 text-sm md:flex" style={{ borderLeft: "1px solid var(--line)", color: "var(--mut)" }} title="Region"><span aria-hidden="true">📍</span><select value={region} onChange={(e) => pickRegion(e.target.value)} aria-label="Region" className="max-w-[150px] bg-transparent text-sm font-medium outline-none" style={{ color: region ? "var(--ink)" : "var(--mut)" }}><option value="">Cała Polska</option>{REGIONS.map((r) => <option key={r} value={r}>{r}</option>)}</select></label>
-        <button type="submit" className="h-11 shrink-0 px-5 text-sm font-bold" style={{ background: GOLD_GRAD, color: "#101012" }}>Szukaj</button>
-      </form>
+      <SearchBox value={q} onChange={setQ} onSubmit={(v) => { const sp = new URLSearchParams(); if (v) sp.set("q", v); if (region) sp.set("lok", region); navigate(`/szukaj${sp.toString() ? `?${sp}` : ""}`); }}
+        button="text" className="order-last flex w-full max-w-2xl basis-full items-center overflow-visible rounded-xl lg:order-none lg:mx-auto lg:basis-auto" style={{ background: "rgba(255,255,255,.06)", border: "1px solid var(--line)" }}
+        extra={<label className="hidden h-11 items-center gap-1.5 px-3 text-sm md:flex" style={{ borderLeft: "1px solid var(--line)", color: "var(--mut)" }} title="Region"><span aria-hidden="true">📍</span><select value={region} onChange={(e) => pickRegion(e.target.value)} aria-label="Region" className="max-w-[150px] bg-transparent text-sm font-medium outline-none" style={{ color: region ? "var(--ink)" : "var(--mut)" }}><option value="">Cała Polska</option>{REGIONS.map((r) => <option key={r} value={r}>{r}</option>)}</select></label>} />
       <nav className="ml-auto flex shrink-0 items-center gap-1" aria-label="Konto">
         <ThemeToggle />
         <NotificationsBell />

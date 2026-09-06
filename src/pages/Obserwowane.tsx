@@ -9,6 +9,7 @@ import { supabase } from "../lib/supabase";
 import { zl } from "../lib/money";
 import { Ico, GOLD_GRAD, CARD, HomeFooter, timeAgo } from "../components/home/HomeShared";
 import { SiteHeader, Breadcrumbs, SideNav } from "../components/home/SiteChrome";
+import { SavedSearchList } from "../components/SavedSearches";
 
 type Row = { offer_id: string; title: string; price_gross: number; image_url: string | null; category: string | null; seller: string | null; price_at_add: number | null; price_dropped: boolean; price_drop_amount: number; rating: number; reviews: number; created_at?: string | null; location?: string | null };
 const COMPARE_KEY = "sunrise_compare_ids";
@@ -120,6 +121,7 @@ export default function Obserwowane() {
             <div className="min-w-0 flex-1"><div className="font-bold">Nie przegap świetnych okazji!</div><div className="text-sm" style={{ color: "var(--mut)" }}>Zapisuj ogłoszenia, które Cię interesują, i wracaj do nich w dowolnym momencie.</div></div>
             <Link to="/sklep" className={btn} style={{ border: "1px solid var(--gold)", color: "var(--gold)" }}>Przeglądaj więcej ogłoszeń →</Link>
           </div>}
+          {authed && <SavedSearchList />}
         </section>
       </div>
     </div>

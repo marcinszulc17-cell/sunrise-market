@@ -3,6 +3,7 @@
 // Tylko istniejące dane i trasy: wyszukiwarka → /szukaj?q=, działy (SECTIONS), polecane (useHomeFeed: „Dla Ciebie” dla
 // zalogowanych, inaczej „Polecane ogłoszenia”), popularne kategorie, rezerwacje (/szukaj?tryb=appointment, /rezerwacje),
 // cashback (stawka z public_market_config), wejście dla sprzedających (/sprzedawca/wystaw).
+import SearchBox from "../components/SearchBox";
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useCart } from "../lib/cart";
@@ -20,7 +21,6 @@ export default function Start() {
   useSeo("Sunrise Market — wszystko, czego potrzebujesz w jednym miejscu", "Zakupy, rezerwacje, nieruchomości, motoryzacja i usługi. Cashback 3% i Ochrona Kupujących.", "/");
   const pct = Math.round(rate * 100);
 
-  function submit(e: React.FormEvent) { e.preventDefault(); navigate(q.trim() ? `/szukaj?q=${encodeURIComponent(q.trim())}` : "/szukaj"); }
 
   return <main className="min-h-screen pb-24 sm:pb-8" style={{ background: "var(--bg)", color: "var(--ink)" }}>
     {/* Niski top bar: logo, powiadomienia, koszyk, konto */}
@@ -36,11 +36,7 @@ export default function Start() {
 
     <div className="mx-auto max-w-3xl px-4">
       {/* Wyszukiwarka — pełna szerokość, 48 px */}
-      <form onSubmit={submit} role="search" className="mt-4 flex items-center gap-2 rounded-2xl pl-4 pr-1.5 focus-within:shadow-[0_0_0_2px_rgba(245,166,35,.35)]" style={CARD}>
-        <span style={{ color: "var(--mut)" }}><Ico name="search" size={20} /></span>
-        <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Szukaj produktów, usług, ogłoszeń…" aria-label="Szukaj" className="min-w-0 flex-1 bg-transparent py-3 text-base outline-none" style={{ color: "var(--ink)" }} enterKeyHint="search" />
-        <button type="submit" className="grid h-11 w-11 place-items-center rounded-xl" style={{ background: GOLD_GRAD, color: "#101012" }} aria-label="Szukaj"><Ico name="search" size={20} strokeWidth={2.2} /></button>
-      </form>
+      <SearchBox value={q} onChange={setQ} onSubmit={(v) => navigate(v ? `/szukaj?q=${encodeURIComponent(v)}` : "/szukaj")} className="mt-4 flex items-center gap-1 rounded-2xl focus-within:shadow-[0_0_0_2px_rgba(245,166,35,.35)]" style={CARD} />
       <p className="mt-3 text-center text-[11px] font-semibold tracking-[.26em]" style={{ color: "var(--gold)" }}>KUPUJ. REZERWUJ. ZARABIAJ.</p>
 
       {/* Działy — 2 kolumny */}
