@@ -59,7 +59,7 @@ export default function CityLanding() {
           <div className="grid gap-3">
             <div className="flex items-center gap-3 rounded-2xl p-4" style={CARD}><IconTile name="bag" tint="amber" size={44} /><div><div className="font-bold">Dla lokalnych sprzedawców i firm</div><div className="text-xs" style={{ color: "var(--mut)" }}>Pierwszy rok bez opłat, odbiór osobisty, wiadomości i wypłaty na Sunrise Pay</div></div></div>
             <div className="flex items-center gap-3 rounded-2xl p-4" style={CARD}><IconTile name="shield" tint="green" size={44} /><div><div className="font-bold">Cashback 3% i Ochrona Kupujących</div><div className="text-xs" style={{ color: "var(--mut)" }}>Sprzedawca dostaje pieniądze dopiero po Twoim odbiorze</div></div></div>
-            <div className="flex items-center gap-3 rounded-2xl p-4" style={CARD}><IconTile name="bolt" tint="orange" size={44} /><div><div className="font-bold">OZE z montażem — {city.km} km od Nowego Tomyśla</div><div className="text-xs" style={{ color: "var(--mut)" }}>Marki własne Sunrise: PV, pompy ciepła, magazyny energii, Protect Plus — dojazd w cenie</div></div></div>
+            <div className="flex items-center gap-3 rounded-2xl p-4" style={CARD}><IconTile name="bolt" tint="orange" size={44} /><div><div className="font-bold">OZE z montażem w całej Polsce</div><div className="text-xs" style={{ color: "var(--mut)" }}>Marki własne Sunrise: PV, pompy ciepła, magazyny energii, Protect Plus — dojazd w cenie</div></div></div>
           </div>
         </div>
 
