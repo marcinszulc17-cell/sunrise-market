@@ -4,6 +4,7 @@ import MessageSellerButton from "../components/MessageSellerButton";
 import ShowPhoneButton from "../components/ShowPhoneButton";
 import LocationMap from "../components/LocationMap";
 import { useParams } from "react-router-dom";
+import SwipeGallery from "../components/SwipeGallery";
 import { addReview, getOffer, offerImages, offerReviews, similarOffers, trackView } from "../lib/api";
 import { addToCart, cleanTitle, isTestProduct } from "../lib/cart";
 import { zl } from "../lib/money";
@@ -121,11 +122,7 @@ export default function Product() {
         <Breadcrumbs back="/sklep" items={[{ label: "Strona główna", to: "/" }, { label: o.category || "Zakupy", to: `/szukaj?kat=${encodeURIComponent(o.category_slug || "")}` }, { label: shownTitle }]} />
         <div className="mt-5 grid gap-8 lg:grid-cols-[minmax(0,1.15fr)_minmax(0,1fr)]">
           <div className="flex flex-col gap-3">
-            <div className="relative grid aspect-[4/3] place-items-center overflow-hidden rounded-2xl text-8xl" style={{ background: `radial-gradient(220px 160px at 50% 35%, ${visual(o.title + o.category).from}33, transparent 70%), var(--glass)`, border: "1px solid var(--line)" }}>
-              {(imgs[active] || o.image_url) ? <img src={imgs[active] || o.image_url!} alt={o.title} className="h-full w-full object-cover"/> : visual(o.title + o.category).emoji}
-              {imgs.length > 1 && <><button type="button" aria-label="Poprzednie zdjęcie" onClick={() => setActive((active - 1 + imgs.length) % imgs.length)} className="absolute left-3 top-1/2 grid h-11 w-11 -translate-y-1/2 place-items-center rounded-full text-2xl backdrop-blur" style={{ background: "rgba(11,11,13,.7)", color: "#fff" }}>‹</button><button type="button" aria-label="Następne zdjęcie" onClick={() => setActive((active + 1) % imgs.length)} className="absolute right-3 top-1/2 grid h-11 w-11 -translate-y-1/2 place-items-center rounded-full text-2xl backdrop-blur" style={{ background: "rgba(11,11,13,.7)", color: "#fff" }}>›</button><div className="absolute bottom-3 right-3 rounded-lg px-2.5 py-1 text-xs backdrop-blur" style={{ background: "rgba(11,11,13,.7)", color: "#fff" }}>{active + 1} / {imgs.length}</div></>}
-            </div>
-            {imgs.length > 1 && <div className="flex gap-2 overflow-x-auto pb-1">{imgs.map((u, i) => <button key={u} onClick={() => setActive(i)} aria-label={`Zdjęcie ${i + 1}`} className="h-20 w-24 shrink-0 overflow-hidden rounded-xl" style={{ border: active === i ? "2px solid var(--gold)" : "1px solid var(--line)" }}><img src={u} alt="" className="h-full w-full object-cover"/></button>)}</div>}
+            <SwipeGallery images={imgs.length ? imgs : (o.image_url ? [o.image_url] : [])} alt={o.title} fallback={visual(o.title + o.category).emoji} />
             {A.video && <div className="overflow-hidden rounded-2xl" style={{ border: "1px solid var(--line)" }}><video src={A.video} controls playsInline preload="metadata" poster={imgs[0] || o.image_url || undefined} className="h-auto w-full bg-black" style={{ maxHeight: 360 }}/><div className="px-3 py-2 text-xs" style={{ color: "var(--mut)" }}>🎬 Wideo produktu</div></div>}
           </div>
 

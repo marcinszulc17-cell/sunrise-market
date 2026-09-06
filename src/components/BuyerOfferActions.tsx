@@ -2,10 +2,12 @@ import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
 import { bookingPublicConfig, toggleWatch, watchedIds, type BookingConfig } from "../lib/api";
 import { shouldAutoOpenBooking } from "../lib/bookingLink";
 import { supabase } from "../lib/supabase";
+import { addToCart } from "../lib/cart";
+import { zl } from "../lib/money";
 import BookingPurchaseModal from "./BookingPurchaseModal";
 
 type PurchaseMode="purchase"|"appointment"|"daily";
-type Props = { offerId: string; categorySlug?: string; priceGross?: number | null; purchaseMode?: PurchaseMode };
+type Props = { offerId: string; categorySlug?: string; priceGross?: number | null; purchaseMode?: PurchaseMode; title?: string };
 type Interaction = { type:"viewing"|"consultation"|"installation"|"quote"|"demo"|"reservation"|"contact"; label:string; title:string; needsDate:boolean; icon:string };
 const COMPARE_KEY = "sunrise_compare_ids";
 
@@ -34,10 +36,13 @@ function bookingActionLabel(mode:PurchaseMode,slug:string){
   return "";
 }
 
-export default function BuyerOfferActions({ offerId, categorySlug="", purchaseMode="purchase" }: Props) {
+export default function BuyerOfferActions({ offerId, categorySlug="", priceGross=null, purchaseMode="purchase", title="" }: Props) {
   const action=useMemo(()=>interactionFor(categorySlug),[categorySlug]);
   const isBooking=purchaseMode==="appointment"||purchaseMode==="daily";
   const bookingLabel=bookingActionLabel(purchaseMode,categorySlug);
+  // Lepki pasek na telefonie (decyzja właściciela 2026-09-06): cena + główna akcja. Zakup z ceną (poza nieruchomościami) → „Kup przez Sunrise”.
+  const canBuy=purchaseMode==="purchase"&&Number(priceGross||0)>0&&!categorySlug.startsWith("nieruchomosci");
+  function buyNow(){ addToCart({ offer_id: offerId, title: title||"Oferta", price: Number(priceGross||0) }); window.location.href="/koszyk"; }
   const autoOpenHandled=useRef(false);
   const [watched, setWatched] = useState(false);
   const [compare, setCompare] = useState(false);
@@ -137,11 +142,16 @@ export default function BuyerOfferActions({ offerId, categorySlug="", purchaseMo
 
   return <>
 
-    <div className="fixed bottom-0 left-0 right-0 z-40 flex gap-2 overflow-x-auto p-2 pb-[max(.5rem,env(safe-area-inset-bottom))] shadow-2xl backdrop-blur-md sm:bottom-4 sm:left-auto sm:right-4 sm:top-auto sm:max-w-[calc(100vw-32px)] sm:flex-wrap sm:justify-end sm:rounded-2xl sm:p-2 sm:shadow-xl" style={{ background: "color-mix(in srgb, var(--header) 96%, transparent)", borderTop: "1px solid var(--line)", border: "1px solid var(--line)" }}>
-      <button disabled={busy} onClick={watch} className="shrink-0 rounded-xl px-3 py-2 text-xs font-semibold sm:text-sm" style={{ border: "1px solid var(--line)", background: watched ? "rgba(232,137,26,.18)" : "var(--glass)" }}>{watched ? "♥ Obserwujesz" : "♡ Obserwuj"}</button>
-      <button onClick={toggleCompare} className="shrink-0 rounded-xl px-3 py-2 text-xs font-semibold sm:text-sm" style={{ border: "1px solid var(--line)", background: compare ? "rgba(56,224,240,.12)" : "var(--glass)" }}>{compare ? "✓ Porównanie" : "⇄ Porównaj"}</button>
+    <div className="fixed bottom-0 left-0 right-0 z-40 flex items-center gap-2 p-2 pb-[max(.5rem,env(safe-area-inset-bottom))] shadow-2xl backdrop-blur-md sm:bottom-4 sm:left-auto sm:right-4 sm:top-auto sm:max-w-[calc(100vw-32px)] sm:flex-wrap sm:justify-end sm:rounded-2xl sm:p-2 sm:shadow-xl" style={{ background: "color-mix(in srgb, var(--header) 96%, transparent)", border: "1px solid var(--line)" }}>
+      <button disabled={busy} onClick={watch} aria-label={watched ? "Obserwujesz" : "Obserwuj"} className="grid h-11 w-11 shrink-0 place-items-center rounded-xl text-lg sm:w-auto sm:px-3 sm:text-sm sm:font-semibold" style={{ border: "1px solid var(--line)", background: watched ? "rgba(232,137,26,.18)" : "var(--glass)" }}>{watched ? "♥" : "♡"}<span className="hidden sm:inline sm:ml-1">{watched ? "Obserwujesz" : "Obserwuj"}</span></button>
+      <button onClick={toggleCompare} aria-label={compare ? "W porównaniu" : "Porównaj"} className="hidden h-11 w-11 shrink-0 place-items-center sm:grid rounded-xl text-lg sm:w-auto sm:px-3 sm:text-sm sm:font-semibold" style={{ border: "1px solid var(--line)", background: compare ? "rgba(56,224,240,.12)" : "var(--glass)" }}>{compare ? "✓" : "⇄"}<span className="hidden sm:inline sm:ml-1">{compare ? "Porównanie" : "Porównaj"}</span></button>
+      {canBuy && <button onClick={()=>setOpen(true)} aria-label={action.label} className="grid h-11 w-11 shrink-0 place-items-center rounded-xl text-lg sm:hidden" style={{ border: "1px solid var(--line)", background: "var(--glass)" }}>{action.icon}</button>}
+      {Number(priceGross||0)>0 && <div className="min-w-0 flex-1 pl-1 sm:hidden"><div className="text-[10px] leading-none" style={{ color: "var(--mut)" }}>{purchaseMode==="daily"?"od / dobę":purchaseMode==="appointment"?"od":"Cena"}</div><div className="whitespace-nowrap text-[15px] font-extrabold leading-tight" style={{ color: "var(--gold)" }}>{zl(Number(priceGross)).replace(",00","")}</div></div>}
       <a href="/porownaj" className="hidden shrink-0 rounded-xl px-3 py-2 text-sm font-semibold sm:block" style={{ border: "1px solid var(--line)", background:"var(--glass)" }}>Porównanie</a>
-      <button disabled={busy||(isBooking&&(!bookingChecked||!bookingReady))} onClick={primaryAction} className="min-w-[150px] flex-1 shrink-0 rounded-xl px-3 py-2 text-xs font-semibold text-black disabled:cursor-not-allowed disabled:opacity-45 sm:flex-none sm:text-sm" style={{ background: "linear-gradient(135deg,#E8891A,#F5A623)" }}>{bookingButtonLabel}</button>
+      {canBuy
+        ? <button onClick={buyNow} className="h-11 shrink-0 rounded-xl px-3 text-sm font-bold text-black" style={{ background: "linear-gradient(135deg,#E8891A,#F5A623)", boxShadow: "0 6px 18px rgba(232,137,26,.35)" }}>🛡 Kup przez Sunrise</button>
+        : <button disabled={busy||(isBooking&&(!bookingChecked||!bookingReady))} onClick={primaryAction} className="h-11 shrink-0 rounded-xl px-4 text-sm font-bold text-black disabled:cursor-not-allowed disabled:opacity-45 sm:px-3" style={{ background: "linear-gradient(135deg,#E8891A,#F5A623)", boxShadow: "0 6px 18px rgba(232,137,26,.35)" }}>{bookingButtonLabel}</button>}
+      {canBuy && <button onClick={()=>setOpen(true)} className="hidden shrink-0 rounded-xl px-3 py-2 text-sm font-semibold sm:block" style={{ border: "1px solid var(--line)", background:"var(--glass)" }}>{action.icon} {action.label}</button>}
     </div>
     {status && <div className="fixed bottom-[calc(68px+env(safe-area-inset-bottom))] left-3 right-3 z-50 rounded-xl px-4 py-3 text-sm shadow-xl sm:bottom-[76px] sm:left-auto sm:right-4 sm:top-auto sm:max-w-sm" style={{ background: "var(--header)", border: "1px solid var(--line)" }}>{status}</div>}
     {open && !isBooking && <div className="fixed inset-0 z-50 grid place-items-center bg-black/60 p-4" onMouseDown={() => setOpen(false)}>

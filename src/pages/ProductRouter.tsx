@@ -58,6 +58,6 @@ export default function ProductRouter() {
     {id&&verifyKind&&<VerifyOfferButton offerId={id} kind={verifyKind}/>}
     {id && <ProductPageExtras offerId={id} verifyKind={verifyKind} />}
     <MarketFooter />
-    {id && !isSubscription && <BuyerOfferActions offerId={id} categorySlug={categorySlug} priceGross={priceGross} purchaseMode={purchaseMode} />}
+    {id && !isSubscription && <BuyerOfferActions offerId={id} categorySlug={categorySlug} priceGross={priceGross} purchaseMode={purchaseMode} title={seoOffer?.title||""} />}
   </>;
 }
