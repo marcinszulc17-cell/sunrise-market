@@ -16,6 +16,7 @@ const CORS = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-bridge-token",
   "Access-Control-Allow-Methods": "POST, OPTIONS",
 };
+let lastBaseCallAt = 0;
 
 const sb = createClient(
   Deno.env.get("SUPABASE_URL")!,
@@ -49,6 +50,9 @@ async function authorized(req: Request): Promise<boolean> {
 }
 
 async function baseCall(method: string, parameters: Record<string, unknown> = {}) {
+  const waitMs = Math.max(0, 650 - (Date.now() - lastBaseCallAt));
+  if (waitMs) await new Promise((resolve) => setTimeout(resolve, waitMs));
+  lastBaseCallAt = Date.now();
   const body = new URLSearchParams({ method, parameters: JSON.stringify(parameters) });
   const res = await fetch(BASE_API_URL, {
     method: "POST",
@@ -212,9 +216,9 @@ Deno.serve(async (req: Request) => {
     for (let page = 1; page <= maxPages; page++) {
       const listed = await baseCall("getInventoryProductsList", { inventory_id: inventoryId, page });
       const products = listed.products ?? {};
-      const ids = Object.keys(products).length
-        ? Object.keys(products).map(Number)
-        : records(products).map((p) => Number(p.id ?? p.product_id));
+      const ids = Array.isArray(products)
+        ? products.map((p) => Number(p.id ?? p.product_id))
+        : Object.keys(products).map(Number);
       const valid = ids.filter(Number.isFinite);
       productIds.push(...valid);
       if (valid.length < 1000) break;
@@ -240,7 +244,9 @@ Deno.serve(async (req: Request) => {
           const title = textField(p.text_fields, "name") || cleanText(p.name);
           const description = textField(p.text_fields, "description") || cleanText(p.description);
           const supplierPrice = selectedNumber(p.prices ?? p.price, priceGroup, false);
-          const stock = Math.max(0, Math.floor(selectedNumber(p.stock ?? p.quantity, warehouse, true)));
+          // Without an explicitly selected Base warehouse, prefer one source instead of
+          // summing warehouses that can mirror the same supplier stock.
+          const stock = Math.max(0, Math.floor(selectedNumber(p.stock ?? p.quantity, warehouse, false)));
           const urls = imageUrls(p.images);
           if (!title || supplierPrice <= 0) { skipped++; continue; }
           const price = nicePrice(supplierPrice * (1 + markup / 100));
@@ -314,4 +320,3 @@ Deno.serve(async (req: Request) => {
     return json({ error: String((error as Error)?.message ?? error).slice(0, 500) }, 500);
   }
 });
-
