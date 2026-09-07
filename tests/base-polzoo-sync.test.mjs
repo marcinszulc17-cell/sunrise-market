@@ -21,3 +21,11 @@ test('catalog writes are idempotent through the Base product map', () => {
   assert.match(source, /onConflict: "inventory_id,base_product_id"/);
 });
 
+test('Base calls stay below the documented request-rate ceiling', () => {
+  assert.match(source, /650 - \(Date\.now\(\) - lastBaseCallAt\)/);
+});
+
+test('array product lists use product ids instead of array indexes', () => {
+  assert.match(source, /Array\.isArray\(products\)/);
+  assert.match(source, /p\.id \?\? p\.product_id/);
+});
