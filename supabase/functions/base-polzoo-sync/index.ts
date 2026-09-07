@@ -408,7 +408,7 @@ Deno.serve(async (req: Request) => {
       return json({ ok: true, supplier: supplier.key, inventory: { id: inventoryId, name: inventory.name }, listed: productIds.length, inspected: rows.length, usable: usable.length, sample: usable.slice(0, limit) });
     }
 
-    let created = 0, updated = 0, skipped = 0, images = 0, held = 0;
+    let created = 0, updated = 0, skipped = 0, images = 0, held = 0, unsellable = 0;
     const errors: { product_id: number; error: string }[] = [];
     for (let i = 0; i < productIds.length; i += 100) {
       const ids = productIds.slice(i, i + 100);
@@ -450,6 +450,12 @@ Deno.serve(async (req: Request) => {
             const capped = nicePrice(marketLowest * capRatio);
             if (capped < price) { price = capped; priceSource = "market_cap"; }
           }
+          // TWARDA PODLOGA: nigdzie nie mozemy byc na minusie (decyzja wlasciciela 2026-09-07).
+          // Sufit rynkowy nigdy nie zepchnie ceny ponizej progu oplacalnosci — zamiast tego
+          // oferta zostaje szkicem, bo przy tej cenie rynkowej po prostu nie da sie zarobic.
+          const breakEven = nicePrice((supplierPrice + feeFixed + shippingCost) / netDenom);
+          const belowMarket = price < breakEven;
+          if (belowMarket) { price = breakEven; priceSource = "break_even_floor"; }
           const marginPct = supplierPrice > 0 ? ((price - supplierPrice) / supplierPrice) * 100 : 0;
           // Koszty, ktore ponosimy od kazdej sprzedazy: cashback 3% brutto, prowizja platnosci, wysylka.
           const cashbackCost = price * (cashbackPct / 100);
@@ -482,10 +488,13 @@ Deno.serve(async (req: Request) => {
             net_profit_pln: Math.round(netProfit * 100) / 100,
             cashback_percent: cashbackPct,
             min_margin_required: requiredMargin,
+            break_even_price_pln: breakEven,
+            below_market: belowMarket,
           };
           // Bez ustalonej, dodatniej marzy oferta zostaje szkicem — nawet przy activate:true.
           const nextStatus = activate && !belowMinMargin ? (stock > 0 ? "active" : "sold_out") : "draft";
           if (activate && belowMinMargin) held++;
+          if (belowMarket) unsellable++;
           let offerId = existingOfferId;
           if (offerId) {
             const patch: Record<string, unknown> = { title, description, price_gross: price, stock, image_url: urls[0] ?? null, category_id: categoryId, attributes: attrs, fulfillment_provider: supplier.provider, updated_at: new Date().toISOString() };
@@ -533,7 +542,7 @@ Deno.serve(async (req: Request) => {
       }
     }
 
-    return json({ ok: errors.length === 0, supplier: supplier.key, inventory: { id: inventoryId, name: inventory.name }, fetched: productIds.length, created, updated, skipped, images, held_low_margin: held, price_cap_ratio: capRatio, min_margin_percent: minMargin, min_margin_small_percent: minMarginSmall, small_price_below: smallBelow, cashback_percent: cashbackPct, payment_fee_percent: feePct, payment_fee_fixed_pln: feeFixed, shipping_cost_pln: shippingCost, margin_basis: "net", target_net_margin_percent: targetNet, draft_mode: !activate, errors: errors.slice(0, 25) });
+    return json({ ok: errors.length === 0, supplier: supplier.key, inventory: { id: inventoryId, name: inventory.name }, fetched: productIds.length, created, updated, skipped, images, held_low_margin: held, unsellable_below_market: unsellable, price_cap_ratio: capRatio, min_margin_percent: minMargin, min_margin_small_percent: minMarginSmall, small_price_below: smallBelow, cashback_percent: cashbackPct, payment_fee_percent: feePct, payment_fee_fixed_pln: feeFixed, shipping_cost_pln: shippingCost, margin_basis: "net", target_net_margin_percent: targetNet, draft_mode: !activate, errors: errors.slice(0, 25) });
   } catch (error) {
     return json({ error: String((error as Error)?.message ?? error).slice(0, 500) }, 500);
   }

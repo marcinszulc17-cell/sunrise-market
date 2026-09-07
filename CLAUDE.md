@@ -72,7 +72,13 @@ pierwszeństwo przy każdej zmianie kodu. Nie wolno ich naruszać ani obchodzić
   `cena = (zakup·(1 + cel%) + payment_fee_fixed_pln + shipping_cost_pln) / (1 − cashback% − payment_fee%)`.
   Przy `target_net_margin_percent = 25` każda pozycja ląduje na ~25% netto niezależnie od kwoty zakupu.
   Bez tego parametru działa stary `markup_percent` (kompatybilność wstecz), a `price_source` mówi, co zadecydowało
-  o cenie: `target_net_margin`, `markup` albo `market_cap`. Cena rynkowa to `attributes.market_lowest_pln` (najniższa oferta Allegro po EAN,
+  o cenie: `target_net_margin`, `markup`, `market_cap` albo `break_even_floor`.
+- **TWARDA PODŁOGA — nigdzie nie możemy być na minusie (decyzja właściciela 2026-09-07).** Sufit rynkowy nigdy
+  nie zepchnie ceny poniżej progu opłacalności: `break_even = (zakup + opłata_stała + wysyłka) / (1 − cashback% − prowizja%)`.
+  Jeśli `rynek × price_cap_ratio` wypada poniżej tej kwoty, cena zostaje na podłodze, `price_source = "break_even_floor"`,
+  a oferta dostaje `attributes.below_market = true` i zostaje szkicem — nie da się jej sprzedać z zyskiem po cenie rynkowej.
+  Dzięki temu **żadna oferta w bazie nie ma ujemnego `net_profit_pln`**, więc ręczna aktywacja nie może wygenerować straty.
+  Licznik `unsellable_below_market` w odpowiedzi mówi, ile pozycji nie mieści się pod rynkiem. Cena rynkowa to `attributes.market_lowest_pln` (najniższa oferta Allegro po EAN,
   `market_checked_at`) — sync **scala** atrybuty, więc kolejne importy jej nie kasują. Oferta bez sprawdzonej ceny rynkowej zostaje szkicem.
 - **Import zawsze najpierw jako szkice** (`activate:false`); `activate:true` jest odrzucane przy marży ≤ 0.
   Nie publikujemy produktów dostawców bez ustalonej dodatniej marży. Ceny zaokrągla `nicePrice` (do pełnych zł − 1 gr).
