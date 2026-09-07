@@ -293,6 +293,11 @@ Deno.serve(async (req: Request) => {
     const feePct = Math.min(Math.max(Number(body.payment_fee_percent ?? 2), 0), 50);
     const feeFixed = Math.max(0, Number(body.payment_fee_fixed_pln ?? 1));
     const shippingCost = Math.max(0, Number(body.shipping_cost_pln ?? 0));
+    // Narzut liczymy WSTECZ z docelowej marzy netto: skoro cashback i prowizja sa procentem ceny,
+    // staly narzut od zakupu zawsze zaniza zarobek (decyzja wlasciciela 2026-09-07).
+    const targetNet = body.target_net_margin_percent === undefined || body.target_net_margin_percent === null
+      ? null
+      : Math.min(Math.max(Number(body.target_net_margin_percent), 0), 500);
     if (!Number.isFinite(markup) || markup < 0 || markup > 500) return json({ error: "Nieprawidłowa marża" }, 400);
     if (activate && markup <= 0) return json({ error: "Aktywacja wymaga dodatniej marży" }, 400);
 
@@ -435,8 +440,12 @@ Deno.serve(async (req: Request) => {
           const existingOfferIdEarly = byProduct.get(id);
           const keep = existingOfferIdEarly ? (prevAttrs.get(String(existingOfferIdEarly)) ?? {}) : {};
           const marketLowest = Number(keep.market_lowest_pln ?? 0);
-          let price = nicePrice(supplierPrice * (1 + markup / 100));
-          let priceSource = "markup";
+          // cena * (1 - cashback% - prowizja%) = zakup * (1 + cel%) + oplata stala + wysylka
+          const netDenom = Math.max(0.05, 1 - cashbackPct / 100 - feePct / 100);
+          let price = targetNet === null
+            ? nicePrice(supplierPrice * (1 + markup / 100))
+            : nicePrice((supplierPrice * (1 + targetNet / 100) + feeFixed + shippingCost) / netDenom);
+          let priceSource = targetNet === null ? "markup" : "target_net_margin";
           if (marketLowest > 0) {
             const capped = nicePrice(marketLowest * capRatio);
             if (capped < price) { price = capped; priceSource = "market_cap"; }
@@ -524,7 +533,7 @@ Deno.serve(async (req: Request) => {
       }
     }
 
-    return json({ ok: errors.length === 0, supplier: supplier.key, inventory: { id: inventoryId, name: inventory.name }, fetched: productIds.length, created, updated, skipped, images, held_low_margin: held, price_cap_ratio: capRatio, min_margin_percent: minMargin, min_margin_small_percent: minMarginSmall, small_price_below: smallBelow, cashback_percent: cashbackPct, payment_fee_percent: feePct, payment_fee_fixed_pln: feeFixed, shipping_cost_pln: shippingCost, margin_basis: "net", draft_mode: !activate, errors: errors.slice(0, 25) });
+    return json({ ok: errors.length === 0, supplier: supplier.key, inventory: { id: inventoryId, name: inventory.name }, fetched: productIds.length, created, updated, skipped, images, held_low_margin: held, price_cap_ratio: capRatio, min_margin_percent: minMargin, min_margin_small_percent: minMarginSmall, small_price_below: smallBelow, cashback_percent: cashbackPct, payment_fee_percent: feePct, payment_fee_fixed_pln: feeFixed, shipping_cost_pln: shippingCost, margin_basis: "net", target_net_margin_percent: targetNet, draft_mode: !activate, errors: errors.slice(0, 25) });
   } catch (error) {
     return json({ error: String((error as Error)?.message ?? error).slice(0, 500) }, 500);
   }

@@ -66,7 +66,13 @@ pierwszeństwo przy każdej zmianie kodu. Nie wolno ich naruszać ani obchodzić
   a `net_margin_percent = zysk / zakup`. Domyślnie `cashback_percent = 3`, `payment_fee_percent = 2`,
   `payment_fee_fixed_pln = 1`, `shipping_cost_pln = 0`. W ofercie zapisujemy `margin_percent` (brutto),
   `net_margin_percent`, `net_profit_pln` i `cashback_percent`. **Nigdy nie publikujemy pozycji, która po cashbacku
-  i opłatach nie zarabia.** Otwarta decyzja: kto płaci wysyłkę — dopóki `shipping_cost_pln = 0`, próg jej nie uwzględnia. Cena rynkowa to `attributes.market_lowest_pln` (najniższa oferta Allegro po EAN,
+  i opłatach nie zarabia.** Otwarta decyzja: kto płaci wysyłkę — dopóki `shipping_cost_pln = 0`, próg jej nie uwzględnia.
+- **Narzut liczymy wstecz z docelowej marży netto (`target_net_margin_percent`, decyzja właściciela 2026-09-07).**
+  Stały narzut od zakupu zawsze zaniża zarobek, bo cashback i prowizja są procentem *ceny*, nie kosztu. Wzór:
+  `cena = (zakup·(1 + cel%) + payment_fee_fixed_pln + shipping_cost_pln) / (1 − cashback% − payment_fee%)`.
+  Przy `target_net_margin_percent = 25` każda pozycja ląduje na ~25% netto niezależnie od kwoty zakupu.
+  Bez tego parametru działa stary `markup_percent` (kompatybilność wstecz), a `price_source` mówi, co zadecydowało
+  o cenie: `target_net_margin`, `markup` albo `market_cap`. Cena rynkowa to `attributes.market_lowest_pln` (najniższa oferta Allegro po EAN,
   `market_checked_at`) — sync **scala** atrybuty, więc kolejne importy jej nie kasują. Oferta bez sprawdzonej ceny rynkowej zostaje szkicem.
 - **Import zawsze najpierw jako szkice** (`activate:false`); `activate:true` jest odrzucane przy marży ≤ 0.
   Nie publikujemy produktów dostawców bez ustalonej dodatniej marży. Ceny zaokrągla `nicePrice` (do pełnych zł − 1 gr).
