@@ -146,8 +146,11 @@ function AppChrome() {
   }, [isAppDomain]);
   const authScreen = pathname === "/login" || pathname === "/sso" || (pathname === "/" && isAppDomain && authed !== true);
   if (authScreen) return null;
-  // Asystent Suri (Sunny) na stronach klienta; nie w panelu sprzedawcy/operatora ani w koszyku (nie zasłania płatności)
-  const assistant = !/^\/(sprzedawca|operator|koszyk|verify|potwierdz-zakup)/.test(pathname);
+  // Asystent Suri (Sunny) na stronach klienta; nie w panelu sprzedawcy/operatora ani w koszyku (nie zasłania płatności).
+  // SUNNY_ENABLED=false — asystent ukryty na życzenie właściciela (2026-09-07), do czasu doładowania salda AI.
+  // Włączenie: zmień na true (nic więcej nie trzeba, kod asystenta zostaje w repo).
+  const SUNNY_ENABLED = false;
+  const assistant = SUNNY_ENABLED && !/^\/(sprzedawca|operator|koszyk|verify|potwierdz-zakup)/.test(pathname);
   return <><MobileAppNav /><PwaInstallPrompt />{assistant && <SuriChat />}</>;
 }
 
