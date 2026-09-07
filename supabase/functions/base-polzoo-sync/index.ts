@@ -281,6 +281,9 @@ Deno.serve(async (req: Request) => {
     const activate = body.activate === true;
     const maxPages = Math.min(Math.max(Number(body.max_pages ?? 1), 1), 100);
     const explicitProductIds = requestedProductIds(body.product_ids);
+    // Sufit z ceny rynkowej i prog rentownosci (decyzja wlasciciela 2026-09-07 po badaniu cen).
+    const capRatio = Math.min(Math.max(Number(body.price_cap_ratio ?? 0.95), 0.5), 1);
+    const minMargin = Math.min(Math.max(Number(body.min_margin_percent ?? 8), 0), 90);
     if (!Number.isFinite(markup) || markup < 0 || markup > 500) return json({ error: "Nieprawidłowa marża" }, 400);
     if (activate && markup <= 0) return json({ error: "Aktywacja wymaga dodatniej marży" }, 400);
 
@@ -354,7 +357,7 @@ Deno.serve(async (req: Request) => {
       return json({ ok: true, supplier: supplier.key, inventory: { id: inventoryId, name: inventory.name }, listed: productIds.length, inspected: rows.length, usable: usable.length, sample: usable.slice(0, limit) });
     }
 
-    let created = 0, updated = 0, skipped = 0, images = 0;
+    let created = 0, updated = 0, skipped = 0, images = 0, held = 0;
     const errors: { product_id: number; error: string }[] = [];
     for (let i = 0; i < productIds.length; i += 100) {
       const ids = productIds.slice(i, i + 100);
@@ -366,6 +369,12 @@ Deno.serve(async (req: Request) => {
         .in("base_product_id", ids);
       if (mapError) throw mapError;
       const byProduct = new Map((maps ?? []).map((m: any) => [Number(m.base_product_id), m.offer_id]));
+      const offerIds = [...byProduct.values()].filter(Boolean);
+      const prevAttrs = new Map<string, Record<string, unknown>>();
+      if (offerIds.length) {
+        const { data: prev } = await sb.from("offers").select("id,attributes").in("id", offerIds);
+        for (const row of prev ?? []) prevAttrs.set(String((row as any).id), ((row as any).attributes ?? {}) as Record<string, unknown>);
+      }
 
       for (const id of ids) {
         try {
@@ -377,12 +386,23 @@ Deno.serve(async (req: Request) => {
           const stock = Math.max(0, Math.floor(selectedNumber(p.stock ?? p.quantity, warehouse, false)));
           const urls = imageUrls(p.images);
           if (!title || supplierPrice <= 0) { skipped++; continue; }
-          const price = nicePrice(supplierPrice * (1 + markup / 100));
+          const existingOfferIdEarly = byProduct.get(id);
+          const keep = existingOfferIdEarly ? (prevAttrs.get(String(existingOfferIdEarly)) ?? {}) : {};
+          const marketLowest = Number(keep.market_lowest_pln ?? 0);
+          let price = nicePrice(supplierPrice * (1 + markup / 100));
+          let priceSource = "markup";
+          if (marketLowest > 0) {
+            const capped = nicePrice(marketLowest * capRatio);
+            if (capped < price) { price = capped; priceSource = "market_cap"; }
+          }
+          const marginPct = supplierPrice > 0 ? ((price - supplierPrice) / supplierPrice) * 100 : 0;
+          const belowMinMargin = marginPct < minMargin;
           const baseCategory = baseCategoryNames[String(p.category_id)] ?? "";
           const slug = classifySlug(supplier.key, `${baseCategory} ${title}`);
           const categoryId = categoryIds[slug] ?? categoryIds[supplier.fallbackCategory];
-          const existingOfferId = byProduct.get(id);
+          const existingOfferId = existingOfferIdEarly;
           const attrs = {
+            ...keep,
             source: supplier.source,
             supplier_key: supplier.key,
             base_inventory_id: inventoryId,
@@ -395,8 +415,12 @@ Deno.serve(async (req: Request) => {
             weight_kg: numberValue(p.weight),
             dimensions_cm: { width: numberValue(p.width), height: numberValue(p.height), length: numberValue(p.length) },
             delivery: "shipping",
+            price_source: priceSource,
+            margin_percent: Math.round(marginPct * 10) / 10,
           };
-          const nextStatus = activate ? (stock > 0 ? "active" : "sold_out") : "draft";
+          // Bez ustalonej, dodatniej marzy oferta zostaje szkicem — nawet przy activate:true.
+          const nextStatus = activate && !belowMinMargin ? (stock > 0 ? "active" : "sold_out") : "draft";
+          if (activate && belowMinMargin) held++;
           let offerId = existingOfferId;
           if (offerId) {
             const patch: Record<string, unknown> = { title, description, price_gross: price, stock, image_url: urls[0] ?? null, category_id: categoryId, attributes: attrs, fulfillment_provider: supplier.provider, updated_at: new Date().toISOString() };
@@ -444,7 +468,7 @@ Deno.serve(async (req: Request) => {
       }
     }
 
-    return json({ ok: errors.length === 0, supplier: supplier.key, inventory: { id: inventoryId, name: inventory.name }, fetched: productIds.length, created, updated, skipped, images, draft_mode: !activate, errors: errors.slice(0, 25) });
+    return json({ ok: errors.length === 0, supplier: supplier.key, inventory: { id: inventoryId, name: inventory.name }, fetched: productIds.length, created, updated, skipped, images, held_low_margin: held, price_cap_ratio: capRatio, min_margin_percent: minMargin, draft_mode: !activate, errors: errors.slice(0, 25) });
   } catch (error) {
     return json({ error: String((error as Error)?.message ?? error).slice(0, 500) }, 500);
   }

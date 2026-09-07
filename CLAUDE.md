@@ -54,14 +54,21 @@ pierwszeństwo przy każdej zmianie kodu. Nie wolno ich naruszać ani obchodzić
 - Każdy dostawca ma własne znaczniki: `attributes.source` (`euroshop_base` / `eet_base` / `polzoo_base`),
   `attributes.supplier_key`, `offers.fulfillment_provider`. Mapowanie produktów: `market.base_polzoo_product_map`
   (klucz `inventory_id` + `base_product_id`) — powtórny import aktualizuje ofertę, nie tworzy duplikatu.
+- **Reguła cenowa (decyzja właściciela 2026-09-07, po badaniu cen na Allegro)**: `cena = min(zakup × (1+marża) ; rynek × price_cap_ratio)`,
+  domyślnie `price_cap_ratio = 0.95`; przy marży poniżej `min_margin_percent` (domyślnie **8%**) oferta zostaje szkicem nawet przy
+  `activate:true` (licznik `held_low_margin` w odpowiedzi). Cena rynkowa to `attributes.market_lowest_pln` (najniższa oferta Allegro po EAN,
+  `market_checked_at`) — sync **scala** atrybuty, więc kolejne importy jej nie kasują. Oferta bez sprawdzonej ceny rynkowej zostaje szkicem.
 - **Import zawsze najpierw jako szkice** (`activate:false`); `activate:true` jest odrzucane przy marży ≤ 0.
   Nie publikujemy produktów dostawców bez ustalonej dodatniej marży. Ceny zaokrągla `nicePrice` (do pełnych zł − 1 gr).
 - **EET Polska to dystrybutor IT** (sieci, komponenty, peryferia, materiały eksploatacyjne) — nie chemia: własny klasyfikator
   `classifyEet` mapuje na `komputery-i-biuro*`. Katalog Base „EET Polska" (inventory 115759) trzymamy osobno od Domyślnego,
   żeby pełny katalog dostawcy (~35 tys. SKU) nie mieszał się z Euroshopem; do Market idą tylko jawnie wskazane `product_ids`.
 - Stan 2026-09-07: Euroshop — 18 ofert kontrolnych (magazyn Base 115697, grupa cen 100979, magazyn `bl_153385`),
-  wszystkie `draft`, zmapowane 18/18, 25 zdjęć. EET — 30 ofert kontrolnych (szkice, z osobnego katalogu 115759:
-  12 pamięci RAM, 12 materiałów eksploatacyjnych, 2 kable/światłowody, 4 komponenty), pełny katalog EET ładuje się do Base. PolZoo — integracja utworzona, wciąż brak jej jako źródła
+  wszystkie `draft`, zmapowane 18/18, 25 zdjęć. EET — 30 ofert z katalogu 115759, z czego **14 aktywnych** (marki własne
+  CoreParts/MicroConnect/LanView, marża 25% z sufitem rynkowym, realnie 8–31%), reszta w szkicach.
+  **Badanie cen 2026-09-07** (44 pozycje po EAN na Allegro): marki własne EET średnio +32,7% zapasu i zero pozycji pod kreską;
+  oryginały OEM (Lexmark, Kyocera, HP) +5,5% i 5 z 8 kupowanych drożej niż detal — **nie publikujemy ich**;
+  Euroshop +0,5% średnio, 7 z 17 pod kreską — do renegocjacji cennika, na razie wszystko zostaje szkicem. PolZoo — integracja utworzona, wciąż brak jej jako źródła
   importu (czeka na akceptację dostawcy); nie tworzymy drugiej integracji. ABC Kosmetyczne — nie ruszamy (formalności).
   Platon — planowany przez API/WebService, nie przez Base Connect.
 
