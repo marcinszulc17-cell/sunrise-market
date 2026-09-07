@@ -56,9 +56,12 @@ pierwszeństwo przy każdej zmianie kodu. Nie wolno ich naruszać ani obchodzić
   (klucz `inventory_id` + `base_product_id`) — powtórny import aktualizuje ofertę, nie tworzy duplikatu.
 - **Import zawsze najpierw jako szkice** (`activate:false`); `activate:true` jest odrzucane przy marży ≤ 0.
   Nie publikujemy produktów dostawców bez ustalonej dodatniej marży. Ceny zaokrągla `nicePrice` (do pełnych zł − 1 gr).
+- **EET Polska to dystrybutor IT** (sieci, komponenty, peryferia, materiały eksploatacyjne) — nie chemia: własny klasyfikator
+  `classifyEet` mapuje na `komputery-i-biuro*`. Katalog Base „EET Polska" (inventory 115759) trzymamy osobno od Domyślnego,
+  żeby pełny katalog dostawcy (~35 tys. SKU) nie mieszał się z Euroshopem; do Market idą tylko jawnie wskazane `product_ids`.
 - Stan 2026-09-07: Euroshop — 18 ofert kontrolnych (magazyn Base 115697, grupa cen 100979, magazyn `bl_153385`),
-  wszystkie `draft`, zmapowane 18/18, 25 zdjęć. EET — konfiguracja w funkcji gotowa, ale w magazynie Base nie ma jeszcze
-  produktów EET (import z Base Connect robi się w panelu Base). PolZoo — integracja utworzona, wciąż brak jej jako źródła
+  wszystkie `draft`, zmapowane 18/18, 25 zdjęć. EET — 30 ofert kontrolnych (szkice, z osobnego katalogu 115759:
+  12 pamięci RAM, 12 materiałów eksploatacyjnych, 2 kable/światłowody, 4 komponenty), pełny katalog EET ładuje się do Base. PolZoo — integracja utworzona, wciąż brak jej jako źródła
   importu (czeka na akceptację dostawcy); nie tworzymy drugiej integracji. ABC Kosmetyczne — nie ruszamy (formalności).
   Platon — planowany przez API/WebService, nie przez Base Connect.
 

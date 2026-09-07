@@ -48,8 +48,8 @@ const SUPPLIERS: Record<SupplierKey, SupplierConfig> = {
     key: "eet",
     source: "eet_base",
     provider: "eet",
-    categoryPrefix: "supermarket%",
-    fallbackCategory: "supermarket-chemia",
+    categoryPrefix: "komputery-i-biuro%",
+    fallbackCategory: "komputery-i-biuro",
     defaultMarkup: Number(Deno.env.get("EET_MARKUP_PERCENT") ?? "0"),
   },
 };
@@ -218,8 +218,36 @@ function classifyEuroshop(haystack: string): string {
   return "supermarket-chemia-czystosc";
 }
 
+/** EET Polska to dystrybutor IT (sieci, komponenty, peryferia, biuro) — nie chemia. */
+function classifyEet(haystack: string): string {
+  const s = haystack.toLocaleLowerCase("pl-PL");
+  if (/toner|tusz|kartrid|b\u0119ben|drum|ribbon|photoconduct|cartridge/.test(s)) return "komputery-i-biuro-biuro-tonery";
+  if (/niszczark/.test(s)) return "komputery-i-biuro-biuro-niszczarki";
+  if (/papier/.test(s)) return "komputery-i-biuro-biuro-papier";
+  if (/switch|prze\u0142\u0105cznik sieciow/.test(s)) return "komputery-i-biuro-sieci-switche";
+  if (/router|access point|punkt dost\u0119pow/.test(s)) return "komputery-i-biuro-sieci-routery";
+  if (/karta sieciow|nic |ethernet adapter/.test(s)) return "komputery-i-biuro-sieci-karty-sieciowe";
+  if (/\u015bwiat\u0142ow|patchcord|patch cord|kabel|przew\u00f3d|hdmi|displayport|usb-c|usb |rj45|skr\u0119tk/.test(s)) return "komputery-i-biuro-sieci-kable";
+  if (/dysk|ssd|hdd|nvme/.test(s)) return "komputery-i-biuro-komponenty-dyski-ssd";
+  if (/pami\u0119\u0107|ram |ddr[2-5]|sodimm/.test(s)) return "komputery-i-biuro-komponenty-pamiec-ram";
+  if (/zasilacz|psu |power supply/.test(s)) return "komputery-i-biuro-komponenty-zasilacze";
+  if (/procesor|cpu /.test(s)) return "komputery-i-biuro-komponenty-procesory";
+  if (/p\u0142yta g\u0142\u00f3wna|motherboard/.test(s)) return "komputery-i-biuro-komponenty-plyty-glowne";
+  if (/karta graficzna|gpu /.test(s)) return "komputery-i-biuro-komponenty-karty-graficzne";
+  if (/klawiatur/.test(s)) return "komputery-i-biuro-peryferia-klawiatury";
+  if (/mysz/.test(s)) return "komputery-i-biuro-peryferia-myszy";
+  if (/monitor/.test(s)) return "komputery-i-biuro-peryferia-monitory";
+  if (/drukark|ploter/.test(s)) return "komputery-i-biuro-peryferia-drukarki";
+  if (/skaner/.test(s)) return "komputery-i-biuro-peryferia-skanery";
+  if (/webcam|kamera internetow/.test(s)) return "komputery-i-biuro-peryferia-webcam";
+  if (/ramka|kiesze|tacka|tray|obudow|adapter|z\u0142\u0105cz|listwa|mocowanie|uchwyt/.test(s)) return "komputery-i-biuro-komponenty";
+  if (/laptop|notebook/.test(s)) return "komputery-i-biuro";
+  return "komputery-i-biuro";
+}
+
 function classifySlug(supplier: SupplierKey, haystack: string): string {
   if (supplier === "polzoo") return classifyPolzoo(haystack);
+  if (supplier === "eet") return classifyEet(haystack);
   return classifyEuroshop(haystack);
 }
 
@@ -303,7 +331,8 @@ Deno.serve(async (req: Request) => {
     // Podgląd bez zapisu — do wyboru kontrolnej partii przed importem.
     if (action === "preview") {
       const limit = Math.min(Math.max(Number(body.limit ?? 50), 1), 200);
-      const ids = productIds.slice(0, Math.min(productIds.length, 100));
+      const offset = Math.max(0, Number(body.offset ?? 0));
+      const ids = productIds.slice(offset, offset + 100);
       const response = ids.length ? await baseCall("getInventoryProductsData", { inventory_id: inventoryId, products: ids }) : { products: {} };
       const products = response.products ?? {};
       const rows: any[] = [];
@@ -321,7 +350,7 @@ Deno.serve(async (req: Request) => {
           suggested_category: classifySlug(supplier.key, `${baseCategory} ${title}`),
         });
       }
-      const usable = rows.filter((r) => r.title && r.supplier_price_gross_pln > 0 && r.stock > 0);
+      const usable = rows.filter((r) => r.title && r.supplier_price_gross_pln > 0 && r.stock > 0 && r.images > 0);
       return json({ ok: true, supplier: supplier.key, inventory: { id: inventoryId, name: inventory.name }, listed: productIds.length, inspected: rows.length, usable: usable.length, sample: usable.slice(0, limit) });
     }
 
