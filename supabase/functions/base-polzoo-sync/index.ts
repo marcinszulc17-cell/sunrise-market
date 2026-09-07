@@ -287,6 +287,12 @@ Deno.serve(async (req: Request) => {
     // Tanie pozycje musza zarobic wiecej, bo koszt wysylki jest staly (decyzja wlasciciela 2026-09-07).
     const minMarginSmall = Math.min(Math.max(Number(body.min_margin_small_percent ?? 15), 0), 90);
     const smallBelow = Math.max(0, Number(body.small_price_below ?? 100));
+    // Prog liczymy od marzy NETTO: cashback 3% brutto placimy my, do tego prowizja platnosci
+    // i ewentualna doplata do wysylki (decyzja wlasciciela 2026-09-07).
+    const cashbackPct = Math.min(Math.max(Number(body.cashback_percent ?? 3), 0), 50);
+    const feePct = Math.min(Math.max(Number(body.payment_fee_percent ?? 2), 0), 50);
+    const feeFixed = Math.max(0, Number(body.payment_fee_fixed_pln ?? 1));
+    const shippingCost = Math.max(0, Number(body.shipping_cost_pln ?? 0));
     if (!Number.isFinite(markup) || markup < 0 || markup > 500) return json({ error: "Nieprawidłowa marża" }, 400);
     if (activate && markup <= 0) return json({ error: "Aktywacja wymaga dodatniej marży" }, 400);
 
@@ -436,8 +442,13 @@ Deno.serve(async (req: Request) => {
             if (capped < price) { price = capped; priceSource = "market_cap"; }
           }
           const marginPct = supplierPrice > 0 ? ((price - supplierPrice) / supplierPrice) * 100 : 0;
+          // Koszty, ktore ponosimy od kazdej sprzedazy: cashback 3% brutto, prowizja platnosci, wysylka.
+          const cashbackCost = price * (cashbackPct / 100);
+          const feeCost = price * (feePct / 100) + feeFixed;
+          const netProfit = price - supplierPrice - cashbackCost - feeCost - shippingCost;
+          const netMarginPct = supplierPrice > 0 ? (netProfit / supplierPrice) * 100 : 0;
           const requiredMargin = supplierPrice < smallBelow ? minMarginSmall : minMargin;
-          const belowMinMargin = marginPct < requiredMargin;
+          const belowMinMargin = netMarginPct < requiredMargin;
           const baseCategory = baseCategoryNames[String(p.category_id)] ?? "";
           const slug = classifySlug(supplier.key, `${baseCategory} ${title}`);
           const categoryId = categoryIds[slug] ?? categoryIds[supplier.fallbackCategory];
@@ -458,6 +469,9 @@ Deno.serve(async (req: Request) => {
             delivery: "shipping",
             price_source: priceSource,
             margin_percent: Math.round(marginPct * 10) / 10,
+            net_margin_percent: Math.round(netMarginPct * 10) / 10,
+            net_profit_pln: Math.round(netProfit * 100) / 100,
+            cashback_percent: cashbackPct,
             min_margin_required: requiredMargin,
           };
           // Bez ustalonej, dodatniej marzy oferta zostaje szkicem — nawet przy activate:true.
@@ -510,7 +524,7 @@ Deno.serve(async (req: Request) => {
       }
     }
 
-    return json({ ok: errors.length === 0, supplier: supplier.key, inventory: { id: inventoryId, name: inventory.name }, fetched: productIds.length, created, updated, skipped, images, held_low_margin: held, price_cap_ratio: capRatio, min_margin_percent: minMargin, min_margin_small_percent: minMarginSmall, small_price_below: smallBelow, draft_mode: !activate, errors: errors.slice(0, 25) });
+    return json({ ok: errors.length === 0, supplier: supplier.key, inventory: { id: inventoryId, name: inventory.name }, fetched: productIds.length, created, updated, skipped, images, held_low_margin: held, price_cap_ratio: capRatio, min_margin_percent: minMargin, min_margin_small_percent: minMarginSmall, small_price_below: smallBelow, cashback_percent: cashbackPct, payment_fee_percent: feePct, payment_fee_fixed_pln: feeFixed, shipping_cost_pln: shippingCost, margin_basis: "net", draft_mode: !activate, errors: errors.slice(0, 25) });
   } catch (error) {
     return json({ error: String((error as Error)?.message ?? error).slice(0, 500) }, 500);
   }

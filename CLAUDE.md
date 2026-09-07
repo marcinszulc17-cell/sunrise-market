@@ -59,7 +59,14 @@ pierwszeństwo przy każdej zmianie kodu. Nie wolno ich naruszać ani obchodzić
   `activate:true` (licznik `held_low_margin` w odpowiedzi). **Próg jest dwustopniowy (decyzja właściciela 2026-09-07)**:
   `min_margin_small_percent` (domyślnie **15%**) dla pozycji o cenie zakupu poniżej `small_price_below` (domyślnie **100 zł**),
   bo przy taniej pozycji stały koszt wysyłki zjada marżę; `min_margin_percent` (domyślnie **8%**) powyżej tej kwoty.
-  Zastosowany próg zapisujemy w `attributes.min_margin_required`. Cena rynkowa to `attributes.market_lowest_pln` (najniższa oferta Allegro po EAN,
+  Zastosowany próg zapisujemy w `attributes.min_margin_required`.
+- **Próg liczymy od marży NETTO, nie brutto (decyzja właściciela 2026-09-07).** Od każdej sprzedaży płacimy
+  **cashback 3% od kwoty brutto** plus prowizję płatności; dopiero to, co zostaje, jest zarobkiem.
+  `zysk = cena − zakup − cashback_percent%·cena − (payment_fee_percent%·cena + payment_fee_fixed_pln) − shipping_cost_pln`,
+  a `net_margin_percent = zysk / zakup`. Domyślnie `cashback_percent = 3`, `payment_fee_percent = 2`,
+  `payment_fee_fixed_pln = 1`, `shipping_cost_pln = 0`. W ofercie zapisujemy `margin_percent` (brutto),
+  `net_margin_percent`, `net_profit_pln` i `cashback_percent`. **Nigdy nie publikujemy pozycji, która po cashbacku
+  i opłatach nie zarabia.** Otwarta decyzja: kto płaci wysyłkę — dopóki `shipping_cost_pln = 0`, próg jej nie uwzględnia. Cena rynkowa to `attributes.market_lowest_pln` (najniższa oferta Allegro po EAN,
   `market_checked_at`) — sync **scala** atrybuty, więc kolejne importy jej nie kasują. Oferta bez sprawdzonej ceny rynkowej zostaje szkicem.
 - **Import zawsze najpierw jako szkice** (`activate:false`); `activate:true` jest odrzucane przy marży ≤ 0.
   Nie publikujemy produktów dostawców bez ustalonej dodatniej marży. Ceny zaokrągla `nicePrice` (do pełnych zł − 1 gr).
