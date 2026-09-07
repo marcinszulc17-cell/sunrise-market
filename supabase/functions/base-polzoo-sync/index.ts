@@ -284,6 +284,9 @@ Deno.serve(async (req: Request) => {
     // Sufit z ceny rynkowej i prog rentownosci (decyzja wlasciciela 2026-09-07 po badaniu cen).
     const capRatio = Math.min(Math.max(Number(body.price_cap_ratio ?? 0.95), 0.5), 1);
     const minMargin = Math.min(Math.max(Number(body.min_margin_percent ?? 8), 0), 90);
+    // Tanie pozycje musza zarobic wiecej, bo koszt wysylki jest staly (decyzja wlasciciela 2026-09-07).
+    const minMarginSmall = Math.min(Math.max(Number(body.min_margin_small_percent ?? 15), 0), 90);
+    const smallBelow = Math.max(0, Number(body.small_price_below ?? 100));
     if (!Number.isFinite(markup) || markup < 0 || markup > 500) return json({ error: "Nieprawidłowa marża" }, 400);
     if (activate && markup <= 0) return json({ error: "Aktywacja wymaga dodatniej marży" }, 400);
 
@@ -396,7 +399,8 @@ Deno.serve(async (req: Request) => {
             if (capped < price) { price = capped; priceSource = "market_cap"; }
           }
           const marginPct = supplierPrice > 0 ? ((price - supplierPrice) / supplierPrice) * 100 : 0;
-          const belowMinMargin = marginPct < minMargin;
+          const requiredMargin = supplierPrice < smallBelow ? minMarginSmall : minMargin;
+          const belowMinMargin = marginPct < requiredMargin;
           const baseCategory = baseCategoryNames[String(p.category_id)] ?? "";
           const slug = classifySlug(supplier.key, `${baseCategory} ${title}`);
           const categoryId = categoryIds[slug] ?? categoryIds[supplier.fallbackCategory];
@@ -417,6 +421,7 @@ Deno.serve(async (req: Request) => {
             delivery: "shipping",
             price_source: priceSource,
             margin_percent: Math.round(marginPct * 10) / 10,
+            min_margin_required: requiredMargin,
           };
           // Bez ustalonej, dodatniej marzy oferta zostaje szkicem — nawet przy activate:true.
           const nextStatus = activate && !belowMinMargin ? (stock > 0 ? "active" : "sold_out") : "draft";
@@ -468,7 +473,7 @@ Deno.serve(async (req: Request) => {
       }
     }
 
-    return json({ ok: errors.length === 0, supplier: supplier.key, inventory: { id: inventoryId, name: inventory.name }, fetched: productIds.length, created, updated, skipped, images, held_low_margin: held, price_cap_ratio: capRatio, min_margin_percent: minMargin, draft_mode: !activate, errors: errors.slice(0, 25) });
+    return json({ ok: errors.length === 0, supplier: supplier.key, inventory: { id: inventoryId, name: inventory.name }, fetched: productIds.length, created, updated, skipped, images, held_low_margin: held, price_cap_ratio: capRatio, min_margin_percent: minMargin, min_margin_small_percent: minMarginSmall, small_price_below: smallBelow, draft_mode: !activate, errors: errors.slice(0, 25) });
   } catch (error) {
     return json({ error: String((error as Error)?.message ?? error).slice(0, 500) }, 500);
   }
