@@ -159,6 +159,10 @@ pierwszeństwo przy każdej zmianie kodu. Nie wolno ich naruszać ani obchodzić
 - **Lokalizacja**: `offers.attributes.location` (pole „Miejscowość” w kreatorach i edycji), filtr `p_filters.location` (ilike) w `search_offers_v2`,
   wybór regionu „Cała Polska / województwo” w nagłówku (`SiteHeader`, localStorage `sm:region`, parametr `?lok=`), pole „Lokalizacja” w filtrach.
   Mapa: `LocationMap` — Nominatim (OSM) w przeglądarce + iframe OSM, tylko miejscowość/okolica, bez kluczy API.
+  Plakietkę pod adresem dobiera `locationKind(category_slug, purchase_mode)` (2026-09-07): `pickup` — wynajem/najem: „Odbiór i zwrot na miejscu”,
+  bez promienia; `none` — motoryzacja i nieruchomości: sam adres; `install` — OZE/dom i ogród: „Montaż i dojazd…”; `service` — pozostałe usługi:
+  „Dojazd do klienta…”. Promień dojazdu (`service_radius_km`) zdjęty z ofert motoryzacji i nieruchomości (migracja 20260907190000) —
+  wcześniej auto na wynajem pokazywało „Montaż i dojazd w całej Polsce”.
 - **Wyświetlenia**: `offers.view_count` przez `count_offer_view(p_offer)` (także goście; wołane raz w `ProductRouter`); `track_view` bez zmian
   (rekomendacje). RPC `seller_offer_stats()` → tabela „Twoje ogłoszenia” w Panelu Partnera (wyświetlenia, ulubione, status).
   `search_offers_v2` / `recommended_offers` / `my_watchlist` zwracają `created_at` (karty pokazują „x godz. temu”, `timeAgo`) i `views`;

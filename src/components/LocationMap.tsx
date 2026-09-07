@@ -20,17 +20,36 @@ async function geocode(q: string): Promise<Geo | null> {
   } catch { return null; }
 }
 
-export default function LocationMap({ location, radiusKm, className = "" }: { location?: string | null; radiusKm?: number | null; className?: string }) {
+// `kind` decyduje o treści plakietki pod adresem (decyzja właściciela 2026-09-07: przy wynajmie
+// nie piszemy o montażu ani dojeździe — auto odbiera się w miejscu):
+//   install — usługi z montażem (OZE, marki własne): „Montaż i dojazd…”
+//   service — pozostałe usługi z zasięgiem dojazdu: „Dojazd do klienta…”
+//   pickup  — wynajem/odbiór na miejscu: promień pomijamy, pokazujemy punkt odbioru
+//   none    — towar w jednym miejscu (auto na sprzedaż, nieruchomość): sam adres, bez plakietki
+export type LocationKind = "install" | "service" | "pickup" | "none";
+
+/** Dobiera treść plakietki do rodzaju oferty — pojazd/nieruchomość nigdy nie „dojeżdża do klienta”. */
+export function locationKind(categorySlug?: string | null, purchaseMode?: string | null): LocationKind {
+  const s = (categorySlug || "").toLowerCase();
+  if (purchaseMode === "daily" || s.includes("wynajem") || s.includes("najem")) return "pickup";
+  if (s.startsWith("motoryzacja") || s.startsWith("nieruchomosci")) return "none";
+  if (s.startsWith("oze") || s.startsWith("dom-i-ogrod")) return "install";
+  return "service";
+}
+export default function LocationMap({ location, radiusKm, kind = "install", className = "" }: { location?: string | null; radiusKm?: number | null; kind?: LocationKind; className?: string }) {
   const [geo, setGeo] = useState<Geo | null | undefined>(undefined);
   useEffect(() => { let alive = true; if (!location?.trim()) { setGeo(null); return; } geocode(location).then((g) => { if (alive) setGeo(g); }); return () => { alive = false; }; }, [location]);
   if (!location?.trim()) return null;
-  const d = radiusKm ? Math.min(3.2, radiusKm / 150) : 0.04; // zasięg (np. 500 km) → szeroki kadr; inaczej ~4 km okolicy
+  const radius = kind === "pickup" || kind === "none" ? 0 : radiusKm || 0; // przy odbiorze na miejscu promień dojazdu nic nie znaczy
+  const d = radius ? Math.min(3.2, radius / 150) : 0.04; // zasięg (np. 500 km) → szeroki kadr; inaczej ~4 km okolicy
   const bbox = geo ? `${geo.lon - d},${geo.lat - d},${geo.lon + d},${geo.lat + d}` : null;
   const link = geo ? `https://www.openstreetmap.org/?mlat=${geo.lat}&mlon=${geo.lon}#map=13/${geo.lat}/${geo.lon}` : `https://www.openstreetmap.org/search?query=${encodeURIComponent(location)}`;
   return <section className={`rounded-2xl p-5 ${className}`} style={CARD}>
     <div className="flex items-center gap-2 border-l-4 pl-3 text-lg font-bold" style={{ borderColor: "var(--gold)" }}>Lokalizacja</div>
     <div className="mt-3 flex items-center gap-2 text-sm"><Ico name="pin" size={18} stroke="var(--gold)" /><span>{location}</span></div>
-    {radiusKm ? <div className="mt-2 rounded-xl px-3 py-2 text-xs leading-5" style={{ background: "rgba(245,166,35,.08)", border: "1px solid rgba(245,166,35,.25)" }}>{radiusKm >= 600 ? <b style={{ color: "var(--gold)" }}>Montaż i dojazd w całej Polsce.</b> : <><b style={{ color: "var(--gold)" }}>Dojazd do klienta w promieniu {radiusKm} km</b>{radiusKm >= 400 ? " — praktycznie cała Polska." : "."}</>} <Link to="/miasto" style={{ color: "var(--gold)" }}>Sprawdź swoje miasto ›</Link></div> : null}
+    {kind === "pickup"
+      ? <div className="mt-2 rounded-xl px-3 py-2 text-xs leading-5" style={{ background: "rgba(245,166,35,.08)", border: "1px solid rgba(245,166,35,.25)" }}><b style={{ color: "var(--gold)" }}>Odbiór i zwrot na miejscu: {location}</b> — termin ustalasz ze sprzedawcą po rezerwacji.</div>
+      : radius ? <div className="mt-2 rounded-xl px-3 py-2 text-xs leading-5" style={{ background: "rgba(245,166,35,.08)", border: "1px solid rgba(245,166,35,.25)" }}>{radius >= 600 ? <b style={{ color: "var(--gold)" }}>{kind === "install" ? "Montaż i dojazd w całej Polsce." : "Dojazd do klienta w całej Polsce."}</b> : <><b style={{ color: "var(--gold)" }}>Dojazd do klienta w promieniu {radius} km</b>{radius >= 400 ? " — praktycznie cała Polska." : "."}</>} <Link to="/miasto" style={{ color: "var(--gold)" }}>Sprawdź swoje miasto ›</Link></div> : null}
     {bbox && <div className="mt-3 overflow-hidden rounded-xl" style={{ border: "1px solid var(--line)", background: "var(--header)" }}><iframe title={`Mapa: ${location}`} src={`https://www.openstreetmap.org/export/embed.html?bbox=${bbox}&layer=mapnik&marker=${geo!.lat},${geo!.lon}`} className="h-56 w-full" loading="lazy" style={{ border: 0, filter: "invert(.92) hue-rotate(180deg) saturate(.7)" }} /></div>}
     {geo === null && <div className="mt-2 text-xs" style={{ color: "var(--mut)" }}>Nie udało się pokazać mapy dla tej miejscowości.</div>}
     <a href={link} target="_blank" rel="noopener noreferrer" className="mt-3 flex h-11 items-center justify-center gap-2 rounded-xl text-sm font-semibold" style={{ background: "rgba(255,255,255,.05)", border: "1px solid var(--line)" }}>Zobacz na mapie ↗</a>
