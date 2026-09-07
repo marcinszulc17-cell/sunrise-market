@@ -1,4 +1,4 @@
-// PolZoo -> Base inventory -> Sunrise Market catalog.
+// Base inventory -> Sunrise Market catalog.
 // Products are drafts by default. Activation requires an explicit positive markup.
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "jsr:@supabase/supabase-js@2";
@@ -9,14 +9,50 @@ const BRIDGE_TOKEN = Deno.env.get("BRIDGE_INTERNAL_TOKEN") ?? "";
 const DEFAULT_INVENTORY = Deno.env.get("BASE_POLZOO_INVENTORY_ID") ?? "";
 const DEFAULT_PRICE_GROUP = Deno.env.get("BASE_POLZOO_PRICE_GROUP_ID") ?? "";
 const DEFAULT_WAREHOUSE = Deno.env.get("BASE_POLZOO_WAREHOUSE_ID") ?? "";
-const DEFAULT_MARKUP = Number(Deno.env.get("POLZOO_MARKUP_PERCENT") ?? "0");
 const SUNRISE_SELLER = "11111111-1111-1111-1111-111111111111";
 const CORS = {
   "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-bridge-token",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-bridge-token, x-sunrise-service-token",
   "Access-Control-Allow-Methods": "POST, OPTIONS",
 };
 let lastBaseCallAt = 0;
+
+type SupplierKey = "polzoo" | "euroshop" | "eet";
+type SupplierConfig = {
+  key: SupplierKey;
+  source: string;
+  provider: string;
+  categoryPrefix: string;
+  fallbackCategory: string;
+  defaultMarkup: number;
+};
+
+const SUPPLIERS: Record<SupplierKey, SupplierConfig> = {
+  polzoo: {
+    key: "polzoo",
+    source: "polzoo_base",
+    provider: "polzoo",
+    categoryPrefix: "zwierzeta%",
+    fallbackCategory: "zwierzeta",
+    defaultMarkup: Number(Deno.env.get("POLZOO_MARKUP_PERCENT") ?? "0"),
+  },
+  euroshop: {
+    key: "euroshop",
+    source: "euroshop_base",
+    provider: "euroshop",
+    categoryPrefix: "supermarket%",
+    fallbackCategory: "supermarket-chemia",
+    defaultMarkup: Number(Deno.env.get("EUROSHOP_MARKUP_PERCENT") ?? "0"),
+  },
+  eet: {
+    key: "eet",
+    source: "eet_base",
+    provider: "eet",
+    categoryPrefix: "supermarket%",
+    fallbackCategory: "supermarket-chemia",
+    defaultMarkup: Number(Deno.env.get("EET_MARKUP_PERCENT") ?? "0"),
+  },
+};
 
 const sb = createClient(
   Deno.env.get("SUPABASE_URL")!,
@@ -36,8 +72,18 @@ function safeEqual(a: string, b: string): boolean {
   return diff === 0;
 }
 
+/** Wspólny sekret operacyjny ekosystemu (env albo market.internal_secrets) — jak w pozostałych funkcjach. */
+async function serviceToken(): Promise<string> {
+  const fromEnv = Deno.env.get("SUNRISE_MARKET_SERVICE_TOKEN") ?? "";
+  if (fromEnv) return fromEnv;
+  const { data } = await sb.from("internal_secrets").select("value").eq("key", "sunrise_pay_service_token").maybeSingle();
+  return String(data?.value ?? "");
+}
+
 async function authorized(req: Request): Promise<boolean> {
   if (BRIDGE_TOKEN && safeEqual(req.headers.get("x-bridge-token") ?? "", BRIDGE_TOKEN)) return true;
+  const service = req.headers.get("x-sunrise-service-token") ?? "";
+  if (service && safeEqual(service, await serviceToken())) return true;
   const auth = req.headers.get("Authorization") ?? "";
   if (!auth) return false;
   const user = createClient(
@@ -136,7 +182,7 @@ function nicePrice(value: number): number {
   return Math.max(0.01, rounded - 0.01);
 }
 
-function classifySlug(haystack: string): string {
+function classifyPolzoo(haystack: string): string {
   const s = haystack.toLocaleLowerCase("pl-PL");
   const cat = /(kot|koci|kuwet|drapak)/.test(s);
   const dog = /(pies|psa|psi|smycz|obroż|szelk)/.test(s);
@@ -163,9 +209,32 @@ function classifySlug(haystack: string): string {
   return "zwierzeta";
 }
 
+function classifyEuroshop(haystack: string): string {
+  const s = haystack.toLocaleLowerCase("pl-PL");
+  if (/folia alumini|jednoraz|papier śniadani|woreczk/.test(s)) return "supermarket-artykuly-domowe-jednorazowe";
+  if (/prani|wasch|płuk|pluk|weichspül|softener|lenor|gama|zagniece|crease|felce azzurra|kuschelweich/.test(s)) return "supermarket-chemia-pranie";
+  if (/dove|palmolive|żel pod prysznic|zel pod prysznic|balsam|kosmet|ciał|cial|szampon|mydł|mydl/.test(s)) return "supermarket-chemia-kosmetyki";
+  if (/naczyn|zmywan|spül|spul/.test(s)) return "supermarket-chemia-zmywanie";
+  return "supermarket-chemia-czystosc";
+}
+
+function classifySlug(supplier: SupplierKey, haystack: string): string {
+  if (supplier === "polzoo") return classifyPolzoo(haystack);
+  return classifyEuroshop(haystack);
+}
+
 function pickInventory(inventories: any[], requested: string): any | null {
   if (requested) return inventories.find((x) => String(x.inventory_id ?? x.id) === requested) ?? null;
   return inventories.find((x) => /polzoo/i.test(String(x.name ?? ""))) ?? (inventories.length === 1 ? inventories[0] : null);
+}
+
+function requestedProductIds(value: unknown): number[] | null {
+  if (value === undefined || value === null) return null;
+  if (!Array.isArray(value)) throw new Error("product_ids musi być tablicą");
+  const ids = [...new Set(value.map(Number).filter((id) => Number.isInteger(id) && id > 0))];
+  if (!ids.length) throw new Error("product_ids nie zawiera poprawnych ID");
+  if (ids.length > 1000) throw new Error("Jednorazowo można synchronizować maksymalnie 1000 produktów");
+  return ids;
 }
 
 Deno.serve(async (req: Request) => {
@@ -176,10 +245,14 @@ Deno.serve(async (req: Request) => {
 
   try {
     const body = await req.json().catch(() => ({}));
-    const action = body.action === "probe" ? "probe" : "sync";
-    const markup = Number(body.markup_percent ?? DEFAULT_MARKUP);
+    const action = body.action === "probe" ? "probe" : body.action === "preview" ? "preview" : "sync";
+    const supplierKey = String(body.supplier ?? "polzoo").toLowerCase() as SupplierKey;
+    const supplier = SUPPLIERS[supplierKey];
+    if (!supplier) return json({ error: "Nieobsługiwany dostawca", allowed_suppliers: Object.keys(SUPPLIERS) }, 400);
+    const markup = Number(body.markup_percent ?? supplier.defaultMarkup);
     const activate = body.activate === true;
     const maxPages = Math.min(Math.max(Number(body.max_pages ?? 1), 1), 100);
+    const explicitProductIds = requestedProductIds(body.product_ids);
     if (!Number.isFinite(markup) || markup < 0 || markup > 500) return json({ error: "Nieprawidłowa marża" }, 400);
     if (activate && markup <= 0) return json({ error: "Aktywacja wymaga dodatniej marży" }, 400);
 
@@ -189,6 +262,7 @@ Deno.serve(async (req: Request) => {
       return json({
         ok: true,
         connected: true,
+        supplier: supplier.key,
         inventories: inventories.map((x) => ({ id: x.inventory_id ?? x.id, name: x.name })),
       });
     }
@@ -196,7 +270,7 @@ Deno.serve(async (req: Request) => {
     const requestedInventory = String(body.inventory_id ?? DEFAULT_INVENTORY);
     const inventory = pickInventory(inventories, requestedInventory);
     if (!inventory) {
-      return json({ error: "Nie znaleziono jednoznacznego magazynu PolZoo", inventories: inventories.map((x) => ({ id: x.inventory_id ?? x.id, name: x.name })) }, 409);
+      return json({ error: "Nie znaleziono wskazanego magazynu Base", inventories: inventories.map((x) => ({ id: x.inventory_id ?? x.id, name: x.name })) }, 409);
     }
     const inventoryId = Number(inventory.inventory_id ?? inventory.id);
     const priceGroup = String(body.price_group_id ?? DEFAULT_PRICE_GROUP);
@@ -204,24 +278,51 @@ Deno.serve(async (req: Request) => {
 
     const [baseCategories, marketCategories] = await Promise.all([
       baseCall("getInventoryCategories", { inventory_id: inventoryId }),
-      sb.from("categories").select("id,slug").like("slug", "zwierzeta%"),
+      sb.from("categories").select("id,slug").like("slug", supplier.categoryPrefix),
     ]);
     if (marketCategories.error) throw marketCategories.error;
     const categoryIds = Object.fromEntries((marketCategories.data ?? []).map((x: any) => [x.slug, x.id]));
-    if (!categoryIds.zwierzeta) throw new Error("Brak głównej kategorii Zwierzęta");
+    if (!categoryIds[supplier.fallbackCategory]) throw new Error(`Brak kategorii ${supplier.fallbackCategory}`);
     const baseCategoryNames: Record<string, string> = {};
     for (const c of records(baseCategories.categories)) baseCategoryNames[String(c.category_id ?? c.id)] = String(c.name ?? "");
 
-    const productIds: number[] = [];
-    for (let page = 1; page <= maxPages; page++) {
-      const listed = await baseCall("getInventoryProductsList", { inventory_id: inventoryId, page });
-      const products = listed.products ?? {};
-      const ids = Array.isArray(products)
-        ? products.map((p) => Number(p.id ?? p.product_id))
-        : Object.keys(products).map(Number);
-      const valid = ids.filter(Number.isFinite);
-      productIds.push(...valid);
-      if (valid.length < 1000) break;
+    const productIds: number[] = explicitProductIds ? [...explicitProductIds] : [];
+    if (!explicitProductIds) {
+      for (let page = 1; page <= maxPages; page++) {
+        const listed = await baseCall("getInventoryProductsList", { inventory_id: inventoryId, page });
+        const products = listed.products ?? {};
+        const ids = Array.isArray(products)
+          ? products.map((p) => Number(p.id ?? p.product_id))
+          : Object.keys(products).map(Number);
+        const valid = ids.filter(Number.isFinite);
+        productIds.push(...valid);
+        if (valid.length < 1000) break;
+      }
+    }
+
+    // Podgląd bez zapisu — do wyboru kontrolnej partii przed importem.
+    if (action === "preview") {
+      const limit = Math.min(Math.max(Number(body.limit ?? 50), 1), 200);
+      const ids = productIds.slice(0, Math.min(productIds.length, 100));
+      const response = ids.length ? await baseCall("getInventoryProductsData", { inventory_id: inventoryId, products: ids }) : { products: {} };
+      const products = response.products ?? {};
+      const rows: any[] = [];
+      for (const id of ids) {
+        const p = products[String(id)] ?? records(products).find((x) => Number(x.id ?? x.product_id) === id);
+        if (!p) continue;
+        const title = textField(p.text_fields, "name") || cleanText(p.name);
+        const supplierPrice = selectedNumber(p.prices ?? p.price, priceGroup, false);
+        const stock = Math.max(0, Math.floor(selectedNumber(p.stock ?? p.quantity, warehouse, false)));
+        const urls = imageUrls(p.images);
+        const baseCategory = baseCategoryNames[String(p.category_id)] ?? "";
+        rows.push({
+          id, title, base_category: baseCategory, supplier_price_gross_pln: supplierPrice, stock,
+          images: urls.length, sku: p.sku ?? null, ean: p.ean ?? null,
+          suggested_category: classifySlug(supplier.key, `${baseCategory} ${title}`),
+        });
+      }
+      const usable = rows.filter((r) => r.title && r.supplier_price_gross_pln > 0 && r.stock > 0);
+      return json({ ok: true, supplier: supplier.key, inventory: { id: inventoryId, name: inventory.name }, listed: productIds.length, inspected: rows.length, usable: usable.length, sample: usable.slice(0, limit) });
     }
 
     let created = 0, updated = 0, skipped = 0, images = 0;
@@ -244,18 +345,17 @@ Deno.serve(async (req: Request) => {
           const title = textField(p.text_fields, "name") || cleanText(p.name);
           const description = textField(p.text_fields, "description") || cleanText(p.description);
           const supplierPrice = selectedNumber(p.prices ?? p.price, priceGroup, false);
-          // Without an explicitly selected Base warehouse, prefer one source instead of
-          // summing warehouses that can mirror the same supplier stock.
           const stock = Math.max(0, Math.floor(selectedNumber(p.stock ?? p.quantity, warehouse, false)));
           const urls = imageUrls(p.images);
           if (!title || supplierPrice <= 0) { skipped++; continue; }
           const price = nicePrice(supplierPrice * (1 + markup / 100));
           const baseCategory = baseCategoryNames[String(p.category_id)] ?? "";
-          const slug = classifySlug(`${baseCategory} ${title}`);
-          const categoryId = categoryIds[slug] ?? categoryIds.zwierzeta;
+          const slug = classifySlug(supplier.key, `${baseCategory} ${title}`);
+          const categoryId = categoryIds[slug] ?? categoryIds[supplier.fallbackCategory];
           const existingOfferId = byProduct.get(id);
           const attrs = {
-            source: "polzoo_base",
+            source: supplier.source,
+            supplier_key: supplier.key,
             base_inventory_id: inventoryId,
             base_product_id: id,
             base_category: baseCategory,
@@ -270,7 +370,7 @@ Deno.serve(async (req: Request) => {
           const nextStatus = activate ? (stock > 0 ? "active" : "sold_out") : "draft";
           let offerId = existingOfferId;
           if (offerId) {
-            const patch: Record<string, unknown> = { title, description, price_gross: price, stock, image_url: urls[0] ?? null, category_id: categoryId, attributes: attrs, updated_at: new Date().toISOString() };
+            const patch: Record<string, unknown> = { title, description, price_gross: price, stock, image_url: urls[0] ?? null, category_id: categoryId, attributes: attrs, fulfillment_provider: supplier.provider, updated_at: new Date().toISOString() };
             if (activate) patch.status = nextStatus;
             const { error } = await sb.from("offers").update(patch).eq("id", offerId);
             if (error) throw error;
@@ -287,7 +387,7 @@ Deno.serve(async (req: Request) => {
               status: nextStatus,
               image_url: urls[0] ?? null,
               attributes: attrs,
-              fulfillment_provider: "polzoo",
+              fulfillment_provider: supplier.provider,
               commission_model: "cashback_only",
             }).select("id").single();
             if (error || !inserted?.id) throw error ?? new Error("Nie utworzono oferty");
@@ -315,7 +415,7 @@ Deno.serve(async (req: Request) => {
       }
     }
 
-    return json({ ok: errors.length === 0, inventory: { id: inventoryId, name: inventory.name }, fetched: productIds.length, created, updated, skipped, images, draft_mode: !activate, errors: errors.slice(0, 25) });
+    return json({ ok: errors.length === 0, supplier: supplier.key, inventory: { id: inventoryId, name: inventory.name }, fetched: productIds.length, created, updated, skipped, images, draft_mode: !activate, errors: errors.slice(0, 25) });
   } catch (error) {
     return json({ error: String((error as Error)?.message ?? error).slice(0, 500) }, 500);
   }

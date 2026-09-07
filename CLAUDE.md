@@ -45,6 +45,23 @@ pierwszeństwo przy każdej zmianie kodu. Nie wolno ich naruszać ani obchodzić
 - Sekret `SUNRISE_MARKET_SERVICE_TOKEN`: gdy brak w env, funkcje czytają
   `market.internal_secrets` (klucz `sunrise_pay_service_token`).
 
+## 4a. Dostawcy przez Base (BaseLinker) — Euroshop, EET, PolZoo (2026-09-07)
+
+- Edge fn `base-polzoo-sync` (verify_jwt **on**) obsługuje wielu dostawców: `polzoo`, `euroshop`, `eet`.
+  Akcje: `probe` (test połączenia), `preview` (podgląd partii bez zapisu), `sync` (import).
+  Autoryzacja: `x-bridge-token` (BRIDGE_INTERNAL_TOKEN), **`x-sunrise-service-token`** (= `sunrise_pay_service_token`
+  z `market.internal_secrets`, wywołania serwis-serwis np. przez `net.http_post`) albo JWT operatora (`ami_operator`).
+- Każdy dostawca ma własne znaczniki: `attributes.source` (`euroshop_base` / `eet_base` / `polzoo_base`),
+  `attributes.supplier_key`, `offers.fulfillment_provider`. Mapowanie produktów: `market.base_polzoo_product_map`
+  (klucz `inventory_id` + `base_product_id`) — powtórny import aktualizuje ofertę, nie tworzy duplikatu.
+- **Import zawsze najpierw jako szkice** (`activate:false`); `activate:true` jest odrzucane przy marży ≤ 0.
+  Nie publikujemy produktów dostawców bez ustalonej dodatniej marży. Ceny zaokrągla `nicePrice` (do pełnych zł − 1 gr).
+- Stan 2026-09-07: Euroshop — 18 ofert kontrolnych (magazyn Base 115697, grupa cen 100979, magazyn `bl_153385`),
+  wszystkie `draft`, zmapowane 18/18, 25 zdjęć. EET — konfiguracja w funkcji gotowa, ale w magazynie Base nie ma jeszcze
+  produktów EET (import z Base Connect robi się w panelu Base). PolZoo — integracja utworzona, wciąż brak jej jako źródła
+  importu (czeka na akceptację dostawcy); nie tworzymy drugiej integracji. ABC Kosmetyczne — nie ruszamy (formalności).
+  Platon — planowany przez API/WebService, nie przez Base Connect.
+
 ## 4. Dropship first-party (TeemDrop)
 
 - Dotyczy **wyłącznie** produktów własnych Sunrise
