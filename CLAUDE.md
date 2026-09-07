@@ -71,6 +71,12 @@ pierwszeństwo przy każdej zmianie kodu. Nie wolno ich naruszać ani obchodzić
   CoreParts/MicroConnect/LanView, marża 25% z sufitem rynkowym, realnie 8,4–31,5%, średnio 23,8%), 5 wstrzymanych progiem
   marży, reszta w szkicach. Po podniesieniu progu do 15% poniżej 100 zł żadna aktywna pozycja nie wypadła — najniższa
   z tanich to 25,8%.
+- **Skan katalogu EET (`action:"scan"`, 2026-09-07)** — pełny import Base zakończony: **67 936 SKU**, 67 921 z EAN (99,98%),
+  **29 686 dostępnych** (43,7%), 67 929 z ceną. Przedziały cen zakupu: <50 zł — 10 523, 50–100 zł — 5 549,
+  100–300 zł — 16 974, 300–1000 zł — 21 598, >1000 zł — 13 285. Marki własne EET (rentowne wg badania):
+  CoreParts 4 265, MicroConnect 3 373, eSTUFF 844, LanView 818, Vivolink 686, ProXtend 586 — razem ~10,6 tys. SKU.
+  OEM (HP 11 478, Lenovo 9 687, Dell 6 005) **nie nadaje się do publikacji** — kupujemy drożej niż detal.
+  `scan` jest read-only (zwraca liczby, koszyki cenowe i liczności marek) — służy kontroli jakości przed importem.
   **Badanie cen 2026-09-07** (44 pozycje po EAN na Allegro): marki własne EET średnio +32,7% zapasu i zero pozycji pod kreską;
   oryginały OEM (Lexmark, Kyocera, HP) +5,5% i 5 z 8 kupowanych drożej niż detal — **nie publikujemy ich**;
   Euroshop +0,5% średnio, 7 z 17 pod kreską — do renegocjacji cennika, na razie wszystko zostaje szkicem. PolZoo — integracja utworzona, wciąż brak jej jako źródła

@@ -273,7 +273,7 @@ Deno.serve(async (req: Request) => {
 
   try {
     const body = await req.json().catch(() => ({}));
-    const action = body.action === "probe" ? "probe" : body.action === "preview" ? "preview" : "sync";
+    const action = body.action === "probe" ? "probe" : body.action === "preview" ? "preview" : body.action === "scan" ? "scan" : "sync";
     const supplierKey = String(body.supplier ?? "polzoo").toLowerCase() as SupplierKey;
     const supplier = SUPPLIERS[supplierKey];
     if (!supplier) return json({ error: "Nieobsługiwany dostawca", allowed_suppliers: Object.keys(SUPPLIERS) }, 400);
@@ -309,6 +309,43 @@ Deno.serve(async (req: Request) => {
     const inventoryId = Number(inventory.inventory_id ?? inventory.id);
     const priceGroup = String(body.price_group_id ?? DEFAULT_PRICE_GROUP);
     const warehouse = String(body.warehouse_id ?? DEFAULT_WAREHOUSE);
+
+    // Skan katalogu bez zapisu — liczby do decyzji o kolejnej partii (kontrola jakosci przed importem).
+    if (action === "scan") {
+      const brands: string[] = (Array.isArray(body.brands) ? body.brands : []).map((x: unknown) => String(x));
+      const counts: Record<string, number> = {};
+      let total = 0, withEan = 0, inStock = 0, priced = 0;
+      const buckets: Record<string, number> = { "0-50": 0, "50-100": 0, "100-300": 0, "300-1000": 0, "1000+": 0 };
+      const sampleRaw: unknown[] = [];
+      for (let page = 1; page <= maxPages; page++) {
+        const listed = await baseCall("getInventoryProductsList", { inventory_id: inventoryId, page });
+        const raw = listed.products ?? {};
+        const rows = Array.isArray(raw) ? raw : Object.values(raw);
+        for (const p of rows as Record<string, unknown>[]) {
+          total++;
+          if (sampleRaw.length < 3) sampleRaw.push(p);
+          const name = cleanText((p as any).name ?? "");
+          if ((p as any).ean) withEan++;
+          const stock = Math.max(0, Math.floor(selectedNumber((p as any).stock ?? (p as any).quantity, warehouse, false)));
+          if (stock > 0) inStock++;
+          const price = selectedNumber((p as any).prices ?? (p as any).price, priceGroup, false);
+          if (price > 0) {
+            priced++;
+            const b = price < 50 ? "0-50" : price < 100 ? "50-100" : price < 300 ? "100-300" : price < 1000 ? "300-1000" : "1000+";
+            buckets[b]++;
+          }
+          for (const brand of brands) {
+            if (name.toLowerCase().includes(brand.toLowerCase())) counts[brand] = (counts[brand] ?? 0) + 1;
+          }
+        }
+        if (rows.length < 1000) break;
+      }
+      return json({
+        ok: true, supplier: supplier.key, inventory: { id: inventoryId, name: inventory.name },
+        total, with_ean: withEan, in_stock: inStock, priced, price_buckets: buckets,
+        brand_counts: counts, pages_scanned: Math.min(maxPages, Math.ceil(total / 1000)), sample_raw: sampleRaw,
+      });
+    }
 
     const [baseCategories, marketCategories] = await Promise.all([
       baseCall("getInventoryCategories", { inventory_id: inventoryId }),
