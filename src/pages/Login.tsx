@@ -65,8 +65,24 @@ const LOGIN_CSS = `.sl-root{position:relative;min-height:100dvh;overflow:hidden;
 }`;
 
 const REMEMBER_KEY = "sunrise.market.login.email";
-const RESET_URL = "https://app.mysunrise.pl/forgot-password";
-const REGISTER_URL = "https://app.mysunrise.pl/register-client";
+const MYSUNRISE_URL = "https://app.mysunrise.pl";
+const RESET_URL = `${MYSUNRISE_URL}/forgot-password`;
+const MARKET_ORIGIN = "https://app.sunrisemarket.pl";
+
+/**
+ * Rejestracja i logowanie przez hub MySunrise z powrotem do Marketu.
+ * MySunrise po zalogowaniu/rejestracji wchodzi na /market?return=...&origin=...,
+ * a ta trasa robi SSO handoff (magiclink token_hash) i odsyla na app.sunrisemarket.pl/sso -> next.
+ */
+function hubReturnPath(next: string) {
+  return `/market?return=${encodeURIComponent(next)}&origin=${encodeURIComponent(MARKET_ORIGIN)}`;
+}
+function registerUrl(next: string) {
+  return `${MYSUNRISE_URL}/dolacz?next=${encodeURIComponent(hubReturnPath(next))}`;
+}
+function hubLoginUrl(next: string) {
+  return `${MYSUNRISE_URL}/login?next=${encodeURIComponent(hubReturnPath(next))}`;
+}
 
 function safeNext() {
   const value = new URLSearchParams(window.location.search).get("next") || "/";
@@ -217,7 +233,7 @@ export default function Login() {
             </div>
             <div className="sl-row" style={{ marginTop: 6 }}>
               <span style={{ color: "rgba(255,255,255,.6)", fontSize: 13 }}>Nie masz konta Sunrise?</span>
-              <a className="sl-link" href={REGISTER_URL}>Zarejestruj się w MySunrise →</a>
+              <a className="sl-link" href={registerUrl(next)}>Zarejestruj się w MySunrise →</a>
             </div>
 
             {error && <div className="sl-err">{error}</div>}
@@ -233,7 +249,10 @@ export default function Login() {
               </button>
             </>}
 
-            <div className="sl-foot">Jedno konto Sunrise działa w całym ekosystemie.</div>
+            <div className="sl-foot" style={{ marginTop: 8 }}>
+              <a className="sl-link" href={hubLoginUrl(next)} style={{ color: "rgba(255,255,255,.7)" }}>Zaloguj przez MySunrise →</a>
+            </div>
+            <div className="sl-foot" style={{ marginTop: 10 }}>Jedno konto Sunrise działa w całym ekosystemie.</div>
           </form>
         </div>
       </div>
