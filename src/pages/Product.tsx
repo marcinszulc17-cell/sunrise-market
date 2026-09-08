@@ -86,7 +86,10 @@ export default function Product() {
   useEffect(() => {
     if (!id) return;
     getOffer(id).then((d) => {
-      const oo = d as Offer;
+      // get_offer zwraca pusto dla szkicu, oferty ukrytej i nieistniejącego ID — bez tej osłony
+      // strona wywalała się na „Cannot read properties of null” zamiast pokazać komunikat.
+      const oo = (d ?? null) as Offer | null;
+      if (!oo) { setErr("Ta oferta jest niedostępna — mogła zostać ukryta, sprzedana albo usunięta."); return; }
       setO(oo);
       pushRecent({ offer_id: oo.offer_id, title: oo.title, price_gross: oo.price_gross, image_url: oo.image_url });
     }).catch((e) => setErr(String((e as Error).message))).finally(() => setLoading(false));

@@ -73,6 +73,8 @@ export default function SpecializedProduct() {
   useEffect(() => {
     if (!id) return;
     getOffer(id).then((d: any) => {
+      // Szkic / oferta ukryta / złe ID → get_offer nie zwraca wiersza; pokazujemy komunikat, nie wyjątek.
+      if (!d) { setErr("Ta oferta jest niedostępna — mogła zostać ukryta, sprzedana albo usunięta."); return; }
       setO(d);
       pushRecent({ offer_id: d.offer_id, title: d.title, price_gross: d.price_gross, image_url: d.image_url });
     }).catch((e) => setErr(String(e?.message || e))).finally(() => setLoading(false));
