@@ -127,6 +127,25 @@ pierwszeństwo przy każdej zmianie kodu. Nie wolno ich naruszać ani obchodzić
   **Droga do przodu wymaga decyzji właściciela**: oficjalne API (Ceneo dla sklepów albo partnerskie Erli,
   konto i klucz zakłada właściciel) albo odczyt przez prawdziwą przeglądarkę na jego maszynie (wolniejsze,
   wymaga zgody na domenę w rozszerzeniu). Do tego czasu oferty bez `market_lowest_pln` zostają szkicami.
+- **Ceny rynkowe działają przez zwykłe wyszukiwanie w sieci (2026-09-08).** Ceneo i Allegro są zablokowane
+  (robots.txt / ochrona botów), ale sklepy zoologiczne i IT czytają się normalnie: unizoo.pl, maxizoo.pl,
+  netfutter.pl, aligatorzoo.pl, animalcity.pl, fera.pl, morele.net. Metoda: wyszukiwarka po nazwie + pobranie
+  strony sklepu. To działa z sesji Claude'a (ręcznie, partiami), nie z edge function — do automatu wciąż
+  potrzebne oficjalne API.
+- **KONTROLA CEN POLZOO 2026-09-08 — WYNIK ZŁY, NIE AKTYWUJEMY PARTII.** Cztery pozycje sprawdzone
+  w polskich sklepach; ceny zapisane w `attributes.market_lowest_pln` / `market_source`:
+  | Produkt | Zakup PolZoo | Rynek | Zakup vs rynek |
+  |---|---|---|---|
+  | ROYAL CANIN CCN Medium Digestive Care 12kg | 263,81 zł | 245,57 zł (unizoo.pl) | **+7,4%** |
+  | KONG Extreme XXL | 130,95 zł | 119,00 zł (animalcity.pl) | **+10,0%** |
+  | Brit Premium By Nature Adult XL 15kg | 133,84 zł | 137,99 zł (aligatorzoo.pl) | −3,0% |
+  | Brit Care Mini Grain-Free Yorkshire 7kg | 149,84 zł | 162,99 zł (netfutter.pl) | −8,1% |
+  Na dwóch pozycjach **kupujemy drożej, niż konkurencja sprzedaje detalicznie**, a na pozostałych dwóch zapas
+  (3–8%) nie pokrywa nawet cashbacku 3% i prowizji płatności, nie mówiąc o zysku. Hurtowe ceny PolZoo na markach
+  premium (Royal Canin, Brit, Acana, KONG) **nie są konkurencyjne w polskim e-commerce**. Wnioski: (1) 300 ofert
+  PolZoo zostaje szkicami; (2) do renegocjacji cennik na markach premium albo rezygnacja z tej półki;
+  (3) szansa jest w kategoriach bez porównywarki — marki mniej znane, akcesoria, zwierzęta gospodarskie —
+  ale każdą partię trzeba przed aktywacją sprawdzić po cenach.
 - **PolZoo — katalog i pierwsza partia (2026-09-08)**: import Base Connect zakończony, katalog „PolZoo" = inventory
   **115862** (grupa cen `100979`, magazyn `bl_153385`), **18 200 SKU**, 17 272 z EAN (94,9%), 5 615 dostępnych.
   Pierwsza partia: **300 ofert** (filtr: dostępne + EAN + cena ≥ 20 zł), wszystkie `draft`, 300/300 ze zdjęciem,
