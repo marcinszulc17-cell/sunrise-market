@@ -176,6 +176,94 @@ function imageUrls(images: unknown): string[] {
   return [...new Set(out)].slice(0, 10);
 }
 
+/**
+ * Dostawcy sklejaja nazwe z opisem, przez co ten sam fragment potrafi wystapic dwa razy.
+ * Usuwamy powtorzone okna szesciu slow — czytelnik nie ma ogladac tego samego zdania dwa razy.
+ */
+function dedupePhrases(text: string): string {
+  const words = text.split(" ");
+  // Najczestszy przypadek: dostawca skleil nazwe z opisem, wiec poczatek jest zdublowany slowo w slowo.
+  for (let k = Math.floor(words.length / 2); k >= 2; k--) {
+    const first = words.slice(0, k).join(" ").toLowerCase();
+    const second = words.slice(k, 2 * k).join(" ").toLowerCase();
+    if (first.length > 15 && first === second) { words.splice(k, k); break; }
+  }
+  const out: string[] = [];
+  const seen = new Set<string>();
+  const win = 6;
+  for (let i = 0; i < words.length; i++) {
+    const phrase = words.slice(i, i + win).join(" ").toLowerCase();
+    if (phrase.length > 20 && seen.has(phrase)) {
+      // przeskakujemy caly powtorzony fragment, nie tylko jedno okno
+      while (i < words.length && seen.has(words.slice(i, i + win).join(" ").toLowerCase())) i++;
+      i--;
+      continue;
+    }
+    if (phrase.length > 20) seen.add(phrase);
+    out.push(words[i]);
+  }
+  // Resztka ogona, ktora juz gdzies wyzej padla (np. samotne "Screens" po urwanym powtorzeniu).
+  const kept = out.slice();
+  for (let k = 3; k < kept.length; k++) {
+    const head = kept.slice(0, k).join(" ");
+    const tail = kept.slice(k).join(" ");
+    if (tail.length > 4 && head.toLowerCase().includes(tail.toLowerCase())) return head;
+  }
+  return kept.join(" ").replace(/\s+/g, " ").trim();
+}
+
+/** Stan produktu podajemy tylko wtedy, gdy dostawca sam go nazwal — nigdy nie zgadujemy. */
+function conditionLine(text: string): string {
+  const s = text.toLowerCase();
+  if (/refurbish|regenerowan|odnowion/.test(s)) return "produkt regenerowany";
+  if (/poleasingow|used|używan/.test(s)) return "produkt poleasingowy / używany";
+  return "";
+}
+
+/** Cechy produktu z Base (features/parameters) — para nazwa: wartość, bez śmieci. */
+function featurePairs(product: any): [string, string][] {
+  const out: [string, string][] = [];
+  for (const key of ["features", "parameters", "attributes"]) {
+    const raw = product?.[key];
+    if (!raw || typeof raw !== "object") continue;
+    for (const [name, value] of Object.entries(raw as Record<string, unknown>)) {
+      const n = cleanText(name), v = cleanText(typeof value === "object" ? JSON.stringify(value) : value);
+      if (n && v && v.length < 120 && n.toLowerCase() !== v.toLowerCase()) out.push([n, v]);
+      if (out.length >= 20) return out;
+    }
+  }
+  return out;
+}
+
+/**
+ * Dostawcy IT podają opis równy nazwie produktu (średnio 91 znaków u EET) — klient nie ma z czego
+ * wybierać. Budujemy opis WYŁĄCZNIE z danych, które faktycznie mamy: cechy z Base, marka, symbol,
+ * EAN, waga i wymiary. Niczego nie zmyślamy — brak danej oznacza brak wiersza (decyzja właściciela 2026-09-08).
+ */
+function buildDescription(base: string, title: string, product: any, categoryName: string): string {
+  const clean = dedupePhrases(cleanText(base));
+  const meaningful = clean && clean.toLowerCase() !== title.toLowerCase() && clean.length > title.length * 0.9;
+  const parts: string[] = [];
+  if (meaningful) parts.push(clean);
+
+  const specs: string[] = [];
+  for (const [n, v] of featurePairs(product)) specs.push(`• ${n}: ${v}`);
+  const sku = cleanText(product?.sku), ean = cleanText(product?.ean);
+  const weight = numberValue(product?.weight);
+  const w = numberValue(product?.width), h = numberValue(product?.height), l = numberValue(product?.length);
+  const condition = conditionLine(`${clean} ${title}`);
+  if (condition) specs.push(`• Stan: ${condition}`);
+  if (categoryName) specs.push(`• Kategoria: ${categoryName}`);
+  if (sku) specs.push(`• Symbol producenta: ${sku}`);
+  if (ean) specs.push(`• Kod EAN: ${ean}`);
+  if (weight > 0) specs.push(`• Waga: ${String(weight).replace(".", ",")} kg`);
+  if (w > 0 && h > 0 && l > 0) specs.push(`• Wymiary: ${l} × ${w} × ${h} cm`);
+  if (specs.length) parts.push(`Specyfikacja:\n${specs.join("\n")}`);
+
+  parts.push("Wysyłka z magazynu dostawcy. Pełne dane techniczne znajdziesz u producenta pod podanym symbolem.");
+  return parts.join("\n\n");
+}
+
 function nicePrice(value: number): number {
   if (value <= 0) return 0;
   const rounded = Math.ceil(value);
@@ -463,7 +551,7 @@ Deno.serve(async (req: Request) => {
           const p = products[String(id)] ?? records(products).find((x) => Number(x.id ?? x.product_id) === id);
           if (!p) { skipped++; continue; }
           const title = textField(p.text_fields, "name") || cleanText(p.name);
-          const description = textField(p.text_fields, "description") || cleanText(p.description);
+          const rawDescription = textField(p.text_fields, "description") || cleanText(p.description);
           const supplierPrice = selectedNumber(p.prices ?? p.price, priceGroup, false);
           const stock = Math.max(0, Math.floor(selectedNumber(p.stock ?? p.quantity, warehouse, false)));
           const urls = imageUrls(p.images);
@@ -496,6 +584,7 @@ Deno.serve(async (req: Request) => {
           const requiredMargin = supplierPrice < smallBelow ? minMarginSmall : minMargin;
           const belowMinMargin = netMarginPct < requiredMargin;
           const baseCategory = baseCategoryNames[String(p.category_id)] ?? "";
+          const description = buildDescription(rawDescription, title, p, baseCategory);
           const slug = classifySlug(supplier.key, `${baseCategory} ${title}`);
           const categoryId = categoryIds[slug] ?? categoryIds[supplier.fallbackCategory];
           const existingOfferId = existingOfferIdEarly;
@@ -521,6 +610,7 @@ Deno.serve(async (req: Request) => {
             min_margin_required: requiredMargin,
             break_even_price_pln: breakEven,
             below_market: belowMarket,
+            description_source: (dedupePhrases(cleanText(rawDescription)).length > title.length) ? "supplier" : "generated_specs",
           };
           // Bez ustalonej, dodatniej marzy oferta zostaje szkicem — nawet przy activate:true.
           const nextStatus = activate && !belowMinMargin ? (stock > 0 ? "active" : "sold_out") : "draft";

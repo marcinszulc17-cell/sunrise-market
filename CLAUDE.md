@@ -116,6 +116,17 @@ pierwszeństwo przy każdej zmianie kodu. Nie wolno ich naruszać ani obchodzić
   Euroshop +0,5% średnio, 7 z 17 pod kreską — do renegocjacji cennika, na razie wszystko zostaje szkicem. PolZoo — integracja utworzona, wciąż brak jej jako źródła
   importu (czeka na akceptację dostawcy); nie tworzymy drugiej integracji. ABC Kosmetyczne — nie ruszamy (formalności).
   Platon — planowany przez API/WebService, nie przez Base Connect.
+- **Opisy produktów (2026-09-08, funkcja v19)**: dostawcy IT podają opis równy nazwie (EET średnio 91 znaków), więc
+  `buildDescription()` składa opis z danych, które faktycznie mamy: tekst dostawcy + `Specyfikacja:` (cechy z Base,
+  stan, kategoria, symbol producenta, EAN, waga, wymiary) + stopka o wysyłce z magazynu dostawcy.
+  **Niczego nie zmyślamy** — brak danej to brak wiersza. Dwie reguły wyniesione z błędu przy pierwszym wdrożeniu (v18):
+  (1) `conditionLine()` podaje stan wyłącznie wtedy, gdy dostawca sam go nazwał (refurbished / poleasingowy) — v18
+  dopisywał „Produkt fabrycznie nowy" także produktom regenerowanym, czyli twierdzenie nieprawdziwe;
+  (2) `dedupePhrases()` usuwa powtórzenia, bo dostawcy sklejają nazwę z opisem. Wynik na 316 ofertach EET:
+  średnio 290 znaków, 0 poniżej 150, 0 z fałszywym stanem, 17 poprawnie oznaczonych jako regenerowane.
+  **UWAGA przy backfillu**: `sync` przelicza też cenę, więc do samego odświeżenia opisów ZAWSZE podajemy
+  `target_net_margin_percent` (dla EET 25) — bez niego `markup` spada do 0 i twarda podłoga zbija ceny do progu
+  rentowności (0% marży netto). Zdarzyło się to 2026-09-08 i wymagało powtórnego przeliczenia partii.
 
 ## 4. Dropship first-party (TeemDrop)
 
