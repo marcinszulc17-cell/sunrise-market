@@ -274,15 +274,28 @@ function classifyPolzoo(haystack: string): string {
   const s = haystack.toLocaleLowerCase("pl-PL");
   const cat = /(kot|koci|kuwet|drapak)/.test(s);
   const dog = /(pies|psa|psi|smycz|obroż|szelk)/.test(s);
-  if (/akwari|ryb|filtr.*wod/.test(s)) {
+  // Zwierzeta gospodarskie i hodowla — sprawdzamy PRZED karma, bo "Purina Kon rekreacyjny 25kg"
+  // to pasza dla konia, a nie karma dla psa (kontrola partii PolZoo 2026-09-08).
+  if (/drób|drobiu|kur[ay]?\b|niosk|brojler|koń|konia|koni\b|krow|bydł|owc|trzod|świń|prosiąt|cielą|hodowl|pastuch|inkubator|promiennik|rozsiew|siano|słom/.test(s)) {
+    return "zwierzeta-gospodarskie";
+  }
+  if (/akwari|ryb|filtr.*wod|pond|oczek wodn|aquael|tropical\b/.test(s)) {
+    if (/podłoże|soil|dekor|roślin|kamie|żwir/.test(s)) return "zwierzeta-akwarystyka-dekoracje";
     if (/filtr/.test(s)) return "zwierzeta-akwarystyka-filtry";
-    if (/dekor|roślin|kamie|żwir/.test(s)) return "zwierzeta-akwarystyka-dekoracje";
-    if (/pokarm|karma/.test(s)) return "zwierzeta-akwarystyka-pokarm";
+    if (/pokarm|karma|sticks|pellet|flake|granul|soft line/.test(s)) return "zwierzeta-akwarystyka-pokarm";
     return "zwierzeta-akwarystyka";
   }
   if (/terrari|gad|reptil/.test(s)) return "zwierzeta-inne-zwierzeta-terrarystyka";
   if (/gryzo|chomik|królik|mysz|szczur|śwink.*morsk/.test(s)) return "zwierzeta-inne-zwierzeta-gryzonie";
   if (/ptak|papug|kanar/.test(s)) return "zwierzeta-inne-zwierzeta-ptaki";
+  // Pielegnacja i zdrowie to duzy kawalek katalogu PolZoo (suplementy, preparaty weterynaryjne,
+  // kosmetyki) — bez tych regul ladowaly hurtem w korzeniu "Zwierzeta" (kontrola partii 2026-09-08).
+  if (/szampon|odżywk|szczotk|grzebie|obcinacz|trymer|strzyżark|chusteczk|wipes|pielęgnac|dezodor|perfum|zgrzebł/.test(s)) {
+    return "zwierzeta-pielegnacja";
+  }
+  if (/suplement|witamin|tablet|kaps|maść|żel leczn|preparat|probiotyk|odrobacz|kleszcz|pchł|pipet|krople przeciw|dermat|apteczk|opatrun|stress|calm|joint|arthro|artro|nefro|hepat|derma|oral cleansing|pasta dent|vetfood|vetexpert|vet-agro|dolfos|dolvit|beaphar|canifelen|hairball/.test(s)) {
+    return "zwierzeta-zdrowie";
+  }
   if (cat && /karma|pokarm|przysmak/.test(s)) return "zwierzeta-kot-karma";
   if (dog && /karma|pokarm|przysmak/.test(s)) return "zwierzeta-pies-karma";
   if (cat && /drapak/.test(s)) return "zwierzeta-kot-drapaki";
@@ -292,6 +305,10 @@ function classifyPolzoo(haystack: string): string {
   if (dog && /smycz|obroż|szelk/.test(s)) return "zwierzeta-pies-smycze";
   if (dog && /legow|posłan|mata/.test(s)) return "zwierzeta-pies-poslania";
   if (dog && /higien|szampon|pielęgn/.test(s)) return "zwierzeta-pies-higiena";
+  if (/gryzak|kong|piszcz|aport|frisbee|zabawk/.test(s)) return cat ? "zwierzeta-kot-zabawki" : "zwierzeta-pies-zabawki";
+  if (/transporter|torba transport|klatk|kaganiec|buda|kojec|miska|poidł|karmnik|worki na odchody|siatka ochronn|lodówk|mata\b|sofa|legowisk|fontann|pet fountain|filtry wymienne/.test(s)) {
+    return "zwierzeta-akcesoria";
+  }
   if (cat) return "zwierzeta-kot";
   if (dog) return "zwierzeta-pies";
   return "zwierzeta";

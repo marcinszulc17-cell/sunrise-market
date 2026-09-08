@@ -116,6 +116,16 @@ pierwszeństwo przy każdej zmianie kodu. Nie wolno ich naruszać ani obchodzić
   Euroshop +0,5% średnio, 7 z 17 pod kreską — do renegocjacji cennika, na razie wszystko zostaje szkicem. PolZoo — integracja utworzona, wciąż brak jej jako źródła
   importu (czeka na akceptację dostawcy); nie tworzymy drugiej integracji. ABC Kosmetyczne — nie ruszamy (formalności).
   Platon — planowany przez API/WebService, nie przez Base Connect.
+- **PolZoo — katalog i pierwsza partia (2026-09-08)**: import Base Connect zakończony, katalog „PolZoo" = inventory
+  **115862** (grupa cen `100979`, magazyn `bl_153385`), **18 200 SKU**, 17 272 z EAN (94,9%), 5 615 dostępnych.
+  Pierwsza partia: **300 ofert** (filtr: dostępne + EAN + cena ≥ 20 zł), wszystkie `draft`, 300/300 ze zdjęciem,
+  marża netto min 25,0% / śr. 25,7%, zero pozycji pod kreską. Opisy dostawcy są pełne (śr. 2262 znaki).
+  Klasyfikator `classifyPolzoo` rozbudowany o zwierzęta gospodarskie (sprawdzane PRZED karmą — „Purina Koń
+  rekreacyjny 25 kg" to pasza, nie karma dla psa), zdrowie/suplementy, pielęgnację, akcesoria i marki
+  (VETFOOD, Dolfos, Beaphar, AQUAEL, TROPICAL, KONG). Nowe podkategorie: `zwierzeta-zdrowie`,
+  `zwierzeta-pielegnacja`, `zwierzeta-akcesoria`, `zwierzeta-gospodarskie`. Pozycji w korzeniu: **90 → 5**.
+  **Limit workera**: PolZoo ma po kilkanaście zdjęć na produkt — partie po 300 i 75 kończą się
+  `WORKER_RESOURCE_LIMIT`; bezpieczna wielkość to **50 ID na wywołanie**.
 - **Opisy produktów (2026-09-08, funkcja v19)**: dostawcy IT podają opis równy nazwie (EET średnio 91 znaków), więc
   `buildDescription()` składa opis z danych, które faktycznie mamy: tekst dostawcy + `Specyfikacja:` (cechy z Base,
   stan, kategoria, symbol producenta, EAN, waga, wymiary) + stopka o wysyłce z magazynu dostawcy.
