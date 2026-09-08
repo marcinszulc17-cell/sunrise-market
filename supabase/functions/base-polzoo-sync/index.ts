@@ -226,7 +226,9 @@ function classifyEet(haystack: string): string {
   if (/papier/.test(s)) return "komputery-i-biuro-biuro-papier";
   if (/switch|prze\u0142\u0105cznik sieciow/.test(s)) return "komputery-i-biuro-sieci-switche";
   if (/router|access point|punkt dost\u0119pow/.test(s)) return "komputery-i-biuro-sieci-routery";
-  if (/karta sieciow|nic |ethernet adapter/.test(s)) return "komputery-i-biuro-sieci-karty-sieciowe";
+  if (/karta sieciow|nic |ethernet|gigabit network|wi-?fi adapter/.test(s)) return "komputery-i-biuro-sieci-karty-sieciowe";
+  // Czesci eksploatacyjne do drukarek to nie tonery — maja wlasne miejsce przy drukarkach.
+  if (/fuser|utrwalacz|folia utrwalaj|zestaw rolek|rolk[ai]|maintenance kit|transfer belt|pas transfer/.test(s)) return "komputery-i-biuro-peryferia-drukarki";
   if (/\u015bwiat\u0142ow|patchcord|patch cord|kabel|przew\u00f3d|hdmi|displayport|usb-c|usb |rj45|skr\u0119tk/.test(s)) return "komputery-i-biuro-sieci-kable";
   if (/dysk|ssd|hdd|nvme/.test(s)) return "komputery-i-biuro-komponenty-dyski-ssd";
   if (/pami\u0119\u0107|ram |ddr[2-5]|sodimm/.test(s)) return "komputery-i-biuro-komponenty-pamiec-ram";
@@ -240,6 +242,13 @@ function classifyEet(haystack: string): string {
   if (/drukark|ploter/.test(s)) return "komputery-i-biuro-peryferia-drukarki";
   if (/skaner/.test(s)) return "komputery-i-biuro-peryferia-skanery";
   if (/webcam|kamera internetow/.test(s)) return "komputery-i-biuro-peryferia-webcam";
+  // Duzy kawalek katalogu EET to czesci zamienne i akcesoria serwisowe \u2014 bez tych regul
+  // ladowaly hurtem w korzeniu kategorii (kontrola partii 2026-09-08).
+  if (/bateria|baterie|battery|akumulator/.test(s)) return "komputery-i-biuro-komponenty";
+  if (/matryca|matryce|wy\u015bwietlacz lcd|panel lcd/.test(s)) return "komputery-i-biuro-komponenty";
+  if (/\bide\b|\bhdd\b|dysk twardy|\bsas\b.*\bgb\b/.test(s)) return "komputery-i-biuro-komponenty-dyski-ssd";
+  if (/stojak|stand|podstawk|filtr prywatyz|privacy filter|presenter|wska\u017anik prezent/.test(s)) return "komputery-i-biuro-peryferia";
+  if (/narz\u0119dzi|tools|soldering|hot air|\u015brubokr\u0119t|iscrews|p\u0119seta|ta\u015bma|tape|project mat/.test(s)) return "komputery-i-biuro-komponenty";
   if (/ramka|kiesze|tacka|tray|obudow|adapter|z\u0142\u0105cz|listwa|mocowanie|uchwyt/.test(s)) return "komputery-i-biuro-komponenty";
   if (/laptop|notebook/.test(s)) return "komputery-i-biuro";
   return "komputery-i-biuro";

@@ -102,6 +102,15 @@ pierwszeństwo przy każdej zmianie kodu. Nie wolno ich naruszać ani obchodzić
   filtr: dostępne od ręki + EAN + zakup 20–600 zł. Zaimportowane jako **szkice** (`activate:false`), 286 nowych ofert,
   151+ zdjęć, średnia marża netto 25,0%, zero pozycji na minusie, 5 nie mieści się pod ceną rynkową.
   Aktywacja czeka na sprawdzenie cen rynkowych po EAN i decyzję właściciela.
+- **Allegro blokuje automatyczne sprawdzanie cen (2026-09-08)**: `base-market-check` odpytujące `allegro.pl/listing`
+  z serwera dostaje **HTTP 403** (ochrona przed botami, IP centrum danych). Nie obchodzimy zabezpieczeń —
+  właściwą drogą jest oficjalne **Allegro Open API** (wyszukiwanie ofert po EAN), które wymaga rejestracji aplikacji
+  i pary `client_id`/`client_secret` w sekretach. Do tego czasu ceny rynkowe uzupełniamy ręcznie/przeglądarką,
+  a oferty bez `market_lowest_pln` zostają szkicami.
+- **Klasyfikator EET rozbudowany (2026-09-08)**: katalog EET to w dużej części części zamienne i akcesoria serwisowe —
+  doszły reguły na baterie, matryce LCD, dyski IDE/HDD, narzędzia serwisowe, stojaki i filtry prywatyzujące oraz
+  materiały eksploatacyjne do drukarek (fuser, rolki, folia utrwalająca → `peryferia-drukarki`, nie `tonery`).
+  Pozycji w korzeniu kategorii: **115 → 24**.
   **Badanie cen 2026-09-07** (44 pozycje po EAN na Allegro): marki własne EET średnio +32,7% zapasu i zero pozycji pod kreską;
   oryginały OEM (Lexmark, Kyocera, HP) +5,5% i 5 z 8 kupowanych drożej niż detal — **nie publikujemy ich**;
   Euroshop +0,5% średnio, 7 z 17 pod kreską — do renegocjacji cennika, na razie wszystko zostaje szkicem. PolZoo — integracja utworzona, wciąż brak jej jako źródła
