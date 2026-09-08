@@ -324,6 +324,13 @@ Deno.serve(async (req: Request) => {
     // Skan katalogu bez zapisu — liczby do decyzji o kolejnej partii (kontrola jakosci przed importem).
     if (action === "scan") {
       const brands: string[] = (Array.isArray(body.brands) ? body.brands : []).map((x: unknown) => String(x));
+      // Wybor partii do importu: zwracamy ID pasujace do filtrow jakosciowych (marka, dostepnosc, EAN, widelki cen).
+      const idsLimit = Math.min(Math.max(Number(body.ids_limit ?? 0), 0), 1000);
+      const requireStock = body.require_stock === true;
+      const requireEan = body.require_ean === true;
+      const minPrice = Math.max(0, Number(body.min_supplier_price ?? 0));
+      const maxPrice = Math.max(0, Number(body.max_supplier_price ?? 0));
+      const matched: number[] = [];
       const counts: Record<string, number> = {};
       let total = 0, withEan = 0, inStock = 0, priced = 0;
       const buckets: Record<string, number> = { "0-50": 0, "50-100": 0, "100-300": 0, "300-1000": 0, "1000+": 0 };
@@ -345,8 +352,21 @@ Deno.serve(async (req: Request) => {
             const b = price < 50 ? "0-50" : price < 100 ? "50-100" : price < 300 ? "100-300" : price < 1000 ? "300-1000" : "1000+";
             buckets[b]++;
           }
+          const lower = name.toLowerCase();
           for (const brand of brands) {
-            if (name.toLowerCase().includes(brand.toLowerCase())) counts[brand] = (counts[brand] ?? 0) + 1;
+            if (lower.includes(brand.toLowerCase())) counts[brand] = (counts[brand] ?? 0) + 1;
+          }
+          if (idsLimit && matched.length < idsLimit) {
+            const brandHit = brands.length === 0 || brands.some((b) => lower.includes(b.toLowerCase()));
+            const ok = brandHit
+              && (!requireStock || stock > 0)
+              && (!requireEan || Boolean((p as any).ean))
+              && (!minPrice || price >= minPrice)
+              && (!maxPrice || price <= maxPrice);
+            if (ok) {
+              const pid = Number((p as any).id ?? (p as any).product_id);
+              if (Number.isFinite(pid)) matched.push(pid);
+            }
           }
         }
         if (rows.length < 1000) break;
@@ -354,7 +374,9 @@ Deno.serve(async (req: Request) => {
       return json({
         ok: true, supplier: supplier.key, inventory: { id: inventoryId, name: inventory.name },
         total, with_ean: withEan, in_stock: inStock, priced, price_buckets: buckets,
-        brand_counts: counts, pages_scanned: Math.min(maxPages, Math.ceil(total / 1000)), sample_raw: sampleRaw,
+        brand_counts: counts, pages_scanned: Math.min(maxPages, Math.ceil(total / 1000)),
+        matched_ids: matched, matched_count: matched.length,
+        sample_raw: idsLimit ? undefined : sampleRaw,
       });
     }
 

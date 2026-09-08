@@ -96,6 +96,12 @@ pierwszeństwo przy każdej zmianie kodu. Nie wolno ich naruszać ani obchodzić
   CoreParts 4 265, MicroConnect 3 373, eSTUFF 844, LanView 818, Vivolink 686, ProXtend 586 — razem ~10,6 tys. SKU.
   OEM (HP 11 478, Lenovo 9 687, Dell 6 005) **nie nadaje się do publikacji** — kupujemy drożej niż detal.
   `scan` jest read-only (zwraca liczby, koszyki cenowe i liczności marek) — służy kontroli jakości przed importem.
+  Z `ids_limit` + filtrami (`require_stock`, `require_ean`, `min_supplier_price`, `max_supplier_price`) zwraca też
+  `matched_ids` — gotową listę ID do partii importowej.
+- **Partia EET 2026-09-08**: 300 pozycji marek własnych (CoreParts, MicroConnect, LanView, ProXtend, Vivolink, eSTUFF),
+  filtr: dostępne od ręki + EAN + zakup 20–600 zł. Zaimportowane jako **szkice** (`activate:false`), 286 nowych ofert,
+  151+ zdjęć, średnia marża netto 25,0%, zero pozycji na minusie, 5 nie mieści się pod ceną rynkową.
+  Aktywacja czeka na sprawdzenie cen rynkowych po EAN i decyzję właściciela.
   **Badanie cen 2026-09-07** (44 pozycje po EAN na Allegro): marki własne EET średnio +32,7% zapasu i zero pozycji pod kreską;
   oryginały OEM (Lexmark, Kyocera, HP) +5,5% i 5 z 8 kupowanych drożej niż detal — **nie publikujemy ich**;
   Euroshop +0,5% średnio, 7 z 17 pod kreską — do renegocjacji cennika, na razie wszystko zostaje szkicem. PolZoo — integracja utworzona, wciąż brak jej jako źródła
