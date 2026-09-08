@@ -21,7 +21,7 @@ export default function Cennik() {
           <div className="grid gap-5 md:grid-cols-2">
             <Card title="Sprzedaż" highlight>
               <Row k="Prowizja — płatność Sunrise Pay" v={pct(p.commission_rate)} note="cashback 3% dla kupującego zawarty" />
-              <Row k="Prowizja — karta (Stripe)" v={pct(p.stripe_commission_rate ?? 0.129)} note="cashback zawarty" />
+              <Row k="Prowizja — płatność Stripe (karta / BLIK / P24)" v={pct(p.stripe_commission_rate ?? 0.129)} note="cashback zawarty" />
               <Row k="Cashback dla kupującego" v={pct(p.cashback_rate)} note="wraca na portfel Sunrise Pay" />
               <Row k="Wypłata dla sprzedawcy" v="na portfel Sunrise Pay" note="Ochrona Kupujących: środki są przechowywane przez Sunrise do potwierdzenia odbioru (maks. 14 dni od wysyłki)" />
             </Card>
