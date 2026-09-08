@@ -116,6 +116,17 @@ pierwszeństwo przy każdej zmianie kodu. Nie wolno ich naruszać ani obchodzić
   Euroshop +0,5% średnio, 7 z 17 pod kreską — do renegocjacji cennika, na razie wszystko zostaje szkicem. PolZoo — integracja utworzona, wciąż brak jej jako źródła
   importu (czeka na akceptację dostawcy); nie tworzymy drugiej integracji. ABC Kosmetyczne — nie ruszamy (formalności).
   Platon — planowany przez API/WebService, nie przez Base Connect.
+- **Ceny rynkowe — Ceneo / Erli / Skąpiec sprawdzone 2026-09-08, żadne nie działa serwerowo.**
+  Właściciel poprosił, żeby nie odpytywać Allegro. Wynik testów z sieci Supabase (funkcja `base-market-check` v3):
+  **Ceneo** odpowiada 200, ale zawsze tą samą stroną-zasłoną 19 937 B bez ani jednej ceny (również na stronie
+  głównej i kategorii) — czyli blokada botów. **Erli** oddaje sam szkielet aplikacji (7 289 B), ceny dociąga
+  JavaScript po stronie klienta; `/graphql` i `/api/search` zwracają 404 lub ten sam szkielet. **Skąpiec**
+  oddaje pełny HTML z cenami, ale **ignoruje zapytanie** — dla EAN 5904760104273, EAN 5711045462207 i frazy
+  „Royal Canin Sterilised 1,5kg" zwraca identyczną listę 20 niezwiązanych produktów (książka o egzemie,
+  kolorowanka, kapcie FALKE). Ceny z tej listy są bezużyteczne — nie wolno ich brać za cenę rynkową.
+  **Droga do przodu wymaga decyzji właściciela**: oficjalne API (Ceneo dla sklepów albo partnerskie Erli,
+  konto i klucz zakłada właściciel) albo odczyt przez prawdziwą przeglądarkę na jego maszynie (wolniejsze,
+  wymaga zgody na domenę w rozszerzeniu). Do tego czasu oferty bez `market_lowest_pln` zostają szkicami.
 - **PolZoo — katalog i pierwsza partia (2026-09-08)**: import Base Connect zakończony, katalog „PolZoo" = inventory
   **115862** (grupa cen `100979`, magazyn `bl_153385`), **18 200 SKU**, 17 272 z EAN (94,9%), 5 615 dostępnych.
   Pierwsza partia: **300 ofert** (filtr: dostępne + EAN + cena ≥ 20 zł), wszystkie `draft`, 300/300 ze zdjęciem,
