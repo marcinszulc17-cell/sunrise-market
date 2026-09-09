@@ -290,6 +290,10 @@ pierwszeństwo przy każdej zmianie kodu. Nie wolno ich naruszać ani obchodzić
   (rekomendacje). RPC `seller_offer_stats()` → tabela „Twoje ogłoszenia” w Panelu Partnera (wyświetlenia, ulubione, status).
   `search_offers_v2` / `recommended_offers` / `my_watchlist` zwracają `created_at` (karty pokazują „x godz. temu”, `timeAgo`) i `views`;
   sortowanie `popularne`.
+- **Statystyk NIE pokazujemy kupującym (decyzja właściciela 2026-09-09).** Liczniki wyświetleń i polubień/obserwujących
+  są wyłącznie dla sprzedawcy (Puls, Panel Partnera) i operatora. Pole `views` w kartach służy tylko sortowaniu
+  `popularne` — nie renderujemy go w interfejsie kupującego i nie dodajemy „X osób ogląda" ani licznika serduszek.
+  Nie budujemy też statystyk w koncie kupującego (`product_views` zostaje danymi pod rekomendacje).
 
 ## 11. Testy i spójność stron (2026-09-06)
 
