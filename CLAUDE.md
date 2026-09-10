@@ -178,6 +178,32 @@ pierwszeństwo przy każdej zmianie kodu. Nie wolno ich naruszać ani obchodzić
   `target_net_margin_percent` (dla EET 25) — bez niego `markup` spada do 0 i twarda podłoga zbija ceny do progu
   rentowności (0% marży netto). Zdarzyło się to 2026-09-08 i wymagało powtórnego przeliczenia partii.
 
+## 4b. Noclegi „jak na Booking" (decyzja właściciela 2026-09-10)
+
+- **Silnik rezerwacji dobowych JUŻ ISTNIEJE** i jest dojrzały — nie budujemy go od nowa:
+  `booking_offers.booking_type='daily'` (cena za dobę, min/max długość, opłata za sprzątanie, kaucja,
+  rezerwacja natychmiastowa, rabaty za długość), `booking_rate_rules` (cenniki sezonowe z priorytetem),
+  `booking_blocks` (blokady terminów), `booking_resources` (wiele jednostek tego samego typu — pokoje,
+  domki), protokoły zdawczo-odbiorcze, kaucje, zwroty, wnioski o zmianę terminu, przypomnienia mailowe.
+- **Dołożone 2026-09-10 (migracja `20260910120000`)** — warstwa noclegowa, której brakowało:
+  - `booking_offers.max_guests`, `checkin_from`, `checkout_until` (doba hotelowa),
+  - udogodnienia w `offers.attributes.amenities` jako tablica slugów
+    (`wifi`, `parking`, `sniadanie`, `basen`, `zwierzeta`, `klimatyzacja`, `kuchnia`, `pralka`),
+    filtrowane operatorem `@>`, indeks GIN `offers_amenities_gin` — **bez osobnej tabeli**,
+  - RPC **`search_stays(dokąd, od, do, liczba_osób, udogodnienia, kategoria, max_za_dobę, limit, offset)`**
+    — zwraca WYŁĄCZNIE obiekty wolne w każdą dobę pobytu (przez `booking_unavailable_days_v2`),
+    mieszczące liczbę gości i limity długości pobytu; liczy cenę od (min z dób wg cennika sezonowego)
+    i kwotę za cały pobyt razem z opłatą za sprzątanie,
+  - RPC `seller_booking_save_stay(oferta, max_gości, doba_od, doba_do)`.
+- **Stan faktyczny: 15 kategorii `noclegi*` i ZERO ofert w każdej z nich, zero rezerwacji w historii.**
+  Brakującym elementem nie jest już silnik ani wyszukiwarka, tylko **podaż**. Zanim powstanie UI,
+  trzeba rozstrzygnąć, skąd biorą się obiekty: własna sprzedaż do właścicieli kwater, import
+  z channel managera, czy partnerstwo z pośrednikiem. Pusta wyszukiwarka noclegów szkodzi
+  bardziej niż jej brak.
+- Do zbudowania po stronie UI (kolejność): pasek „dokąd / termin / liczba osób" na `/rezerwacje`,
+  karta obiektu z ceną za dobę i sumą pobytu, filtry udogodnień, pola pojemności i doby hotelowej
+  w kreatorze oferty rezerwacyjnej.
+
 ## 4. Dropship first-party (TeemDrop)
 
 - Dotyczy **wyłącznie** produktów własnych Sunrise
