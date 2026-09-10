@@ -64,7 +64,7 @@ export default function Sprzedawca() {
         <form onSubmit={onBecome} className="max-w-md rounded-2xl p-5 flex flex-col gap-3" style={{ background: "var(--glass)", border: "1px solid var(--line)" }}>
           <h2 className="font-semibold text-lg">Zostań Partnerem Handlowym (firma)</h2><p className="text-xs" style={{ color: "var(--mut)" }}>Dla firm z NIP: rozbudowane centrum, faktury, saldo firmowe Sunrise Pay i Stripe Connect. Pierwszy rok gratis, potem 499 zł/rok. Sprzedajesz prywatnie? <a href="/sprzedawca/dolacz" className="underline">Wybierz konto Sprzedawcy</a>.</p>
           <input className={inp} style={inpStyle} placeholder="Nazwa firmy" value={legalName} onChange={(e) => setLegalName(e.target.value)} required />
-          <input className={inp} style={inpStyle} placeholder="NIP firmy (wymagany — tylko firmy mogą sprzedawać)" value={nip}
+          <input className={inp} style={inpStyle} placeholder="NIP firmy (wymagany dla Partnera Handlowego)" value={nip}
             onChange={(e) => setNip(e.target.value)}
             onBlur={async () => {
               const clean = nip.replace(/[^0-9]/g, "");

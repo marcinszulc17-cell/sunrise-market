@@ -35,6 +35,18 @@ pierwszeństwo przy każdej zmianie kodu. Nie wolno ich naruszać ani obchodzić
   Sunrise Pay (`wallets.merchant_balance`, `pay-credit` z `target: merchant`).
   12 mies. gratis, potem **499 zł / rok** z góry (`platform_config.pay_annual_fee`,
   `pay_subscriptions.annual_fee`).
+- **Osoba fizyczna sprzedaje na równi z firmą** (decyzja właściciela 2026-09-10). Regulamin i Regulamin
+  sprzedawcy nie mówią już „na start tylko przedsiębiorca z NIP”. Konsekwencje, których NIE wolno pominąć
+  przy kolejnych zmianach:
+  - zakup od sprzedawcy prywatnego **nie daje prawa do zwrotu w 14 dni** ani gwarancji — zostaje rękojmia
+    z KC i Ochrona Kupujących. Karta produktu pokazuje to przed zakupem (`market.offer_seller_badge`,
+    plakietka „Sprzedawca prywatny” + ramka wyjaśniająca; pasek zaufania podmienia „Zwrot 14 dni”
+    na „Rękojmia (Kodeks cywilny)”). Nie usuwać tej informacji — regulamin ją obiecuje (§8.1a).
+  - sprzedawca prywatny **nie wystawia faktury** (potwierdzenie zakupu z Platformy, na żądanie rachunek),
+    nie może sprzedawać towarów wymagających koncesji/zezwolenia ani działać w dropshippingu,
+  - sprzedaż prywatna ma być **okazjonalna** — przy skali wskazującej na działalność gospodarczą Operator
+    wzywa do przejścia na Partnera Handlowego,
+  - **DAC7 obejmuje także sprzedawców prywatnych**.
 - Wybór poziomu: `/sprzedawca/dolacz`. Prowizja platformy: **7,9%** (Sunrise Pay),
   **12,9%** (Stripe). Akceptacja regulaminów wymagana przy aktywacji.
 - **Metodę płatności wybiera KUPUJĄCY, nie sprzedawca** (decyzja właściciela 2026-09-06): sprzedawca nie może wyłączyć

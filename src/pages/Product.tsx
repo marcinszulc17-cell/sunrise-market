@@ -6,7 +6,7 @@ import ShowPhoneButton from "../components/ShowPhoneButton";
 import LocationMap, { locationKind } from "../components/LocationMap";
 import { useParams } from "react-router-dom";
 import SwipeGallery from "../components/SwipeGallery";
-import { addReview, getOffer, offerImages, offerReviews, similarOffers, trackView } from "../lib/api";
+import { addReview, getOffer, offerImages, offerReviews, offerSellerBadge, similarOffers, trackView, type SellerBadge } from "../lib/api";
 import { addToCart, cleanTitle, isTestProduct } from "../lib/cart";
 import { zl } from "../lib/money";
 import { subscriptionInfo } from "../lib/subscription";
@@ -63,6 +63,9 @@ export default function Product() {
   const [color, setColor] = useState("");
   const [size, setSize] = useState("");
   const [similar, setSimilar] = useState<any[]>([]);
+  // Kto sprzedaje: firma czy osoba prywatna. Od tego zależy prawo do zwrotu w 14 dni,
+  // więc kupujący musi to zobaczyć PRZED zakupem (regulamin §8.1a, decyzja właściciela 2026-09-10).
+  const [sellerBadge, setSellerBadge] = useState<SellerBadge | null>(null);
 
   const isTest = isTestProduct(o?.title);
   const shownTitle = cleanTitle(o?.title);
@@ -97,6 +100,7 @@ export default function Product() {
     offerImages(id).then((u) => { setImgs(u); setActive(0); }).catch(() => {});
     supabase.auth.getUser().then(({ data }) => setAuthed(!!data.user));
     trackView(id);
+    offerSellerBadge(id).then(setSellerBadge).catch(() => {});
     similarOffers(id, 8).then(setSimilar).catch(() => {});
   }, [id]);
 
@@ -134,7 +138,13 @@ export default function Product() {
             <div className="flex flex-wrap items-center gap-2">{A.promo?.percent && <span className="rounded-lg px-2.5 py-1 text-xs font-bold" style={{ background: "rgba(245,166,35,.14)", border: "1px solid rgba(245,166,35,.4)", color: "var(--gold)" }}>PROMOCJA −{A.promo.percent}%</span>}<div className="ml-auto flex items-center gap-1"><ShareOfferButton offerId={o.offer_id} title={o.title} className="flex h-10 items-center gap-2 rounded-xl px-3 text-sm" style={{ color: "var(--mut)" }} /></div></div>
             <div className="flex flex-wrap items-center gap-3">{A.promo?.old_price && <div className="text-xl font-semibold line-through" style={{ color: "var(--mut)" }}>{zl(A.promo.old_price)}</div>}<div className="text-4xl font-extrabold" style={{ color: "var(--gold)" }}>{zl(o.price_gross)}{purchaseMode === "daily" ? <span className="text-base font-medium" style={{ color: "var(--mut)" }}> / dobę</span> : purchaseMode === "appointment" ? <span className="text-base font-medium" style={{ color: "var(--mut)" }}> / termin</span> : sub ? <span className="text-base font-medium" style={{ color: "var(--mut)" }}> {sub.priceSuffix}</span> : null}</div></div>
             <h1 className="text-3xl font-bold leading-tight">{shownTitle}</h1>
-            <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm" style={{ color: "var(--mut)" }}><a href={`/szukaj?kat=${encodeURIComponent(o.category_slug || "")}`} className="flex items-center gap-1.5 navlink"><Ico name="bag" size={16} />{o.category}</a><span className="flex items-center gap-1.5"><Ico name="user" size={16} />{o.seller}</span>{o.review_count > 0 && <span style={{ color: "var(--gold)" }}>{stars(o.avg_rating)} <span style={{ color: "var(--mut)" }}>{o.avg_rating.toFixed(1)} ({o.review_count})</span></span>}</div>
+            <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm" style={{ color: "var(--mut)" }}><a href={`/szukaj?kat=${encodeURIComponent(o.category_slug || "")}`} className="flex items-center gap-1.5 navlink"><Ico name="bag" size={16} />{o.category}</a><span className="flex items-center gap-1.5"><Ico name="user" size={16} />{o.seller}</span>{o.review_count > 0 && <span style={{ color: "var(--gold)" }}>{stars(o.avg_rating)} <span style={{ color: "var(--mut)" }}>{o.avg_rating.toFixed(1)} ({o.review_count})</span></span>}
+              {sellerBadge && <span className="rounded-full px-2.5 py-0.5 text-xs font-semibold" style={sellerBadge.is_private
+                ? { background: "rgba(143,176,238,.14)", color: "#8FB0EE", border: "1px solid rgba(143,176,238,.3)" }
+                : { background: "rgba(122,184,154,.12)", color: "var(--green)", border: "1px solid rgba(122,184,154,.3)" }}>{sellerBadge.is_private ? "Sprzedawca prywatny" : "Firma"}</span>}</div>
+            {sellerBadge?.is_private && <div className="rounded-xl px-3 py-2 text-xs" style={{ background: "rgba(143,176,238,.08)", border: "1px solid rgba(143,176,238,.25)", color: "var(--mut)" }}>
+              Kupujesz od <b style={{ color: "var(--ink)" }}>osoby prywatnej</b>, nie od firmy: nie przysługuje zwrot w ciągu 14 dni ani gwarancja producenta. Zostaje rękojmia z Kodeksu cywilnego, a płatność i tak chroni <b style={{ color: "var(--ink)" }}>Ochrona Kupujących Sunrise</b> — sprzedający dostaje pieniądze dopiero po Twoim potwierdzeniu odbioru.
+            </div>}
             {isTest && <div className="rounded-xl px-3 py-2 text-sm" style={{ background: "rgba(242,92,176,.12)", color: "#F8A8D2", border: "1px solid rgba(242,92,176,.3)" }}><b>Produkt testowy.</b> Pozycja z katalogu w przygotowaniu.</div>}
             {isBooking && <div className="rounded-xl px-3 py-2 text-sm" style={{ background: "rgba(56,224,240,.08)", border: "1px solid rgba(56,224,240,.2)" }}><b>{purchaseMode === "daily" ? "🗓️ Wynajem" : "📅 Rezerwacja terminu"}</b><div className="mt-1 text-xs" style={{ color: "var(--mut)" }}>{purchaseMode === "daily" ? "Wybierz daty od–do. System sprawdzi dostępność i pokaże czynsz za cały okres oraz ewentualną kaucję." : "Wybierz dostępny dzień i godzinę, a następnie opłać rezerwację."}</div></div>}
 
@@ -144,7 +154,7 @@ export default function Product() {
 
             {!isBooking ? (() => { const fp=(o as any).fulfillment_provider; const eta=(o as any).delivery_eta||(o as any).attributes?.delivery_eta; const txt=fp==="teemdrop"?`🚚 Dostawa kurierem: ${eta||"15–25 dni roboczych"} (wysyłka z magazynu partnera)`:fp==="mysunrise"?"🔧 Montaż i dostawa po ustaleniu terminu z instalatorem Sunrise · 🏪 możliwy bezpłatny odbiór osobisty w Nowym Tomyślu":"🚚 Wysyłka: Paczkomat InPost lub kurier · darmowa dostawa od 149 zł"; return <div className="text-xs" style={{ color: "var(--mut)" }}>{txt}</div>; })() : <div className="text-xs" style={{ color: "var(--mut)" }}>✓ Dostępność sprawdzana na żywo w kalendarzu · płatność przy rezerwacji</div>}
 
-            <div className="flex flex-wrap gap-2 pt-1">{(isBooking ? ["Ochrona płatności", "Płatna rezerwacja", "Płatność Sunrise Pay", "Cashback na portfel"] : sub ? ["Płatność kartą", "Odnawiana co miesiąc", "Cashback co miesiąc", "Rezygnacja w każdej chwili"] : ["Ochrona kupującego", "Zwrot 14 dni", "Płatność Sunrise Pay", "Cashback na portfel"]).map(t => <span key={t} className="flex items-center gap-1.5 text-xs" style={{ color: "var(--mut)" }}><span className="grid h-5 w-5 place-items-center rounded-full text-[11px] font-bold" style={{ background: "rgba(245,166,35,.16)", color: "var(--gold)" }}>✓</span>{t}</span>)}</div>
+            <div className="flex flex-wrap gap-2 pt-1">{(isBooking ? ["Ochrona płatności", "Płatna rezerwacja", "Płatność Sunrise Pay", "Cashback na portfel"] : sub ? ["Płatność kartą", "Odnawiana co miesiąc", "Cashback co miesiąc", "Rezygnacja w każdej chwili"] : sellerBadge?.is_private ? ["Ochrona kupującego", "Rękojmia (Kodeks cywilny)", "Płatność Sunrise Pay", "Cashback na portfel"] : ["Ochrona kupującego", "Zwrot 14 dni", "Płatność Sunrise Pay", "Cashback na portfel"]).map(t => <span key={t} className="flex items-center gap-1.5 text-xs" style={{ color: "var(--mut)" }}><span className="grid h-5 w-5 place-items-center rounded-full text-[11px] font-bold" style={{ background: "rgba(245,166,35,.16)", color: "var(--gold)" }}>✓</span>{t}</span>)}</div>
 
             {!isBooking && colors.length > 0 && <div><div className="mb-2 text-sm" style={{ color: "var(--mut)" }}>Kolor{color ? `: ${color}` : ""}</div><div className="flex flex-wrap gap-2">{colors.map(c => <button key={c} onClick={() => setColor(c)} className="rounded-xl px-3 py-1.5 text-sm" style={color === c ? { background: "linear-gradient(135deg,#E8891A,#A97B42)", color: "#000", fontWeight: 600 } : { background: "var(--glass)", border: "1px solid var(--line)" }}>{c}</button>)}</div></div>}
             {!isBooking && sizes.length > 0 && <div><div className="mb-2 text-sm" style={{ color: "var(--mut)" }}>Rozmiar{size ? `: ${size}` : ""}</div><div className="flex flex-wrap gap-2">{sizes.map(s => <button key={s} onClick={() => setSize(s)} className="min-w-10 rounded-xl px-3 py-1.5 text-sm" style={size === s ? { background: "linear-gradient(135deg,#E8891A,#A97B42)", color: "#000", fontWeight: 600 } : { background: "var(--glass)", border: "1px solid var(--line)" }}>{s}</button>)}</div></div>}

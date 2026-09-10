@@ -655,3 +655,14 @@ export async function searchStays(q: StayQuery = {}): Promise<Stay[]> {
   if (error) throw error;
   return ((data ?? []) as any[]).map((r) => ({ ...r, amenities: Array.isArray(r.amenities) ? r.amenities : [] })) as Stay[];
 }
+
+// ── Status sprzedawcy przy ofercie ─────────────────────────────────────────
+// Od 2026-09-10 sprzedawać może też osoba prywatna. Kupujący MUSI wiedzieć przed
+// zakupem, od kogo kupuje: przy zakupie od osoby prywatnej nie ma prawa do zwrotu
+// w 14 dni (zostaje rękojmia z KC i Ochrona Kupujących). RPC market.offer_seller_badge.
+export type SellerBadge = { seller_id: string; seller_type: string; is_private: boolean; consumer_rights: boolean; since: string | null };
+export async function offerSellerBadge(offerId: string): Promise<SellerBadge | null> {
+  const { data, error } = await supabase.rpc("offer_seller_badge", { p_id: offerId });
+  if (error) return null;
+  return ((data as any[]) ?? [])[0] ?? null;
+}
