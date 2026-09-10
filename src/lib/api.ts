@@ -632,3 +632,26 @@ export async function conversationMessages(conversationId: string): Promise<Mess
 export async function unreadMessagesCount(): Promise<number> {
   const { data, error } = await supabase.rpc("unread_messages_count"); if (error) return 0; return Number(data || 0);
 }
+
+// ── Noclegi ────────────────────────────────────────────────────────────────
+// Wyszukiwarka „dokąd / termin / liczba osób” (RPC market.search_stays).
+// Zwraca wyłącznie obiekty wolne w KAŻDĄ dobę pobytu — filtrowanie dostępności
+// dzieje się po stronie bazy, nie w przeglądarce.
+export type Stay = {
+  offer_id: string; title: string; image_url: string | null; category: string | null; category_slug: string | null;
+  location: string | null; seller: string | null; rating: number | null; reviews: number;
+  max_guests: number | null; amenities: string[]; nightly_from: number | null;
+  nights: number | null; total_gross: number | null; cleaning_fee_gross: number | null;
+  deposit_gross: number | null; instant_booking: boolean;
+};
+export type StayQuery = { query?: string | null; from?: string | null; to?: string | null; guests?: number | null; amenities?: string[]; categorySlug?: string | null; maxNightly?: number | null; limit?: number };
+export async function searchStays(q: StayQuery = {}): Promise<Stay[]> {
+  const { data, error } = await supabase.rpc("search_stays", {
+    p_query: q.query || null, p_from: q.from || null, p_to: q.to || null,
+    p_guests: q.guests ?? null, p_amenities: q.amenities?.length ? q.amenities : null,
+    p_category_slug: q.categorySlug || null, p_max_nightly: q.maxNightly ?? null,
+    p_limit: q.limit ?? 24, p_offset: 0,
+  });
+  if (error) throw error;
+  return ((data ?? []) as any[]).map((r) => ({ ...r, amenities: Array.isArray(r.amenities) ? r.amenities : [] })) as Stay[];
+}

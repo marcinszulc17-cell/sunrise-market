@@ -14,6 +14,7 @@ import SearchBox from "../SearchBox";
 export const MENU: { to: string; label: string; key: string }[] = [
   { to: "/", label: "Strona główna", key: "home" },
   { to: "/sklep", label: "Zakupy", key: "shop" },
+  { to: "/noclegi", label: "Noclegi", key: "stays" },
   { to: "/szukaj?tryb=appointment", label: "Rezerwacje", key: "booking" },
   { to: "/nieruchomosci", label: "Nieruchomości", key: "property" },
   { to: "/motoryzacja", label: "Motoryzacja", key: "car" },
