@@ -146,6 +146,16 @@ pierwszeństwo przy każdej zmianie kodu. Nie wolno ich naruszać ani obchodzić
   PolZoo zostaje szkicami; (2) do renegocjacji cennik na markach premium albo rezygnacja z tej półki;
   (3) szansa jest w kategoriach bez porównywarki — marki mniej znane, akcesoria, zwierzęta gospodarskie —
   ale każdą partię trzeba przed aktywacją sprawdzić po cenach.
+- **PolZoo — akcesoria sprawdzone 2026-09-09/10: obraz mieszany, każdą pozycję trzeba sprawdzać osobno.**
+  | Produkt | Zakup | Rynek | Zakup vs rynek | Efekt |
+  |---|---|---|---|---|
+  | Trixie Mata chłodząca 50×40 M | 33,80 zł | 49,99 zł (toys4dogs.pl) | **−32,4%** | **aktywna**, 45,99 zł (8% pod rynkiem), 26,3% netto |
+  | Trixie Kaganiec Muzzle Flex M | 44,45 zł | 49,40 zł (ganosklep.pl) | −10,0% | szkic, `break_even_floor`, 0,3% netto |
+  | AMIPLAY Sofa ZipClean Morgan | 199,99 zł (S) | 197,49 zł (M, zookarina.pl) | zakup ≥ rynek | odpada |
+  Wniosek: w akcesoriach PolZoo **czasem** ma dobrą cenę, ale nie jest to reguła — nie da się aktywować partii
+  hurtem, trzeba pozycja po pozycji. Pierwsza aktywna oferta PolZoo (mata chłodząca) potwierdza, że cała
+  mechanika działa end-to-end: sufit rynkowy, twarda podłoga, marża netto i automatyczne zatrzymanie
+  nierentownej pozycji w szkicach (`held_low_margin`, `unsellable_below_market` po 1 w tej partii).
 - **PolZoo — katalog i pierwsza partia (2026-09-08)**: import Base Connect zakończony, katalog „PolZoo" = inventory
   **115862** (grupa cen `100979`, magazyn `bl_153385`), **18 200 SKU**, 17 272 z EAN (94,9%), 5 615 dostępnych.
   Pierwsza partia: **300 ofert** (filtr: dostępne + EAN + cena ≥ 20 zł), wszystkie `draft`, 300/300 ze zdjęciem,
