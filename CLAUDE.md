@@ -260,6 +260,10 @@ pierwszeństwo przy każdej zmianie kodu. Nie wolno ich naruszać ani obchodzić
   (`reply_review(p_review, p_text)` → `reviews.seller_reply`), nie edytuje i nie usuwa opinii.
   Nowa opinia → powiadomienie in-app sprzedawcy (`trg_notify_seller_new_review`).
 - Odznaki z widoku `seller_reputation`: Aktywny (>0), Zaufany (≥10 opinii, śr. ≥4,5), Super Sprzedawca (≥50, ≥4,8).
+- **ODRZUCONE (decyzja właściciela 2026-09-10): „1000 Sprzedawców Założycieli”** — odznaka za kolejność
+  rejestracji i wcześniejsze wyróżnianie ich ofert. Nie budujemy tego. Odznaka ma znaczyć jakość, a nie datę
+  zapisu; wyróżnienie w wynikach kupuje się (promowanie) albo zarabia ocenami, nie dostaje za bycie pierwszym.
+  Nie wprowadzać tego pod inną nazwą (Pionier, Founding Partner, „pierwsza setka” itp.).
 
 ## 7. Aplikacja i powiadomienia push (2026-09-05)
 
