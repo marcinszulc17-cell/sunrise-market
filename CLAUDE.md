@@ -24,6 +24,14 @@ pierwszeństwo przy każdej zmianie kodu. Nie wolno ich naruszać ani obchodzić
 
 - Po zakupie klient otrzymuje **3% cashback** z powrotem na portfel Sunrise Pay — przy każdej metodzie płatności.
 
+## 2b. Punkty, wypłaty i podatek (decyzja właściciela 2026-09-10)
+
+- Dopóki obrót zostaje **wewnątrz ekosystemu** (punkty → zakupy, usługi, doładowania), nie ma zdarzenia
+  podatkowego. Podatek pojawia się dopiero przy **wypłacie środków poza ekosystem**.
+- **Wypłacić środki może wyłącznie Ambasador** (zasady po stronie MySunrise / Sunrise Pay).
+- Dlatego w komunikacji i regulaminach nigdy nie obiecujemy „wypłaty cashbacku na konto" zwykłemu
+  użytkownikowi — cashback to punkty do wydania w ekosystemie (Regulamin §7.2 i §7.7).
+
 ## 3. Zasady sprzedawców (decyzja właściciela 2026-09-05: dwa poziomy)
 
 - **Sprzedawca** (`sellers.seller_type = 'private_partner'`): uproszczone centrum,
