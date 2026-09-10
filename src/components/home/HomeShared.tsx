@@ -169,7 +169,7 @@ export function SocialLinks({ size = 18 }: { size?: number }) {
 /** Zwięzła stopka (wg wzoru): logo, O nas, strony prawne, Pomoc, Kontakt, social. */
 export function HomeFooter() {
   return <footer className="mt-12" style={{ borderTop: "1px solid var(--line)", background: "var(--header)" }}>
-    <div className="mx-auto flex max-w-[1440px] flex-wrap items-center gap-x-6 gap-y-3 px-6 py-6 text-sm xl:px-10" style={{ color: "var(--mut)" }}>
+    <div className="mx-auto flex max-w-[1440px] flex-wrap items-center gap-x-6 gap-y-3 px-4 py-6 text-sm sm:px-6 xl:px-10" style={{ color: "var(--mut)" }}>
       <a href="/" className="mr-2 flex items-center"><img src="/logo-sunrise-market-light.png" alt="Sunrise Market" className="brand-logo h-9 w-auto" /></a>
       <Link to="/o-nas" className="navlink">O nas</Link>
       <a href="/legal/regulamin.html" className="navlink">Regulamin</a>
@@ -179,9 +179,9 @@ export function HomeFooter() {
       <Link to="/pomoc" className="navlink">Pomoc</Link>
       <a href="/legal/kontakt.html" className="navlink">Kontakt</a>
       <SocialLinks />
-      <span className="ml-auto text-xs">Bliżej ludzi. Bliżej możliwości. · © {new Date().getFullYear()} Sunrise Market</span>
+      <span className="w-full text-xs sm:ml-auto sm:w-auto">Bliżej ludzi. Bliżej możliwości. · © {new Date().getFullYear()} Sunrise Market</span>
     </div>
-    <div className="mx-auto flex max-w-[1440px] flex-wrap items-center gap-x-3 gap-y-1 px-6 pb-6 text-xs xl:px-10" style={{ color: "var(--mut)" }}>
+    <div className="mx-auto hidden max-w-[1440px] flex-wrap items-center gap-x-3 gap-y-1 px-6 pb-6 text-xs sm:flex xl:px-10" style={{ color: "var(--mut)" }}>
       <Link to="/miasto" className="font-semibold" style={{ color: "var(--ink)" }}>Sunrise Market w Twoim mieście:</Link>
       {CITIES.slice(0, 30).map((c) => <Link key={c.slug} to={`/miasto/${c.slug}`} className="navlink">{c.name}</Link>)}<Link to="/miasto" className="font-semibold" style={{ color: "var(--gold)" }}>wszystkie miasta ›</Link>
     </div>

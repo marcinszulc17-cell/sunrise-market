@@ -10,7 +10,7 @@ import ThemeToggle from "../components/ThemeToggle";
 import { useCart } from "../lib/cart";
 import { useSeo } from "../lib/seo";
 import NotificationsBell from "../components/NotificationsBell";
-import { Ico, IconTile, SECTIONS, RecoCard, useHomeFeed, usePopularCategories, tileStyle, GOLD_GRAD, CARD } from "../components/home/HomeShared";
+import { Ico, IconTile, SECTIONS, RecoCard, HomeFooter, useHomeFeed, usePopularCategories, tileStyle, GOLD_GRAD, CARD } from "../components/home/HomeShared";
 
 export default function Start() {
   const navigate = useNavigate();
@@ -96,5 +96,9 @@ export default function Start() {
 
       <p className="mt-8 text-center text-[11px] tracking-[.22em]" style={{ color: "var(--mut)" }}>TWÓJ RYNEK WIĘKSZYCH MOŻLIWOŚCI</p>
     </div>
+
+    {/* Stopka jak na dużym ekranie — bez niej strona na telefonie kończyła się nagle,
+        bez regulaminu, kontaktu i pomocy (zgłoszenie właściciela 2026-09-09). */}
+    <HomeFooter />
   </main>;
 }
