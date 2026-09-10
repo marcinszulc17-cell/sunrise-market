@@ -139,6 +139,22 @@ export function usePopularCategories() {
   return cats;
 }
 
+/**
+ * Odcień plakietki kategorii na karcie oferty (z makiet właściciela 2026-09-10).
+ * Kolor tylko dla działów, które klient rozpoznaje z paska nawigacji — reszta zostaje neutralna,
+ * bo 21 kategorii w 5 kolorach zamieniłoby siatkę w konfetti.
+ */
+export function categoryTint(name?: string | null): Tint | null {
+  if (!name) return null;
+  const s = name.toLocaleLowerCase("pl-PL");
+  if (/nieruchomo|mieszkan|dzia[łl]k|lokal u[żz]ytk/.test(s)) return "green";
+  if (/motoryzac|samoch|motocykl|pojazd|przyczep/.test(s)) return "blue";
+  if (/us[łl]ug|remont|transport|reklam|monta[żz]|fachow/.test(s)) return "orange";
+  if (/nocleg|bilet|wydarzen|rezerwac|kultura|rozrywk/.test(s)) return "violet";
+  if (/oze|energia|fotowolt|pompa ciep|magazyn energ/.test(s)) return "amber";
+  return null;
+}
+
 /** Karta polecanej oferty: zdjęcie, cena, tytuł, lokalizacja/sprzedawca, kategoria, ♡. */
 export function RecoCard({ o, fav, onFav, rate, compact = false, className = "", style }: { o: FeedOffer; fav: boolean; onFav: (id: string) => void; rate: number; compact?: boolean; className?: string; style?: React.CSSProperties }) {
   const href = `/produkt/${o.offer_id}`;
@@ -149,7 +165,7 @@ export function RecoCard({ o, fav, onFav, rate, compact = false, className = "",
       <div className="flex items-baseline justify-between gap-2"><div className={`font-bold ${compact ? "text-base" : "text-lg"}`} style={{ color: "var(--gold)" }}>{zl(o.price_gross)}</div>{!compact && <span className="text-[11px]" style={{ color: "var(--mut)" }}>+{cashbackFor(o.price_gross, rate).toLocaleString("pl-PL", { maximumFractionDigits: 2 })} pkt</span>}</div>
       <Link to={href} className="mt-0.5 line-clamp-2 text-sm font-semibold leading-5 focus-visible:underline">{o.title}</Link>
       <div className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-[11px]" style={{ color: "var(--mut)" }}>
-        {o.category && <span className="truncate rounded-md px-2 py-0.5" style={{ background: "rgba(255,255,255,.06)", border: "1px solid var(--line)", color: "var(--ink)" }}>{o.category}</span>}
+        {o.category && (() => { const t = categoryTint(o.category); const st = t ? { background: TINTS[t].bg, border: `1px solid ${TINTS[t].bd}`, color: TINTS[t].c } : { background: "rgba(255,255,255,.06)", border: "1px solid var(--line)", color: "var(--ink)" }; return <span className="truncate rounded-md px-2 py-0.5" style={st}>{o.category}</span>; })()}
         <span className="truncate">{o.location ? `📍 ${o.location}${o.radius_km ? o.radius_km >= 600 ? " · cała Polska" : ` · +${o.radius_km} km` : ""}` : o.seller ?? ""}</span>
         {timeAgo(o.created_at) && <span className="ml-auto shrink-0">🕒 {timeAgo(o.created_at)}</span>}
       </div>
