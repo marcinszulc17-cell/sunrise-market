@@ -77,7 +77,7 @@ export default function TradePartnerActivate() {
       });
       if (error) throw error;
       await loadStatus();
-      setMsg("Partner Handlowy aktywny. Pierwsze 12 miesięcy bez opłaty ✅");
+      setMsg("Konto Sprzedawcy aktywne. Pierwsze 12 miesięcy bez opłaty ✅");
     } catch (e) {
       setMsg((e as Error).message || "Nie udało się aktywować Partnera Handlowego");
     } finally {
@@ -114,7 +114,9 @@ export default function TradePartnerActivate() {
 
   if (loading) return <Shell><p style={{ color: "var(--mut)" }}>Sprawdzam dostęp…</p></Shell>;
 
-  const fee = Number(status?.annual_fee_gross ?? 499);
+  // Ta strona aktywuje konto SPRZEDAWCY (osoba prywatna) — opłata roczna 299 zł.
+  // 499 zł dotyczy Partnera Handlowego (/sprzedawca-klasyczny), więc nie może tu być wartością zapasową.
+  const fee = Number(status?.annual_fee_gross ?? 299);
   const privatePartner = status?.seller_type === "private_partner";
 
   return <Shell>
@@ -140,7 +142,7 @@ export default function TradePartnerActivate() {
 
         {status?.seller_id && privatePartner ? (
           <div className="mt-6 rounded-2xl p-5" style={{ background: status.renewal_due ? "rgba(239,68,68,.07)" : "rgba(34,197,94,.07)", border: status.renewal_due ? "1px solid rgba(239,68,68,.22)" : "1px solid rgba(34,197,94,.22)" }}>
-            <div className="text-sm font-semibold">{status.renewal_due ? "Odnowienie wymagane" : "Partner Handlowy aktywny"}</div>
+            <div className="text-sm font-semibold">{status.renewal_due ? "Odnowienie wymagane" : "Konto Sprzedawcy aktywne"}</div>
             {!status.renewal_due && status.free_until && <p className="mt-1 text-sm" style={{ color: "var(--mut)" }}>Pierwszy rok bez opłaty do <b style={{ color: "var(--ink)" }}>{new Date(status.free_until + "T00:00:00").toLocaleDateString("pl-PL")}</b>. Potem {fee.toFixed(0)} zł za 12 miesięcy.</p>}
             {status.renewal_due && <>
               <p className="mt-1 text-sm" style={{ color: "var(--mut)" }}>Opłać {fee.toFixed(0)} zł, aby aktywować możliwość wystawiania nowych ofert na kolejny rok.</p>
