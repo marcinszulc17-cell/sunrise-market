@@ -118,16 +118,19 @@ export async function createBookingHoldV2(params: {
   endsAt?: Date | null;
   serviceId?: string | null;
   resourceId?: string | null;
+  guests?: number | null;
 }): Promise<BookingHoldV2> {
   // MySunrise is the identity hub. Booking can only start for an eligible MySunrise account.
   await refreshCustomerAccess();
 
-  const { data, error } = await supabase.schema("market").rpc("create_booking_hold_v2", {
+  // v3 zapisuje liczbę gości i — przy wycenie za osobę — mnoży przez nią czynsz.
+  const { data, error } = await supabase.schema("market").rpc("create_booking_hold_v3", {
     p_offer: params.offerId,
     p_starts_at: params.startsAt.toISOString(),
     p_ends_at: params.endsAt?.toISOString() ?? null,
     p_service: params.serviceId ?? null,
     p_resource: params.resourceId ?? null,
+    p_guests: params.guests ?? null,
   });
   if (error) throw error;
   const row = (data as BookingHoldV2[] | null)?.[0];
@@ -140,14 +143,26 @@ export async function bookingDailyQuoteV2(
   fromDay: string,
   toDay: string,
   resourceId?: string | null,
+  guests?: number | null,
 ) {
-  if (!fromDay || !toDay || toDay <= fromDay) return { days: 0, base: 0 };
-  const rpc = resourceId ? "booking_daily_quote_resource_v2" : "booking_daily_quote_v2";
-  const params = resourceId
-    ? { p_offer: offerId, p_resource: resourceId, p_from: fromDay, p_to: toDay }
-    : { p_offer: offerId, p_from: fromDay, p_to: toDay };
-  const { data, error } = await supabase.schema("market").rpc(rpc, params);
+  if (!fromDay || !toDay || toDay <= fromDay) return { days: 0, base: 0, perPerson: false, guests: guests ?? 1 };
+  // Przy konkretnym zasobie zostaje wycena v2 — flota i pokoje rozliczane są za dobę.
+  // Dla oferty bez zasobu v3 uwzględnia liczbę osób, gdy obiekt wycenia za osobę.
+  if (resourceId) {
+    const { data, error } = await supabase.schema("market").rpc("booking_daily_quote_resource_v2", {
+      p_offer: offerId, p_resource: resourceId, p_from: fromDay, p_to: toDay,
+    });
+    if (error) throw error;
+    const row = (data as Array<{ days: number; base: number }> | null)?.[0];
+    return { days: Number(row?.days ?? 0), base: Number(row?.base ?? 0), perPerson: false, guests: guests ?? 1 };
+  }
+  const { data, error } = await supabase.schema("market").rpc("booking_daily_quote_v3", {
+    p_offer: offerId, p_from: fromDay, p_to: toDay, p_guests: guests ?? null,
+  });
   if (error) throw error;
-  const row = (data as Array<{ days: number; base: number }> | null)?.[0];
-  return { days: Number(row?.days ?? 0), base: Number(row?.base ?? 0) };
+  const row = (data as Array<{ days: number; base: number; guests: number; per_person: boolean }> | null)?.[0];
+  return {
+    days: Number(row?.days ?? 0), base: Number(row?.base ?? 0),
+    perPerson: Boolean(row?.per_person), guests: Number(row?.guests ?? guests ?? 1),
+  };
 }

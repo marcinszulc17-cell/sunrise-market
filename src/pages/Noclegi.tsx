@@ -125,7 +125,7 @@ function StayCard({ s }: { s: Stay }) {
     </Link>
     <div className="p-4">
       <div className="flex items-baseline justify-between gap-2">
-        <div className="text-lg font-bold" style={{ color: "var(--gold)" }}>{zl(s.nightly_from ?? 0)} <span className="text-xs font-medium" style={{ color: "var(--mut)" }}>/ noc</span></div>
+        <div className="text-lg font-bold" style={{ color: "var(--gold)" }}>{zl(s.nightly_from ?? 0)} <span className="text-xs font-medium" style={{ color: "var(--mut)" }}>{s.price_mode === "per_person" ? "/ os. za noc" : "/ noc"}</span></div>
         {s.rating ? <span className="shrink-0 text-xs" style={{ color: "var(--gold)" }}>★ {s.rating.toFixed(1)} <span style={{ color: "var(--mut)" }}>({s.reviews})</span></span> : null}
       </div>
       <Link to={href} className="mt-0.5 line-clamp-2 text-sm font-semibold leading-5 focus-visible:underline">{s.title}</Link>

@@ -40,6 +40,10 @@ export default function BookingPurchaseModal({ offerId, config, open, onClose }:
   const [resourceId, setResourceId] = useState<string | null>(null);
   const [fromDay, setFromDay] = useState("");
   const [toDay, setToDay] = useState("");
+  // Liczba gości: przy wycenie „za osobę" mnoży czynsz, przy „za dobę" jest informacją
+  // dla właściciela (i pilnuje limitu miejsc). Zapisujemy ją przy rezerwacji.
+  const [guests, setGuests] = useState(2);
+  const [perPerson, setPerPerson] = useState(false);
   const [rentalBase, setRentalBase] = useState(0);
   const [rentalUnits, setRentalUnits] = useState(0);
   const [unavailableDays, setUnavailableDays] = useState<string[]>([]);
@@ -94,6 +98,9 @@ export default function BookingPurchaseModal({ offerId, config, open, onClose }:
     deposit_gross: 0,
     instant_booking: true,
   };
+  // Limit miejsc bierzemy z katalogu oferty; brak limitu = obiekt nie podał pojemności,
+  // więc nie pytamy o liczbę osób (zamiast zgadywać).
+  const maxGuests = Number((catalog?.config as any)?.max_guests ?? 0) || 0;
 
   useEffect(() => {
     if (!open) return;
@@ -164,14 +171,14 @@ export default function BookingPurchaseModal({ offerId, config, open, onClose }:
       return;
     }
     setError(null);
-    bookingDailyQuoteV2(offerId, fromDay, toDay, resourceId)
-      .then((q) => { setRentalUnits(q.days); setRentalBase(q.base); })
+    bookingDailyQuoteV2(offerId, fromDay, toDay, resourceId, guests)
+      .then((q) => { setRentalUnits(q.days); setRentalBase(q.base); setPerPerson(q.perPerson); })
       .catch((e) => {
         setRentalBase(0);
         setRentalUnits(0);
         setError(e?.message || "Nie udało się obliczyć czynszu za wybrany okres");
       });
-  }, [open, offerId, activeConfig.booking_type, fromDay, toDay, resourceId]);
+  }, [open, offerId, activeConfig.booking_type, fromDay, toDay, resourceId, guests]);
 
   const days = useMemo(
     () => Array.from(new Map(slots.map((s) => [dayKey(s.starts_at, activeConfig.timezone), s.starts_at])).entries()),
@@ -257,7 +264,7 @@ export default function BookingPurchaseModal({ offerId, config, open, onClose }:
         if (rentalUnits > activeConfig.max_units) throw new Error(`Maksymalny okres to ${activeConfig.max_units} dób`);
         if (!renterReady) throw new Error("Uzupełnij dane najemcy (imię i nazwisko, telefon, dokument" + (isVehicle ? ", prawo jazdy" : "") + ")");
         if (!agreementAccepted) throw new Error("Zaakceptuj umowę najmu — bez tego nie można opłacić rezerwacji");
-        hold = await createBookingHoldV2({ offerId, startsAt: dateAtNoonUtc(fromDay), endsAt: dateAtNoonUtc(toDay), resourceId });
+        hold = await createBookingHoldV2({ offerId, startsAt: dateAtNoonUtc(fromDay), endsAt: dateAtNoonUtc(toDay), resourceId, guests });
         const { error: agreementError } = await supabase.rpc("accept_rental_agreement", { p_booking: hold.booking_id, p_version: RENTAL_AGREEMENT_VERSION, p_sha256: await sha256Text(agreementText), p_renter: renter, p_user_agent: navigator.userAgent, p_text: agreementText });
         if (agreementError) throw new Error(agreementError.message);
       }
@@ -339,6 +346,21 @@ export default function BookingPurchaseModal({ offerId, config, open, onClose }:
 
             <section>
               <StepTitle n={dailyDateStep} title="Wybierz daty od–do" />
+              {maxGuests > 0 && (
+                <div className="mb-3 flex flex-wrap items-center justify-between gap-2 rounded-2xl px-4 py-3" style={{ background: "var(--glass)", border: "1px solid var(--line)" }}>
+                  <div className="text-sm">
+                    <b>Liczba osób</b>
+                    <div className="text-xs" style={{ color: "var(--mut)" }}>
+                      {perPerson ? "Cena jest liczona za osobę za dobę." : "Cena dotyczy całego obiektu."} Maksymalnie {maxGuests}.
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <button type="button" onClick={() => setGuests((g) => Math.max(1, g - 1))} className="h-9 w-9 rounded-xl text-lg font-bold" style={{ border: "1px solid var(--line)" }}>−</button>
+                    <span className="min-w-[2ch] text-center text-lg font-bold">{guests}</span>
+                    <button type="button" onClick={() => setGuests((g) => Math.min(maxGuests, g + 1))} className="h-9 w-9 rounded-xl text-lg font-bold" style={{ border: "1px solid var(--line)" }}>+</button>
+                  </div>
+                </div>
+              )}
               {availabilityLoading ? <Info>Sprawdzam zajęte i zablokowane dni{selectedResource ? ` dla ${selectedResource.name}` : ""}…</Info> : <DailyRangeCalendar
                 minDate={today}
                 maxDate={latest}
@@ -356,7 +378,7 @@ export default function BookingPurchaseModal({ offerId, config, open, onClose }:
               </div>
               {fromDay && toDay && rentalUnits === 0 && !error && <Info>Sprawdzam dostępność i obliczam czynsz za wybrany okres…</Info>}
               {lengthDiscounts.length > 0 && <div className="mt-3 text-xs" style={{ color: "var(--green)" }}>Rabat za dłuższy najem: {lengthDiscounts.map((d) => `od ${d.min_days} dni −${d.pct}%`).join(" · ")}</div>}
-              {rentalUnits > 0 && <div className="mt-4 rounded-2xl p-4" style={{ background: "var(--glass)", border: "1px solid var(--line)" }}><PriceRow label={`Czynsz za najem · ${rentalUnitsLabel(rentalUnits)}${appliedDiscount ? ` · rabat −${appliedDiscount}%` : ""}`} value={rentalBase} strong />{fees > 0 && <PriceRow label="Opłata dodatkowa" value={fees} />}{deposit > 0 && <PriceRow label="Kaucja zwrotna" value={deposit} muted />}</div>}
+              {rentalUnits > 0 && <div className="mt-4 rounded-2xl p-4" style={{ background: "var(--glass)", border: "1px solid var(--line)" }}><PriceRow label={`Czynsz za najem · ${rentalUnitsLabel(rentalUnits)}${perPerson ? ` · ${guests} os.` : ""}${appliedDiscount ? ` · rabat −${appliedDiscount}%` : ""}`} value={rentalBase} strong />{fees > 0 && <PriceRow label="Opłata dodatkowa" value={fees} />}{deposit > 0 && <PriceRow label="Kaucja zwrotna" value={deposit} muted />}</div>}
             </section>
           </>}
 

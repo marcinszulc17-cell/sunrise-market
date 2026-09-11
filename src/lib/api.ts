@@ -643,6 +643,7 @@ export type Stay = {
   max_guests: number | null; amenities: string[]; nightly_from: number | null;
   nights: number | null; total_gross: number | null; cleaning_fee_gross: number | null;
   deposit_gross: number | null; instant_booking: boolean;
+  price_mode: "per_night" | "per_person" | null;
 };
 export type StayQuery = { query?: string | null; from?: string | null; to?: string | null; guests?: number | null; amenities?: string[]; categorySlug?: string | null; maxNightly?: number | null; limit?: number };
 export async function searchStays(q: StayQuery = {}): Promise<Stay[]> {
@@ -678,6 +679,7 @@ export type StayDetails = {
   smoking_allowed: boolean | null; parties_allowed: boolean | null;
   children_allowed: boolean | null; pets_allowed: boolean | null;
   checkin_instructions: string | null; house_rules_extra: string | null;
+  price_mode: "per_night" | "per_person" | null;
 };
 export async function offerStayDetails(offerId: string): Promise<StayDetails | null> {
   const { data, error } = await supabase.rpc("offer_stay_details", { p_offer: offerId });
