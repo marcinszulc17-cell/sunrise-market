@@ -142,7 +142,13 @@ function ClubCard({ w, ms, goTab }: { w: WalletLive | null; ms: MemberStatus | n
 function AmbLink({ code, tier }: { code: string; tier?: string }) {
   const [copied, setCopied] = useState(false);
   const link = `https://sunrisemarket.pl/?ref=${code}`;
+  // Osobny link pod pozyskiwanie obiektów noclegowych (decyzja właściciela 2026-09-11:
+  // katalog noclegowy budujemy przez polecenia ambasadorów, nie przez cold mailing).
+  // Kod z ?ref= zapisuje się globalnie przy wejściu (main.tsx), więc atrybucja działa tak samo.
+  const linkObiekty = `https://sunrisemarket.pl/dla-obiektow?ref=${code}`;
+  const [copiedStays, setCopiedStays] = useState(false);
   async function copy() { try { await navigator.clipboard.writeText(link); setCopied(true); setTimeout(() => setCopied(false), 2000); } catch { /* ignore */ } }
+  async function copyStays() { try { await navigator.clipboard.writeText(linkObiekty); setCopiedStays(true); setTimeout(() => setCopiedStays(false), 2000); } catch { /* ignore */ } }
   const rungs: [string, string, string][] = [["ambassador", "Ambasador", "5%"], ["silver", "Silver", "10%"], ["gold", "Gold", "15%"], ["platinum", "Platinum", "20%"], ["diamond", "Diament", "22%"]];
   const cur = (tier ?? "").toLowerCase();
   return (
@@ -151,6 +157,11 @@ function AmbLink({ code, tier }: { code: string; tier?: string }) {
       <div className="flex flex-wrap items-center gap-2">
         <input readOnly value={link} className="flex-1 min-w-[200px] rounded-lg px-3 py-2 text-sm outline-none" style={{ background: "rgba(0,0,0,.25)", border: "1px solid rgba(245,166,35,.25)", color: "#EDE7D6" }} />
         <button onClick={copy} style={{ fontSize: 13, fontWeight: 700, padding: "8px 16px", borderRadius: 11, background: "linear-gradient(135deg,#F5A623,#E8891A)", color: "#241606", border: 0, cursor: "pointer" }}>{copied ? "Skopiowano ✓" : "Kopiuj link"}</button>
+      </div>
+      <div style={{ fontSize: 12, color: "rgba(237,231,214,.6)", marginTop: 14, marginBottom: 6 }}>Polecasz właścicielowi domku, apartamentu albo kwatery? Ten link prowadzi wprost do warunków dla obiektów:</div>
+      <div className="flex flex-wrap items-center gap-2">
+        <input readOnly value={linkObiekty} className="flex-1 min-w-[200px] rounded-lg px-3 py-2 text-sm outline-none" style={{ background: "rgba(0,0,0,.25)", border: "1px solid rgba(245,166,35,.25)", color: "#EDE7D6" }} />
+        <button onClick={copyStays} style={{ fontSize: 13, fontWeight: 700, padding: "8px 16px", borderRadius: 11, background: "rgba(245,166,35,.14)", color: "#F5A623", border: "1px solid rgba(245,166,35,.35)", cursor: "pointer" }}>{copiedStays ? "Skopiowano ✓" : "Kopiuj link"}</button>
       </div>
       <div style={{ fontSize: 12, color: "rgba(237,231,214,.6)", marginTop: 12, marginBottom: 6 }}>Prowizja za polecenie (od ceny brutto), zależna od Twojej rangi ambasadora:</div>
       <div className="flex flex-wrap gap-1.5">

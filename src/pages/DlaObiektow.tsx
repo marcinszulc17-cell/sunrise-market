@@ -10,6 +10,7 @@ import { SiteHeader } from "../components/home/SiteChrome";
 import { HomeFooter, CARD, GOLD_GRAD, Ico, type IconName } from "../components/home/HomeShared";
 import { pricingList } from "../lib/api";
 import { useSeo } from "../lib/seo";
+import { zl } from "../lib/money";
 
 type Prices = { commission_rate?: number; stripe_commission_rate?: number; cashback_rate?: number; pay_free_months?: number; trade_partner_annual_fee?: number; pay_annual_fee?: number };
 
@@ -84,29 +85,10 @@ export default function DlaObiektow() {
           </div>
         </section>
 
-        {/* Ile zostaje w kieszeni */}
-        <section className="mt-8 rounded-2xl p-5" style={CARD}>
-          <h2 className="text-lg font-semibold">Ile zostaje z doby</h2>
-          <p className="mt-1 text-sm" style={{ color: "var(--mut)" }}>
-            Przykład dla doby za 400 zł, przy płatności portfelem Sunrise Pay. Liczby zależą wyłącznie od prowizji —
-            nie doliczamy opłat za wystawienie, wyróżnienie ani za kontakt od gościa.
-          </p>
-          <div className="mt-4 grid gap-2 text-sm">
-            {[
-              ["Cena doby", "400,00 zł"],
-              [`Prowizja Sunrise Market (${prowizja})`, "− 31,60 zł"],
-              ["Zostaje dla Ciebie", "368,40 zł"],
-            ].map(([l, v], i) => (
-              <div key={l} className="flex items-center justify-between rounded-xl px-3 py-2" style={{ background: i === 2 ? "rgba(122,184,154,.12)" : "var(--header)", border: "1px solid var(--line)" }}>
-                <span style={{ color: i === 2 ? "var(--ink)" : "var(--mut)" }}>{l}</span>
-                <span className="font-semibold" style={{ color: i === 2 ? "var(--green)" : "var(--ink)" }}>{v}</span>
-              </div>
-            ))}
-          </div>
-          <p className="mt-3 text-xs" style={{ color: "var(--mut)" }}>
-            Przy płatności kartą, BLIK-iem lub Przelewy24 prowizja wynosi {prowizjaKarta} — metodę wybiera gość, nie Ty.
-          </p>
-        </section>
+        {/* Kalkulator prowizji — liczy na danych właściciela, nie na naszym przykładzie.
+            Stawki bierzemy z cennika platformy; prowizję portalu podaje użytkownik,
+            bo różni się w zależności od umowy i programów widoczności. */}
+        <Kalkulator prowizja={Number(p.commission_rate ?? 0.079)} prowizjaKarta={Number(p.stripe_commission_rate ?? 0.129)} />
 
         {/* Jak zacząć */}
         <section className="mt-8">
@@ -146,5 +128,70 @@ export default function DlaObiektow() {
       </main>
       <HomeFooter />
     </div>
+  );
+}
+
+/** Ile zostaje z sezonu u nas, a ile u pośrednika o wyższej prowizji. */
+function Kalkulator({ prowizja, prowizjaKarta }: { prowizja: number; prowizjaKarta: number }) {
+  const [cena, setCena] = useState(400);
+  const [doby, setDoby] = useState(60);
+  const [obca, setObca] = useState(15);
+
+  const obrot = Math.max(0, cena) * Math.max(0, doby);
+  const uNas = obrot * (1 - prowizja);
+  const uNasKarta = obrot * (1 - prowizjaKarta);
+  const uNich = obrot * (1 - Math.max(0, obca) / 100);
+  const roznica = uNas - uNich;
+
+  const pole = "h-11 w-full rounded-xl px-3 text-sm outline-none";
+  const poleStyle = { background: "var(--header)", border: "1px solid var(--line)", color: "var(--ink)" } as React.CSSProperties;
+
+  return (
+    <section className="mt-8 rounded-2xl p-5" style={CARD}>
+      <h2 className="text-lg font-semibold">Policz, ile zostaje u Ciebie</h2>
+      <p className="mt-1 text-sm" style={{ color: "var(--mut)" }}>
+        Wpisz swoje liczby. Prowizję obecnego portalu znajdziesz w swojej umowie — bywa wyższa,
+        jeśli korzystasz z programów zwiększających widoczność.
+      </p>
+
+      <div className="mt-4 grid gap-3 sm:grid-cols-3">
+        <label className="block"><span className="mb-1 block text-xs" style={{ color: "var(--mut)" }}>Cena za dobę (zł)</span>
+          <input className={pole} style={poleStyle} type="number" min={0} step={10} value={cena} onChange={(e) => setCena(Number(e.target.value))} /></label>
+        <label className="block"><span className="mb-1 block text-xs" style={{ color: "var(--mut)" }}>Wynajętych dób w roku</span>
+          <input className={pole} style={poleStyle} type="number" min={0} step={5} value={doby} onChange={(e) => setDoby(Number(e.target.value))} /></label>
+        <label className="block"><span className="mb-1 block text-xs" style={{ color: "var(--mut)" }}>Prowizja obecnego portalu (%)</span>
+          <input className={pole} style={poleStyle} type="number" min={0} max={50} step={0.5} value={obca} onChange={(e) => setObca(Number(e.target.value))} /></label>
+      </div>
+
+      <div className="mt-4 grid gap-3 sm:grid-cols-3">
+        <div className="rounded-2xl p-4" style={{ background: "var(--header)", border: "1px solid var(--line)" }}>
+          <div className="text-xs" style={{ color: "var(--mut)" }}>Obrót z sezonu</div>
+          <div className="mt-1 text-xl font-bold">{zl(obrot)}</div>
+        </div>
+        <div className="rounded-2xl p-4" style={{ background: "var(--header)", border: "1px solid var(--line)" }}>
+          <div className="text-xs" style={{ color: "var(--mut)" }}>Zostaje u obecnego pośrednika</div>
+          <div className="mt-1 text-xl font-bold">{zl(uNich)}</div>
+        </div>
+        <div className="rounded-2xl p-4" style={{ background: "rgba(122,184,154,.12)", border: "1px solid rgba(122,184,154,.3)" }}>
+          <div className="text-xs" style={{ color: "var(--mut)" }}>Zostaje w Sunrise Market</div>
+          <div className="mt-1 text-xl font-bold" style={{ color: "var(--green)" }}>{zl(uNas)}</div>
+        </div>
+      </div>
+
+      <div className="mt-3 rounded-2xl p-4 text-sm" style={{ background: "linear-gradient(135deg,rgba(232,137,26,.16),rgba(232,137,26,.04))", border: "1px solid rgba(245,166,35,.35)" }}>
+        {roznica > 0
+          ? <>Różnica w skali roku: <b style={{ color: "var(--gold)" }}>{zl(roznica)}</b> więcej po Twojej stronie.</>
+          : roznica < 0
+          ? <>Przy tej prowizji obecny portal wypada korzystniej o <b>{zl(Math.abs(roznica))}</b> — wpisz swoje realne warunki, żeby to sprawdzić.</>
+          : <>Przy tych warunkach wychodzi tyle samo.</>}
+      </div>
+
+      <p className="mt-3 text-xs leading-5" style={{ color: "var(--mut)" }}>
+        Wyliczenie zakłada płatność portfelem Sunrise Pay (prowizja {(prowizja * 100).toFixed(1).replace(".", ",")}%).
+        Gdy gość zapłaci kartą, BLIK-iem lub Przelewy24, prowizja wynosi {(prowizjaKarta * 100).toFixed(1).replace(".", ",")}%
+        i z sezonu zostaje {zl(uNasKarta)} — metodę płatności wybiera gość, nie Ty.
+        To szacunek na podanych liczbach, a nie obietnica przychodu: realny wynik zależy od obłożenia, sezonu i cen.
+      </p>
+    </section>
   );
 }
