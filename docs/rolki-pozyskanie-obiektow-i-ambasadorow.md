@@ -125,6 +125,45 @@ Odpowiedź (wiadomość prywatna):
 - **Automatyzacja odpowiedzi:** narzędzie odpowiadające na komentarze musi wysyłać **tylko** to, o co
   odbiorca poprosił, i mieć wyraźne „napisz STOP". Zero dopisywania ludzi do newslettera bez zgody.
 
+## Analiza kont „faceless" — co z nich bierzemy, a czego nie
+
+Przeanalizowane konto (typ: anonimowy profil kobiecy, rolki bez twarzy, słowo w komentarzu)
+używa czterech chwytów. Trzy z nich są dla nas **nie do użycia**, jeden owszem.
+
+| Chwyt z rolki | Nasza ocena |
+| --- | --- |
+| „Najwyższa dniówka 875 zł", „możesz zarobić 5 tys. miesięcznie" | **Nie.** To konkretna obietnica zarobku bez podstawy. |
+| „Załóż anonimowe konto, zablokuj znajomych i rodzinę" | **Nie.** Zachęta do ukrywania działalności przed bliskimi. Sprzedajemy pod własną firmą. |
+| „Sprzedaję tylko 16 sztuk" | **Nie**, jeśli limit jest wymyślony. Sztuczny niedobór to nieuczciwa praktyka rynkowa. |
+| Produkt cyfrowy zrobiony w jeden wieczór + link w komentarzu | **Tak** — to jedyny element wart przepisania (niżej). |
+
+### Dlaczego obietnice zarobku są u nas wykluczone
+
+- Ustawa o przeciwdziałaniu nieuczciwym praktykom rynkowym: podanie nieprawdziwej informacji
+  o korzyściach, której nie da się udokumentować, jest praktyką wprowadzającą w błąd (art. 5).
+  Ciężar wykazania prawdziwości leży po naszej stronie, nie po stronie odbiorcy.
+- Art. 7 pkt 14 tej samej ustawy zakazuje systemów, w których zarabia się głównie na
+  **wprowadzaniu kolejnych osób**, a nie na sprzedaży. Dlatego w każdym materiale ambasadorskim
+  musi paść zdanie: **prowizja naliczana jest od faktycznych transakcji, nie od rejestracji**.
+  To nie jest ozdobnik prawny — to zdanie odróżnia nasz model od tego, co promuje tamto konto.
+- Przy pokazywaniu jakiejkolwiek kwoty podajemy, **czego dotyczy i z czego wynika** (np. prowizja
+  policzona z ceny za dobę), a nie „ile ktoś zarobił".
+
+### Element, który warto przepisać: produkt cyfrowy jako wejście
+
+Tamto konto sprzedaje plik za ok. 400 zł. Mechanizm jest legalny — problemem jest wyłącznie
+sposób obiecywania. U nas ten sam mechanizm ma sens w dwóch miejscach:
+
+1. **Dla właścicieli obiektów — bezpłatnie, jako powód do napisania.** Krótki PDF: „Jak wycenić
+   dobę w 2026 — kalkulator kosztów i progów rentowności" albo „Regulamin pobytu i kaucja —
+   wzór do wypełnienia". To realna wartość, którą oddajemy za kontakt, bez żadnej obietnicy.
+2. **Dla ambasadorów — jako produkt w katalogu Sunrise Market.** Materiały szkoleniowe sprzedawane
+   normalnie, z marżą i fakturą, a nie jako „sposób na dorobienie". Cena jawna, bez limitów sztuk,
+   bez licznika „zostało 3".
+
+Decyzja właściciela: czy w ogóle wchodzimy w produkty cyfrowe w katalogu — jeśli tak, to
+podlegają tym samym zasadom marży co reszta asortymentu.
+
 ## Do decyzji właściciela
 
 - Czy prowadzimy to z konta Sunrise Market, czy zakładamy osobne konto pod noclegi.
