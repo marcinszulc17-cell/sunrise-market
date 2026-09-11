@@ -68,7 +68,8 @@ export default function DlaObiektow() {
           <div className="mt-3 grid gap-3 sm:grid-cols-2">
             {([
               ["calendar", "Kalendarz dostępności", "Ustalasz doby, ceny sezonowe, minimalny i maksymalny pobyt oraz blokady. Wyszukiwarka pokazuje gościom wyłącznie terminy naprawdę wolne."],
-              ["user", "Liczba gości i doba hotelowa", "Maksymalna liczba osób, godziny zameldowania i wymeldowania oraz udogodnienia (wifi, parking, śniadanie, basen, zwierzęta) — filtrowane po stronie bazy."],
+              ["calendar", "Synchronizacja z Booking i Airbnb (iCal)", "Wklejasz u nas link do kalendarza z innego portalu, a nasz link wklejasz tam. Zajęte terminy wymieniają się w obie strony, odświeżanie co pół godziny. Przenoszą się terminy, nie ceny."],
+              ["user", "Pokoje, łóżka i zasady pobytu", "Sypialnie, łazienki, rodzaje łóżek, metraż, liczba gości, doba hotelowa, cisza nocna, zwierzęta, palenie, imprezy i sposób odbioru kluczy — wszystko widoczne dla gościa przed rezerwacją."],
               ["shield", "Pieniądze pod ochroną", "Gość płaci przy rezerwacji, Ty dostajesz wypłatę po pobycie. Możesz pobierać kaucję zwrotną i opłatę za sprzątanie."],
               ["cart", "Rezerwacja natychmiastowa albo na potwierdzenie", "Sam decydujesz, czy termin blokuje się od razu, czy najpierw go akceptujesz."],
               ["sun", "Gość z cashbackiem", "Każda rezerwacja zwraca gościowi 3% na portfel Sunrise Pay — to nasz koszt pozyskania, nie Twój."],
@@ -114,7 +115,8 @@ export default function DlaObiektow() {
           <h2 className="font-semibold">Czego jeszcze nie mamy — mówimy wprost</h2>
           <ul className="mt-2 grid gap-1.5 text-sm leading-6" style={{ color: "var(--mut)" }}>
             <li>· Katalog noclegowy dopiero budujemy — pierwsze obiekty mają przewagę widoczności, ale i mniejszy ruch niż na dużych portalach.</li>
-            <li>· Nie mamy jeszcze automatycznej synchronizacji kalendarza z Booking.com i Airbnb. Jeśli wystawiasz się też tam, na razie blokady trzeba wprowadzać u nas ręcznie.</li>
+            <li>· Synchronizacja kalendarzy działa, ale nie jest natychmiastowa: my odpytujemy co pół godziny, a portale odświeżają nasz link w swoim tempie. Przy terminach last minute pilnuj kalendarza ręcznie.</li>
+            <li>· Wymieniamy same terminy — ceny i zasady ustawiasz w każdym serwisie osobno. Tak działa iCal wszędzie, nie tylko u nas.</li>
             <li>· Nie pobieramy opłat za wystawienie ani za zapytania — zarabiamy wyłącznie na zrealizowanych rezerwacjach.</li>
           </ul>
         </section>

@@ -82,7 +82,8 @@ export default async function handler(req: Request): Promise<Response> {
   return new Response(L.join("\r\n") + "\r\n", {
     headers: {
       "content-type": "text/calendar; charset=utf-8",
-      "cache-control": "public, max-age=300",
+      // Krótki cache: kalendarz ma być świeży, bo z opóźnienia biorą się podwójne rezerwacje.
+      "cache-control": "public, max-age=60",
       "x-robots-tag": "noindex, nofollow",
     },
   });
