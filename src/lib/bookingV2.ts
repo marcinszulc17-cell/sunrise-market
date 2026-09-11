@@ -119,18 +119,21 @@ export async function createBookingHoldV2(params: {
   serviceId?: string | null;
   resourceId?: string | null;
   guests?: number | null;
+  withPet?: boolean;
 }): Promise<BookingHoldV2> {
   // MySunrise is the identity hub. Booking can only start for an eligible MySunrise account.
   await refreshCustomerAccess();
 
-  // v3 zapisuje liczbę gości i — przy wycenie za osobę — mnoży przez nią czynsz.
-  const { data, error } = await supabase.schema("market").rpc("create_booking_hold_v3", {
+  // v4 liczy komplet: czynsz (także za osobę), dopłatę za dodatkowe osoby,
+  // opłatę miejscową, opłatę za zwierzę i sprzątanie — tą samą arytmetyką co podgląd.
+  const { data, error } = await supabase.schema("market").rpc("create_booking_hold_v4", {
     p_offer: params.offerId,
     p_starts_at: params.startsAt.toISOString(),
     p_ends_at: params.endsAt?.toISOString() ?? null,
     p_service: params.serviceId ?? null,
     p_resource: params.resourceId ?? null,
     p_guests: params.guests ?? null,
+    p_with_pet: params.withPet ?? false,
   });
   if (error) throw error;
   const row = (data as BookingHoldV2[] | null)?.[0];
@@ -164,5 +167,31 @@ export async function bookingDailyQuoteV2(
   return {
     days: Number(row?.days ?? 0), base: Number(row?.base ?? 0),
     perPerson: Boolean(row?.per_person), guests: Number(row?.guests ?? guests ?? 1),
+  };
+}
+// ── Pełna wycena pobytu (noclegi) ─────────────────────────────────────────
+// Rozbicie na składniki, żeby gość widział, z czego wynika kwota: czynsz, dopłata
+// za osoby ponad limit w cenie, opłata miejscowa, opłata za zwierzę, sprzątanie.
+// Tę samą funkcję wykonuje blokada terminu, więc podgląd nie rozjedzie się z płatnością.
+export type StayQuoteFull = {
+  days: number; guests: number; per_person: boolean;
+  rent: number; extra_person: number; city_tax: number; pet_fee: number;
+  cleaning: number; deposit: number; total: number;
+};
+export async function bookingStayQuote(
+  offerId: string, fromDay: string, toDay: string, guests: number, withPet: boolean,
+): Promise<StayQuoteFull | null> {
+  if (!fromDay || !toDay || toDay <= fromDay) return null;
+  const { data, error } = await supabase.schema("market").rpc("booking_stay_quote", {
+    p_offer: offerId, p_from: fromDay, p_to: toDay, p_guests: guests, p_with_pet: withPet,
+  });
+  if (error) throw error;
+  const row = (data as StayQuoteFull[] | null)?.[0];
+  if (!row) return null;
+  return {
+    days: Number(row.days), guests: Number(row.guests), per_person: Boolean(row.per_person),
+    rent: Number(row.rent), extra_person: Number(row.extra_person), city_tax: Number(row.city_tax),
+    pet_fee: Number(row.pet_fee), cleaning: Number(row.cleaning), deposit: Number(row.deposit),
+    total: Number(row.total),
   };
 }

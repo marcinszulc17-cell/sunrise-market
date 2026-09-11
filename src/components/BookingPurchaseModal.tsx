@@ -5,6 +5,8 @@ import { EMPTY_RENTER, RENTAL_AGREEMENT_VERSION, rentalAgreementText, sha256Text
 import {
   bookingAvailableSlotsV2,
   bookingDailyQuoteV2,
+  bookingStayQuote,
+  type StayQuoteFull,
   bookingPublicCatalogV2,
   bookingUnavailableDaysV2,
   createBookingHoldV2,
@@ -44,6 +46,8 @@ export default function BookingPurchaseModal({ offerId, config, open, onClose }:
   // dla właściciela (i pilnuje limitu miejsc). Zapisujemy ją przy rezerwacji.
   const [guests, setGuests] = useState(2);
   const [perPerson, setPerPerson] = useState(false);
+  const [withPet, setWithPet] = useState(false);
+  const [stayQuote, setStayQuote] = useState<StayQuoteFull | null>(null);
   const [rentalBase, setRentalBase] = useState(0);
   const [rentalUnits, setRentalUnits] = useState(0);
   const [unavailableDays, setUnavailableDays] = useState<string[]>([]);
@@ -101,6 +105,8 @@ export default function BookingPurchaseModal({ offerId, config, open, onClose }:
   // Limit miejsc bierzemy z katalogu oferty; brak limitu = obiekt nie podał pojemności,
   // więc nie pytamy o liczbę osób (zamiast zgadywać).
   const maxGuests = Number((catalog?.config as any)?.max_guests ?? 0) || 0;
+  // Opłatę za zwierzę pokazujemy tylko wtedy, gdy obiekt ją ustawił i zwierzęta są dozwolone.
+  const petFeeShown = Number((catalog?.config as any)?.pet_fee_per_night ?? 0) > 0 && (catalog?.config as any)?.pets_allowed !== false;
 
   useEffect(() => {
     if (!open) return;
@@ -172,13 +178,18 @@ export default function BookingPurchaseModal({ offerId, config, open, onClose }:
     }
     setError(null);
     bookingDailyQuoteV2(offerId, fromDay, toDay, resourceId, guests)
-      .then((q) => { setRentalUnits(q.days); setRentalBase(q.base); setPerPerson(q.perPerson); })
+      .then(async (q) => {
+        setRentalUnits(q.days); setRentalBase(q.base); setPerPerson(q.perPerson);
+        // Rozbicie opłat pokazujemy tylko tam, gdzie liczy je serwer (oferta bez zasobu).
+        if (!resourceId) { try { setStayQuote(await bookingStayQuote(offerId, fromDay, toDay, guests, withPet)); } catch { setStayQuote(null); } }
+        else setStayQuote(null);
+      })
       .catch((e) => {
         setRentalBase(0);
         setRentalUnits(0);
         setError(e?.message || "Nie udało się obliczyć czynszu za wybrany okres");
       });
-  }, [open, offerId, activeConfig.booking_type, fromDay, toDay, resourceId, guests]);
+  }, [open, offerId, activeConfig.booking_type, fromDay, toDay, resourceId, guests, withPet]);
 
   const days = useMemo(
     () => Array.from(new Map(slots.map((s) => [dayKey(s.starts_at, activeConfig.timezone), s.starts_at])).entries()),
@@ -264,7 +275,7 @@ export default function BookingPurchaseModal({ offerId, config, open, onClose }:
         if (rentalUnits > activeConfig.max_units) throw new Error(`Maksymalny okres to ${activeConfig.max_units} dób`);
         if (!renterReady) throw new Error("Uzupełnij dane najemcy (imię i nazwisko, telefon, dokument" + (isVehicle ? ", prawo jazdy" : "") + ")");
         if (!agreementAccepted) throw new Error("Zaakceptuj umowę najmu — bez tego nie można opłacić rezerwacji");
-        hold = await createBookingHoldV2({ offerId, startsAt: dateAtNoonUtc(fromDay), endsAt: dateAtNoonUtc(toDay), resourceId, guests });
+        hold = await createBookingHoldV2({ offerId, startsAt: dateAtNoonUtc(fromDay), endsAt: dateAtNoonUtc(toDay), resourceId, guests, withPet });
         const { error: agreementError } = await supabase.rpc("accept_rental_agreement", { p_booking: hold.booking_id, p_version: RENTAL_AGREEMENT_VERSION, p_sha256: await sha256Text(agreementText), p_renter: renter, p_user_agent: navigator.userAgent, p_text: agreementText });
         if (agreementError) throw new Error(agreementError.message);
       }
@@ -361,6 +372,15 @@ export default function BookingPurchaseModal({ offerId, config, open, onClose }:
                   </div>
                 </div>
               )}
+              {petFeeShown && (
+                <label className="mb-3 flex items-center justify-between rounded-2xl px-4 py-3" style={{ background: "var(--glass)", border: "1px solid var(--line)" }}>
+                  <span className="text-sm">
+                    <b>Przyjadę ze zwierzęciem</b>
+                    <span className="block text-xs" style={{ color: "var(--mut)" }}>Opłata {zl(Number((activeConfig as any).pet_fee_per_night ?? 0))} za dobę, doliczana do rezerwacji.</span>
+                  </span>
+                  <input type="checkbox" checked={withPet} onChange={(e) => setWithPet(e.target.checked)} />
+                </label>
+              )}
               {availabilityLoading ? <Info>Sprawdzam zajęte i zablokowane dni{selectedResource ? ` dla ${selectedResource.name}` : ""}…</Info> : <DailyRangeCalendar
                 minDate={today}
                 maxDate={latest}
@@ -378,7 +398,16 @@ export default function BookingPurchaseModal({ offerId, config, open, onClose }:
               </div>
               {fromDay && toDay && rentalUnits === 0 && !error && <Info>Sprawdzam dostępność i obliczam czynsz za wybrany okres…</Info>}
               {lengthDiscounts.length > 0 && <div className="mt-3 text-xs" style={{ color: "var(--green)" }}>Rabat za dłuższy najem: {lengthDiscounts.map((d) => `od ${d.min_days} dni −${d.pct}%`).join(" · ")}</div>}
-              {rentalUnits > 0 && <div className="mt-4 rounded-2xl p-4" style={{ background: "var(--glass)", border: "1px solid var(--line)" }}><PriceRow label={`Czynsz za najem · ${rentalUnitsLabel(rentalUnits)}${perPerson ? ` · ${guests} os.` : ""}${appliedDiscount ? ` · rabat −${appliedDiscount}%` : ""}`} value={rentalBase} strong />{fees > 0 && <PriceRow label="Opłata dodatkowa" value={fees} />}{deposit > 0 && <PriceRow label="Kaucja zwrotna" value={deposit} muted />}</div>}
+              {rentalUnits > 0 && <div className="mt-4 rounded-2xl p-4" style={{ background: "var(--glass)", border: "1px solid var(--line)" }}>
+                <PriceRow label={`Czynsz za najem · ${rentalUnitsLabel(rentalUnits)}${perPerson ? ` · ${guests} os.` : ""}${appliedDiscount ? ` · rabat −${appliedDiscount}%` : ""}`} value={rentalBase} strong />
+                {stayQuote ? <>
+                  {stayQuote.extra_person > 0 && <PriceRow label={`Dopłata za dodatkowe osoby · ${rentalUnitsLabel(rentalUnits)}`} value={stayQuote.extra_person} />}
+                  {stayQuote.city_tax > 0 && <PriceRow label={`Opłata miejscowa · ${guests} os. × ${rentalUnitsLabel(rentalUnits)}`} value={stayQuote.city_tax} />}
+                  {stayQuote.pet_fee > 0 && <PriceRow label="Opłata za zwierzę" value={stayQuote.pet_fee} />}
+                  {stayQuote.cleaning > 0 && <PriceRow label="Sprzątanie" value={stayQuote.cleaning} />}
+                </> : fees > 0 && <PriceRow label="Opłata dodatkowa" value={fees} />}
+                {deposit > 0 && <PriceRow label="Kaucja zwrotna" value={deposit} muted />}
+              </div>}
             </section>
           </>}
 

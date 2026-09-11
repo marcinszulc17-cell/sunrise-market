@@ -52,6 +52,8 @@ export default function SellerBookingSetup(){
  // Polityka anulowania decyduje o kwocie zwrotu dla gościa — jest wpięta w zwroty,
  // nie jest samym opisem. Gość widzi ją przed płatnością.
  const [cancelPolicy,setCancelPolicy]=useState<"flexible"|"moderate"|"strict"|"non_refundable">("moderate");
+ // Opłaty pobytowe wchodzą do kwoty płaconej przez gościa — nie są opisem.
+ const [stayFees,setStayFees]=useState({cityTax:0,petFee:0,baseGuests:0,extraPerson:0});
  const [windows,setWindows]=useState<BookingWindow[]>([]); const [active,setActive]=useState(false);
 
  async function load(){
@@ -92,6 +94,12 @@ export default function SellerBookingSetup(){
     }));
     setPriceMode(row.price_mode==="per_person"?"per_person":"per_night");
     if(["flexible","moderate","strict","non_refundable"].includes(String(row.cancellation_policy)))setCancelPolicy(row.cancellation_policy);
+    setStayFees({
+     cityTax:Number(row.city_tax_per_person_night||0),
+     petFee:Number(row.pet_fee_per_night||0),
+     baseGuests:Number(row.base_guests||0),
+     extraPerson:Number(row.extra_person_fee_per_night||0),
+    });
    }
   }
  }
@@ -209,6 +217,18 @@ export default function SellerBookingSetup(){
      <label className="mt-3 block text-sm">Dodatkowe zasady
       <textarea rows={2} className={`${input} mt-1`} style={style} placeholder="np. Zakaz wnoszenia rowerów do domku. Segregacja odpadów." value={stay.rules} onChange={e=>setStay({...stay,rules:e.target.value})}/>
      </label>
+
+     <div className="mt-5 text-sm font-semibold">Opłaty doliczane do rezerwacji</div>
+     <p className="mt-1 text-xs" style={{color:"var(--mut)"}}>Gość widzi każdą z nich osobno przed płatnością i płaci je razem z czynszem. Zostaw 0, jeśli nie pobierasz.</p>
+     <div className="mt-3 grid gap-3 sm:grid-cols-2">
+      <label className="text-sm">Opłata miejscowa (zł za osobę za dobę)<input type="number" min="0" step="0.01" className={`${input} mt-1`} style={style} value={stayFees.cityTax||""} onChange={e=>setStayFees({...stayFees,cityTax:Number(e.target.value)})}/><span className="mt-1 block text-xs" style={{color:"var(--mut)"}}>Tyle, ile pobiera Twoja gmina. Nie wymyślaj kwoty — to danina publiczna.</span></label>
+      <label className="text-sm">Opłata za zwierzę (zł za dobę)<input type="number" min="0" step="0.01" className={`${input} mt-1`} style={style} value={stayFees.petFee||""} onChange={e=>setStayFees({...stayFees,petFee:Number(e.target.value)})}/><span className="mt-1 block text-xs" style={{color:"var(--mut)"}}>Widoczna tylko wtedy, gdy zwierzęta są dozwolone.</span></label>
+      {priceMode==="per_night"&&<>
+       <label className="text-sm">Cena zawiera pobyt dla … osób<input type="number" min="0" max="30" className={`${input} mt-1`} style={style} value={stayFees.baseGuests||""} onChange={e=>setStayFees({...stayFees,baseGuests:Number(e.target.value)})}/></label>
+       <label className="text-sm">Dopłata za każdą kolejną osobę (zł za dobę)<input type="number" min="0" step="0.01" className={`${input} mt-1`} style={style} value={stayFees.extraPerson||""} onChange={e=>setStayFees({...stayFees,extraPerson:Number(e.target.value)})}/></label>
+      </>}
+     </div>
+     <button disabled={busy} onClick={()=>call("seller_booking_set_stay_fees",{p_offer:offerId,p_city_tax:stayFees.cityTax,p_pet_fee:stayFees.petFee,p_base_guests:priceMode==="per_night"?stayFees.baseGuests:null,p_extra_person:priceMode==="per_night"?stayFees.extraPerson:0})} className="mt-3 w-full rounded-xl py-2.5 text-sm font-semibold" style={{border:"1px solid var(--gold)",color:"var(--gold)"}}>Zapisz opłaty</button>
 
      <div className="mt-5 text-sm font-semibold">Polityka anulowania</div>
      <p className="mt-1 text-xs" style={{color:"var(--mut)"}}>Gość widzi ją przed płatnością, a system sam wylicza z niej zwrot przy anulowaniu. Kaucja i opłata za sprzątanie wracają zawsze — pobyt się nie odbył.</p>
