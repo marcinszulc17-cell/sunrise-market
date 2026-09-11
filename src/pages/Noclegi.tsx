@@ -153,7 +153,7 @@ function EmptyState({ hasFilters, onReset }: { hasFilters: boolean; onReset: () 
     <p className="mx-auto mt-2 max-w-xl text-sm" style={{ color: "var(--mut)" }}>
       {hasFilters
         ? "Spróbuj innego terminu, mniejszej liczby osób albo zdejmij część udogodnień. Pokazujemy wyłącznie obiekty naprawdę wolne w wybranych dniach."
-        : "Zapraszamy właścicieli domków, apartamentów i kwater. Prowizja 7,9% zamiast kilkunastu procent, wypłata na Sunrise Pay, a Twój gość dostaje 3% cashbacku."}
+        : <>Zapraszamy właścicieli domków, apartamentów i kwater. Prowizja 7,9% zamiast kilkunastu procent, wypłata na Sunrise Pay, a Twój gość dostaje 3% cashbacku. <Link to="/dla-obiektow" className="underline" style={{ color: "var(--gold)" }}>Zobacz warunki dla obiektów ›</Link></>}
     </p>
     <div className="mt-5 flex flex-wrap justify-center gap-3">
       {hasFilters && <button onClick={onReset} className="flex h-11 items-center rounded-xl px-5 text-sm font-semibold" style={CARD}>Wyczyść filtry</button>}
