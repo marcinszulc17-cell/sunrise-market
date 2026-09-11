@@ -99,9 +99,11 @@ export default function PartnerDashboard() {
     </div>
 
     <div className="mb-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-      <StatTile to="/sprzedawca/oferty" tint="amber" icon="bag" value={String(data.offers?.active || 0)} label="Aktywne ogłoszenia" sub={`Wszystkie: ${data.offers?.total || 0}`} />
+      <StatTile to="/sprzedawca/oferty" tint="amber" icon="bag" value={String(data.offers?.active || 0)} label="Aktywne ogłoszenia" sub={`Wszystkie: ${data.offers?.total || 0}${offers && offers.length ? ` · ${offers.reduce((n, o) => n + Number(o.views || 0), 0).toLocaleString("pl-PL")} wyświetleń` : ""}`} />
       <StatTile to="/sprzedawca/zamowienia" tint="blue" icon="cart" value={String(data.sales?.count || 0)} label="Opłacone sprzedaże" sub={attention.pending_fulfillment > 0 ? `${attention.pending_fulfillment} do realizacji` : "Wszystko zrealizowane"} />
-      <StatTile to="/sprzedawca/rezerwacje" tint="violet" icon="calendar" value="→" label="Rezerwacje" sub="Terminy usług i wynajmu" />
+      {/* Makieta 2026-09-11 pokazuje tu liczbę, nie strzałkę: pokazujemy, ile ofert działa
+          w trybie rezerwacyjnym (usługa na termin / wynajem na doby). */}
+      <StatTile to="/sprzedawca/rezerwacje" tint="violet" icon="calendar" value={String((offers ?? []).filter((o) => o.purchase_mode === "appointment" || o.purchase_mode === "daily").length)} label="Oferty rezerwacyjne" sub="Terminy usług i wynajmu" />
       <StatTile to="/sprzedawca/rozliczenia" tint="green" icon="sun" value={pln(totalIncome)} label="Łącznie zarobione" sub={`Ten miesiąc: ${pln(data.sales?.earned_month)}`} />
     </div>
 

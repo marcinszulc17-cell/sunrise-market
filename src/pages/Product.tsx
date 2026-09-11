@@ -4,7 +4,7 @@ import ShareOfferButton from "../components/ShareOfferButton";
 import MessageSellerButton from "../components/MessageSellerButton";
 import ShowPhoneButton from "../components/ShowPhoneButton";
 import LocationMap, { locationKind } from "../components/LocationMap";
-import { useParams } from "react-router-dom";
+import { Link, useParams } from "react-router-dom";
 import SwipeGallery from "../components/SwipeGallery";
 import { addReview, getOffer, offerImages, offerReviews, offerSellerBadge, similarOffers, trackView, type SellerBadge } from "../lib/api";
 import { addToCart, cleanTitle, isTestProduct } from "../lib/cart";
@@ -145,6 +145,21 @@ export default function Product() {
             {sellerBadge?.is_private && <div className="rounded-xl px-3 py-2 text-xs" style={{ background: "rgba(143,176,238,.08)", border: "1px solid rgba(143,176,238,.25)", color: "var(--mut)" }}>
               Kupujesz od <b style={{ color: "var(--ink)" }}>osoby prywatnej</b>, nie od firmy: nie przysługuje zwrot w ciągu 14 dni ani gwarancja producenta. Zostaje rękojmia z Kodeksu cywilnego, a płatność i tak chroni <b style={{ color: "var(--ink)" }}>Ochrona Kupujących Sunrise</b> — sprzedający dostaje pieniądze dopiero po Twoim potwierdzeniu odbioru.
             </div>}
+            {/* Karta sprzedawcy — wg makiety właściciela 2026-09-11. Dane mamy od dawna
+                (nazwa, ocena, liczba opinii, data dołączenia z offer_seller_badge), brakowało widoku. */}
+            <Link to={`/sprzedawcy/${o.seller_id}`} className="flex items-center gap-3 rounded-2xl p-4 transition hover:-translate-y-0.5" style={CARD}>
+              <span className="grid h-12 w-12 shrink-0 place-items-center rounded-full text-sm font-bold" style={{ background: "rgba(245,166,35,.16)", border: "1px solid rgba(245,166,35,.35)", color: "var(--gold)" }}>
+                {(o.seller || "?").split(/\s+/).slice(0, 2).map((w) => w[0]).join("").toUpperCase()}
+              </span>
+              <span className="min-w-0 flex-1">
+                <span className="block truncate font-semibold">{o.seller}</span>
+                <span className="mt-0.5 block text-xs" style={{ color: "var(--mut)" }}>
+                  {sellerBadge?.since ? `Na Sunrise Market od ${new Date(sellerBadge.since).getFullYear()}` : sellerBadge?.is_private ? "Sprzedawca prywatny" : "Sprzedawca"}
+                </span>
+                {o.review_count > 0 && <span className="mt-1 block text-xs" style={{ color: "var(--gold)" }}>★ {o.avg_rating.toFixed(1)} <span style={{ color: "var(--mut)" }}>({o.review_count} {o.review_count === 1 ? "opinia" : o.review_count < 5 ? "opinie" : "opinii"})</span></span>}
+              </span>
+              <span className="shrink-0 text-xs font-semibold" style={{ color: "var(--gold)" }}>Zobacz wszystkie ogłoszenia ›</span>
+            </Link>
             {isTest && <div className="rounded-xl px-3 py-2 text-sm" style={{ background: "rgba(242,92,176,.12)", color: "#F8A8D2", border: "1px solid rgba(242,92,176,.3)" }}><b>Produkt testowy.</b> Pozycja z katalogu w przygotowaniu.</div>}
             {isBooking && <div className="rounded-xl px-3 py-2 text-sm" style={{ background: "rgba(56,224,240,.08)", border: "1px solid rgba(56,224,240,.2)" }}><b>{purchaseMode === "daily" ? "🗓️ Wynajem" : "📅 Rezerwacja terminu"}</b><div className="mt-1 text-xs" style={{ color: "var(--mut)" }}>{purchaseMode === "daily" ? "Wybierz daty od–do. System sprawdzi dostępność i pokaże czynsz za cały okres oraz ewentualną kaucję." : "Wybierz dostępny dzień i godzinę, a następnie opłać rezerwację."}</div></div>}
 
