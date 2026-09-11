@@ -36,7 +36,16 @@ export default function SellerBookingSetup(){
  const [discountDraft,setDiscountDraft]=useState({min_days:4,pct:5});
  const [extras,setExtras]=useState({minUnits:1,maxUnits:30,cleaning:0,deposit:0,instant:true});
  // Nocleg: pojemność, doba hotelowa i udogodnienia (decyzja właściciela 2026-09-10 — „ma być jak na Booking").
- const [stay,setStay]=useState<{guests:number;checkin:string;checkout:string;amenities:string[]}>({guests:2,checkin:"15:00",checkout:"11:00",amenities:[]});
+ // Nocleg — komplet danych, których gość szuka na Bookingu: pojemność, doba hotelowa,
+ // struktura (sypialnie, łazienki, łóżka, metraż), zasady pobytu i odbiór kluczy.
+ type Stay={guests:number;checkin:string;checkout:string;amenities:string[];
+  bedrooms:number;bathrooms:number;area:number;bedDouble:number;bedSingle:number;bedSofa:number;
+  quietFrom:string;quietTo:string;smoking:boolean;parties:boolean;children:boolean;pets:boolean;
+  keys:string;rules:string};
+ const [stay,setStay]=useState<Stay>({guests:2,checkin:"15:00",checkout:"11:00",amenities:[],
+  bedrooms:1,bathrooms:1,area:0,bedDouble:1,bedSingle:0,bedSofa:0,
+  quietFrom:"22:00",quietTo:"07:00",smoking:false,parties:false,children:true,pets:false,
+  keys:"",rules:""});
  const [windows,setWindows]=useState<BookingWindow[]>([]); const [active,setActive]=useState(false);
 
  async function load(){
@@ -52,13 +61,30 @@ export default function SellerBookingSetup(){
   }
   if(String(c?.offer?.category_slug||"").startsWith("noclegi")){
    const {data:st}=await supabase.schema("market").rpc("seller_stay_settings",{p_offer:offerId});
-   const row=(st??null) as {max_guests?:number;checkin_from?:string;checkout_until?:string;amenities?:string[]}|null;
-   if(row)setStay({
-    guests:Number(row.max_guests||2),
-    checkin:String(row.checkin_from||"15:00").slice(0,5),
-    checkout:String(row.checkout_until||"11:00").slice(0,5),
-    amenities:Array.isArray(row.amenities)?row.amenities:[],
-   });
+   const row=(st??null) as Record<string,any>|null;
+   if(row){
+    const beds=(row.beds??{}) as Record<string,number>;
+    setStay(prev=>({...prev,
+     guests:Number(row.max_guests||2),
+     checkin:String(row.checkin_from||"15:00").slice(0,5),
+     checkout:String(row.checkout_until||"11:00").slice(0,5),
+     amenities:Array.isArray(row.amenities)?row.amenities:[],
+     bedrooms:Number(row.bedrooms??1),
+     bathrooms:Number(row.bathrooms??1),
+     area:Number(row.area_m2??0),
+     bedDouble:Number(beds.double??0),
+     bedSingle:Number(beds.single??0),
+     bedSofa:Number(beds.sofa??0),
+     quietFrom:row.quiet_hours_from?String(row.quiet_hours_from).slice(0,5):"22:00",
+     quietTo:row.quiet_hours_to?String(row.quiet_hours_to).slice(0,5):"07:00",
+     smoking:Boolean(row.smoking_allowed),
+     parties:Boolean(row.parties_allowed),
+     children:row.children_allowed===null||row.children_allowed===undefined?true:Boolean(row.children_allowed),
+     pets:Boolean(row.pets_allowed),
+     keys:String(row.checkin_instructions??""),
+     rules:String(row.house_rules_extra??""),
+    }));
+   }
   }
  }
  useEffect(()=>{load()},[offerId]);
@@ -128,7 +154,51 @@ export default function SellerBookingSetup(){
      </div>
      <div className="mt-4 text-sm font-semibold">Udogodnienia</div>
      <div className="mt-2 flex flex-wrap gap-2">{AMENITIES.map(a=>{const on=stay.amenities.includes(a.id);return <button type="button" key={a.id} onClick={()=>setStay({...stay,amenities:on?stay.amenities.filter(x=>x!==a.id):[...stay.amenities,a.id]})} className="min-h-[40px] rounded-full px-3 py-2 text-sm" style={on?{background:"rgba(245,166,35,.14)",border:"1px solid var(--gold)",color:"var(--gold)"}:{background:"rgba(255,255,255,.04)",border:"1px solid var(--line)",color:"var(--ink)"}}>{a.icon} {a.label}</button>})}</div>
-     <button disabled={busy} onClick={()=>call("seller_booking_save_stay",{p_offer:offerId,p_max_guests:stay.guests,p_checkin_from:stay.checkin||null,p_checkout_until:stay.checkout||null,p_amenities:stay.amenities})} className="mt-4 w-full rounded-xl py-3 font-semibold text-black" style={{background:"linear-gradient(135deg,#E8891A,#F5A623)"}}>Zapisz dane noclegu</button>
+     <div className="mt-5 text-sm font-semibold">Co jest w środku</div>
+     <p className="mt-1 text-xs" style={{color:"var(--mut)"}}>Gość porównuje obiekty po liczbie sypialni i łóżek — bez tego trudno mu podjąć decyzję.</p>
+     <div className="mt-3 grid gap-3 sm:grid-cols-4">
+      <label className="text-sm">Sypialnie<input type="number" min="0" max="20" className={`${input} mt-1`} style={style} value={stay.bedrooms} onChange={e=>setStay({...stay,bedrooms:Number(e.target.value)})}/></label>
+      <label className="text-sm">Łazienki<input type="number" min="0" max="20" className={`${input} mt-1`} style={style} value={stay.bathrooms} onChange={e=>setStay({...stay,bathrooms:Number(e.target.value)})}/></label>
+      <label className="text-sm">Powierzchnia (m²)<input type="number" min="0" className={`${input} mt-1`} style={style} value={stay.area||""} onChange={e=>setStay({...stay,area:Number(e.target.value)})}/></label>
+      <div className="text-sm">
+       <span>Łóżka</span>
+       <div className="mt-1 grid grid-cols-3 gap-1">
+        <label className="text-[11px]" style={{color:"var(--mut)"}}>podwójne<input type="number" min="0" max="20" className={`${input} mt-0.5`} style={style} value={stay.bedDouble} onChange={e=>setStay({...stay,bedDouble:Number(e.target.value)})}/></label>
+        <label className="text-[11px]" style={{color:"var(--mut)"}}>pojedyncze<input type="number" min="0" max="20" className={`${input} mt-0.5`} style={style} value={stay.bedSingle} onChange={e=>setStay({...stay,bedSingle:Number(e.target.value)})}/></label>
+        <label className="text-[11px]" style={{color:"var(--mut)"}}>sofa<input type="number" min="0" max="20" className={`${input} mt-0.5`} style={style} value={stay.bedSofa} onChange={e=>setStay({...stay,bedSofa:Number(e.target.value)})}/></label>
+       </div>
+      </div>
+     </div>
+
+     <div className="mt-5 text-sm font-semibold">Zasady pobytu</div>
+     <p className="mt-1 text-xs" style={{color:"var(--mut)"}}>Zobaczy je gość przed rezerwacją. Jasne zasady to mniej sporów po pobycie.</p>
+     <div className="mt-3 grid gap-3 sm:grid-cols-2">
+      <label className="text-sm">Cisza nocna od<input type="time" className={`${input} mt-1`} style={style} value={stay.quietFrom} onChange={e=>setStay({...stay,quietFrom:e.target.value})}/></label>
+      <label className="text-sm">Cisza nocna do<input type="time" className={`${input} mt-1`} style={style} value={stay.quietTo} onChange={e=>setStay({...stay,quietTo:e.target.value})}/></label>
+     </div>
+     <div className="mt-3 grid gap-2 sm:grid-cols-2">
+      {([["smoking","Palenie dozwolone"],["parties","Imprezy dozwolone"],["children","Dzieci mile widziane"],["pets","Zwierzęta dozwolone"]] as const).map(([key,label])=>(
+       <label key={key} className="flex items-center justify-between rounded-xl p-3 text-sm" style={{border:"1px solid var(--line)"}}>
+        <span>{label}</span>
+        <input type="checkbox" checked={Boolean((stay as any)[key])} onChange={e=>setStay({...stay,[key]:e.target.checked} as Stay)}/>
+       </label>
+      ))}
+     </div>
+     <label className="mt-3 block text-sm">Odbiór kluczy / zameldowanie
+      <textarea rows={2} className={`${input} mt-1`} style={style} placeholder="np. Skrzynka z kodem przy drzwiach, kod wysyłamy dzień przed przyjazdem." value={stay.keys} onChange={e=>setStay({...stay,keys:e.target.value})}/>
+     </label>
+     <label className="mt-3 block text-sm">Dodatkowe zasady
+      <textarea rows={2} className={`${input} mt-1`} style={style} placeholder="np. Zakaz wnoszenia rowerów do domku. Segregacja odpadów." value={stay.rules} onChange={e=>setStay({...stay,rules:e.target.value})}/>
+     </label>
+
+     <button disabled={busy} onClick={()=>call("seller_booking_save_stay_v2",{
+       p_offer:offerId,p_max_guests:stay.guests,p_checkin_from:stay.checkin||null,p_checkout_until:stay.checkout||null,
+       p_amenities:stay.amenities,p_bedrooms:stay.bedrooms,p_bathrooms:stay.bathrooms,
+       p_beds:{double:stay.bedDouble,single:stay.bedSingle,sofa:stay.bedSofa},
+       p_area_m2:stay.area||null,p_quiet_from:stay.quietFrom||null,p_quiet_to:stay.quietTo||null,
+       p_smoking:stay.smoking,p_parties:stay.parties,p_children:stay.children,p_pets:stay.pets,
+       p_checkin_instructions:stay.keys||null,p_house_rules:stay.rules||null,
+     })} className="mt-4 w-full rounded-xl py-3 font-semibold text-black" style={{background:"linear-gradient(135deg,#E8891A,#F5A623)"}}>Zapisz dane noclegu</button>
     </Card>}
     {isDaily&&<Card><h2 className="text-xl font-semibold">Ceny sezonowe</h2><p className="mt-1 text-sm" style={{color:"var(--mut)"}}>Weekend, święta, wakacje, sezon wysoki — cena za dobę może zmieniać się zależnie od daty.</p><div className="mt-4 space-y-2">{cat.rates.map(r=><div key={r.id} className="flex items-center gap-3 rounded-xl p-3" style={{border:"1px solid var(--line)"}}><div className="flex-1"><b>{r.label||"Stawka specjalna"}</b><div className="text-xs" style={{color:"var(--mut)"}}>{r.starts_on} → {r.ends_on} · {r.price_per_unit?`${Number(r.price_per_unit).toLocaleString("pl-PL")} zł/dobę`:"cena bazowa"}</div></div><button onClick={()=>call("seller_booking_rate_delete",{p_offer:offerId,p_id:r.id})}>Usuń</button></div>)}</div><div className="mt-4 grid gap-2 sm:grid-cols-2"><input type="date" className={input} style={style} value={rate.from} onChange={e=>setRate({...rate,from:e.target.value})}/><input type="date" className={input} style={style} value={rate.to} onChange={e=>setRate({...rate,to:e.target.value})}/><input type="number" className={input} style={style} placeholder="Cena za dobę" value={rate.price||""} onChange={e=>setRate({...rate,price:Number(e.target.value)})}/><input className={input} style={style} placeholder="Nazwa, np. Wakacje" value={rate.label} onChange={e=>setRate({...rate,label:e.target.value})}/></div><button disabled={busy||!rate.from||!rate.to} onClick={async()=>{if(await call("seller_booking_rate_upsert",{p_offer:offerId,p_id:null,p_from:rate.from,p_to:rate.to,p_price:rate.price||null,p_min_units:rate.minUnits||null,p_label:rate.label,p_priority:0,p_active:true}))setRate({from:"",to:"",price:0,minUnits:1,label:""})}} className="mt-3 w-full rounded-xl py-2.5 font-semibold" style={{border:"1px solid var(--gold)",color:"var(--gold)"}}>+ Dodaj stawkę</button></Card>}
    </div>

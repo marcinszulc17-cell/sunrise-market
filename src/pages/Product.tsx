@@ -6,7 +6,7 @@ import ShowPhoneButton from "../components/ShowPhoneButton";
 import LocationMap, { locationKind } from "../components/LocationMap";
 import { Link, useParams } from "react-router-dom";
 import SwipeGallery from "../components/SwipeGallery";
-import { addReview, getOffer, offerImages, offerReviews, offerSellerBadge, similarOffers, trackView, type SellerBadge } from "../lib/api";
+import { addReview, getOffer, offerImages, offerReviews, offerSellerBadge, offerStayDetails, similarOffers, trackView, type SellerBadge, type StayDetails } from "../lib/api";
 import { addToCart, cleanTitle, isTestProduct } from "../lib/cart";
 import { zl } from "../lib/money";
 import { subscriptionInfo } from "../lib/subscription";
@@ -66,6 +66,7 @@ export default function Product() {
   // Kto sprzedaje: firma czy osoba prywatna. Od tego zależy prawo do zwrotu w 14 dni,
   // więc kupujący musi to zobaczyć PRZED zakupem (regulamin §8.1a, decyzja właściciela 2026-09-10).
   const [sellerBadge, setSellerBadge] = useState<SellerBadge | null>(null);
+  const [stay, setStay] = useState<StayDetails | null>(null);
 
   const isTest = isTestProduct(o?.title);
   const shownTitle = cleanTitle(o?.title);
@@ -101,6 +102,7 @@ export default function Product() {
     supabase.auth.getUser().then(({ data }) => setAuthed(!!data.user));
     trackView(id);
     offerSellerBadge(id).then(setSellerBadge).catch(() => {});
+    offerStayDetails(id).then(setStay).catch(() => {});
     similarOffers(id, 8).then(setSimilar).catch(() => {});
   }, [id]);
 
@@ -184,6 +186,8 @@ export default function Product() {
           </div>
         </div>
 
+        <StaySection stay={stay} />
+
         {o.description && <section className="mt-10 rounded-2xl p-5 sm:p-6" style={CARD}><SectionTitle className="mb-4">Opis {isBooking ? "oferty" : "produktu"}</SectionTitle><div className="flex max-w-3xl flex-col gap-4">{o.description.split(/\n\s*\n/).filter(Boolean).map((par,i)=><p key={i} className="leading-relaxed" style={{ color: "var(--ink)" }}>{par.trim()}</p>)}</div></section>}
 
         {(features.length > 0 || Object.keys(specs).length > 0 || packing.length > 0) && <section className="mt-6 grid gap-6 md:grid-cols-2">{features.length > 0 && <div className="rounded-2xl p-5 md:col-span-2" style={CARD}><SectionTitle className="mb-4">Najważniejsze cechy</SectionTitle><ul className="flex flex-col gap-2">{features.map((f,i)=><li key={i} className="flex gap-2"><span style={{ color: "var(--green)" }}>✓</span><span>{f}</span></li>)}</ul></div>}{Object.keys(specs).length > 0 && <div className="rounded-2xl p-5" style={CARD}><SectionTitle className="mb-4">Specyfikacja</SectionTitle><div className="overflow-hidden rounded-2xl" style={{ border: "1px solid var(--line)" }}>{Object.entries(specs).map(([k,v],i)=><div key={k} className="flex justify-between gap-4 px-4 py-2.5 text-sm" style={{ background: i%2 ? "transparent" : "var(--glass)", borderBottom: "1px solid var(--line)" }}><span style={{ color: "var(--mut)" }}>{k}</span><span className="text-right font-medium">{String(v)}</span></div>)}</div></div>}{packing.length > 0 && <div className="rounded-2xl p-5" style={CARD}><SectionTitle className="mb-4">Zawartość zestawu</SectionTitle><ul className="flex flex-col gap-2">{packing.map((p,i)=><li key={i} className="flex gap-2 text-sm"><span style={{ color: "var(--gold)" }}>•</span><span>{p}</span></li>)}</ul></div>}</section>}
@@ -195,4 +199,72 @@ export default function Product() {
       </>}
     </main>
   </div>;
+}
+
+// Szczegóły pobytu przy ofercie noclegowej. Pokazujemy tylko to, co właściciel
+// faktycznie podał — pusty wiersz jest gorszy niż jego brak, bo sugeruje wiedzę,
+// której nie mamy. Zasady „tak/nie" pokazujemy tylko wtedy, gdy właściciel je ustawił.
+function StaySection({ stay }: { stay: StayDetails | null }) {
+  if (!stay) return null;
+  const hhmm = (t: string | null) => (t ? String(t).slice(0, 5) : null);
+  const beds = stay.beds || {};
+  const bedText = [
+    beds.double ? `${beds.double} × podwójne` : null,
+    beds.single ? `${beds.single} × pojedyncze` : null,
+    beds.sofa ? `${beds.sofa} × sofa` : null,
+  ].filter(Boolean).join(", ");
+
+  const facts: Array<[string, string]> = [];
+  if (stay.max_guests) facts.push(["Maksymalnie gości", String(stay.max_guests)]);
+  if (stay.bedrooms) facts.push(["Sypialnie", String(stay.bedrooms)]);
+  if (stay.bathrooms) facts.push(["Łazienki", String(stay.bathrooms)]);
+  if (bedText) facts.push(["Łóżka", bedText]);
+  if (stay.area_m2) facts.push(["Powierzchnia", `${Number(stay.area_m2).toLocaleString("pl-PL")} m²`]);
+  if (hhmm(stay.checkin_from)) facts.push(["Zameldowanie od", hhmm(stay.checkin_from)!]);
+  if (hhmm(stay.checkout_until)) facts.push(["Wymeldowanie do", hhmm(stay.checkout_until)!]);
+
+  const rules: Array<[string, boolean]> = [];
+  if (stay.children_allowed !== null) rules.push(["Dzieci mile widziane", stay.children_allowed]);
+  if (stay.pets_allowed !== null) rules.push(["Zwierzęta dozwolone", stay.pets_allowed]);
+  if (stay.smoking_allowed !== null) rules.push(["Palenie dozwolone", stay.smoking_allowed]);
+  if (stay.parties_allowed !== null) rules.push(["Imprezy dozwolone", stay.parties_allowed]);
+  const quiet = hhmm(stay.quiet_hours_from) && hhmm(stay.quiet_hours_to)
+    ? `${hhmm(stay.quiet_hours_from)}–${hhmm(stay.quiet_hours_to)}` : null;
+
+  if (!facts.length && !rules.length && !quiet && !stay.checkin_instructions && !stay.house_rules_extra) return null;
+
+  return (
+    <section className="mt-10 rounded-2xl p-5 sm:p-6" style={CARD}>
+      <SectionTitle className="mb-4">Szczegóły pobytu</SectionTitle>
+      {facts.length > 0 && (
+        <div className="grid gap-x-6 gap-y-2 sm:grid-cols-2 lg:grid-cols-3">
+          {facts.map(([k, v]) => (
+            <div key={k} className="flex items-baseline justify-between gap-3 border-b pb-2 text-sm" style={{ borderColor: "var(--line)" }}>
+              <span style={{ color: "var(--mut)" }}>{k}</span>
+              <span className="font-semibold">{v}</span>
+            </div>
+          ))}
+        </div>
+      )}
+      {(rules.length > 0 || quiet || stay.checkin_instructions || stay.house_rules_extra) && (
+        <div className="mt-6">
+          <div className="text-sm font-semibold">Zasady pobytu</div>
+          {rules.length > 0 && (
+            <div className="mt-2 flex flex-wrap gap-2">
+              {rules.map(([label, ok]) => (
+                <span key={label} className="rounded-full px-3 py-1 text-xs font-semibold" style={ok
+                  ? { background: "rgba(122,184,154,.12)", color: "var(--green)", border: "1px solid rgba(122,184,154,.3)" }
+                  : { background: "rgba(242,92,176,.10)", color: "#F25CB0", border: "1px solid rgba(242,92,176,.28)" }}>
+                  {ok ? "✓" : "✕"} {label}
+                </span>
+              ))}
+            </div>
+          )}
+          {quiet && <div className="mt-3 text-sm" style={{ color: "var(--mut)" }}>Cisza nocna: <b style={{ color: "var(--ink)" }}>{quiet}</b></div>}
+          {stay.checkin_instructions && <div className="mt-3 text-sm" style={{ color: "var(--mut)" }}><b style={{ color: "var(--ink)" }}>Odbiór kluczy:</b> {stay.checkin_instructions}</div>}
+          {stay.house_rules_extra && <div className="mt-2 whitespace-pre-line text-sm" style={{ color: "var(--mut)" }}>{stay.house_rules_extra}</div>}
+        </div>
+      )}
+    </section>
+  );
 }

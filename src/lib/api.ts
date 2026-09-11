@@ -666,3 +666,21 @@ export async function offerSellerBadge(offerId: string): Promise<SellerBadge | n
   if (error) return null;
   return ((data as any[]) ?? [])[0] ?? null;
 }
+
+// ── Szczegóły pobytu (noclegi) ─────────────────────────────────────────────
+// Dane, które na Bookingu decydują o wyborze obiektu: struktura (sypialnie,
+// łazienki, łóżka, metraż) i zasady pobytu. Wyłącznie opisowe — żadna z tych
+// wartości nie wpływa na cenę, więc nie ma ryzyka rozjazdu z kwotą w koszyku.
+export type StayDetails = {
+  max_guests: number | null; checkin_from: string | null; checkout_until: string | null;
+  bedrooms: number | null; bathrooms: number | null; beds: Record<string, number> | null; area_m2: number | null;
+  quiet_hours_from: string | null; quiet_hours_to: string | null;
+  smoking_allowed: boolean | null; parties_allowed: boolean | null;
+  children_allowed: boolean | null; pets_allowed: boolean | null;
+  checkin_instructions: string | null; house_rules_extra: string | null;
+};
+export async function offerStayDetails(offerId: string): Promise<StayDetails | null> {
+  const { data, error } = await supabase.rpc("offer_stay_details", { p_offer: offerId });
+  if (error) return null;
+  return ((data as any[]) ?? [])[0] ?? null;
+}
