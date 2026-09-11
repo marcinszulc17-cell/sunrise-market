@@ -72,6 +72,30 @@ export const SECTIONS: Section[] = [
 export type FeedOffer = { offer_id: string; title: string; price_gross: number; image_url: string | null; category: string | null; seller: string | null; rating?: number; reviews?: number; location?: string | null; created_at?: string | null; views?: number; radius_km?: number | null };
 
 /** „2 godz. temu” / „3 dni temu” — z daty utworzenia ogłoszenia. */
+// Przełącznik siatka / lista (makiety właściciela 2026-09-10: ikony w prawym górnym rogu listy).
+// Wybór pamiętamy per widok, żeby nie wracał do siatki przy każdym wejściu.
+export type ViewMode = "grid" | "list";
+export function useViewMode(key: string, initial: ViewMode = "grid"): [ViewMode, (v: ViewMode) => void] {
+  const storeKey = `sm:view:${key}`;
+  const [v, setV] = useState<ViewMode>(() => { try { return (localStorage.getItem(storeKey) as ViewMode) || initial; } catch { return initial; } });
+  const set = (next: ViewMode) => { setV(next); try { localStorage.setItem(storeKey, next); } catch { /* tryb prywatny */ } };
+  return [v, set];
+}
+export function ViewToggle({ value, onChange }: { value: ViewMode; onChange: (v: ViewMode) => void }) {
+  const btn = (mode: ViewMode, label: string, path: React.ReactNode) => {
+    const on = value === mode;
+    return <button type="button" onClick={() => onChange(mode)} aria-label={label} aria-pressed={on}
+      className="grid h-9 w-10 place-items-center rounded-lg transition"
+      style={on ? { background: "rgba(245,166,35,.16)", color: "var(--gold)" } : { color: "var(--mut)" }}>
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">{path}</svg>
+    </button>;
+  };
+  return <div className="flex items-center gap-1 rounded-xl p-1" style={CARD}>
+    {btn("grid", "Widok siatki", <><rect x="3" y="3" width="7" height="7" rx="1.5" /><rect x="14" y="3" width="7" height="7" rx="1.5" /><rect x="3" y="14" width="7" height="7" rx="1.5" /><rect x="14" y="14" width="7" height="7" rx="1.5" /></>)}
+    {btn("list", "Widok listy", <><path d="M8 6h13M8 12h13M8 18h13" /><circle cx="4" cy="6" r="1.2" fill="currentColor" /><circle cx="4" cy="12" r="1.2" fill="currentColor" /><circle cx="4" cy="18" r="1.2" fill="currentColor" /></>)}
+  </div>;
+}
+
 export function timeAgo(iso?: string | null): string | null {
   if (!iso) return null;
   const t = new Date(iso).getTime(); if (!Number.isFinite(t)) return null;
