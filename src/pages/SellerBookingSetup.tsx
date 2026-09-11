@@ -49,6 +49,9 @@ export default function SellerBookingSetup(){
  // Sposób wyceny: za cały obiekt czy za osobę. Część obiektów (pokoje gościnne,
  // agroturystyka) liczy od osoby i bez tego nie da się ich uczciwie wystawić.
  const [priceMode,setPriceMode]=useState<"per_night"|"per_person">("per_night");
+ // Polityka anulowania decyduje o kwocie zwrotu dla gościa — jest wpięta w zwroty,
+ // nie jest samym opisem. Gość widzi ją przed płatnością.
+ const [cancelPolicy,setCancelPolicy]=useState<"flexible"|"moderate"|"strict"|"non_refundable">("moderate");
  const [windows,setWindows]=useState<BookingWindow[]>([]); const [active,setActive]=useState(false);
 
  async function load(){
@@ -88,6 +91,7 @@ export default function SellerBookingSetup(){
      rules:String(row.house_rules_extra??""),
     }));
     setPriceMode(row.price_mode==="per_person"?"per_person":"per_night");
+    if(["flexible","moderate","strict","non_refundable"].includes(String(row.cancellation_policy)))setCancelPolicy(row.cancellation_policy);
    }
   }
  }
@@ -205,6 +209,20 @@ export default function SellerBookingSetup(){
      <label className="mt-3 block text-sm">Dodatkowe zasady
       <textarea rows={2} className={`${input} mt-1`} style={style} placeholder="np. Zakaz wnoszenia rowerów do domku. Segregacja odpadów." value={stay.rules} onChange={e=>setStay({...stay,rules:e.target.value})}/>
      </label>
+
+     <div className="mt-5 text-sm font-semibold">Polityka anulowania</div>
+     <p className="mt-1 text-xs" style={{color:"var(--mut)"}}>Gość widzi ją przed płatnością, a system sam wylicza z niej zwrot przy anulowaniu. Kaucja i opłata za sprzątanie wracają zawsze — pobyt się nie odbył.</p>
+     <div className="mt-2 grid gap-2">
+      {([["flexible","Elastyczna","Bezpłatne anulowanie do 1 dnia przed przyjazdem. Najwięcej rezerwacji, najwięcej odwołań."],
+         ["moderate","Umiarkowana","Bezpłatnie do 7 dni przed, potem 50% czynszu. Rozsądny środek."],
+         ["strict","Ścisła","Do 30 dni przed 50%, później 0%. Chroni sezon, ale część gości wybierze inny obiekt."],
+         ["non_refundable","Bezzwrotna","Czynsz nie wraca. Stosuj tylko przy wyraźnie niższej cenie, inaczej odstraszasz."]] as const).map(([id,t,d])=>(
+       <button type="button" key={id} onClick={async()=>{if(await call("seller_booking_set_cancellation_policy",{p_offer:offerId,p_policy:id}))setCancelPolicy(id)}} className="rounded-xl p-3 text-left" style={cancelPolicy===id?{border:"1px solid var(--gold)",background:"rgba(245,166,35,.10)"}:{border:"1px solid var(--line)"}}>
+        <div className="text-sm font-semibold">{t}</div>
+        <div className="mt-0.5 text-xs" style={{color:"var(--mut)"}}>{d}</div>
+       </button>
+      ))}
+     </div>
 
      <button disabled={busy} onClick={()=>call("seller_booking_save_stay_v2",{
        p_offer:offerId,p_max_guests:stay.guests,p_checkin_from:stay.checkin||null,p_checkout_until:stay.checkout||null,

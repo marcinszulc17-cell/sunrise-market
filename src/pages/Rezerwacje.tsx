@@ -5,6 +5,7 @@ import { supabase } from "../lib/supabase";
 import { zl } from "../lib/money";
 import { useSeo } from "../lib/seo";
 import BuyerRentalProtocolCard from "../components/BuyerRentalProtocolCard";
+import BuyerCancelCard from "../components/BuyerCancelCard";
 
 const labels: Record<string, string> = {
   held: "Termin zablokowany", pending_payment: "Oczekuje na płatność",
@@ -155,6 +156,7 @@ export default function Rezerwacje() {
             {request.status === "pending" && <div className="mt-3 flex flex-wrap gap-2"><button disabled={busy} onClick={() => openRequest(r, request)} className="rounded-xl px-3 py-2 text-xs font-semibold" style={{ border:"1px solid var(--line)" }}>Edytuj prośbę</button><button disabled={busy} onClick={() => withdrawRequest(request.id)} className="rounded-xl px-3 py-2 text-xs" style={{ border:"1px solid rgba(239,68,68,.3)" }}>Wycofaj</button></div>}
           </div>}
 
+          {canRequest && r.paid_at && <BuyerCancelCard bookingId={r.id} rentGross={Number((r as any).base_amount_gross ?? r.amount_gross ?? 0)} onDone={load} />}
           {canRequest && (!request || request.status !== "pending") && <button onClick={() => openRequest(r)} className="mt-4 rounded-xl px-3 py-2 text-sm font-semibold" style={{ border:"1px solid var(--gold)", color:"var(--gold)" }}>Poproś o zmianę / anulowanie</button>}
 
           {editing === r.id && <div className="mt-4 rounded-2xl p-4" style={{ background:"rgba(232,137,26,.07)", border:"1px solid rgba(232,137,26,.24)" }}>

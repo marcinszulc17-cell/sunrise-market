@@ -686,3 +686,13 @@ export async function offerStayDetails(offerId: string): Promise<StayDetails | n
   if (error) return null;
   return ((data as any[]) ?? [])[0] ?? null;
 }
+
+// ── Warunki anulowania oferty rezerwacyjnej ────────────────────────────────
+// Te same zasady, z których liczony jest zwrot przy anulowaniu (market.booking_cancellation_quote),
+// więc gość widzi przed płatnością dokładnie to, co zadziała później.
+export type CancellationTerms = { policy: string; label: string; summary: string; free_until_days: number | null };
+export async function offerCancellationTerms(offerId: string): Promise<CancellationTerms | null> {
+  const { data, error } = await supabase.rpc("offer_cancellation_terms", { p_offer: offerId });
+  if (error) return null;
+  return ((data as any[]) ?? [])[0] ?? null;
+}

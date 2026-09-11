@@ -6,7 +6,7 @@ import ShowPhoneButton from "../components/ShowPhoneButton";
 import LocationMap, { locationKind } from "../components/LocationMap";
 import { Link, useParams } from "react-router-dom";
 import SwipeGallery from "../components/SwipeGallery";
-import { addReview, getOffer, offerImages, offerReviews, offerSellerBadge, offerStayDetails, similarOffers, trackView, type SellerBadge, type StayDetails } from "../lib/api";
+import { addReview, getOffer, offerCancellationTerms, offerImages, offerReviews, offerSellerBadge, offerStayDetails, similarOffers, trackView, type CancellationTerms, type SellerBadge, type StayDetails } from "../lib/api";
 import { addToCart, cleanTitle, isTestProduct } from "../lib/cart";
 import { zl } from "../lib/money";
 import { subscriptionInfo } from "../lib/subscription";
@@ -67,6 +67,7 @@ export default function Product() {
   // więc kupujący musi to zobaczyć PRZED zakupem (regulamin §8.1a, decyzja właściciela 2026-09-10).
   const [sellerBadge, setSellerBadge] = useState<SellerBadge | null>(null);
   const [stay, setStay] = useState<StayDetails | null>(null);
+  const [cancelTerms, setCancelTerms] = useState<CancellationTerms | null>(null);
 
   const isTest = isTestProduct(o?.title);
   const shownTitle = cleanTitle(o?.title);
@@ -103,6 +104,7 @@ export default function Product() {
     trackView(id);
     offerSellerBadge(id).then(setSellerBadge).catch(() => {});
     offerStayDetails(id).then(setStay).catch(() => {});
+    offerCancellationTerms(id).then(setCancelTerms).catch(() => {});
     similarOffers(id, 8).then(setSimilar).catch(() => {});
   }, [id]);
 
@@ -187,6 +189,14 @@ export default function Product() {
         </div>
 
         <StaySection stay={stay} />
+
+        {isBooking && cancelTerms && (
+          <section className="mt-6 rounded-2xl p-5" style={{ background: "rgba(143,176,238,.07)", border: "1px solid rgba(143,176,238,.22)" }}>
+            <div className="text-sm font-semibold">Anulowanie: {cancelTerms.label.toLowerCase()}</div>
+            <p className="mt-1 text-sm" style={{ color: "var(--mut)" }}>{cancelTerms.summary}</p>
+            <p className="mt-2 text-xs" style={{ color: "var(--mut)" }}>Kaucja zwrotna i opłata za sprzątanie wracają w całości — dotyczą pobytu, który się nie odbędzie. Rezerwację anulujesz sam w zakładce Rezerwacje.</p>
+          </section>
+        )}
 
         {o.description && <section className="mt-10 rounded-2xl p-5 sm:p-6" style={CARD}><SectionTitle className="mb-4">Opis {isBooking ? "oferty" : "produktu"}</SectionTitle><div className="flex max-w-3xl flex-col gap-4">{o.description.split(/\n\s*\n/).filter(Boolean).map((par,i)=><p key={i} className="leading-relaxed" style={{ color: "var(--ink)" }}>{par.trim()}</p>)}</div></section>}
 
