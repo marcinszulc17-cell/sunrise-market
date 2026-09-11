@@ -4,6 +4,7 @@ import { supabase } from "../lib/supabase";
 import SellerBookingCalendar from "../components/SellerBookingCalendar";
 import BookingChangeHistory from "../components/BookingChangeHistory";
 import SellerBookingOpsSidebar from "../components/SellerBookingOpsSidebar";
+import SellerIcalPanel from "../components/SellerIcalPanel";
 
 const statusLabel: Record<string, string> = {
   held: "Termin zablokowany",
@@ -386,6 +387,8 @@ export default function SellerBookingsManage() {
         <Stat label="Aktywne zasoby" value={String(resources.length)} />
         <Stat label="Wartość opłaconych" value={pln(stats.paid)} />
       </div>
+
+      <SellerIcalPanel />
 
       <SellerBookingCalendar
         bookings={rows}
