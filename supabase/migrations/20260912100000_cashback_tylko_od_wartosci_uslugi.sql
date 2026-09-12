@@ -1,0 +1,10 @@
+-- Decyzja właściciela 2026-09-12: CASHBACK WYŁĄCZNIE OD WARTOŚCI PRZEDMIOTU / USŁUGI.
+-- Opłaty dodatkowe doliczane do rezerwacji — opłata miejscowa (danina dla gminy),
+-- sprzątanie, opłata za zwierzę, dopłata za dodatkową osobę — są wyszczególnione
+-- osobno i NIE dają cashbacku. Od daniny cashback naliczać się nie może.
+--
+-- Zastosowane na produkcji jako migracja `cashback_tylko_od_wartosci_uslugi`:
+--   checkout_booking ustawia orders.cashback_amount = base_amount_gross × stawka.
+-- Po stronie edge function `checkout` podstawa jest dodatkowo pomniejszana
+-- o bookings.fees_gross (wersja 63).
+-- Kaucja była wyłączona z podstawy już wcześniej (jest zwrotna).

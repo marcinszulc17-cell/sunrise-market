@@ -165,6 +165,9 @@ export default function Product() {
               <span className="shrink-0 text-xs font-semibold" style={{ color: "var(--gold)" }}>Zobacz wszystkie ogłoszenia ›</span>
             </Link>
             {isTest && <div className="rounded-xl px-3 py-2 text-sm" style={{ background: "rgba(242,92,176,.12)", color: "#F8A8D2", border: "1px solid rgba(242,92,176,.3)" }}><b>Produkt testowy.</b> Pozycja z katalogu w przygotowaniu.</div>}
+            {stay && purchaseMode === "daily" && <div className="text-xs" style={{ color: "var(--mut)" }}>
+              Cashback 3% naliczamy od czynszu za pobyt. Opłaty dodatkowe (miejscowa, sprzątanie, zwierzę, dodatkowa osoba) i kaucja są wyszczególnione osobno i cashbacku nie dają.
+            </div>}
             {isBooking && <div className="rounded-xl px-3 py-2 text-sm" style={{ background: "rgba(56,224,240,.08)", border: "1px solid rgba(56,224,240,.2)" }}><b>{purchaseMode === "daily" ? "🗓️ Wynajem" : "📅 Rezerwacja terminu"}</b><div className="mt-1 text-xs" style={{ color: "var(--mut)" }}>{purchaseMode === "daily" ? "Wybierz daty od–do. System sprawdzi dostępność i pokaże czynsz za cały okres oraz ewentualną kaucję." : "Wybierz dostępny dzień i godzinę, a następnie opłać rezerwację."}</div></div>}
 
             <div><span className="rounded-full px-3 py-1 text-sm font-semibold" style={{ background: "rgba(122,184,154,.12)", color: "var(--green)" }}>+{Math.round(o.price_gross * 0.03).toLocaleString("pl-PL")} pkt cashback{sub ? " / mies." : ""}</span></div>
