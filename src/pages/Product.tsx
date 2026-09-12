@@ -190,6 +190,8 @@ export default function Product() {
 
         <StaySection stay={stay} />
 
+        <StayLocation stay={stay} />
+
         {isBooking && cancelTerms && (
           <section className="mt-6 rounded-2xl p-5" style={{ background: "rgba(143,176,238,.07)", border: "1px solid rgba(143,176,238,.22)" }}>
             <div className="text-sm font-semibold">Anulowanie: {cancelTerms.label.toLowerCase()}</div>
@@ -275,6 +277,39 @@ function StaySection({ stay }: { stay: StayDetails | null }) {
           {stay.house_rules_extra && <div className="mt-2 whitespace-pre-line text-sm" style={{ color: "var(--mut)" }}>{stay.house_rules_extra}</div>}
         </div>
       )}
+    </section>
+  );
+}
+
+// Mapa i dojazd. Pinezka pokazuje OKOLICĘ — dokładny adres i wskazówki gość dostaje
+// w potwierdzeniu rezerwacji, więc nie publikujemy go na otwartej stronie.
+// Bez współrzędnych podanych przez właściciela nie rysujemy mapy: źle postawiona
+// pinezka jest gorsza niż jej brak.
+function StayLocation({ stay }: { stay: StayDetails | null }) {
+  if (!stay) return null;
+  const hasPin = stay.latitude != null && stay.longitude != null;
+  if (!hasPin && !stay.directions && !stay.location) return null;
+  const lat = Number(stay.latitude), lng = Number(stay.longitude);
+  const d = 0.012; // ~1,3 km — okolica, nie konkretny budynek
+  const bbox = `${(lng - d).toFixed(5)},${(lat - d).toFixed(5)},${(lng + d).toFixed(5)},${(lat + d).toFixed(5)}`;
+  const src = `https://www.openstreetmap.org/export/embed.html?bbox=${bbox}&layer=mapnik&marker=${lat.toFixed(5)},${lng.toFixed(5)}`;
+  return (
+    <section className="mt-6 rounded-2xl p-5 sm:p-6" style={CARD}>
+      <SectionTitle className="mb-4">Gdzie to jest</SectionTitle>
+      {stay.location && <div className="mb-3 text-sm" style={{ color: "var(--mut)" }}>{stay.location}</div>}
+      {hasPin && (
+        <div className="overflow-hidden rounded-xl" style={{ border: "1px solid var(--line)" }}>
+          <iframe title="Mapa okolicy obiektu" src={src} loading="lazy" className="h-[320px] w-full" style={{ border: 0 }} />
+        </div>
+      )}
+      {hasPin && (
+        <div className="mt-2 text-xs" style={{ color: "var(--mut)" }}>
+          Pinezka pokazuje okolicę obiektu. Dokładny adres otrzymasz w potwierdzeniu rezerwacji.
+          {" "}
+          <a href={`https://www.openstreetmap.org/?mlat=${lat}&mlon=${lng}#map=15/${lat}/${lng}`} target="_blank" rel="noreferrer" className="underline" style={{ color: "var(--gold)" }}>Otwórz w mapach</a>
+        </div>
+      )}
+      {stay.directions && <p className="mt-3 whitespace-pre-line text-sm" style={{ color: "var(--mut)" }}>{stay.directions}</p>}
     </section>
   );
 }

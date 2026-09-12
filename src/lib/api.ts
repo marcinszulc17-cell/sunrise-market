@@ -680,6 +680,7 @@ export type StayDetails = {
   children_allowed: boolean | null; pets_allowed: boolean | null;
   checkin_instructions: string | null; house_rules_extra: string | null;
   price_mode: "per_night" | "per_person" | null;
+  latitude: number | null; longitude: number | null; directions: string | null; location: string | null;
 };
 export async function offerStayDetails(offerId: string): Promise<StayDetails | null> {
   const { data, error } = await supabase.rpc("offer_stay_details", { p_offer: offerId });

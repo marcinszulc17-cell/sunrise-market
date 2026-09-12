@@ -54,6 +54,11 @@ export default function SellerBookingSetup(){
  const [cancelPolicy,setCancelPolicy]=useState<"flexible"|"moderate"|"strict"|"non_refundable">("moderate");
  // Opłaty pobytowe wchodzą do kwoty płaconej przez gościa — nie są opisem.
  const [stayFees,setStayFees]=useState({cityTax:0,petFee:0,baseGuests:0,extraPerson:0});
+ // Gotowość oferty przed publikacją — twarde są zdjęcia i opis, reszta to podpowiedzi.
+ type Readiness={photos:number;photos_ok:boolean;description_len:number;description_ok:boolean;location_ok:boolean;price_ok:boolean;capacity_ok:boolean;amenities:number;amenities_ok:boolean;checkin_ok:boolean;structure_ok:boolean;ready:boolean};
+ const [readiness,setReadiness]=useState<Readiness|null>(null);
+ // Współrzędne podaje właściciel (kopiuje z map) — nie zgadujemy położenia obiektu.
+ const [geo,setGeo]=useState({lat:"",lng:"",directions:""});
  const [windows,setWindows]=useState<BookingWindow[]>([]); const [active,setActive]=useState(false);
 
  async function load(){
@@ -68,6 +73,8 @@ export default function SellerBookingSetup(){
    setDiscounts(Array.isArray((c.config as any).length_discounts)?(c.config as any).length_discounts:[]);
   }
   if(String(c?.offer?.category_slug||"").startsWith("noclegi")){
+   const {data:rd}=await supabase.schema("market").rpc("stay_readiness",{p_offer:offerId});
+   setReadiness((((rd as Readiness[])??[])[0])??null);
    const {data:st}=await supabase.schema("market").rpc("seller_stay_settings",{p_offer:offerId});
    const row=(st??null) as Record<string,any>|null;
    if(row){
@@ -94,6 +101,11 @@ export default function SellerBookingSetup(){
     }));
     setPriceMode(row.price_mode==="per_person"?"per_person":"per_night");
     if(["flexible","moderate","strict","non_refundable"].includes(String(row.cancellation_policy)))setCancelPolicy(row.cancellation_policy);
+    setGeo({
+     lat:row.latitude!=null?String(row.latitude):"",
+     lng:row.longitude!=null?String(row.longitude):"",
+     directions:String(row.directions??""),
+    });
     setStayFees({
      cityTax:Number(row.city_tax_per_person_night||0),
      petFee:Number(row.pet_fee_per_night||0),
@@ -149,6 +161,26 @@ export default function SellerBookingSetup(){
   {isNew&&!active&&cat?.config&&<div className="mb-5 rounded-2xl p-4" style={{background:"rgba(56,224,240,.08)",border:"1px solid rgba(56,224,240,.20)"}}><b>Oferta utworzona. Teraz ustaw booking.</b><p className="mt-1 text-sm" style={{color:"var(--mut)"}}>Klienci nie zobaczą aktywnego kalendarza, dopóki nie zapiszesz ustawień i nie klikniesz „Aktywuj booking”.</p></div>}
   {msg&&<div className="mb-4 rounded-xl p-3 text-sm" style={{background:"rgba(232,137,26,.12)",color:"var(--gold)"}}>{msg}</div>}
   {!cat?.config?<Card><h2 className="text-xl font-semibold">Najpierw włącz booking</h2><p className="mt-2 text-sm" style={{color:"var(--mut)"}}>W edycji oferty wybierz booking godzinowy albo wynajem na dni.</p></Card>:<>
+   {isStay&&readiness&&<div className="mb-5 rounded-2xl p-5" style={{background:"var(--glass)",border:readiness.ready?"1px solid rgba(122,184,154,.35)":"1px solid rgba(232,137,26,.35)"}}>
+    <h2 className="text-xl font-semibold">Gotowość oferty</h2>
+    <p className="mt-1 text-sm" style={{color:"var(--mut)"}}>Dwa pierwsze punkty są wymagane do publikacji. Reszta nie blokuje, ale bez nich gość częściej wybiera inny obiekt.</p>
+    <ul className="mt-3 grid gap-1.5 text-sm">
+     {([[readiness.photos_ok,`Zdjęcia: ${readiness.photos} z minimum 5`,true],
+        [readiness.description_ok,`Opis: ${readiness.description_len} z minimum 200 znaków`,true],
+        [readiness.price_ok,"Cena za dobę ustawiona",false],
+        [readiness.capacity_ok,"Maksymalna liczba gości",false],
+        [readiness.structure_ok,"Sypialnie i łóżka",false],
+        [readiness.checkin_ok,"Godziny zameldowania i wymeldowania",false],
+        [readiness.amenities_ok,`Udogodnienia: ${readiness.amenities} z sugerowanych 3`,false],
+        [readiness.location_ok,"Lokalizacja w ofercie",false]] as [boolean,string,boolean][]).map(([ok,label,required])=>(
+      <li key={label} className="flex items-center gap-2">
+       <span style={{color:ok?"var(--green)":required?"#F25CB0":"var(--mut)"}}>{ok?"✓":"○"}</span>
+       <span style={{color:ok?"var(--ink)":"var(--mut)"}}>{label}{required&&!ok?" — wymagane":""}</span>
+      </li>))}
+    </ul>
+    {!readiness.ready&&<p className="mt-3 text-xs" style={{color:"var(--mut)"}}>Zdjęcia i opis dodajesz w <a href={`/sprzedawca/oferty/${offerId}/edytuj`} className="underline" style={{color:"var(--gold)"}}>edycji oferty</a>.</p>}
+   </div>}
+
    <div className="mb-5 rounded-2xl p-5" style={{background:"var(--glass)",border:active?"1px solid rgba(122,184,154,.35)":"1px solid rgba(232,137,26,.35)"}}><div className="flex flex-wrap items-center justify-between gap-4"><div><h2 className="text-xl font-semibold">Publikacja kalendarza</h2><p className="mt-1 text-sm" style={{color:"var(--mut)"}}>{active?"Booking jest publiczny i przyjmuje płatne rezerwacje.":"Booking jest roboczy. Najpierw skonfiguruj poniższe ustawienia."}</p></div><button disabled={busy} onClick={()=>setBookingActive(!active)} className="rounded-xl px-5 py-3 font-semibold text-black disabled:opacity-50" style={{background:active?"#d1d5db":"linear-gradient(135deg,#E8891A,#F5A623)"}}>{active?"Wyłącz booking":"Aktywuj booking"}</button></div></div>
    <div className="grid gap-5 lg:grid-cols-2">
     <Card><h2 className="text-xl font-semibold">Podstawy rezerwacji</h2>{isDaily&&<div className="mt-3 rounded-xl p-3 text-sm" style={{background:"rgba(56,224,240,.07)",border:"1px solid rgba(56,224,240,.18)"}}><span style={{color:"var(--mut)"}}>Cena bazowa</span><div className="mt-1 text-xl font-semibold">{Number(cat.config.price_per_unit||0).toLocaleString("pl-PL",{minimumFractionDigits:2,maximumFractionDigits:2})} zł / {isStay&&priceMode==="per_person"?"osobę za dobę":"dobę"}</div></div>}<div className="mt-4 grid gap-3 sm:grid-cols-2">{isDaily&&<><label className="text-sm">Minimalna liczba dni<input type="number" min="1" className={`${input} mt-1`} style={style} value={extras.minUnits} onChange={e=>setExtras({...extras,minUnits:Number(e.target.value)})}/></label><label className="text-sm">Maksymalna liczba dni<input type="number" min="1" className={`${input} mt-1`} style={style} value={extras.maxUnits} onChange={e=>setExtras({...extras,maxUnits:Number(e.target.value)})}/></label><label className="text-sm">Opłata dodatkowa / sprzątanie<input type="number" min="0" className={`${input} mt-1`} style={style} value={extras.cleaning} onChange={e=>setExtras({...extras,cleaning:Number(e.target.value)})}/></label></>}{depositAllowed&&<label className="text-sm">Kaucja zabezpieczająca<input type="number" min="0" className={`${input} mt-1`} style={style} value={extras.deposit} onChange={e=>setExtras({...extras,deposit:Number(e.target.value)})}/><span className="mt-1 block text-xs" style={{color:"var(--mut)"}}>{isCarRental?"Opcjonalna kaucja za wynajem auta.":isStay?"Opcjonalna kaucja za pobyt — zabezpiecza obiekt przed zniszczeniami.":"Opcjonalna kaucja za wynajem sprzętu."} Klient płaci ją razem z czynszem, ale jest rozliczana osobno po zakończeniu najmu.</span></label>}</div><label className="mt-4 flex items-center justify-between rounded-xl p-3" style={{border:"1px solid var(--line)"}}><span><b>Rezerwacja natychmiastowa</b><span className="block text-xs" style={{color:"var(--mut)"}}>Po skutecznej płatności termin jest potwierdzony automatycznie.</span></span><input type="checkbox" checked={extras.instant} onChange={e=>setExtras({...extras,instant:e.target.checked})}/></label><button disabled={busy} onClick={()=>call("seller_booking_save_extras",{p_offer:offerId,p_min_units:extras.minUnits,p_max_units:extras.maxUnits,p_cleaning_fee:isDaily?extras.cleaning:0,p_deposit:depositAllowed?extras.deposit:0,p_instant:extras.instant})} className="mt-4 w-full rounded-xl py-3 font-semibold text-black" style={{background:"linear-gradient(135deg,#E8891A,#F5A623)"}}>Zapisz ustawienia</button></Card>
@@ -217,6 +249,17 @@ export default function SellerBookingSetup(){
      <label className="mt-3 block text-sm">Dodatkowe zasady
       <textarea rows={2} className={`${input} mt-1`} style={style} placeholder="np. Zakaz wnoszenia rowerów do domku. Segregacja odpadów." value={stay.rules} onChange={e=>setStay({...stay,rules:e.target.value})}/>
      </label>
+
+     <div className="mt-5 text-sm font-semibold">Mapa i dojazd</div>
+     <p className="mt-1 text-xs" style={{color:"var(--mut)"}}>Pinezka pokazuje gościowi okolicę, nie konkretny budynek — dokładny adres dostaje w potwierdzeniu rezerwacji. Współrzędne skopiujesz z map: prawy przycisk na punkcie → kopiuj współrzędne.</p>
+     <div className="mt-3 grid gap-3 sm:grid-cols-2">
+      <label className="text-sm">Szerokość (lat)<input className={`${input} mt-1`} style={style} placeholder="52.31234" value={geo.lat} onChange={e=>setGeo({...geo,lat:e.target.value.replace(",",".")})}/></label>
+      <label className="text-sm">Długość (lng)<input className={`${input} mt-1`} style={style} placeholder="16.12345" value={geo.lng} onChange={e=>setGeo({...geo,lng:e.target.value.replace(",",".")})}/></label>
+     </div>
+     <label className="mt-3 block text-sm">Jak dojechać
+      <textarea rows={2} className={`${input} mt-1`} style={style} placeholder="np. Zjazd z drogi 92 na Sielinko, po 2 km w prawo w drogę leśną. Ostatnie 300 m to szuter — zimą lepiej autem z wyższym zawieszeniem." value={geo.directions} onChange={e=>setGeo({...geo,directions:e.target.value})}/>
+     </label>
+     <button disabled={busy} onClick={()=>call("seller_booking_set_location",{p_offer:offerId,p_lat:geo.lat.trim()?Number(geo.lat):null,p_lng:geo.lng.trim()?Number(geo.lng):null,p_directions:geo.directions||null})} className="mt-3 w-full rounded-xl py-2.5 text-sm font-semibold" style={{border:"1px solid var(--gold)",color:"var(--gold)"}}>Zapisz lokalizację</button>
 
      <div className="mt-5 text-sm font-semibold">Opłaty doliczane do rezerwacji</div>
      <p className="mt-1 text-xs" style={{color:"var(--mut)"}}>Gość widzi każdą z nich osobno przed płatnością i płaci je razem z czynszem. Zostaw 0, jeśli nie pobierasz.</p>
