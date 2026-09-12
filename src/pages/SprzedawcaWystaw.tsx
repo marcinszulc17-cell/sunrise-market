@@ -64,8 +64,8 @@ export default function SprzedawcaWystaw() {
   }, [navigate]);
 
   if (access === "loading") return <GateCard title="Sprawdzam dostęp sprzedażowy…" />;
-  if (access === "activate") return <GateCard title="Aktywuj konto sprzedawcy" body="Aby wystawiać własne produkty, usługi lub wynajem, aktywuj dostęp sprzedażowy na swoim koncie MySunrise. Pierwsze 12 miesięcy są bez opłaty rocznej." cta="Aktywuj Partnera Handlowego" to="/sprzedawca/partner" />;
-  if (access === "renewal") return <GateCard title="Odnowienie konta sprzedawcy" body="Twój 12-miesięczny okres startowy minął. Odnów członkostwo, aby dalej wystawiać nowe oferty. Zwykłe konto MySunrise pozostaje aktywne." cta="Przejdź do odnowienia" to="/sprzedawca/partner" />;
+  if (access === "activate") return <GateCard title="Aktywuj Partnera Handlowego" body="Aby wystawiać własne produkty, usługi lub wynajem, aktywuj dostęp sprzedażowy na swoim koncie MySunrise. Pierwsze 12 miesięcy są bez opłaty rocznej." cta="Aktywuj Partnera Handlowego" to="/sprzedawca/partner" />;
+  if (access === "renewal") return <GateCard title="Odnowienie Partnera Handlowego" body="Twój 12-miesięczny okres startowy minął. Odnów członkostwo, aby dalej wystawiać nowe oferty. Zwykłe konto MySunrise pozostaje aktywne." cta="Przejdź do odnowienia" to="/sprzedawca/partner" />;
 
   if (sellerType === "private_partner" && (requestedMode === "purchase" || requestedMode === "appointment" || requestedMode === "daily")) {
     return <PrivateOfferWizard />;
@@ -106,7 +106,7 @@ export default function SprzedawcaWystaw() {
               <div className="text-5xl">{item.icon}</div>
               <h2 className="mt-5 text-2xl font-semibold">{item.title}</h2>
               <p className="mt-3 min-h-[96px] text-sm leading-6" style={{ color: "var(--mut)" }}>{item.description}</p>
-              <div className="mt-5 rounded-xl px-4 py-3 text-center text-sm font-semibold text-black" style={{ background: "linear-gradient(135deg,#E8891A,#F5A623)" }}>
+              <div className="mt-5 rounded-xl px-4 py-3 text-center text-sm font-semibold text-black" style={{ background: "linear-gradient(135deg,#C8965A,#E8C896)" }}>
                 {item.cta} →
               </div>
             </Link>
@@ -122,5 +122,5 @@ export default function SprzedawcaWystaw() {
 }
 
 function GateCard({ title, body, cta, to }: { title: string; body?: string; cta?: string; to?: string }) {
-  return <main className="min-h-screen px-4 py-8 sm:px-6" style={{ background: "var(--bg)", color: "var(--ink)" }}><div className="mx-auto max-w-2xl rounded-3xl p-6 sm:p-8" style={{ background: "var(--glass)", border: "1px solid rgba(232,137,26,.28)" }}><div className="text-xs font-semibold tracking-[.15em]" style={{ color: "var(--gold)" }}>SUNRISE MARKET</div><h1 className="mt-2 text-3xl font-semibold">{title}</h1>{body && <p className="mt-3 text-sm leading-6" style={{ color: "var(--mut)" }}>{body}</p>}{cta && to && <Link to={to} className="mt-5 inline-flex rounded-xl px-5 py-3 font-semibold text-black" style={{ background: "linear-gradient(135deg,#E8891A,#F5A623)" }}>{cta} →</Link>}</div></main>;
+  return <main className="min-h-screen px-4 py-8 sm:px-6" style={{ background: "var(--bg)", color: "var(--ink)" }}><div className="mx-auto max-w-2xl rounded-3xl p-6 sm:p-8" style={{ background: "var(--glass)", border: "1px solid rgba(200,150,90,.28)" }}><div className="text-xs font-semibold tracking-[.15em]" style={{ color: "var(--gold)" }}>SUNRISE MARKET</div><h1 className="mt-2 text-3xl font-semibold">{title}</h1>{body && <p className="mt-3 text-sm leading-6" style={{ color: "var(--mut)" }}>{body}</p>}{cta && to && <Link to={to} className="mt-5 inline-flex rounded-xl px-5 py-3 font-semibold text-black" style={{ background: "linear-gradient(135deg,#C8965A,#E8C896)" }}>{cta} →</Link>}</div></main>;
 }

@@ -2,7 +2,6 @@ import { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { supabase } from "../lib/supabase";
 import { childCategories, configureBookingOffer, topCategories, uploadProductImage } from "../lib/api";
-import { RADIUS_OPTIONS, radiusLabel, serviceAreaAttrs } from "../lib/serviceArea";
 
 type Cat = { id: string; slug: string; name: string };
 type Delivery = "shipping" | "pickup" | "both";
@@ -31,8 +30,6 @@ export default function PrivateOfferWizard() {
   const [msg, setMsg] = useState<string | null>(null);
   const [images, setImages] = useState<string[]>([]);
   const [title, setTitle] = useState("");
-  const [location, setLocation] = useState(""); // miejscowość (attributes.location)
-  const [radiusKm, setRadiusKm] = useState(0); // dojazd do klienta (attributes.service_radius_km + service_lat/lon)
   const [description, setDescription] = useState("");
   const [price, setPrice] = useState("");
   const [condition, setCondition] = useState<Condition>("good");
@@ -151,8 +148,6 @@ export default function PrivateOfferWizard() {
           rental_kind: mode === "daily" ? rentalKind : null,
           private_listing: true,
           buy_now_only: mode === "purchase",
-          ...(location.trim() ? { location: location.trim() } : {}),
-          ...(await serviceAreaAttrs(location, radiusKm)),
         },
       });
       if (error) throw error;
@@ -186,16 +181,16 @@ export default function PrivateOfferWizard() {
   return <main className="min-h-screen px-4 py-6 sm:px-6" style={{ background: "var(--bg)", color: "var(--ink)" }}>
     <div className="mx-auto max-w-3xl">
       <div className="mb-5 flex items-center justify-between gap-3">
-        <div><div className="text-xs font-semibold tracking-[.14em]" style={{ color: "var(--gold)" }}>SPRZEDAWCA</div><h1 className="mt-1 text-3xl font-semibold">{copy.title}</h1><p className="mt-1 text-sm" style={{ color: "var(--mut)" }}>{copy.subtitle}</p></div>
+        <div><div className="text-xs font-semibold tracking-[.14em]" style={{ color: "var(--gold)" }}>PARTNER HANDLOWY</div><h1 className="mt-1 text-3xl font-semibold">{copy.title}</h1><p className="mt-1 text-sm" style={{ color: "var(--mut)" }}>{copy.subtitle}</p></div>
         <Link to="/sprzedawca/wystaw" className="text-sm underline" style={{ color: "var(--mut)" }}>Zmień tryb</Link>
       </div>
 
-      {msg && <div className="mb-4 rounded-2xl px-4 py-3 text-sm" style={{ background: "rgba(232,137,26,.12)", border: "1px solid rgba(232,137,26,.24)", color: "var(--gold)" }}>{msg}</div>}
+      {msg && <div className="mb-4 rounded-2xl px-4 py-3 text-sm" style={{ background: "rgba(200,150,90,.12)", border: "1px solid rgba(200,150,90,.24)", color: "var(--gold)" }}>{msg}</div>}
 
       <section className="space-y-6 rounded-3xl p-5 sm:p-7" style={{ background: "var(--glass)", border: "1px solid var(--line)" }}>
         {mode === "daily" && <div>
           <h2 className="mb-3 text-lg font-semibold">1. Co chcesz wynajmować?</h2>
-          <div className="grid gap-2 sm:grid-cols-3">{RENTAL_KINDS.map(k => <button type="button" key={k.id} onClick={() => { setRentalKind(k.id); setS1(null); setS2(null); setS3(null); setD2([]); setD3([]); }} className="rounded-2xl p-4 text-left" style={{ background: rentalKind === k.id ? "rgba(232,137,26,.14)" : "var(--header)", border: rentalKind === k.id ? "1px solid var(--gold)" : "1px solid var(--line)" }}><div className="text-2xl">{k.icon}</div><div className="mt-2 text-sm font-semibold">{k.title}</div></button>)}</div>
+          <div className="grid gap-2 sm:grid-cols-3">{RENTAL_KINDS.map(k => <button type="button" key={k.id} onClick={() => { setRentalKind(k.id); setS1(null); setS2(null); setS3(null); setD2([]); setD3([]); }} className="rounded-2xl p-4 text-left" style={{ background: rentalKind === k.id ? "rgba(200,150,90,.14)" : "var(--header)", border: rentalKind === k.id ? "1px solid var(--gold)" : "1px solid var(--line)" }}><div className="text-2xl">{k.icon}</div><div className="mt-2 text-sm font-semibold">{k.title}</div></button>)}</div>
         </div>}
 
         <div>
@@ -207,7 +202,7 @@ export default function PrivateOfferWizard() {
           {images.length > 0 && <div className="mt-3 grid grid-cols-3 gap-2 sm:grid-cols-5">{images.map((url, i) => <div key={`${url}-${i}`} className="relative"><img src={url} alt="" className="aspect-square w-full rounded-xl object-cover"/><button type="button" onClick={() => setImages(p => p.filter((_,j) => j !== i))} className="absolute right-1 top-1 rounded-full bg-black/70 px-2 py-1 text-xs text-white">×</button>{i===0 && <span className="absolute bottom-1 left-1 rounded-lg bg-black/70 px-2 py-1 text-[10px] text-white">Główne</span>}</div>)}</div>}
         </div>
 
-        <div><h2 className="mb-3 text-lg font-semibold">{mode === "daily" ? "3" : "2"}. {copy.itemLabel}</h2><input className={field} style={fieldStyle} placeholder={copy.placeholder} value={title} onChange={e=>setTitle(e.target.value)} /><input className={`${field} mt-2`} style={fieldStyle} placeholder="Miejscowość, np. Nowy Tomyśl" value={location} onChange={e=>setLocation(e.target.value)} aria-label="Miejscowość" />{location.trim() && <select className={`${field} mt-2`} style={fieldStyle} value={radiusKm} onChange={e=>setRadiusKm(Number(e.target.value))} aria-label="Dojazd do klienta">{RADIUS_OPTIONS.map(km => <option key={km} value={km}>{radiusLabel(km)}</option>)}</select>}</div>
+        <div><h2 className="mb-3 text-lg font-semibold">{mode === "daily" ? "3" : "2"}. {copy.itemLabel}</h2><input className={field} style={fieldStyle} placeholder={copy.placeholder} value={title} onChange={e=>setTitle(e.target.value)} /></div>
 
         <div>
           <h2 className="mb-3 text-lg font-semibold">{mode === "daily" ? "4" : "3"}. Kategoria</h2>
@@ -234,7 +229,7 @@ export default function PrivateOfferWizard() {
               : "Po utworzeniu wynajmu ustawisz dostępność, zasoby i kalendarz oraz opcjonalną kaucję dla auta lub sprzętu. Klient wybierze daty od–do, zobaczy czynsz za cały okres i od razu opłaci rezerwację."}
         </div>
 
-        <button type="button" disabled={busy || uploading} onClick={publish} className="w-full rounded-2xl px-5 py-4 text-lg font-bold text-black disabled:opacity-50" style={{ background: "linear-gradient(135deg,#E8891A,#F5A623)" }}>{busy ? "Tworzę ofertę…" : copy.publishLabel}</button>
+        <button type="button" disabled={busy || uploading} onClick={publish} className="w-full rounded-2xl px-5 py-4 text-lg font-bold text-black disabled:opacity-50" style={{ background: "linear-gradient(135deg,#C8965A,#E8C896)" }}>{busy ? "Tworzę ofertę…" : copy.publishLabel}</button>
       </section>
     </div>
   </main>;

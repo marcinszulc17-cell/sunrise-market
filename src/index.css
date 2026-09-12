@@ -1,20 +1,21 @@
-/* Fonty ładowane nieblokująco z index.html (preconnect + media=print→all) — decyzja 2026-09-06: Lighthouse/LCP. */
+@import url('https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&display=swap');
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
 :root {
-  --bg: #0B0B0D;
-  --ink: #F5F5F7;
-  --mut: #A1A1AA;
-  --line: rgba(255,255,255,.09);
-  --glass: rgba(24,24,27,.82);
-  --gold: #F5A623;
-  --green: #7AB89A;
-  --header: rgba(12,12,14,.88);
-  --primary: #E8891A;
+  --bg: #0E1729;
+  --ink: #EDE7D6;
+  --mut: #A39E8C;
+  --line: rgba(237,231,214,.12);
+  --glass: rgba(20,32,54,.55);
+  --primary: #C8965A;
   --primaryd: #A97B42;
+  --gold: #E8C896;
+  --green: #7AB89A;
+  --header: rgba(10,18,36,.72);
 }
+
 html[data-theme="light"] {
   --bg: #F5F6FB;
   --ink: #16161F;
@@ -33,13 +34,14 @@ body {
   font-family: 'Manrope', system-ui, sans-serif;
   color: var(--ink);
   background:
-    radial-gradient(1200px 600px at 80% -10%, rgba(232,137,26,.10), transparent 60%),
+    radial-gradient(1200px 600px at 80% -10%, rgba(200,150,90,.18), transparent 60%),
+    radial-gradient(900px 500px at -10% 10%, rgba(90,138,229,.16), transparent 55%),
     var(--bg);
   background-attachment: fixed;
 }
 html[data-theme="light"] body {
   background:
-    radial-gradient(1100px 560px at 82% -12%, rgba(232,137,26,.12), transparent 60%),
+    radial-gradient(1100px 560px at 82% -12%, rgba(200,150,90,.12), transparent 60%),
     radial-gradient(820px 460px at -8% 8%, rgba(90,138,229,.10), transparent 55%),
     var(--bg);
 }
@@ -48,8 +50,8 @@ html[data-theme="light"] body {
 .card-glow { transition: transform .18s ease, box-shadow .18s ease, border-color .18s ease; }
 .card-glow:hover {
   transform: translateY(-3px);
-  border-color: rgba(232,137,26,.45);
-  box-shadow: 0 12px 40px -12px rgba(232,137,26,.35);
+  border-color: rgba(200,150,90,.45);
+  box-shadow: 0 12px 40px -12px rgba(200,150,90,.35);
 }
 
 .navlink{color:var(--mut);transition:color .15s}
@@ -108,7 +110,6 @@ img[src*="/storage/v1/render/image/public/"][src*="resize=contain"] {
     align-items: center;
     justify-content: center;
     gap: .1rem;
-    min-height: 48px;
     padding: .25rem .1rem;
     border-radius: .8rem;
     color: var(--mut);
@@ -116,10 +117,8 @@ img[src*="/storage/v1/render/image/public/"][src*="resize=contain"] {
     font-weight: 700;
     line-height: 1.1;
   }
-  .pwa-bottom-nav a.active { color: var(--gold); background: rgba(232,137,26,.10); }
-  .pwa-bottom-nav-icon { display: grid; place-items: center; height: 24px; }
-  .pwa-bottom-nav-primary { display: grid; place-items: center; width: 40px; height: 40px; margin-top: -14px; border-radius: 999px; background: linear-gradient(135deg,#E8891A,#F5A623); box-shadow: 0 6px 18px rgba(232,137,26,.35); }
-  .pwa-bottom-nav a:focus-visible { outline: 2px solid var(--gold); outline-offset: -2px; }
+  .pwa-bottom-nav a.active { color: var(--gold); background: rgba(200,150,90,.10); }
+  .pwa-bottom-nav-icon { font-size: 1.18rem; line-height: 1.15; }
 
   header.sticky > div:first-child {
     flex-wrap: wrap;
@@ -146,7 +145,7 @@ img[src*="/storage/v1/render/image/public/"][src*="resize=contain"] {
     padding-left: .9rem;
     padding-right: .9rem;
   }
-  header.sticky a[href="/koszyk"]:not(.icon-btn) {
+  header.sticky a[href="/koszyk"] {
     font-size: 0;
     width: 2.5rem;
     height: 2.5rem;
@@ -154,7 +153,7 @@ img[src*="/storage/v1/render/image/public/"][src*="resize=contain"] {
     display: grid;
     place-items: center;
   }
-  header.sticky a[href="/koszyk"]:not(.icon-btn)::before {
+  header.sticky a[href="/koszyk"]::before {
     content: "🛒";
     font-size: 1rem;
   }
@@ -175,16 +174,3 @@ img[src*="/storage/v1/render/image/public/"][src*="resize=contain"] {
   .grid { min-width: 0; }
   img, video, canvas, svg { max-width: 100%; }
 }
-
-/* Logo bez białego tła: jasna wersja (kremowa) na ciemnym motywie, granatowy oryginał na jasnym. */
-.brand-logo { display: block; }
-html[data-theme="light"] .brand-logo { content: url("/logo-sunrise-market-navy.png"); }
-
-/* Przejścia między stronami (View Transitions API, nawigacje pełne — window.location) + wejście widoku w SPA. */
-@view-transition { navigation: auto; }
-::view-transition-old(root) { animation: 120ms ease-out both sm-fade-out; }
-::view-transition-new(root) { animation: 180ms ease-out both sm-fade-in; }
-@keyframes sm-fade-in { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
-@keyframes sm-fade-out { from { opacity: 1; } to { opacity: 0; } }
-.page-enter { animation: 180ms ease-out both sm-fade-in; }
-@media (prefers-reduced-motion: reduce) { ::view-transition-old(root), ::view-transition-new(root), .page-enter { animation: none; } }
