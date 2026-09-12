@@ -1,10 +1,14 @@
--- Decyzja właściciela 2026-09-12: CASHBACK WYŁĄCZNIE OD WARTOŚCI PRZEDMIOTU / USŁUGI.
--- Opłaty dodatkowe doliczane do rezerwacji — opłata miejscowa (danina dla gminy),
--- sprzątanie, opłata za zwierzę, dopłata za dodatkową osobę — są wyszczególnione
--- osobno i NIE dają cashbacku. Od daniny cashback naliczać się nie może.
+-- Decyzja właściciela 2026-09-12 (po doprecyzowaniu): z podstawy PROWIZJI i CASHBACKU
+-- wypada wyłącznie OPŁATA MIEJSCOWA (klimatyczna) — to danina pobierana na rzecz gminy,
+-- a nie sprzedaż. Sprzątanie, opłata za zwierzę i dopłata za dodatkową osobę to realny
+-- przychód właściciela obiektu, więc liczą się normalnie: i do prowizji, i do cashbacku.
 --
--- Zastosowane na produkcji jako migracja `cashback_tylko_od_wartosci_uslugi`:
---   checkout_booking ustawia orders.cashback_amount = base_amount_gross × stawka.
--- Po stronie edge function `checkout` podstawa jest dodatkowo pomniejszana
--- o bookings.fees_gross (wersja 63).
--- Kaucja była wyłączona z podstawy już wcześniej (jest zwrotna).
+-- Zastosowane na produkcji jako migracje `cashback_tylko_od_wartosci_uslugi`
+-- (wersja pierwotna) i `cashback_bez_daniny_reszta_normalnie` (obowiązująca):
+--   checkout_booking liczy prowizję i cashback od (amount_gross − city_tax_gross).
+-- Edge function `checkout` (wersja 64) odejmuje od podstawy cashbacku to samo pole.
+-- Kaucja poza podstawą jak dotąd (jest zwrotna); koszt dostawy również.
+--
+-- Jeśli właściciel obiektu wliczy opłatę miejscową w cenę doby zamiast wpisywać ją
+-- w osobne pole, city_tax_gross wynosi 0 i wszystko liczy się od pełnej kwoty —
+-- to jego wybór, mechanizm działa w obie strony.

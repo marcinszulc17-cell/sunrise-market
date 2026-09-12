@@ -166,7 +166,7 @@ export default function Product() {
             </Link>
             {isTest && <div className="rounded-xl px-3 py-2 text-sm" style={{ background: "rgba(242,92,176,.12)", color: "#F8A8D2", border: "1px solid rgba(242,92,176,.3)" }}><b>Produkt testowy.</b> Pozycja z katalogu w przygotowaniu.</div>}
             {stay && purchaseMode === "daily" && <div className="text-xs" style={{ color: "var(--mut)" }}>
-              Cashback 3% naliczamy od czynszu za pobyt. Opłaty dodatkowe (miejscowa, sprzątanie, zwierzę, dodatkowa osoba) i kaucja są wyszczególnione osobno i cashbacku nie dają.
+              Wszystkie opłaty widzisz osobno przed płatnością. Cashback nie obejmuje opłaty miejscowej ani kaucji.
             </div>}
             {isBooking && <div className="rounded-xl px-3 py-2 text-sm" style={{ background: "rgba(56,224,240,.08)", border: "1px solid rgba(56,224,240,.2)" }}><b>{purchaseMode === "daily" ? "🗓️ Wynajem" : "📅 Rezerwacja terminu"}</b><div className="mt-1 text-xs" style={{ color: "var(--mut)" }}>{purchaseMode === "daily" ? "Wybierz daty od–do. System sprawdzi dostępność i pokaże czynsz za cały okres oraz ewentualną kaucję." : "Wybierz dostępny dzień i godzinę, a następnie opłać rezerwację."}</div></div>}
 

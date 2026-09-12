@@ -210,7 +210,11 @@ export default function BookingPurchaseModal({ offerId, config, open, onClose }:
   // Cashback wyłącznie od wartości usługi (decyzja właściciela 2026-09-12): przy
   // wynajmie to sam czynsz, bez opłaty miejscowej, sprzątania, opłaty za zwierzę
   // i dopłaty za dodatkową osobę. Kaucja nie dawała go już wcześniej.
-  const cashbackBase = activeConfig.booking_type === "daily" ? rentalBase : total;
+  // Cashback obejmuje wszystko poza opłatą miejscową (decyzja właściciela 2026-09-12):
+  // sprzątanie, zwierzę i dopłata za osobę to przychód obiektu, a opłata miejscowa
+  // jest tylko przekazywana gminie. Kaucja poza podstawą, bo jest zwrotna.
+  const cityTax = stayQuote?.city_tax ?? 0;
+  const cashbackBase = activeConfig.booking_type === "daily" ? Math.max(0, total - cityTax) : total;
   const cashback = cashbackFor(cashbackBase, cashbackRate);
   const ready = activeConfig.booking_type === "appointment" ? Boolean(selected) : rentalUnits >= 1;
   const invoiceReady = invoiceComplete(invoice);
@@ -404,25 +408,19 @@ export default function BookingPurchaseModal({ offerId, config, open, onClose }:
               {lengthDiscounts.length > 0 && <div className="mt-3 text-xs" style={{ color: "var(--green)" }}>Rabat za dłuższy najem: {lengthDiscounts.map((d) => `od ${d.min_days} dni −${d.pct}%`).join(" · ")}</div>}
               {rentalUnits > 0 && <div className="mt-4 rounded-2xl p-4" style={{ background: "var(--glass)", border: "1px solid var(--line)" }}>
                 <PriceRow label={`Czynsz za najem · ${rentalUnitsLabel(rentalUnits)}${perPerson ? ` · ${guests} os.` : ""}${appliedDiscount ? ` · rabat −${appliedDiscount}%` : ""}`} value={rentalBase} strong />
-                {cashback > 0 && <div className="mt-0.5 text-[11px]" style={{ color: "var(--green)" }}>
-                  Cashback {Math.round(cashbackRate * 100)}%: +{zl(cashback)} na portfel — liczony wyłącznie od czynszu.
+
+                {stayQuote ? <>
+                  {stayQuote.extra_person > 0 && <PriceRow label={`Dopłata za dodatkowe osoby · ${rentalUnitsLabel(rentalUnits)}`} value={stayQuote.extra_person} />}
+                  {stayQuote.cleaning > 0 && <PriceRow label="Sprzątanie" value={stayQuote.cleaning} />}
+                  {stayQuote.pet_fee > 0 && <PriceRow label="Opłata za zwierzę" value={stayQuote.pet_fee} />}
+                  {stayQuote.city_tax > 0 && <PriceRow label={`Opłata miejscowa · ${guests} os. × ${rentalUnitsLabel(rentalUnits)}`} value={stayQuote.city_tax} />}
+                </> : fees > 0 && <PriceRow label="Opłata dodatkowa" value={fees} />}
+                {deposit > 0 && <PriceRow label="Kaucja zwrotna" value={deposit} muted />}
+                {cashback > 0 && <div className="mt-2 border-t pt-2 text-[11px]" style={{ borderColor: "var(--line)", color: "var(--green)" }}>
+                  Cashback {Math.round(cashbackRate * 100)}%: +{zl(cashback)} na portfel
+                  {cityTax > 0 && <span style={{ color: "var(--mut)" }}> · bez opłaty miejscowej i kaucji</span>}
+                  {cityTax <= 0 && deposit > 0 && <span style={{ color: "var(--mut)" }}> · bez kaucji</span>}
                 </div>}
-                {stayQuote && (stayQuote.extra_person > 0 || stayQuote.city_tax > 0 || stayQuote.pet_fee > 0 || stayQuote.cleaning > 0) && (
-                  <div className="mt-3 border-t pt-2" style={{ borderColor: "var(--line)" }}>
-                    <div className="mb-1 text-[11px] font-semibold" style={{ color: "var(--mut)" }}>Opłaty dodatkowe — bez cashbacku</div>
-                    {stayQuote.extra_person > 0 && <PriceRow label={`Dopłata za dodatkowe osoby · ${rentalUnitsLabel(rentalUnits)}`} value={stayQuote.extra_person} />}
-                    {stayQuote.city_tax > 0 && <PriceRow label={`Opłata miejscowa · ${guests} os. × ${rentalUnitsLabel(rentalUnits)}`} value={stayQuote.city_tax} />}
-                    {stayQuote.pet_fee > 0 && <PriceRow label="Opłata za zwierzę" value={stayQuote.pet_fee} />}
-                    {stayQuote.cleaning > 0 && <PriceRow label="Sprzątanie" value={stayQuote.cleaning} />}
-                    <div className="mt-1 text-[11px]" style={{ color: "var(--mut)" }}>
-                      {stayQuote.city_tax > 0
-                        ? "Opłata miejscowa to danina pobierana na rzecz gminy — od niej cashback nie przysługuje. Pozostałe opłaty dodatkowe również go nie dają."
-                        : "Od opłat dodatkowych cashback nie przysługuje."}
-                    </div>
-                  </div>
-                )}
-                {!stayQuote && fees > 0 && <PriceRow label="Opłata dodatkowa (bez cashbacku)" value={fees} />}
-                {deposit > 0 && <PriceRow label="Kaucja zwrotna (bez cashbacku)" value={deposit} muted />}
               </div>}
             </section>
           </>}

@@ -262,13 +262,13 @@ Deno.serve(async (req) => {
     const { data: ord0 } = await sb.from("orders").select("total_gross,deposit_gross,invoice_snapshot_at").eq("id", orderId).single();
     const productSubtotal = Number(ord0!.total_gross);
     const refundableDeposit = bookingId ? money(Number(ord0?.deposit_gross ?? 0)) : 0;
-    // Cashback wyłącznie od wartości usługi (decyzja właściciela 2026-09-12).
-    // Opłaty doliczane do rezerwacji — miejscowa (danina dla gminy), sprzątanie,
-    // za zwierzę, za dodatkową osobę — są pokazane osobno i NIE dają cashbacku.
-    let bookingFees = 0;
+    // Z podstawy cashbacku wypada TYLKO opłata miejscowa (decyzja właściciela 2026-09-12):
+    // to danina pobierana na rzecz gminy, a nie sprzedaż. Sprzątanie, opłata za zwierzę
+    // i dopłata za dodatkową osobę to przychód właściciela — cashback od nich jest.
+    let cityTax = 0;
     if (bookingId) {
-      const { data: bk } = await sb.from("bookings").select("fees_gross").eq("order_id", orderId).maybeSingle();
-      bookingFees = money(Number(bk?.fees_gross ?? 0));
+      const { data: bk } = await sb.from("bookings").select("city_tax_gross").eq("order_id", orderId).maybeSingle();
+      cityTax = money(Number(bk?.city_tax_gross ?? 0));
     }
     if (productSubtotal >= FREE_SHIPPING_THRESHOLD) shipCost = 0;
     try {
@@ -295,7 +295,7 @@ Deno.serve(async (req) => {
     const finalTotal = money(discountedProducts + shipCost);
     const { data: cashbackCfg } = await sb.from("platform_config").select("value").eq("key", "cashback_rate").maybeSingle();
     const cashbackRate = Math.max(0, Number(cashbackCfg?.value ?? 0.03));
-    const cashbackBase = money(Math.max(0, discountedProducts - refundableDeposit - bookingFees));
+    const cashbackBase = money(Math.max(0, discountedProducts - refundableDeposit - cityTax));
     // Cashback 3% TYLKO przy płatności portfelem Sunrise Pay (CLAUDE.md §1). Karta/BLIK/P24 = 0.
     // Decyzja właściciela 2026-09-05: cashback przy KAŻDEJ metodzie płatności (portfel, karta/BLIK/P24, subskrypcje).
     const cashback = money(cashbackBase * cashbackRate);
