@@ -413,7 +413,12 @@ Deno.serve(async (req: Request) => {
       ? null
       : Math.min(Math.max(Number(body.target_net_margin_percent), 0), 500);
     if (!Number.isFinite(markup) || markup < 0 || markup > 500) return json({ error: "Nieprawidłowa marża" }, 400);
-    if (activate && markup <= 0) return json({ error: "Aktywacja wymaga dodatniej marży" }, 400);
+    // Cena liczy sie z targetNet, gdy go podano (patrz nizej) — wtedy markup_percent jest nieuzywany
+    // i domyslnie wynosi 0, wiec pilnowanie akurat jego blokowalo aktywacje przy poprawnej marzy.
+    const activationMargin = targetNet === null ? markup : targetNet;
+    if (activate && activationMargin <= 0) {
+      return json({ error: "Aktywacja wymaga dodatniej marży — podaj target_net_margin_percent albo markup_percent" }, 400);
+    }
 
     const inventoryResponse = await baseCall("getInventories");
     const inventories = records(inventoryResponse.inventories);

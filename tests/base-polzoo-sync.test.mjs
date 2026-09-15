@@ -15,6 +15,10 @@ test('new PolZoo products remain drafts unless activation is explicit', () => {
   // Aktywacja wymaga jednoczesnie flagi activate i marzy powyzej progu — sam activate nie wystarczy.
   assert.match(source, /activate && !belowMinMargin \? \(stock > 0 \? "active" : "sold_out"\) : "draft"/);
   assert.match(source, /Aktywacja wymaga dodatniej marży/);
+  // Prog liczymy z modelu, ktory faktycznie wyznacza cene: targetNet gdy podany, inaczej markup.
+  assert.match(source, /const activationMargin = targetNet === null \? markup : targetNet;/);
+  assert.match(source, /activate && activationMargin <= 0/);
+  assert.doesNotMatch(source, /activate && markup <= 0/);
 });
 
 test('catalog writes are idempotent through the Base product map', () => {
