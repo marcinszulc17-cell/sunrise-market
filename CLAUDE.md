@@ -32,6 +32,22 @@ pierwszeństwo przy każdej zmianie kodu. Nie wolno ich naruszać ani obchodzić
 - Dlatego w komunikacji i regulaminach nigdy nie obiecujemy „wypłaty cashbacku na konto" zwykłemu
   użytkownikowi — cashback to punkty do wydania w ekosystemie (Regulamin §7.2 i §7.7).
 
+## 2c. Prowizja ambasadora (decyzja właściciela 2026-09-15)
+
+- Prowizja platformy **7,9%** naliczana jest od **każdej** transakcji i **nie jest dzielona**
+  z ambasadorem. Nie stać nas na dodatkową prowizję od transakcji sprzedawców zewnętrznych
+  i hurtowni — to jest twarda decyzja właściciela, nie parametr do negocjacji.
+- Ambasador otrzymuje prowizję **wyłącznie** z dwóch źródeł:
+  **subskrypcji sprzedawców Market** oraz **produktów własnych Sunrise**
+  (`market.offers.commission_model = 'mlm_full'`, flaga `order_items.ambassador_eligible`
+  ustawiana przy checkoucie, kolejka `ambassador_commission_outbox`).
+- Konsekwencja, której nie ukrywamy w materiałach: przez pierwsze 12 miesięcy subskrypcja
+  jest darmowa (`platform_config.pay_promo_months = 12`), więc **za samo pozyskanie sprzedawcy
+  albo obiektu noclegowego ambasador w pierwszym roku nie zarabia nic**.
+- Materiały dla ambasadorów (`public/materialy/*.pdf`, strona `/materialy`) muszą być zgodne
+  z tą zasadą. Stawka procentowa ambasadora wynika z zasad MySunrise — w materiałach Marketu
+  podajemy ją zawsze jako **przykład rachunkowy**, nigdy jako ustaloną wartość.
+
 ## 3. Zasady sprzedawców (decyzja właściciela 2026-09-05: dwa poziomy)
 
 - **Sprzedawca** (`sellers.seller_type = 'private_partner'`): uproszczone centrum,
