@@ -126,6 +126,9 @@ export default function DlaObiektow() {
           <p className="mt-2 text-xs" style={{ color: "var(--mut)" }}>
             Masz pytania? <a href="/legal/kontakt.html" className="underline" style={{ color: "var(--gold)" }}>Napisz do nas</a> — odpowiadamy w jeden dzień roboczy.
           </p>
+          <p className="mt-1 text-xs" style={{ color: "var(--mut)" }}>
+            Chcesz to komuś pokazać? <Link to="/materialy" className="underline" style={{ color: "var(--gold)" }}>Materiały do pobrania</Link> — kalkulator i warunki w jednym miejscu.
+          </p>
         </div>
       </main>
       <HomeFooter />
