@@ -33,11 +33,35 @@ const DLA_WSZYSTKICH: Pozycja[] = [
 
 const DLA_AMBASADOROW: Pozycja[] = [
   {
-    tytul: "Ambasador Sunrise — obiekty noclegowe",
+    tytul: "Fotowoltaika i magazyny energii",
     opis:
-      "Na czym ambasador w tym kanale naprawdę zarabia, co mówić właścicielowi obiektu i czego nie obiecywać. Dwie strony, do wydruku.",
+      "Główna baza prowizyjna — 65 pozycji w katalogu, ile z nich zostaje, kogo szukać i jak prowadzić rozmowę o rachunku za prąd.",
+    href: "/materialy/ambasador-oze.pdf",
+    meta: "PDF · 2 strony",
+    zewnetrzny: true,
+  },
+  {
+    tytul: "Serwis i Protect Plus",
+    opis:
+      "Prowizja, która wraca co roku — przeglądy okresowe i programy ochrony. 25 pozycji z cenami i kiedy je sprzedawać.",
+    href: "/materialy/ambasador-serwis.pdf",
+    meta: "PDF · 2 strony",
+    zewnetrzny: true,
+  },
+  {
+    tytul: "Pozyskiwanie sprzedawców Market",
+    opis:
+      "Prowizja z subskrypcji — ile jest warta i od kiedy, co realnie dostaje sprzedawca i dlaczego pierwszy rok to zero.",
+    href: "/materialy/ambasador-sprzedawcy.pdf",
+    meta: "PDF · 2 strony",
+    zewnetrzny: true,
+  },
+  {
+    tytul: "Obiekty noclegowe",
+    opis:
+      "Na czym ambasador w tym kanale naprawdę zarabia, co mówić właścicielowi obiektu i czego nie obiecywać.",
     href: "/materialy/ambasador-obiekty-noclegowe.pdf",
-    meta: "PDF · 2 strony · 90 kB",
+    meta: "PDF · 2 strony",
     zewnetrzny: true,
   },
 ];
@@ -76,7 +100,8 @@ export default function Materialy() {
         <section className="mt-9">
           <h2 className="text-lg font-semibold">Dla ambasadorów</h2>
           <p className="mt-1 text-sm" style={{ color: "var(--mut)" }}>
-            Materiały sprzedażowe — zawierają zasady prowizyjne programu, więc nie pokazujemy ich klientom.
+            Kartki sprzedażowe, jedna na kanał — zawierają zasady prowizyjne programu, więc nie
+            pokazujemy ich klientom. Każda mieści się na dwóch stronach i jest do wydruku.
           </p>
 
           {zalogowany === null && (
