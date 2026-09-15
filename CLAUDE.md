@@ -48,6 +48,22 @@ pierwszeństwo przy każdej zmianie kodu. Nie wolno ich naruszać ani obchodzić
   z tą zasadą. Stawka procentowa ambasadora wynika z zasad MySunrise — w materiałach Marketu
   podajemy ją zawsze jako **przykład rachunkowy**, nigdy jako ustaloną wartość.
 
+## 2d. Konta prywatne — WŁĄCZONE (decyzja właściciela 2026-09-15)
+
+- `platform_config.allow_individual_sellers = true`. Osoba prywatna, bez działalności
+  i bez NIP, może być sprzedawcą. Powód podany przez właściciela: duży rynek zbytu.
+- **Pułapka, która to blokowała przez cały czas:** kod (13 funkcji bazy, edge functions,
+  frontend) rozpoznaje sprzedawcę prywatnego po `seller_type = 'private_partner'`, a CHECK
+  na `market.sellers` dopuszczał tylko `business`/`individual`/`sunrise`.
+  `market.activate_trade_partner` zapisuje `'private_partner'`, więc aktywacja wywalała się
+  na naruszeniu ograniczenia — jeszcze **przed** bramką `allow_individual_sellers`.
+  Migracja `20260915120000` rozszerza CHECK o `'private_partner'` i obejmuje bramką KYC
+  obie nazwy. **Nie „naprawiaj" tego przepisywaniem kodu na `individual`** — wartością
+  używaną w całym systemie jest `private_partner`.
+- Firma nadal musi podać poprawny NIP do weryfikacji KYC. Ten warunek zostaje.
+- Materiały (`/materialy`, kartka o sprzedawcach, rozdział 3 przewodnika) opisują już oba
+  rodzaje kont: prywatne 299 zł/rok, firmowe 499 zł/rok, oba z 12 miesiącami gratis.
+
 ## 3. Zasady sprzedawców (decyzja właściciela 2026-09-05: dwa poziomy)
 
 - **Sprzedawca** (`sellers.seller_type = 'private_partner'`): uproszczone centrum,

@@ -33,6 +33,14 @@ const DLA_WSZYSTKICH: Pozycja[] = [
 
 const DLA_AMBASADOROW: Pozycja[] = [
   {
+    tytul: "Przewodnik ambasadora Sunrise Market",
+    opis:
+      "Całość w jednym dokumencie: zasada prowizyjna, cztery kanały sprzedaży i rozdział o tym, czego nigdy nie obiecujemy. Do przeczytania raz, na spokojnie.",
+    href: "/materialy/przewodnik-ambasadora.pdf",
+    meta: "PDF · 19 stron · przewodnik",
+    zewnetrzny: true,
+  },
+  {
     tytul: "Fotowoltaika i magazyny energii",
     opis:
       "Główna baza prowizyjna — 65 pozycji w katalogu, ile z nich zostaje, kogo szukać i jak prowadzić rozmowę o rachunku za prąd.",
@@ -51,7 +59,7 @@ const DLA_AMBASADOROW: Pozycja[] = [
   {
     tytul: "Pozyskiwanie sprzedawców Market",
     opis:
-      "Prowizja z subskrypcji — ile jest warta i od kiedy, co realnie dostaje sprzedawca i dlaczego pierwszy rok to zero.",
+      "Prowizja z subskrypcji — ile jest warta i od kiedy. Od 15.09 przyjmujemy też konta prywatne, bez NIP.",
     href: "/materialy/ambasador-sprzedawcy.pdf",
     meta: "PDF · 2 strony",
     zewnetrzny: true,
@@ -100,8 +108,8 @@ export default function Materialy() {
         <section className="mt-9">
           <h2 className="text-lg font-semibold">Dla ambasadorów</h2>
           <p className="mt-1 text-sm" style={{ color: "var(--mut)" }}>
-            Kartki sprzedażowe, jedna na kanał — zawierają zasady prowizyjne programu, więc nie
-            pokazujemy ich klientom. Każda mieści się na dwóch stronach i jest do wydruku.
+            Przewodnik i kartki sprzedażowe — zawierają zasady prowizyjne programu, więc nie
+            pokazujemy ich klientom. Kartki mieszczą się na dwóch stronach i są do wydruku.
           </p>
 
           {zalogowany === null && (
@@ -130,15 +138,15 @@ export default function Materialy() {
               <Lista pozycje={DLA_AMBASADOROW} />
               <div className="mt-3 rounded-2xl p-5" style={CARD}>
                 <div className="text-xs font-bold" style={{ color: "var(--gold)" }}>
-                  ZIP · 4 kartki · 320 kB
+                  ZIP · przewodnik + 4 kartki · 536 kB
                 </div>
                 <div className="mt-1 font-semibold">Pobierz komplet</div>
                 <p className="mt-1 text-sm leading-6" style={{ color: "var(--mut)" }}>
-                  Wszystkie cztery kartki w jednym pliku, razem z krótką instrukcją — do przesłania
-                  dalej albo do wydrukowania na raz.
+                  Przewodnik i wszystkie cztery kartki w jednym pliku, razem z krótką instrukcją —
+                  do przesłania dalej albo do wydrukowania na raz.
                 </p>
                 <a
-                  href="/materialy/kartki-ambasadora.zip"
+                  href="/materialy/materialy-ambasadora.zip"
                   className="mt-3 inline-grid h-11 items-center rounded-xl px-5 text-sm font-bold"
                   style={{ background: "var(--gold)", color: "#161219" }}
                 >
