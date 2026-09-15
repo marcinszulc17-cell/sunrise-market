@@ -33,11 +33,11 @@ const DLA_WSZYSTKICH: Pozycja[] = [
 
 const DLA_AMBASADOROW: Pozycja[] = [
   {
-    tytul: "Przewodnik ambasadora Sunrise Market",
+    tytul: "Przewodnik po produktach i usługach Sunrise Ambassador Club",
     opis:
-      "Całość w jednym dokumencie: zasada prowizyjna, cztery kanały sprzedaży i rozdział o tym, czego nigdy nie obiecujemy. Do przeczytania raz, na spokojnie.",
+      "Mechanika prowizji, statusy i stawki, a potem marka po marce — ile dostajesz, za co i w którym statusie. Wszystkie stawki odczytane z systemu.",
     href: "/materialy/przewodnik-ambasadora.pdf",
-    meta: "PDF · 19 stron · przewodnik",
+    meta: "PDF · 18 stron · przewodnik",
     zewnetrzny: true,
   },
   {
@@ -59,7 +59,7 @@ const DLA_AMBASADOROW: Pozycja[] = [
   {
     tytul: "Pozyskiwanie sprzedawców Market",
     opis:
-      "Prowizja z subskrypcji — ile jest warta i od kiedy. Od 15.09 przyjmujemy też konta prywatne, bez NIP.",
+      "Za pozyskanie sprzedawcy prowizji nie ma — cała wartość tego kanału jest gdzie indziej. Od 15.09 przyjmujemy też konta prywatne, bez NIP.",
     href: "/materialy/ambasador-sprzedawcy.pdf",
     meta: "PDF · 2 strony",
     zewnetrzny: true,
@@ -108,8 +108,8 @@ export default function Materialy() {
         <section className="mt-9">
           <h2 className="text-lg font-semibold">Dla ambasadorów</h2>
           <p className="mt-1 text-sm" style={{ color: "var(--mut)" }}>
-            Przewodnik i kartki sprzedażowe — zawierają zasady prowizyjne programu, więc nie
-            pokazujemy ich klientom. Kartki mieszczą się na dwóch stronach i są do wydruku.
+            Przewodnik i kartki sprzedażowe — zawierają stawki prowizyjne i mechanikę rozliczeń,
+            więc nie pokazujemy ich klientom. Kartki mieszczą się na dwóch stronach i są do wydruku.
           </p>
 
           {zalogowany === null && (
@@ -138,7 +138,7 @@ export default function Materialy() {
               <Lista pozycje={DLA_AMBASADOROW} />
               <div className="mt-3 rounded-2xl p-5" style={CARD}>
                 <div className="text-xs font-bold" style={{ color: "var(--gold)" }}>
-                  ZIP · przewodnik + 4 kartki · 536 kB
+                  ZIP · przewodnik + 4 kartki · 532 kB
                 </div>
                 <div className="mt-1 font-semibold">Pobierz komplet</div>
                 <p className="mt-1 text-sm leading-6" style={{ color: "var(--mut)" }}>

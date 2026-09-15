@@ -48,6 +48,33 @@ pierwszeństwo przy każdej zmianie kodu. Nie wolno ich naruszać ani obchodzić
   z tą zasadą. Stawka procentowa ambasadora wynika z zasad MySunrise — w materiałach Marketu
   podajemy ją zawsze jako **przykład rachunkowy**, nigdy jako ustaloną wartość.
 
+## 2c-bis. SPROSTOWANIE: subskrypcja sprzedawcy NIE daje prowizji ambasadorowi
+
+- Zweryfikowane 2026-09-15 w MySunrise (`lvmrhgpxhqvfuoftblky`): **nie istnieje moduł
+  prowizyjny dla subskrypcji sprzedawcy Marketu**. `public.mme_module_config` ma 15 modułów
+  i nie ma wśród nich subskrypcji sprzedawcy; `trade-partner-renew` przyjmuje płatność,
+  oznacza `partner_membership_renewals` jako opłaconą i **nie zgłasza jej do Ambassador Club**.
+- Wcześniejsze materiały mówiły o „udziale w abonamencie" i kwotach 45/75 zł w drugim roku.
+  **To było nieprawdą** i zostało poprawione w kartkach oraz w przewodniku.
+- Z Marketu prowizję ambasadorską dają wyłącznie pozycje `commission_model='mlm_full'`
+  (moduł `sunrise_market`, koperta 40%). `sunrise_market_ext` ma kopertę 0 — towar
+  sprzedawców zewnętrznych i hurtowni nie daje ambasadorowi nic.
+
+## 2c-ter. Stawki Ambassador Club (odczytane z `public.mme_config`, 2026-09-15)
+
+- Prowizja bezpośrednia wg statusu (`public.mme_direct_rate`): member 0%, **ambassador 0%**,
+  klubowicz 5%, silver 10%, gold 15%, platinum 20%, diamond 22%.
+  **Uwaga na pułapkę nazewniczą:** status `ambassador` ma 0%, a stawkę 5% ma `klubowicz`.
+- Generacje: gen1 5%, gen2 3%, gen3 2%; `subscription_required_for_gen = true` —
+  bez opłaconej składki prowizje ze struktury nie naliczają się wcale.
+- Koperta modułu (zwykle 40%) jest sufitem na wszystko razem: direct + gen1-3 + cashback 3%;
+  reszta wraca do rezerwy. Przy diamondzie rozchodzi się 35% z 40%.
+- Składki miesięczne za status: silver 149, gold 349, platinum 790, diamond 1490 zł.
+  Silver/gold/platinum kupuje się składką; diamond dodatkowo wymaga `mme_diamond_gate`
+  (3 perły, min. platinum, 3/6/12/24 platyn w direct/gen1/gen2/gen3, progi obrotu
+  kwartalnego 250k/750k/2M). Blokada statusu: 3 miesiące.
+- **Materiały dla ambasadorów muszą podawać stawki per status, nie jedną „przykładową".**
+
 ## 2d. Konta prywatne — WŁĄCZONE (decyzja właściciela 2026-09-15)
 
 - `platform_config.allow_individual_sellers = true`. Osoba prywatna, bez działalności
