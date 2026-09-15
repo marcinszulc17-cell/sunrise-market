@@ -91,6 +91,33 @@ pierwszeństwo przy każdej zmianie kodu. Nie wolno ich naruszać ani obchodzić
 - Materiały (`/materialy`, kartka o sprzedawcach, rozdział 3 przewodnika) opisują już oba
   rodzaje kont: prywatne 299 zł/rok, firmowe 499 zł/rok, oba z 12 miesiącami gratis.
 
+## 2e. Ogłoszenia lokalne i praca — BEZPŁATNE (decyzja właściciela 2026-09-15)
+
+- Gałąź `ogloszenia-lokalne` (Praca, Usługi, Sprzedam, Szukam, Oddam, Zamienię, Wynajem,
+  Inne) to **ogłoszenia, nie sprzedaż**. Publikacja kosztuje 0 zł.
+- **Nie da się od tego liczyć prowizji i nigdy się nie da.** Cały łańcuch pieniędzy w
+  Market wisi na `price_gross` → prowizja 7,9% → koperta 40% → Ambassador Club. Bez
+  transakcji nie ma podstawy. Ogłoszenie ma więc `commission_model = 'cashback_only'`,
+  zero cashbacku i **zero prowizji ambasadora**. Nie obiecuj tego w materiałach.
+- Powód biznesowy podany przez właściciela: kanał ruchowy, ma ściągać ludzi na Market.
+- Migracja `20260915140000`:
+  - `create_offer_v2` dopuszcza `p_price = 0` **wyłącznie**, gdy kategoria (lub jej
+    rodzic) ma slug `ogloszenia-lokalne`. Wszędzie indziej `cena <= 0` nadal jest błędem —
+    to ta sama bramka, która pilnuje zakazu publikacji bez dodatniej marży.
+  - Taka oferta dostaje wymuszone `purchase_mode = 'purchase'`, `cashback_only` oraz
+    `attributes.listing_kind = 'ogloszenie'` i `free_listing = true`.
+  - `create_interaction_request` zna nowy typ `'application'` (kandydat aplikuje na
+    ogłoszenie o pracę). Nie wymaga terminu.
+  - Pola ogłoszenia o pracę (pracodawca, rodzaj umowy, wymiar, tryb, widełki, osoba
+    kontaktowa) siedzą w `market.category_attributes`, nie w kodzie frontu — kreator
+    renderuje je sam.
+- Front: `/wystaw?typ=lokalne` nie pyta o cenę, VAT ani prowizje Ambassador Club; przycisk
+  dla kandydata to „📨 Aplikuj", nie „Poproś o wycenę"; `cena()` z `lib/money.ts` pokazuje
+  „Bezpłatne" zamiast „0,00 zł".
+- **Zostaje do decyzji:** ogłoszenie nadal wymaga konta sprzedawcy z aktywnym dostępem
+  (`current_seller_can_sell()`). Dla darmowych ogłoszeń o pracę to bariera — jeśli ma
+  zniknąć, trzeba to świadomie zdjąć, a nie obejść.
+
 ## 3. Zasady sprzedawców (decyzja właściciela 2026-09-05: dwa poziomy)
 
 - **Sprzedawca** (`sellers.seller_type = 'private_partner'`): uproszczone centrum,

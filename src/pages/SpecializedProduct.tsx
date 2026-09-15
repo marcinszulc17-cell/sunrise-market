@@ -7,7 +7,7 @@ import LocationMap, { locationKind } from "../components/LocationMap";
 import { useParams } from "react-router-dom";
 import { getOffer, offerImages, trackView, similarOffers } from "../lib/api";
 import { supabase } from "../lib/supabase";
-import { zl, pkt } from "../lib/money";
+import { cena, zl, pkt } from "../lib/money";
 import { getMarketConfig, cashbackFor } from "../lib/marketConfig";
 import { pushRecent } from "../lib/recent";
 import { displayImageUrl } from "../lib/imageUrl";
@@ -157,7 +157,7 @@ export default function SpecializedProduct() {
           <div className="rounded-3xl p-5 shadow-2xl sm:p-6" style={{ background: "var(--glass)", border: "1px solid rgba(232,137,26,.22)" }}>
             <div className="text-xs font-semibold tracking-[.14em]" style={{color:"var(--gold)"}}>SUNRISE MARKET</div>
             <h1 className="mt-2 text-3xl font-semibold leading-tight">{o.title}</h1>
-            <div className="mt-5 flex flex-wrap items-end justify-between gap-3"><div><div className="text-xs" style={{color:"var(--mut)"}}>Cena</div><div className="text-4xl font-extrabold" style={{color:"var(--gold)"}}>{zl(o.price_gross)}</div></div>{A.location&&<div className="rounded-full px-3 py-1 text-xs" style={{background:"var(--header)",border:"1px solid var(--line)"}}>📍 {A.location}</div>}</div>
+            <div className="mt-5 flex flex-wrap items-end justify-between gap-3"><div><div className="text-xs" style={{color:"var(--mut)"}}>{o.price_gross > 0 ? "Cena" : "Ogłoszenie"}</div><div className="text-4xl font-extrabold" style={{color:"var(--gold)"}}>{cena(o.price_gross)}</div></div>{A.location&&<div className="rounded-full px-3 py-1 text-xs" style={{background:"var(--header)",border:"1px solid var(--line)"}}>📍 {A.location}</div>}</div>
             {isProperty && A.area_m2 && <div className="mt-1 text-sm" style={{ color: "var(--mut)" }}>{Math.round(o.price_gross / Number(A.area_m2)).toLocaleString("pl-PL")} zł/m²</div>}
             <div className="mt-4 grid gap-2 sm:grid-cols-2 lg:grid-cols-1">
               <div className="rounded-2xl p-4" style={{ background: "rgba(122,184,154,.10)", border: "1px solid rgba(122,184,154,.28)" }}><div className="text-xs" style={{ color: "var(--mut)" }}>Cashback po zakupie</div><div className="mt-1 text-2xl font-bold" style={{ color: "var(--green)" }}>+{pkt(cashback)} pkt</div></div>
@@ -177,7 +177,7 @@ export default function SpecializedProduct() {
         </aside>
       </div>
 
-      {similar.length > 0 && <section className="mt-10"><SectionTitle className="mb-4">Podobne ogłoszenia</SectionTitle><div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">{similar.map((s:any)=>{const loc=typeof s.attributes?.location==="string"?s.attributes.location:null;return <a key={s.offer_id} href={`/produkt/${s.offer_id}`} className="group overflow-hidden rounded-2xl transition hover:-translate-y-0.5" style={CARD}><div className="aspect-[4/3] overflow-hidden" style={{background:"var(--header)"}}>{s.image_url ? <img src={displayImageUrl(s.image_url,720)} className="h-full w-full object-cover transition duration-500 group-hover:scale-[1.04]" alt="" loading="lazy"/> : <div className="grid h-full place-items-center text-4xl">🌅</div>}</div><div className="p-4"><div className="text-lg font-bold" style={{color:"var(--gold)"}}>{zl(s.price_gross)}</div><div className="mt-0.5 line-clamp-2 text-sm font-semibold leading-5">{s.title}</div>{loc&&<div className="mt-1 text-[11px]" style={{color:"var(--mut)"}}>📍 {loc}</div>}</div></a>;})}</div></section>}
+      {similar.length > 0 && <section className="mt-10"><SectionTitle className="mb-4">Podobne ogłoszenia</SectionTitle><div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">{similar.map((s:any)=>{const loc=typeof s.attributes?.location==="string"?s.attributes.location:null;return <a key={s.offer_id} href={`/produkt/${s.offer_id}`} className="group overflow-hidden rounded-2xl transition hover:-translate-y-0.5" style={CARD}><div className="aspect-[4/3] overflow-hidden" style={{background:"var(--header)"}}>{s.image_url ? <img src={displayImageUrl(s.image_url,720)} className="h-full w-full object-cover transition duration-500 group-hover:scale-[1.04]" alt="" loading="lazy"/> : <div className="grid h-full place-items-center text-4xl">🌅</div>}</div><div className="p-4"><div className="text-lg font-bold" style={{color:"var(--gold)"}}>{cena(s.price_gross)}</div><div className="mt-0.5 line-clamp-2 text-sm font-semibold leading-5">{s.title}</div>{loc&&<div className="mt-1 text-[11px]" style={{color:"var(--mut)"}}>📍 {loc}</div>}</div></a>;})}</div></section>}
     </main>
 
     {lightboxOpen && mainImage && <div className="fixed inset-0 z-[70] bg-black/95" onMouseDown={(e)=>{if(e.target===e.currentTarget){setLightboxOpen(false);resetZoom();}}}>

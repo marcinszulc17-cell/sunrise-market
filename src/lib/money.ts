@@ -8,6 +8,11 @@
 export const zl = (v: number | null | undefined): string =>
   new Intl.NumberFormat("pl-PL", { style: "currency", currency: "PLN", minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(Number(v ?? 0));
 
+/** Cena oferty na kartach i stronach produktu. Ogloszenia lokalne (praca, oddam,
+ * szukam) maja cene 0 i nic nie sprzedaja — pokazujemy „Bezplatne", nie „0,00 zl". */
+export const cena = (v: number | null | undefined): string =>
+  Number(v ?? 0) > 0 ? zl(v) : "Bezpłatne";
+
 /** Punkty cashbacku (1 pkt = 1 zł, osobne saldo). Bywają ułamkowe (3% z 149,60 = 4,49) — nie zaokrąglamy. */
 export const pkt = (v: number | null | undefined): string =>
   new Intl.NumberFormat("pl-PL", { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(Number(v ?? 0));
