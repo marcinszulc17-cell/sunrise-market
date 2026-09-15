@@ -12,7 +12,8 @@ test('Base token stays server-side and is sent in the supported header', () => {
 
 test('new PolZoo products remain drafts unless activation is explicit', () => {
   assert.match(source, /const activate = body\.activate === true/);
-  assert.match(source, /activate \? \(stock > 0 \? "active" : "sold_out"\) : "draft"/);
+  // Aktywacja wymaga jednoczesnie flagi activate i marzy powyzej progu — sam activate nie wystarczy.
+  assert.match(source, /activate && !belowMinMargin \? \(stock > 0 \? "active" : "sold_out"\) : "draft"/);
   assert.match(source, /Aktywacja wymaga dodatniej marży/);
 });
 

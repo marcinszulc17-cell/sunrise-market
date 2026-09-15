@@ -6,7 +6,8 @@ const lib = fs.readFileSync(new URL('../src/lib/bookingV2.ts', import.meta.url),
 const migration = fs.readFileSync(new URL('../supabase/migrations/20260831_booking_daily_quote_bulk.sql', import.meta.url), 'utf8');
 
 test('daily quote uses one range RPC instead of one RPC per day', () => {
-  assert.match(lib, /booking_daily_quote_v2/);
+  // v3 dolozylo liczbe osob dla obiektow wycenianych per osoba; zakres nadal liczony jednym RPC.
+  assert.match(lib, /booking_daily_quote_v3/);
   assert.doesNotMatch(lib, /for\s*\(let i = 0; i < days; i\+\+\)/);
   assert.doesNotMatch(lib, /booking_price_for_day/);
 });

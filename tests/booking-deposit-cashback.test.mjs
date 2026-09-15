@@ -7,7 +7,8 @@ const checkout = await readFile(new URL("../supabase/functions/checkout/index.ts
 test("booking checkout excludes refundable deposit from cashback base", () => {
   assert.match(checkout, /select\("total_gross,deposit_gross,invoice_snapshot_at"\)/);
   assert.match(checkout, /const refundableDeposit = bookingId \? money\(Number\(ord0\?\.deposit_gross \?\? 0\)\) : 0;/);
-  assert.match(checkout, /const cashbackBase = money\(Math\.max\(0, discountedProducts - refundableDeposit\)\);/);
+  // Poza podstawa cashbacku stoi kaucja (zwrotna) ORAZ oplata miejscowa (danina dla gminy).
+  assert.match(checkout, /const cashbackBase = money\(Math\.max\(0, discountedProducts - refundableDeposit - cityTax\)\);/);
   assert.match(checkout, /const cashback = money\(cashbackBase \* cashbackRate\);/);
 });
 

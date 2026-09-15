@@ -16,7 +16,9 @@ test('resource-specific daily RPCs reuse concrete-resource availability rules', 
 
 test('booking client switches daily availability and quote RPCs when resource is selected', () => {
   assert.match(booking, /resourceId \? "booking_unavailable_days_resource_v2" : "booking_unavailable_days_v2"/);
-  assert.match(booking, /resourceId \? "booking_daily_quote_resource_v2" : "booking_daily_quote_v2"/);
+  // Przy konkretnym zasobie zostaje wycena v2 (za dobe), bez zasobu v3 liczy tez osoby.
+  assert.match(booking, /booking_daily_quote_resource_v2/);
+  assert.match(booking, /booking_daily_quote_v3/);
   assert.match(booking, /p_resource: resourceId/);
 });
 
