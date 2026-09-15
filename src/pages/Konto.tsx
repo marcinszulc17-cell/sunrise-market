@@ -133,7 +133,7 @@ function ClubCard({ w, ms, goTab }: { w: WalletLive | null; ms: MemberStatus | n
       </div>
       {amb && ms?.referral_code && <AmbLink code={ms.referral_code} tier={ms.tier} />}
       <div className="flex mt-3">
-        <button onClick={() => goTab("portfel")} style={{ fontSize: 13, fontWeight: 700, padding: "8px 16px", borderRadius: 11, background: "linear-gradient(135deg,#F5A623,#E8891A)", color: "#241606", border: 0, cursor: "pointer" }}>Zamień punkty na zł / historia</button>
+        <a href="/portfel" style={{ fontSize: 13, fontWeight: 700, padding: "8px 16px", borderRadius: 11, background: "linear-gradient(135deg,#F5A623,#E8891A)", color: "#241606", border: 0, cursor: "pointer", textDecoration: "none", display: "inline-block" }}>Zamień punkty na zł →</a>
       </div>
     </div>
   );

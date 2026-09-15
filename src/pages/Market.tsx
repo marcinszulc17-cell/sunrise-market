@@ -2,6 +2,7 @@ import { useEffect, useRef, useState, type MouseEvent } from "react";
 import { SiteHeader } from "../components/home/SiteChrome";
 import ThemeToggle from "../components/ThemeToggle";
 import { zl, pkt } from "../lib/money";
+import { getMarketConfig, cashbackFor } from "../lib/marketConfig";
 import { subscriptionInfo } from "../lib/subscription";
 import { getRecent } from "../lib/recent";
 import { searchOffers, searchOffersWithAttributes, homePromoted, categoryCounts, recommendedOffers, sponsoredOffers, toggleWatch, watchedIds, myWatchlist, bannersFor, bannerView, bannerClick } from "../lib/api";
@@ -127,9 +128,9 @@ function CardSkeleton() {
   );
 }
 
-function OfferCard({ o, fav, onToggleFav, badge }: { o: Offer; fav: boolean; onToggleFav: (id: string) => void; badge?: string }) {
+function OfferCard({ o, fav, onToggleFav, badge, rate = 0.03 }: { o: Offer; fav: boolean; onToggleFav: (id: string) => void; badge?: string; rate?: number }) {
   const v = catVisual(o.category, o.title);
-  const cashback = Math.round(o.price_gross * 0.03 * 100) / 100;
+  const cashback = cashbackFor(o.price_gross, rate);
   const freeShip = o.price_gross >= FREE_SHIP;
   const [added, setAdded] = useState(false);
   const isTest = isTestProduct(o.title);      // katalog testowy — bez mozliwosci zakupu
@@ -211,6 +212,8 @@ function OfferCard({ o, fav, onToggleFav, badge }: { o: Offer; fav: boolean; onT
 }
 
 export default function Market() {
+  const [cashbackRate, setCashbackRate] = useState(0.03);
+  useEffect(() => { getMarketConfig().then((c) => setCashbackRate(c.cashbackRate)).catch(() => {}); }, []);
   const [offers, setOffers] = useState<Offer[]>([]);
   const [q, setQ] = useState("");
   const [activeDept, setActiveDept] = useState<Dept | null>(null);
@@ -517,7 +520,7 @@ export default function Market() {
           <h2 className="font-display text-2xl font-semibold mb-5">💛 Dla Ciebie</h2>
           <div className="grid gap-5" style={{ gridTemplateColumns: "repeat(auto-fill,minmax(240px,1fr))" }}>
             {recs.map((o) => (
-              <OfferCard key={"r" + o.offer_id} o={o} fav={favs.has(o.offer_id)} onToggleFav={toggleFav} badge="Dla Ciebie" />
+              <OfferCard key={"r" + o.offer_id} o={o} fav={favs.has(o.offer_id)} onToggleFav={toggleFav} badge="Dla Ciebie" rate={cashbackRate} />
             ))}
           </div>
         </section>
@@ -551,7 +554,7 @@ export default function Market() {
           <h2 className="font-display text-2xl font-semibold mb-5">✨ Wyróżnione</h2>
           <div className="grid gap-5" style={{ gridTemplateColumns: "repeat(auto-fill,minmax(240px,1fr))" }}>
             {promoted.map((o) => (
-              <OfferCard key={"p" + o.offer_id} o={o} fav={favs.has(o.offer_id)} onToggleFav={toggleFav} badge={(o as any).kind ?? "Wyróżnione"} />
+              <OfferCard key={"p" + o.offer_id} o={o} fav={favs.has(o.offer_id)} onToggleFav={toggleFav} badge={(o as any).kind ?? "Wyróżnione"} rate={cashbackRate} />
             ))}
           </div>
         </section>
@@ -715,7 +718,7 @@ export default function Market() {
             ? <p style={{ color: "var(--mut)" }}>Twoja lista życzeń jest pusta. Kliknij ♡ na produkcie, aby dodać.</p>
             : <div className="grid gap-5" style={{ gridTemplateColumns: "repeat(auto-fill,minmax(240px,1fr))" }}>
                 {wish.map((o) => (
-                  <OfferCard key={"w" + o.offer_id} o={o} fav={favs.has(o.offer_id)} onToggleFav={toggleFav} badge={o.price_dropped ? "Cena spadła" : undefined} />
+                  <OfferCard key={"w" + o.offer_id} o={o} fav={favs.has(o.offer_id)} onToggleFav={toggleFav} badge={o.price_dropped ? "Cena spadła" : undefined} rate={cashbackRate} />
                 ))}
               </div>
         ) : (
@@ -733,7 +736,7 @@ export default function Market() {
             )}
             <div className="grid gap-5" style={{ gridTemplateColumns: "repeat(auto-fill,minmax(240px,1fr))" }}>
               {offers.map((o) => (
-                <OfferCard key={o.offer_id} o={o} fav={favs.has(o.offer_id)} onToggleFav={toggleFav} />
+                <OfferCard key={o.offer_id} o={o} fav={favs.has(o.offer_id)} onToggleFav={toggleFav} rate={cashbackRate} />
               ))}
             </div>
 

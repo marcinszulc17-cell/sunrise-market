@@ -8,7 +8,8 @@ import { Link, useParams } from "react-router-dom";
 import SwipeGallery from "../components/SwipeGallery";
 import { addReview, getOffer, offerCancellationTerms, offerImages, offerReviews, offerSellerBadge, offerStayDetails, similarOffers, trackView, type CancellationTerms, type SellerBadge, type StayDetails } from "../lib/api";
 import { addToCart, cleanTitle, isTestProduct } from "../lib/cart";
-import { zl } from "../lib/money";
+import { zl, pkt } from "../lib/money";
+import { getMarketConfig, cashbackFor } from "../lib/marketConfig";
 import { subscriptionInfo } from "../lib/subscription";
 import { pushRecent } from "../lib/recent";
 import { supabase } from "../lib/supabase";
@@ -51,6 +52,9 @@ function visual(t: string): { emoji: string; from: string; to: string } {
 export default function Product() {
   const { id } = useParams();
   const [o, setO] = useState<Offer | null>(null);
+  // Stawka cashbacku z konfiguracji rynku — nigdy zaszyta w widoku, bo zmiana stawki
+  // musi natychmiast przelozyc sie na to, co widzi kupujacy.
+  const [cashbackRate, setCashbackRate] = useState(0.03);
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState<string | null>(null);
   const [reviews, setReviews] = useState<Review[]>([]);
@@ -63,6 +67,7 @@ export default function Product() {
   const [color, setColor] = useState("");
   const [size, setSize] = useState("");
   const [similar, setSimilar] = useState<any[]>([]);
+  useEffect(() => { getMarketConfig().then((c) => setCashbackRate(c.cashbackRate)).catch(() => {}); }, []);
   // Kto sprzedaje: firma czy osoba prywatna. Od tego zależy prawo do zwrotu w 14 dni,
   // więc kupujący musi to zobaczyć PRZED zakupem (regulamin §8.1a, decyzja właściciela 2026-09-10).
   const [sellerBadge, setSellerBadge] = useState<SellerBadge | null>(null);
@@ -170,7 +175,7 @@ export default function Product() {
             </div>}
             {isBooking && <div className="rounded-xl px-3 py-2 text-sm" style={{ background: "rgba(56,224,240,.08)", border: "1px solid rgba(56,224,240,.2)" }}><b>{purchaseMode === "daily" ? "🗓️ Wynajem" : "📅 Rezerwacja terminu"}</b><div className="mt-1 text-xs" style={{ color: "var(--mut)" }}>{purchaseMode === "daily" ? "Wybierz daty od–do. System sprawdzi dostępność i pokaże czynsz za cały okres oraz ewentualną kaucję." : "Wybierz dostępny dzień i godzinę, a następnie opłać rezerwację."}</div></div>}
 
-            <div><span className="rounded-full px-3 py-1 text-sm font-semibold" style={{ background: "rgba(122,184,154,.12)", color: "var(--green)" }}>+{Math.round(o.price_gross * 0.03).toLocaleString("pl-PL")} pkt cashback{sub ? " / mies." : ""}</span></div>
+            <div><span className="rounded-full px-3 py-1 text-sm font-semibold" style={{ background: "rgba(122,184,154,.12)", color: "var(--green)" }}>+{pkt(cashbackFor(o.price_gross, cashbackRate))} pkt cashback{sub ? " / mies." : ""}</span></div>
             {sub && <div className="rounded-xl px-3 py-2 text-sm" style={{ background: "rgba(56,224,240,.08)", border: "1px solid rgba(56,224,240,.2)" }}><b>🔁 {sub.badge} — płatna z góry</b><div className="mt-1 text-xs" style={{ color: "var(--mut)" }}>{sub.note}</div></div>}
             <div className="text-sm" style={{ color: o.stock > 0 ? "var(--green)" : "#F25CB0" }}>{o.stock > 0 ? (isBooking ? `Dostępne zasoby: ${o.stock}` : (sub || o.stock >= 9999) ? "Dostępne" : `Dostępne: ${o.stock} szt.`) : "Chwilowo niedostępne"}</div>
 

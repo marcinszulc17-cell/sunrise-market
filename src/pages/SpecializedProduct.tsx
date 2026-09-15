@@ -7,7 +7,8 @@ import LocationMap, { locationKind } from "../components/LocationMap";
 import { useParams } from "react-router-dom";
 import { getOffer, offerImages, trackView, similarOffers } from "../lib/api";
 import { supabase } from "../lib/supabase";
-import { zl } from "../lib/money";
+import { zl, pkt } from "../lib/money";
+import { getMarketConfig, cashbackFor } from "../lib/marketConfig";
 import { pushRecent } from "../lib/recent";
 import { displayImageUrl } from "../lib/imageUrl";
 import OfferDescription from "../components/OfferDescription";
@@ -52,11 +53,14 @@ export default function SpecializedProduct() {
   const [o, setO] = useState<Offer | null>(null);
   const [imgs, setImgs] = useState<string[]>([]);
   const [active, setActive] = useState(0);
+  // Stawka cashbacku z konfiguracji rynku, nie zaszyta w widoku.
+  const [cashbackRate, setCashbackRate] = useState(0.03);
   const [similar, setSimilar] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState<string | null>(null);
   const [leadOpen, setLeadOpen] = useState(false);
   const [leadBusy, setLeadBusy] = useState(false);
+  useEffect(() => { getMarketConfig().then((c) => setCashbackRate(c.cashbackRate)).catch(() => {}); }, []);
   const [leadDone, setLeadDone] = useState(false);
   const [leadError, setLeadError] = useState<string | null>(null);
   const [leadName, setLeadName] = useState("");
@@ -85,7 +89,7 @@ export default function SpecializedProduct() {
 
   const A = o?.attributes || {};
   const kind = kindOf(o?.category_slug || "");
-  const cashback = o ? Math.round(o.price_gross * 0.03) : 0;
+  const cashback = o ? cashbackFor(o.price_gross, cashbackRate) : 0;
   const mileage = A.mileage_km ?? A.mileage;
   const power = A.power_hp ?? A.power;
   const engine = A.engine_cc ?? A.engine;
@@ -156,7 +160,7 @@ export default function SpecializedProduct() {
             <div className="mt-5 flex flex-wrap items-end justify-between gap-3"><div><div className="text-xs" style={{color:"var(--mut)"}}>Cena</div><div className="text-4xl font-extrabold" style={{color:"var(--gold)"}}>{zl(o.price_gross)}</div></div>{A.location&&<div className="rounded-full px-3 py-1 text-xs" style={{background:"var(--header)",border:"1px solid var(--line)"}}>📍 {A.location}</div>}</div>
             {isProperty && A.area_m2 && <div className="mt-1 text-sm" style={{ color: "var(--mut)" }}>{Math.round(o.price_gross / Number(A.area_m2)).toLocaleString("pl-PL")} zł/m²</div>}
             <div className="mt-4 grid gap-2 sm:grid-cols-2 lg:grid-cols-1">
-              <div className="rounded-2xl p-4" style={{ background: "rgba(122,184,154,.10)", border: "1px solid rgba(122,184,154,.28)" }}><div className="text-xs" style={{ color: "var(--mut)" }}>Cashback po zakupie</div><div className="mt-1 text-2xl font-bold" style={{ color: "var(--green)" }}>+{cashback.toLocaleString("pl-PL")} pkt</div></div>
+              <div className="rounded-2xl p-4" style={{ background: "rgba(122,184,154,.10)", border: "1px solid rgba(122,184,154,.28)" }}><div className="text-xs" style={{ color: "var(--mut)" }}>Cashback po zakupie</div><div className="mt-1 text-2xl font-bold" style={{ color: "var(--green)" }}>+{pkt(cashback)} pkt</div></div>
               {A.full_vat_invoice && <div className="rounded-2xl p-4 text-sm font-semibold" style={{ background: "rgba(56,224,240,.08)", border: "1px solid rgba(56,224,240,.22)" }}><div>✓ Pełna faktura VAT</div><div className="mt-1 text-xs font-normal" style={{color:"var(--mut)"}}>Zakup dokumentowany pełną fakturą VAT.</div></div>}
             </div>
 

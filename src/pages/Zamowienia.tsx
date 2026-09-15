@@ -3,7 +3,7 @@ import { supabase } from "../lib/supabase";
 import { myOrders, openReturn, myReturns } from "../lib/api";
 import InvoiceSnapshotCard, { type InvoiceSnapshot } from "../components/InvoiceSnapshotCard";
 import SalesDocumentsPanel from "../components/SalesDocumentsPanel";
-import { zl } from "../lib/money";
+import { zl, pkt } from "../lib/money";
 
 type Item = { offer_id: string; title: string; qty: number; price: number };
 type Order = { order_id: string; status: string; total: number; cashback: number; created_at: string; shipping_method: string | null; tracking_no: string | null; invoice: InvoiceSnapshot; items: Item[] };
@@ -196,7 +196,7 @@ export default function Zamowienia() {
               </div>
 
               <div className="flex justify-between items-center pt-3" style={{ borderTop: "1px solid var(--line)" }}>
-                <span className="text-xs" style={{ color: "var(--green)" }}>Cashback +{Math.round(o.cashback).toLocaleString("pl-PL")} pkt</span>
+                <span className="text-xs" style={{ color: "var(--green)" }}>Cashback +{pkt(o.cashback)} pkt</span>
                 <span className="font-display text-xl font-semibold">{zl(o.total)}</span>
               </div>
             </div>;
