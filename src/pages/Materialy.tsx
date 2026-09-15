@@ -125,7 +125,28 @@ export default function Materialy() {
             </div>
           )}
 
-          {zalogowany === true && <Lista pozycje={DLA_AMBASADOROW} />}
+          {zalogowany === true && (
+            <>
+              <Lista pozycje={DLA_AMBASADOROW} />
+              <div className="mt-3 rounded-2xl p-5" style={CARD}>
+                <div className="text-xs font-bold" style={{ color: "var(--gold)" }}>
+                  ZIP · 4 kartki · 320 kB
+                </div>
+                <div className="mt-1 font-semibold">Pobierz komplet</div>
+                <p className="mt-1 text-sm leading-6" style={{ color: "var(--mut)" }}>
+                  Wszystkie cztery kartki w jednym pliku, razem z krótką instrukcją — do przesłania
+                  dalej albo do wydrukowania na raz.
+                </p>
+                <a
+                  href="/materialy/kartki-ambasadora.zip"
+                  className="mt-3 inline-grid h-11 items-center rounded-xl px-5 text-sm font-bold"
+                  style={{ background: "var(--gold)", color: "#161219" }}
+                >
+                  Pobierz paczkę (ZIP)
+                </a>
+              </div>
+            </>
+          )}
         </section>
 
         <p className="mt-10 text-xs leading-6" style={{ color: "var(--mut)" }}>
