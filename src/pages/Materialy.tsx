@@ -37,7 +37,7 @@ const DLA_AMBASADOROW: Pozycja[] = [
     opis:
       "Mechanika prowizji, statusy i stawki, a potem marka po marce — ile dostajesz, za co i w którym statusie. Wszystkie stawki odczytane z systemu.",
     href: "/materialy/przewodnik-ambasadora.pdf",
-    meta: "PDF · 18 stron · przewodnik",
+    meta: "PDF · 14 stron · przewodnik",
     zewnetrzny: true,
   },
   {
@@ -138,7 +138,7 @@ export default function Materialy() {
               <Lista pozycje={DLA_AMBASADOROW} />
               <div className="mt-3 rounded-2xl p-5" style={CARD}>
                 <div className="text-xs font-bold" style={{ color: "var(--gold)" }}>
-                  ZIP · przewodnik + 4 kartki · 532 kB
+                  ZIP · przewodnik + 4 kartki · 516 kB
                 </div>
                 <div className="mt-1 font-semibold">Pobierz komplet</div>
                 <p className="mt-1 text-sm leading-6" style={{ color: "var(--mut)" }}>
