@@ -1,0 +1,253 @@
+<!doctype html>
+<html lang="pl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Ile zostaje Ci z rezerwacji? — Sunrise Market</title>
+<meta name="description" content="Policz, ile z rezerwacji zostaje w Twojej kieszeni po prowizji portalu. Porównanie z Sunrise Market.">
+<meta property="og:title" content="Ile zostaje Ci z rezerwacji?">
+<meta property="og:description" content="Wpisz swoje liczby i zobacz, ile oddajesz prowizji rocznie.">
+<meta property="og:url" content="https://sunrisemarket.pl/dla-obiektow/kalkulator.html">
+<link rel="icon" href="/favicon.ico">
+<style>
+  :root{
+    --bg:#121016; --bg2:#1a1820; --line:#2a2733;
+    --cream:#f6efe5; --muted:#a8a39e; --gold:#e8a83c; --green:#3fa66a; --red:#d4694f;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--cream);
+    font:16px/1.55 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif}
+  .wrap{max-width:900px;margin:0 auto;padding:0 20px}
+  header{padding:28px 0 8px}
+  .logo{font-weight:800;letter-spacing:.14em;font-size:15px}
+  .logo span{color:var(--gold)}
+  h1{font-size:clamp(28px,5vw,42px);line-height:1.15;margin:26px 0 10px;font-weight:800}
+  .lead{color:var(--muted);font-size:clamp(16px,2.2vw,19px);max-width:62ch;margin:0 0 30px}
+  .card{background:var(--bg2);border:1px solid var(--line);border-radius:18px;padding:22px;margin-bottom:18px}
+  .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:16px}
+  label{display:block;font-size:13px;color:var(--muted);margin-bottom:6px}
+  input,select{width:100%;background:#0e0d12;border:1px solid var(--line);color:var(--cream);
+    border-radius:11px;padding:12px 13px;font-size:16px;font-family:inherit}
+  input:focus,select:focus{outline:2px solid var(--gold);outline-offset:1px}
+  .hint{font-size:12px;color:#7d7973;margin-top:5px}
+  .out{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:14px;margin-top:6px}
+  .stat{background:#0e0d12;border:1px solid var(--line);border-radius:14px;padding:16px}
+  .stat .k{font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:.07em}
+  .stat .v{font-size:clamp(22px,3.6vw,30px);font-weight:800;margin-top:6px;font-variant-numeric:tabular-nums}
+  .v.gold{color:var(--gold)} .v.green{color:var(--green)} .v.red{color:var(--red)}
+  .bar{height:10px;border-radius:6px;background:#0e0d12;overflow:hidden;margin-top:10px;display:flex}
+  .bar i{display:block;height:100%}
+  table{width:100%;border-collapse:collapse;margin-top:8px;font-variant-numeric:tabular-nums}
+  th,td{text-align:right;padding:11px 8px;border-bottom:1px solid var(--line);font-size:15px}
+  th:first-child,td:first-child{text-align:left}
+  th{color:var(--muted);font-weight:600;font-size:13px}
+  .note{font-size:13px;color:var(--muted);margin-top:14px;line-height:1.6}
+  .cta{background:var(--gold);color:#241606;border:0;border-radius:12px;padding:14px 24px;
+    font-size:16px;font-weight:800;cursor:pointer;font-family:inherit}
+  .cta:disabled{opacity:.5;cursor:default}
+  .chk{display:flex;gap:10px;align-items:flex-start;margin:14px 0;font-size:13px;color:var(--muted)}
+  .chk input{width:18px;height:18px;flex:0 0 auto;margin-top:2px}
+  .msg{margin-top:12px;font-size:14px;padding:12px 14px;border-radius:11px;display:none}
+  .msg.ok{display:block;background:rgba(63,166,106,.12);border:1px solid rgba(63,166,106,.4);color:#8fd8ae}
+  .msg.err{display:block;background:rgba(212,105,79,.12);border:1px solid rgba(212,105,79,.4);color:#eda898}
+  footer{color:#6f6b66;font-size:13px;padding:34px 0 50px;border-top:1px solid var(--line);margin-top:34px}
+  a{color:var(--gold)}
+  @media (max-width:520px){ th,td{font-size:14px;padding:9px 5px} }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header><div class="logo">SUNRISE <span>MARKET</span></div></header>
+
+  <h1>Ile zostaje Ci z rezerwacji?</h1>
+  <p class="lead">Wpisz swoje liczby. Policzymy, ile rocznie oddajesz prowizji i ile zostałoby,
+     gdyby ta sama rezerwacja przyszła przez Sunrise Market.</p>
+
+  <div class="card">
+    <div class="grid">
+      <div>
+        <label for="noc">Cena za dobę (zł)</label>
+        <input id="noc" type="number" min="0" step="10" value="350" inputmode="decimal">
+      </div>
+      <div>
+        <label for="dob">Sprzedanych dób w roku</label>
+        <input id="dob" type="number" min="0" step="5" value="120" inputmode="numeric">
+        <div class="hint">Np. 120 dób to ok. 33% obłożenia.</div>
+      </div>
+      <div>
+        <label for="portal">Prowizja portalu, z którego korzystasz</label>
+        <select id="portal">
+          <option value="15">15%</option>
+          <option value="17" selected>17%</option>
+          <option value="18">18%</option>
+          <option value="20">20%</option>
+          <option value="0">inna — wpisz obok</option>
+        </select>
+      </div>
+      <div>
+        <label for="wlasna">…albo wpisz własną (%)</label>
+        <input id="wlasna" type="number" min="0" max="50" step="0.5" placeholder="np. 16,5" inputmode="decimal">
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="out">
+      <div class="stat"><div class="k">Obrót w roku</div><div class="v" id="obrot">—</div></div>
+      <div class="stat"><div class="k">Prowizja dziś</div><div class="v red" id="prow_dzis">—</div></div>
+      <div class="stat"><div class="k">Prowizja u nas</div><div class="v gold" id="prow_sun">—</div></div>
+      <div class="stat"><div class="k">Różnica w roku</div><div class="v green" id="roznica">—</div></div>
+    </div>
+    <div class="bar" id="bar"><i style="background:var(--red)"></i><i style="background:var(--gold)"></i></div>
+
+    <table>
+      <thead><tr><th>Scenariusz</th><th>Prowizja</th><th>Zostaje Ci</th></tr></thead>
+      <tbody>
+        <tr><td id="r_portal_l">Twój portal</td><td id="r_portal_p">—</td><td id="r_portal_z">—</td></tr>
+        <tr><td>Sunrise Market — 1. rok (bez abonamentu)</td><td id="r_s1_p">—</td><td id="r_s1_z">—</td></tr>
+        <tr><td>Sunrise Market — od 2. roku (z abonamentem)</td><td id="r_s2_p">—</td><td id="r_s2_z">—</td></tr>
+      </tbody>
+    </table>
+
+    <p class="note" id="zalozenia"></p>
+  </div>
+
+  <div class="card">
+    <h2 style="margin:0 0 6px;font-size:21px">Nie musisz nic zmieniać</h2>
+    <p style="color:var(--muted);margin:0 0 16px;max-width:60ch">
+      Kalendarz synchronizuje się przez iCal z Booking, Airbnb i Nocowaniem — w obie strony.
+      Nie ma podwójnych rezerwacji i nie ma wyłączności. Zostawiasz wszystko tak, jak masz,
+      a u nas dokładasz jeden dodatkowy kanał.
+    </p>
+    <div class="grid">
+      <div><label for="f_name">Imię i nazwisko *</label><input id="f_name" autocomplete="name"></div>
+      <div><label for="f_email">E-mail *</label><input id="f_email" type="email" autocomplete="email"></div>
+      <div><label for="f_phone">Telefon</label><input id="f_phone" autocomplete="tel"></div>
+      <div><label for="f_obj">Nazwa obiektu i miejscowość</label><input id="f_obj"></div>
+    </div>
+
+    <label class="chk">
+      <input type="checkbox" id="f_zgoda">
+      <span id="zgoda_txt">Zgadzam się na kontakt ze strony Sunrise Market w sprawie mojego zgłoszenia —
+      telefonicznie lub e-mailem. Zgodę mogę wycofać w każdej chwili.</span>
+    </label>
+
+    <button class="cta" id="send">Wyślij zgłoszenie</button>
+    <div class="msg" id="msg"></div>
+    <p class="note">Administratorem danych jest Sunrise Market. Dane przetwarzamy wyłącznie po to,
+       żeby odpowiedzieć na to zgłoszenie. Nie przekazujemy ich dalej.</p>
+  </div>
+
+  <footer>
+    Wyliczenie jest szacunkowe i opiera się na liczbach, które sam podajesz.
+    Nie uwzględnia opłat operatora płatności ani podatków.
+    <br><a href="https://sunrisemarket.pl">sunrisemarket.pl</a>
+  </footer>
+</div>
+
+<script>
+const SB_URL = "https://ihehncaaokbwbdqdztna.supabase.co";
+const SB_KEY = "sb_publishable_176FcdlaJi6okpKqd67nog_wJqYSVdK";
+const SUN_PROW = 7.9;   // prowizja od wartosci uslugi — od pierwszej rezerwacji
+const ABON_ROK = 499;   // abonament roczny, w 1. roku 0 zl (pay_promo_months=12)
+
+const $ = id => document.getElementById(id);
+const zl = n => n.toLocaleString("pl-PL",{style:"currency",currency:"PLN",maximumFractionDigits:0});
+
+function stawkaPortalu(){
+  const w = parseFloat($("wlasna").value);
+  if (Number.isFinite(w) && w > 0) return w;
+  return parseFloat($("portal").value) || 0;
+}
+
+function licz(){
+  const cena = Math.max(0, parseFloat($("noc").value) || 0);
+  const doby = Math.max(0, parseFloat($("dob").value) || 0);
+  const p    = stawkaPortalu();
+  const obrot = cena * doby;
+
+  const provP  = obrot * p / 100;
+  const prow   = obrot * SUN_PROW / 100;
+
+  $("obrot").textContent    = zl(obrot);
+  $("prow_dzis").textContent= zl(provP);
+  $("prow_sun").textContent = zl(prow);
+  $("roznica").textContent  = zl(Math.max(0, provP - prow));
+
+  $("r_portal_l").textContent = "Twój portal — " + p.toLocaleString("pl-PL") + "%";
+  $("r_portal_p").textContent = zl(provP);
+  $("r_portal_z").textContent = zl(obrot - provP);
+  $("r_s1_p").textContent     = zl(prow);
+  $("r_s1_z").textContent     = zl(obrot - prow);
+  $("r_s2_p").textContent     = zl(prow + ABON_ROK);
+  $("r_s2_z").textContent     = zl(obrot - prow - ABON_ROK);
+
+  const max = Math.max(provP, prow, 1);
+  const bar = $("bar").children;
+  bar[0].style.width = (provP/max*50) + "%";
+  bar[1].style.width = (prow/max*50) + "%";
+
+  $("zalozenia").textContent =
+    "Założenia: " + doby.toLocaleString("pl-PL") + " dób po " + zl(cena) + ". " +
+    "Prowizja " + SUN_PROW.toLocaleString("pl-PL") + "% liczy się od wartości usługi od pierwszej rezerwacji — " +
+    "opłata miejscowa i kaucja są poza podstawą. Pierwszy rok bez abonamentu, " +
+    "od drugiego " + zl(ABON_ROK) + " rocznie (albo 199 zł miesięcznie).";
+}
+
+["noc","dob","portal","wlasna"].forEach(id => {
+  $(id).addEventListener("input", licz);
+  $(id).addEventListener("change", licz);
+});
+licz();
+
+$("send").addEventListener("click", async () => {
+  const msg = $("msg");
+  msg.className = "msg";
+  const name = $("f_name").value.trim();
+  const email = $("f_email").value.trim();
+  if (!name || email.indexOf("@") < 1) {
+    msg.className = "msg err"; msg.textContent = "Podaj imię i poprawny adres e-mail."; return;
+  }
+  if (!$("f_zgoda").checked) {
+    msg.className = "msg err"; msg.textContent = "Bez zgody na kontakt nie mamy jak odpowiedzieć."; return;
+  }
+  $("send").disabled = true;
+  try {
+    const r = await fetch(SB_URL + "/rest/v1/rpc/seller_signup_create", {
+      method: "POST",
+      headers: {
+        "apikey": SB_KEY,
+        "Authorization": "Bearer " + SB_KEY,
+        "Content-Type": "application/json",
+        "Content-Profile": "market"
+      },
+      body: JSON.stringify({
+        p_name: name,
+        p_email: email,
+        p_phone: $("f_phone").value.trim(),
+        p_company: $("f_obj").value.trim(),
+        p_category: "noclegi",
+        p_current_places: $("portal").options[$("portal").selectedIndex].text,
+        p_monthly_orders: String($("dob").value || ""),
+        p_note: "Kalkulator: cena/doba " + $("noc").value + " zł, dób/rok " + $("dob").value
+                + ", prowizja portalu " + stawkaPortalu() + "%",
+        p_consent_contact: true,
+        p_consent_marketing: false,
+        p_consent_text: $("zgoda_txt").textContent.trim(),
+        p_source: "kalkulator-noclegi"
+      })
+    });
+    if (!r.ok) throw new Error(await r.text());
+    msg.className = "msg ok";
+    msg.textContent = "Dziękujemy. Odezwiemy się na podany adres.";
+    ["f_name","f_email","f_phone","f_obj"].forEach(i => $(i).value = "");
+    $("f_zgoda").checked = false;
+  } catch (e) {
+    msg.className = "msg err";
+    msg.textContent = "Nie udało się wysłać zgłoszenia. Spróbuj ponownie albo napisz na kontakt@sunrisemarket.pl";
+    $("send").disabled = false;
+  }
+});
+</script>
+</body>
+</html>
