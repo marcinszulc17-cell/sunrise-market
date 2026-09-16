@@ -20,6 +20,20 @@ type Ad = { id: string; headline: string; link_url: string; image_url: string | 
 
 const PRIVATE_FILTER_KEYS = new Set(["vin", "registration_number", "kw_number", "offer_type", "cashback_only", "purchase_mode"]);
 
+/**
+ * Kategorie bez ani jednej aktywnej oferty nie trafiaja na pasek. Na 598 kategorii
+ * 539 jest dzis pustych, wiec bez tego klikniecie w dowolna z nich konczylo sie
+ * pusta lista (zgloszenie wlasciciela 2026-09-16: „klikne w fotowoltaika i nie ma nic").
+ * Licznik to total_cnt z market.category_counts — liczy rowniez oferty w podkategoriach,
+ * wiec kategoria z pustym srodkiem, ale pelnymi dziecmi, zostaje widoczna.
+ * Dopoki liczniki sie nie zaladuja (counts puste) pokazujemy wszystko — lepiej to,
+ * niz migajacy pasek.
+ */
+function zOfertami<T extends { id?: string }>(kategorie: T[], counts: Record<string, number>) {
+  if (!Object.keys(counts).length) return kategorie;
+  return kategorie.filter((k) => !k.id || (counts[k.id] ?? 0) > 0);
+}
+
 function matchesAttributeFilters(offer: Offer, filters: Record<string, string | boolean>) {
   const attributes = offer.attributes ?? {};
   for (const [rawKey, expected] of Object.entries(filters)) {
@@ -426,26 +440,26 @@ export default function Market() {
         {/* pasek działów */}
         <div className="mx-auto max-w-6xl px-4 pb-2 flex gap-2 overflow-x-auto">
           <Chip active={activeDept === null} onClick={() => pickDept(null)}>☰ Wszystkie{total ? ` (${total.toLocaleString("pl-PL")})` : ""}</Chip>
-          {depts.map((d) => (
+          {zOfertami(depts, counts).map((d) => (
             <Chip key={d.slug} active={activeDept?.slug === d.slug} onClick={() => pickDept(d)}>
               {deptEmoji(d.name)} {d.name}{d.id && counts[d.id] ? <span style={{ opacity: .6 }}> ({counts[d.id]})</span> : null}
             </Chip>
           ))}
         </div>
         {/* poziom 2: podkategorie */}
-        {activeDept && subs.length > 0 && (
+        {activeDept && zOfertami(subs, counts).length > 0 && (
           <div className="mx-auto max-w-6xl px-4 pb-2 flex gap-2 overflow-x-auto">
             <Chip active={activeSub === null} onClick={() => pickSub(null)}>Wszystko w: {activeDept.name}</Chip>
-            {subs.map((s) => (
+            {zOfertami(subs, counts).map((s) => (
               <Chip key={s.slug} active={activeSub?.slug === s.slug} onClick={() => pickSub(s)}>{s.name}{s.id && counts[s.id] ? <span style={{ opacity: .6 }}> ({counts[s.id]})</span> : null}</Chip>
             ))}
           </div>
         )}
         {/* poziom 3: pod-podkategorie */}
-        {activeSub && subs2.length > 0 && (
+        {activeSub && zOfertami(subs2, counts).length > 0 && (
           <div className="mx-auto max-w-6xl px-4 pb-3 flex gap-2 overflow-x-auto" style={{ borderTop: "1px dashed var(--line)", paddingTop: 8 }}>
             <Chip active={activeSub2 === null} onClick={() => pickSub2(null)}>Wszystko w: {activeSub.name}</Chip>
-            {subs2.map((s) => (
+            {zOfertami(subs2, counts).map((s) => (
               <Chip key={s.slug} active={activeSub2 === s.slug} onClick={() => pickSub2(s.slug)}>{s.name}</Chip>
             ))}
           </div>

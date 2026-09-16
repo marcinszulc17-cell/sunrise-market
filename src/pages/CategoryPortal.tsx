@@ -1,4 +1,5 @@
 import { FormEvent, useEffect, useMemo, useState } from "react";
+import { categoryCounts } from "../lib/api";
 import { SiteHeader } from "../components/home/SiteChrome";
 import { HomeFooter } from "../components/home/HomeShared";
 import { supabase } from "../lib/supabase";
@@ -37,7 +38,15 @@ export default function CategoryPortal({mode}:{mode:Mode}){
     query("najnowsze",8).then(setLatest);
     query("cena_rosnaco",8).then(setCheap);
     supabase.from("categories").select("id,slug,name,parent_id").eq("slug",rootSlug).maybeSingle().then(({data})=>{
-      if(data?.id) supabase.from("categories").select("id,slug,name").eq("parent_id",data.id).order("sort_order").then(({data:ch})=>setCats((ch||[]) as Cat[]));
+      // Podkategorie bez ani jednej aktywnej oferty nie trafiaja na pasek —
+      // total_cnt z category_counts liczy takze oferty w glebszych poziomach.
+      if(data?.id) Promise.all([
+        supabase.from("categories").select("id,slug,name").eq("parent_id",data.id).order("sort_order"),
+        categoryCounts().catch(()=>({byId:{} as Record<string,number>,total:0})),
+      ]).then(([{data:ch},{byId}])=>{
+        const lista=(ch||[]) as Cat[];
+        setCats(Object.keys(byId).length ? lista.filter(c=>(byId[c.id]??0)>0) : lista);
+      });
     });
   },[mode]);
 

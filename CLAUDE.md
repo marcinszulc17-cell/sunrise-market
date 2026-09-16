@@ -145,6 +145,41 @@ pierwszeństwo przy każdej zmianie kodu. Nie wolno ich naruszać ani obchodzić
 - **Poprawione nazwy** (przeczyły własnym opisom i SKU): `PV-DACH-29.40-JD` miał w nazwie
   29,5 kW zamiast 29,4; `PV-DACH-9.80-JD` miał 9,9 kW zamiast 9,8. Poprawione w obu bazach.
 
+## 2g. Kategorie — produkty w podkategoriach, puste znikają (zgłoszenie 2026-09-16)
+
+- Objaw: „wejdę w OZE i mamy wszystko, a jak kliknę w Fotowoltaika, to nie ma nic".
+  Wszystkie 65 ofert energetycznych wisiało na korzeniu `oze-i-energia`.
+- **Przyczyna była w `mysunrise-sync`, nie w bazie.** `mapCat()` mapowało wszystko
+  energetyczne na jeden slug `oze-i-energia`, a sync **nadpisuje `category_id` przy każdym
+  przebiegu** (pg_cron co 15 min). Ręczne poukładanie kategorii w bazie wracało do korzenia
+  przy najbliższym cyklu — sprawdzone na żywo: pierwsza próba została cofnięta w kilka minut.
+  `mapCat(catName, productName)` rozpoznaje teraz produkt po NAZWIE i zwraca konkretny liść
+  (`...-fotowoltaika-inwertery`, `...-magazyny-energii-magazyny-hybrydowe`,
+  `...-ogrzewanie-piece-pellet`, `...-pompy-ciepla-powietrzne`, `...-klimatyzacja-split`).
+  Wdrożone jako wersja 22, `verify_jwt` zostaje `false` (funkcja ma własny `x-sync-secret`).
+- **Pułapka w regule magazynów:** „Magazyn energii 10 kWh – montaż (**bez falownika**)"
+  zawiera słowo „falownik". Warunek to `/falownik/ && !/bez falownik/`, inaczej samodzielne
+  magazyny lądują w Magazynach hybrydowych.
+- Rozkład po uporządkowaniu: Fotowoltaika 32, Magazyny energii 11, Piece na pellet 7,
+  Falowniki hybrydowe 4, Pompy powietrzne 4, Kotły na drewno 3, Klimatyzacja split 3,
+  Zarządzanie energią 1. Na korzeniu `oze-i-energia` — zero.
+- **Nazewnictwo ustawione przez właściciela 2026-09-16: „magazyny hybrydowe" NIE ISTNIEJĄ —
+  hybrydowy jest FALOWNIK, nie magazyn.** Stąd podział:
+  - `Magazyny energii` — **wszystkie 11**, z falownikiem i bez. Bez rozbicia na podkategorie.
+  - `Falowniki hybrydowe` — same falowniki Deye (4), pod Fotowoltaiką.
+  Nie twórz „magazynów hybrydowych" ani „zestawów z falownikiem" jako osobnych kategorii.
+- **Slugi zostały stare** (`...-fotowoltaika-inwertery` dla Falowników hybrydowych) — siedzą
+  w `mapCat()` w `mysunrise-sync`, więc zmiana sluga bez równoczesnego wdrożenia funkcji
+  zrzuci te oferty do `elektronika`. Nazwa widoczna dla klienta jest poprawna, slug wewnętrzny.
+- **Puste kategorie nie trafiają do nawigacji.** Na 598 kategorii 539 nie ma ani jednej
+  aktywnej oferty (14 pustych działów głównych), więc klikanie w losową kategorię prawie
+  zawsze kończyło się pustą listą. Market, portal kategorii i wyszukiwarka zaawansowana
+  filtrują teraz po `total_cnt` z `market.category_counts()` — liczniku, który **wlicza
+  oferty z podkategorii**, więc kategoria pusta w środku, ale z pełnymi dziećmi, zostaje
+  widoczna. Strona główna (`usePopularCategories`) robiła to już wcześniej.
+- Dopóki liczniki się nie załadują, pokazujemy wszystko — lepiej to niż migający pasek.
+- **Nie „naprawiaj" tego przenosząc ofert w bazie bez ruszenia `mysunrise-sync`** — wróci.
+
 ## 3. Zasady sprzedawców (decyzja właściciela 2026-09-05: dwa poziomy)
 
 - **Sprzedawca** (`sellers.seller_type = 'private_partner'`): uproszczone centrum,

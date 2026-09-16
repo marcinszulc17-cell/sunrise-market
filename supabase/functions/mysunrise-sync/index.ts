@@ -20,10 +20,63 @@ const SYNC_SECRET = Deno.env.get("MYSUNRISE_SYNC_SECRET") ?? "sunrise-ms-sync-20
 // Statusy ustawione ręcznie przez sprzedawcę/operatora — sync ich nie nadpisuje.
 const STATUSY_RECZNE = new Set(["paused", "blocked", "archived"]);
 
-function mapCat(catName) {
-  const t = (catName || "").toLowerCase();
-  if (/przegl|serwis|protect|usług|uslug|abonament|aktywacj|pakiet/.test(t)) return "uslugi-i-reklama";
-  if (/fotowolt|magazyn|pompa|pompy|ogrzewan|falownik|piec|kocio|klimatyz|charge|ev|termostat|grzejnik|radiator|thermo|elektromobil/.test(t)) return "oze-i-energia";
+// Mapowanie na KONKRETNA podkategorie, nie na korzen dzialu.
+// Wczesniej wszystko energetyczne ladowalo w "oze-i-energia", przez co klient
+// wchodzil w "Fotowoltaika" i widzial pustke, a w dziale glownym mial wszystko
+// wymieszane (zgloszenie wlasciciela 2026-09-16). Sync nadpisuje category_id przy
+// kazdym przebiegu, wiec recznie poukladane kategorie i tak wracalyby do korzenia —
+// poprawka musi siedziec tutaj, nie tylko w bazie.
+// Rozpoznajemy po NAZWIE PRODUKTU (precyzyjna), a nazwa kategorii MySunrise sluzy
+// tylko jako zapasowy trop.
+function mapCat(catName, productName) {
+  const k = (catName || "").toLowerCase();
+  const n = (productName || "").toLowerCase();
+  const t = n + " " + k;
+
+  if (/przegl|serwis|protect|usług|uslug|abonament|aktywacj|pakiet/.test(k)) return "uslugi-i-reklama";
+
+  // Fotowoltaika
+  if (/^falownik|inwerter/.test(n)) return "oze-i-energia-fotowoltaika-inwertery";
+  if (/^fotowoltaika |^zestaw fotowoltaiczny/.test(n)) return "oze-i-energia-fotowoltaika";
+  if (/optymalizator/.test(n)) return "oze-i-energia-fotowoltaika-optymalizatory";
+  if (/konstrukcj/.test(n)) return "oze-i-energia-fotowoltaika-konstrukcje-montazowe";
+  if (/^panel|modu[łl] pv/.test(n)) return "oze-i-energia-fotowoltaika-panele-pv";
+
+  // Magazyny energii — WSZYSTKIE w jednej kategorii (decyzja wlasciciela 2026-09-16),
+  // takze zestawy "magazyn + falownik hybrydowy". Hybrydowy jest falownik, nie magazyn,
+  // wiec nie ma osobnej kategorii na "magazyny hybrydowe".
+  if (/magazyn energii/.test(n)) return "oze-i-energia-magazyny-energii";
+
+  // Pompy ciepla
+  if (/pompa ciep|pompy ciep/.test(t)) {
+    if (/gruntow/.test(n)) return "oze-i-energia-pompy-ciepla-gruntowe";
+    if (/monoblok|powietrzn|split/.test(n)) return "oze-i-energia-pompy-ciepla-powietrzne";
+    if (/cwu|ciep[łl]ej wody/.test(n)) return "oze-i-energia-pompy-ciepla-cwu";
+    return "oze-i-energia-pompy-ciepla";
+  }
+
+  // Ogrzewanie
+  if (/pellet/.test(n)) return "oze-i-energia-ogrzewanie-piece-pellet";
+  if (/zgazowuj|na drewno|drewno/.test(n)) return "oze-i-energia-ogrzewanie-piece-drewno";
+  if (/folia grzewcz|folie grzewcz/.test(n)) return "oze-i-energia-ogrzewanie-folie-grzewcze";
+  if (/kocio[łl]|piec |grzejnik|radiator/.test(n)) return "oze-i-energia-ogrzewanie";
+
+  // Klimatyzacja
+  if (/klimatyz/.test(t)) {
+    if (/multi/.test(n)) return "oze-i-energia-klimatyzacja-multisplit";
+    if (/przeno[śs]n/.test(n)) return "oze-i-energia-klimatyzacja-przenosne";
+    return "oze-i-energia-klimatyzacja-split";
+  }
+
+  // Ladowanie EV
+  if (/[łl]adowark|wallbox|charge/.test(t)) {
+    return /\bdc\b/.test(n) ? "oze-i-energia-ladowanie-ev-ladowarki-dc" : "oze-i-energia-ladowanie-ev-ladowarki-ac";
+  }
+
+  // Zarzadzanie energia
+  if (/termostat|thermo|licznik energii/.test(t)) return "oze-i-energia-zarzadzanie-energia";
+
+  if (/fotowolt|magazyn|pompa|pompy|ogrzewan|falownik|piec|kocio|elektromobil|ev/.test(k)) return "oze-i-energia";
   if (/woda|water|filtr/.test(t)) return "dom-i-ogrod";
   if (/smart|czujnik|sensor|oświetl|oswietl|light|bulb|gniazd|plug|zamek|lock|kamera|camera|bezpiecze/.test(t)) return "elektronika";
   return "elektronika";
@@ -61,7 +114,7 @@ Deno.serve(async (req) => {
   for (const p of products) {
     try {
       aktywneId.add(String(p.id));
-      const slug = mapCat(catName(p.category_id));
+      const slug = mapCat(catName(p.category_id), p.name);
       const cid = catId(slug) ?? catId("elektronika");
       const img = (typeof p.image_url === "string" && p.image_url.length > 20) ? p.image_url : svgFor(p.name);
       const price = Number(p.price_pln) || 0;
