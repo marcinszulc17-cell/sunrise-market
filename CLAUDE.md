@@ -118,6 +118,33 @@ pierwszeństwo przy każdej zmianie kodu. Nie wolno ich naruszać ani obchodzić
   (`current_seller_can_sell()`). Dla darmowych ogłoszeń o pracę to bariera — jeśli ma
   zniknąć, trzeba to świadomie zdjąć, a nie obejść.
 
+## 2f. Moc instalacji (kW) — sortowanie i filtr (zgłoszenie właściciela 2026-09-16)
+
+- Moc była wyłącznie w tytule oferty, więc lista OZE szła alfabetycznie:
+  10,62 → 14,16 → 14,7 → 19,6 → 2,94 → 20,06 → 29,5. Nie dało się ułożyć instalacji
+  od najmniejszej do największej ani zawęzić do konkretnego przedziału mocy.
+- Teraz: `offers.attributes.power_kw` (moc w kW) i `attributes.storage_kwh`
+  (pojemność magazynu). Wypełnione z tytułów, dla falowników z SKU `INV-DEYE-<n>K`.
+  53 z 65 aktywnych ofert `oze-i-energia` ma moc, 21 ma pojemność.
+- `search_offers` i `search_offers_v2` znają `p_sort = 'moc_rosnaco'` i `'moc_malejaco'`;
+  `search_offers_v2` przyjmuje też `p_filters.power_min` / `power_max`. Oferty bez mocy
+  lądują **na końcu**, nie na początku — to celowe, patrz pierwszy `case` w `order by`.
+- `power_kw` i `storage_kwh` są w `category_attributes` sześciu kategorii energetycznych
+  jako typ `number`, więc Market sam renderuje parę pól „od–do". **Nowe filtry zakresowe
+  dodaje się wpisem w słowniku, nie kodem** — front ma generyczną obsługę `_min`/`_max`.
+- Market: w gałęzi `oze-i-energia`, gdy użytkownik nie wybrał sortowania i nie szuka frazy,
+  domyślnie ustawia się `moc_rosnaco` (to jest owo „odgórnie po kolei").
+- **Pułapka:** jeśli sync z MySunrise zacznie nadpisywać `attributes` w całości, `power_kw`
+  zniknie i sortowanie po cichu wróci do ceny. Zapytanie przeliczające jest zakomentowane
+  na końcu migracji `20260916090000`.
+- Sklep MySunrise (`shop_products`) nie potrzebował kodu — ma kolumnę `sort`, a
+  `apps/sklep` czyta `.order("sort")`. Katalog jest przenumerowany w bloki kategorii
+  (Fotowoltaika 1001–1036, Magazyny 2037+, …), bo widok „wszystko" to jedna płaska lista
+  i wcześniej kategorie się przeplatały. W Fotowoltaice: instalacje wg kW, potem zestawy
+  z magazynem wg kW, na końcu falowniki wg mocy.
+- **Poprawione nazwy** (przeczyły własnym opisom i SKU): `PV-DACH-29.40-JD` miał w nazwie
+  29,5 kW zamiast 29,4; `PV-DACH-9.80-JD` miał 9,9 kW zamiast 9,8. Poprawione w obu bazach.
+
 ## 3. Zasady sprzedawców (decyzja właściciela 2026-09-05: dwa poziomy)
 
 - **Sprzedawca** (`sellers.seller_type = 'private_partner'`): uproszczone centrum,

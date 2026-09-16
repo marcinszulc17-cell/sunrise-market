@@ -288,8 +288,12 @@ export default function Market() {
     if (query && query.trim()) bannersFor("search_slot", null, query.trim()).then((b) => setSearchAd((b as Banner[])[0] ?? null)).catch(() => setSearchAd(null));
     else setSearchAd(null);
     try {
+      // W OZE i Energii „trafnosc" ustawiala instalacje alfabetycznie (10,62 przed 2,94).
+      // Bez wybranego sortowania i bez frazy ukladamy je od najmniejszej mocy.
+      const zadaneSort = sortOverride ?? sort;
+      const energetyczna = Boolean(slug && slug.startsWith("oze-i-energia"));
       const opts = {
-        sort: sortOverride ?? sort,
+        sort: zadaneSort === "trafnosc" && energetyczna && !(query && query.trim()) ? "moc_rosnaco" : zadaneSort,
         priceMin: (priceOverride?.min ?? pMin) ? Number(priceOverride?.min ?? pMin) : null,
         priceMax: (priceOverride?.max ?? pMax) ? Number(priceOverride?.max ?? pMax) : null,
         limit: lim,
@@ -695,7 +699,7 @@ export default function Market() {
             <div className="mt-3 flex flex-wrap items-end gap-3">
               <label className="min-w-[220px] text-xs"><span className="mb-1 block" style={{ color: "var(--mut)" }}>Sortowanie</span>
                 <select value={sort} onChange={(e) => setSort(e.target.value)} className="w-full rounded-xl px-3 py-2.5 outline-none" style={{ background: "var(--bg)", border: "1px solid var(--line)", color: "var(--ink)" }}>
-                  <option value="trafnosc">Trafność</option><option value="cena_rosnaco">Cena: rosnąco</option><option value="cena_malejaco">Cena: malejąco</option><option value="oceny">Najlepiej oceniane</option><option value="najnowsze">Najnowsze</option>
+                  <option value="trafnosc">Trafność</option><option value="moc_rosnaco">Moc: od najmniejszej</option><option value="moc_malejaco">Moc: od największej</option><option value="cena_rosnaco">Cena: rosnąco</option><option value="cena_malejaco">Cena: malejąco</option><option value="oceny">Najlepiej oceniane</option><option value="najnowsze">Najnowsze</option>
                 </select>
               </label>
               <button onClick={rerun} className="rounded-xl px-5 py-2.5 text-sm font-semibold text-black" style={{ background: "linear-gradient(135deg,#E8891A,#F5A623)" }}>Pokaż wyniki</button>
