@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
-import { myOffers, uploadProductImage } from "../lib/api";
+import { adRates, myOffers, promoteOffer, uploadProductImage } from "../lib/api";
 import { deleteMyOffer, setMyOfferVisibility } from "../lib/sellerOfferActions";
 import { getOfferForManage, updateOfferManage, type ManagedOffer } from "../lib/sellerOfferManage";
 import { supabase } from "../lib/supabase";
@@ -53,6 +53,10 @@ export default function SellerOffersManage() {
   const [uploading, setUploading] = useState(false);
   const [actionOfferId, setActionOfferId] = useState<string | null>(null);
   const [selected, setSelected] = useState<Set<string>>(new Set());
+  // Wyroznienie oferty/ogloszenia — platne z portfela Sunrise Pay, stawka z market.ad_rates.
+  const [highlightRate, setHighlightRate] = useState<number | null>(null);
+  const [highlightFor, setHighlightFor] = useState<OfferRow | null>(null);
+  const [highlightDays, setHighlightDays] = useState(7);
 
   async function reload() {
     setLoading(true);
@@ -67,7 +71,28 @@ export default function SellerOffersManage() {
       setAuthed(true);
       await reload();
     });
+    adRates().then((list: any[]) => {
+      const r = (list || []).find((x: any) => x.code === "highlight_day" && x.active !== false);
+      setHighlightRate(r ? Number(r.price) : null);
+    }).catch(() => setHighlightRate(null));
   }, []);
+
+  async function runHighlight() {
+    if (!highlightFor) return;
+    const id = highlightFor.offer_id;
+    setActionOfferId(id); setMsg(null);
+    try {
+      const cost = await promoteOffer(id, highlightDays);
+      setMsg(`Wyróżnienie opłacone: ${highlightDays} dni za ${Number(cost).toLocaleString("pl-PL")} zł z portfela Sunrise Pay.`);
+      setHighlightFor(null);
+      await reload();
+    } catch (e) {
+      const m = (e as Error).message || "";
+      setMsg(m.includes("402") || m.toLowerCase().includes("saldo") || m.toLowerCase().includes("funds")
+        ? "Za mało środków w portfelu Sunrise Pay. Doładuj portfel i spróbuj ponownie."
+        : "Nie udało się opłacić wyróżnienia: " + m);
+    } finally { setActionOfferId(null); }
+  }
 
   const visible = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -232,8 +257,24 @@ export default function SellerOffersManage() {
         <select className={inputClass} style={inputStyle} value={status} onChange={e=>setStatus(e.target.value)}><option value="all">Wszystkie statusy</option><option value="active">Aktywne</option><option value="paused">Ukryte</option><option value="hidden">Ukryte (import)</option><option value="draft">Szkice</option><option value="blocked">Zablokowane</option><option value="archived">Archiwum</option></select>
         <div className="flex items-center text-sm" style={{ color: "var(--mut)" }}>{visible.length} z {rows.length}</div>
       </div>
-      {loading ? <p>Ładowanie ofert…</p> : <div className="overflow-x-auto"><table className="w-full min-w-[980px] text-sm"><thead><tr className="text-left" style={{ color: "var(--mut)" }}><th className="pb-3 pr-2"><input type="checkbox" aria-label="Zaznacz wszystkie widoczne" onChange={toggleSelectAllVisible} checked={visible.length > 0 && visible.filter(r => r.status !== "archived" && r.status !== "blocked").every(r => selected.has(r.offer_id))} /></th><th className="pb-3">Oferta</th><th className="pb-3">Kategoria</th><th className="pb-3">Cena</th><th className="pb-3">Stan</th><th className="pb-3">Status</th><th className="pb-3"></th></tr></thead><tbody>{visible.map(r => { const busy = actionOfferId === r.offer_id; return <tr key={r.offer_id} style={{ borderTop: "1px solid var(--line)", background: selected.has(r.offer_id) ? "rgba(232,137,26,.06)" : undefined }}><td className="py-3 pr-2"><input type="checkbox" aria-label="Zaznacz ofertę" checked={selected.has(r.offer_id)} disabled={r.status === "archived" || r.status === "blocked"} onChange={() => toggleSelect(r.offer_id)} /></td><td className="py-3 pr-3"><div className="max-w-md font-medium">{r.title}</div>{r.promo && <div className="mt-1 inline-block rounded-full px-2 py-0.5 text-[11px] font-semibold" style={{ background: "rgba(242,92,176,.14)", color: "#F8A8D2" }}>PROMOCJA −{r.promo.percent}% do {r.promo.until ? new Date(r.promo.until).toLocaleDateString("pl-PL") : "—"}</div>}<div className="mt-1 font-mono text-[10px]" style={{ color: "var(--mut)" }}>{r.offer_id}</div></td><td className="py-3 pr-3">{r.category}</td><td className="py-3 pr-3 whitespace-nowrap">{r.promo?.old_price ? <span className="mr-1 line-through" style={{ color: "var(--mut)" }}>{Number(r.promo.old_price).toLocaleString("pl-PL")} zł</span> : null}{Number(r.price_gross).toLocaleString("pl-PL")} zł</td><td className="py-3 pr-3">{r.stock}</td><td className="py-3 pr-3">{statusLabel(r.status)}</td><td className="py-3 text-right"><div className="flex flex-wrap justify-end gap-2"><Link to={`/produkt/${r.offer_id}`} className="rounded-lg px-3 py-1.5" style={{ border:"1px solid var(--line)" }}>Podgląd</Link><button onClick={()=>openEdit(r.offer_id)} className="rounded-lg px-3 py-1.5 font-semibold text-black" style={{ background:"linear-gradient(135deg,#E8891A,#F5A623)" }}>Edytuj</button>{canToggleVisibility(r.status) && <button disabled={busy} onClick={()=>toggleVisibility(r)} className="rounded-lg px-3 py-1.5 disabled:opacity-50" style={{ border:"1px solid var(--line)" }}>{busy ? "…" : r.status === "active" ? "Ukryj" : "Pokaż"}</button>}{r.status !== "archived" && r.status !== "blocked" && <button disabled={busy} onClick={()=>removeOffer(r)} className="rounded-lg px-3 py-1.5 font-semibold disabled:opacity-50" style={{ border:"1px solid rgba(239,68,68,.35)", color:"#fca5a5" }}>Usuń</button>}</div></td></tr>; })}</tbody></table>{visible.length===0 && <p className="py-6 text-center" style={{ color:"var(--mut)" }}>Brak ofert spełniających kryteria.</p>}</div>}
+      {loading ? <p>Ładowanie ofert…</p> : <div className="overflow-x-auto"><table className="w-full min-w-[980px] text-sm"><thead><tr className="text-left" style={{ color: "var(--mut)" }}><th className="pb-3 pr-2"><input type="checkbox" aria-label="Zaznacz wszystkie widoczne" onChange={toggleSelectAllVisible} checked={visible.length > 0 && visible.filter(r => r.status !== "archived" && r.status !== "blocked").every(r => selected.has(r.offer_id))} /></th><th className="pb-3">Oferta</th><th className="pb-3">Kategoria</th><th className="pb-3">Cena</th><th className="pb-3">Stan</th><th className="pb-3">Status</th><th className="pb-3"></th></tr></thead><tbody>{visible.map(r => { const busy = actionOfferId === r.offer_id; return <tr key={r.offer_id} style={{ borderTop: "1px solid var(--line)", background: selected.has(r.offer_id) ? "rgba(232,137,26,.06)" : undefined }}><td className="py-3 pr-2"><input type="checkbox" aria-label="Zaznacz ofertę" checked={selected.has(r.offer_id)} disabled={r.status === "archived" || r.status === "blocked"} onChange={() => toggleSelect(r.offer_id)} /></td><td className="py-3 pr-3"><div className="max-w-md font-medium">{r.title}</div>{r.promo && <div className="mt-1 inline-block rounded-full px-2 py-0.5 text-[11px] font-semibold" style={{ background: "rgba(242,92,176,.14)", color: "#F8A8D2" }}>PROMOCJA −{r.promo.percent}% do {r.promo.until ? new Date(r.promo.until).toLocaleDateString("pl-PL") : "—"}</div>}<div className="mt-1 font-mono text-[10px]" style={{ color: "var(--mut)" }}>{r.offer_id}</div></td><td className="py-3 pr-3">{r.category}</td><td className="py-3 pr-3 whitespace-nowrap">{r.promo?.old_price ? <span className="mr-1 line-through" style={{ color: "var(--mut)" }}>{Number(r.promo.old_price).toLocaleString("pl-PL")} zł</span> : null}{Number(r.price_gross).toLocaleString("pl-PL")} zł</td><td className="py-3 pr-3">{r.stock}</td><td className="py-3 pr-3">{statusLabel(r.status)}</td><td className="py-3 text-right"><div className="flex flex-wrap justify-end gap-2"><Link to={`/produkt/${r.offer_id}`} className="rounded-lg px-3 py-1.5" style={{ border:"1px solid var(--line)" }}>Podgląd</Link><button onClick={()=>openEdit(r.offer_id)} className="rounded-lg px-3 py-1.5 font-semibold text-black" style={{ background:"linear-gradient(135deg,#E8891A,#F5A623)" }}>Edytuj</button>{highlightRate !== null && r.status === "active" && <button disabled={busy} onClick={()=>{ setHighlightFor(r); setHighlightDays(7); }} className="rounded-lg px-3 py-1.5 font-semibold disabled:opacity-50" style={{ border:"1px solid rgba(232,137,26,.45)", color:"var(--gold)" }}>⭐ Wyróżnij</button>}{canToggleVisibility(r.status) && <button disabled={busy} onClick={()=>toggleVisibility(r)} className="rounded-lg px-3 py-1.5 disabled:opacity-50" style={{ border:"1px solid var(--line)" }}>{busy ? "…" : r.status === "active" ? "Ukryj" : "Pokaż"}</button>}{r.status !== "archived" && r.status !== "blocked" && <button disabled={busy} onClick={()=>removeOffer(r)} className="rounded-lg px-3 py-1.5 font-semibold disabled:opacity-50" style={{ border:"1px solid rgba(239,68,68,.35)", color:"#fca5a5" }}>Usuń</button>}</div></td></tr>; })}</tbody></table>{visible.length===0 && <p className="py-6 text-center" style={{ color:"var(--mut)" }}>Brak ofert spełniających kryteria.</p>}</div>}
     </Card>
+
+    {highlightFor && highlightRate !== null && <div className="fixed inset-0 z-50 grid place-items-center bg-black/60 p-4" onMouseDown={()=>setHighlightFor(null)}>
+      <div onMouseDown={e=>e.stopPropagation()} className="w-full max-w-md rounded-3xl p-6" style={{ background:"var(--header)", border:"1px solid var(--line)" }}>
+        <div className="mb-3 flex items-start justify-between gap-3"><h2 className="text-xl font-semibold">⭐ Wyróżnij ogłoszenie</h2><button type="button" onClick={()=>setHighlightFor(null)}>✕</button></div>
+        <div className="text-sm" style={{ color:"var(--mut)" }}>{highlightFor.title}</div>
+        <div className="mt-4 grid grid-cols-3 gap-2">
+          {[1,3,7].map(d => <button key={d} type="button" onClick={()=>setHighlightDays(d)} className="rounded-xl px-3 py-3 text-sm font-semibold" style={highlightDays===d ? { background:"linear-gradient(135deg,#E8891A,#F5A623)", color:"#101012" } : { background:"var(--glass)", border:"1px solid var(--line)" }}>{d} {d===1?"dzień":"dni"}</button>)}
+        </div>
+        <div className="mt-4 rounded-2xl p-4" style={{ background:"rgba(122,184,154,.08)", border:"1px solid rgba(122,184,154,.22)" }}>
+          <div className="flex items-baseline justify-between"><span className="text-sm" style={{ color:"var(--mut)" }}>Do zapłaty</span><span className="text-2xl font-bold" style={{ color:"var(--gold)" }}>{(highlightRate*highlightDays).toLocaleString("pl-PL",{ style:"currency", currency:"PLN" })}</span></div>
+          <div className="mt-1 text-xs" style={{ color:"var(--mut)" }}>{highlightRate.toLocaleString("pl-PL",{ style:"currency", currency:"PLN" })} za dzień. Pobieramy z portfela Sunrise Pay — bez prowizji za płatność kartą.</div>
+        </div>
+        <button disabled={actionOfferId===highlightFor.offer_id} onClick={runHighlight} className="mt-4 w-full rounded-xl py-3 font-bold text-black disabled:opacity-50" style={{ background:"linear-gradient(135deg,#E8891A,#F5A623)" }}>{actionOfferId===highlightFor.offer_id ? "Opłacam…" : "Opłać wyróżnienie"}</button>
+        <Link to="/portfel" className="mt-3 block text-center text-xs underline" style={{ color:"var(--mut)" }}>Sprawdź saldo portfela</Link>
+      </div>
+    </div>}
   </Shell>;
 }
 
