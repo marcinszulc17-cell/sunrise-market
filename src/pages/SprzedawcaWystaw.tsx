@@ -38,6 +38,10 @@ export default function SprzedawcaWystaw() {
   const [sellerType, setSellerType] = useState<string | null>(null);
   const type = sp.get("typ");
   const requestedMode = sp.get("mode") as PurchaseMode | null;
+  // Ogloszenia lokalne (Sprzedam, Oddam, Oferty pracy, Szukam pracy...) sa bezplatne
+  // i nie wymagaja konta Partnera Handlowego — konto ogloszeniodawcy zaklada baza
+  // przy pierwszym ogloszeniu (market.create_offer_v2).
+  const isOgloszenie = type === "lokalne";
 
   useEffect(() => {
     let cancelled = false;
@@ -64,8 +68,10 @@ export default function SprzedawcaWystaw() {
   }, [navigate]);
 
   if (access === "loading") return <GateCard title="Sprawdzam dostęp sprzedażowy…" />;
-  if (access === "activate") return <GateCard title="Aktywuj Partnera Handlowego" body="Aby wystawiać własne produkty, usługi lub wynajem, aktywuj dostęp sprzedażowy na swoim koncie MySunrise. Pierwsze 12 miesięcy są bez opłaty rocznej." cta="Aktywuj Partnera Handlowego" to="/sprzedawca/partner" />;
-  if (access === "renewal") return <GateCard title="Odnowienie Partnera Handlowego" body="Twój 12-miesięczny okres startowy minął. Odnów członkostwo, aby dalej wystawiać nowe oferty. Zwykłe konto MySunrise pozostaje aktywne." cta="Przejdź do odnowienia" to="/sprzedawca/partner" />;
+  // Ogloszenie lokalne przepuszczamy przed bramka Partnera Handlowego — jest bezplatne dla kazdego.
+  if (isOgloszenie) return <DedicatedOfferWizard />;
+  if (access === "activate") return <GateCard title="Aktywuj Partnera Handlowego" body="Aby wystawiać własne produkty, usługi lub wynajem, aktywuj dostęp sprzedażowy na swoim koncie MySunrise. Pierwsze 12 miesięcy są bez opłaty rocznej." cta="Aktywuj Partnera Handlowego" to="/sprzedawca/partner" free />;
+  if (access === "renewal") return <GateCard title="Odnowienie Partnera Handlowego" body="Twój 12-miesięczny okres startowy minął. Odnów członkostwo, aby dalej wystawiać nowe oferty. Zwykłe konto MySunrise pozostaje aktywne." cta="Przejdź do odnowienia" to="/sprzedawca/partner" free />;
 
   if (sellerType === "private_partner" && (requestedMode === "purchase" || requestedMode === "appointment" || requestedMode === "daily")) {
     return <PrivateOfferWizard />;
@@ -113,6 +119,16 @@ export default function SprzedawcaWystaw() {
           ))}
         </div>
 
+        <div className="mt-4 rounded-3xl p-6" style={{ background: "rgba(122,184,154,.08)", border: "1px solid rgba(122,184,154,.22)" }}>
+          <h2 className="text-lg font-semibold">📍 Ogłoszenie lokalne — bezpłatnie</h2>
+          <p className="mt-2 text-sm leading-6" style={{ color: "var(--mut)" }}>Sprzedam, oddam, zamienię, usługi, <strong>oferta pracy</strong> i <strong>szukam pracy</strong>. Bez ceny, bez VAT-u, bez prowizji — zainteresowani odpisują Ci bezpośrednio.</p>
+          <div className="mt-4 flex flex-wrap gap-2">
+            <Link to="/sprzedawca/wystaw?typ=lokalne" className="rounded-xl px-4 py-2.5 text-sm font-semibold text-black" style={{ background: "linear-gradient(135deg,#E8891A,#F5A623)" }}>+ Dodaj ogłoszenie</Link>
+            <Link to="/sprzedawca/wystaw?typ=lokalne&kategoria=ogloszenia-lokalne-praca" className="rounded-xl px-4 py-2.5 text-sm font-semibold" style={{ border: "1px solid var(--line)" }}>💼 Dodaj ofertę pracy</Link>
+            <Link to="/sprzedawca/wystaw?typ=lokalne&kategoria=ogloszenia-lokalne-szukam-pracy" className="rounded-xl px-4 py-2.5 text-sm font-semibold" style={{ border: "1px solid var(--line)" }}>🙋 Szukam pracy</Link>
+          </div>
+        </div>
+
         <div className="mt-6 rounded-2xl p-4 text-sm" style={{ background: "rgba(122,184,154,.08)", border: "1px solid rgba(122,184,154,.22)", color: "var(--mut)" }}>
           Nie musisz wybierać osobno „samochód”, „nieruchomość” czy „sprzęt” na starcie. Po wyborze trybu kreator dopasuje kategorię i właściwy booking.
         </div>
@@ -121,6 +137,16 @@ export default function SprzedawcaWystaw() {
   );
 }
 
-function GateCard({ title, body, cta, to }: { title: string; body?: string; cta?: string; to?: string }) {
-  return <main className="min-h-screen px-4 py-8 sm:px-6" style={{ background: "var(--bg)", color: "var(--ink)" }}><div className="mx-auto max-w-2xl rounded-3xl p-6 sm:p-8" style={{ background: "var(--glass)", border: "1px solid rgba(200,150,90,.28)" }}><div className="text-xs font-semibold tracking-[.15em]" style={{ color: "var(--gold)" }}>SUNRISE MARKET</div><h1 className="mt-2 text-3xl font-semibold">{title}</h1>{body && <p className="mt-3 text-sm leading-6" style={{ color: "var(--mut)" }}>{body}</p>}{cta && to && <Link to={to} className="mt-5 inline-flex rounded-xl px-5 py-3 font-semibold text-black" style={{ background: "linear-gradient(135deg,#C8965A,#E8C896)" }}>{cta} →</Link>}</div></main>;
+function GateCard({ title, body, cta, to, free }: { title: string; body?: string; cta?: string; to?: string; free?: boolean }) {
+  return <main className="min-h-screen px-4 py-8 sm:px-6" style={{ background: "var(--bg)", color: "var(--ink)" }}><div className="mx-auto max-w-2xl"><div className="rounded-3xl p-6 sm:p-8" style={{ background: "var(--glass)", border: "1px solid rgba(200,150,90,.28)" }}><div className="text-xs font-semibold tracking-[.15em]" style={{ color: "var(--gold)" }}>SUNRISE MARKET</div><h1 className="mt-2 text-3xl font-semibold">{title}</h1>{body && <p className="mt-3 text-sm leading-6" style={{ color: "var(--mut)" }}>{body}</p>}{cta && to && <Link to={to} className="mt-5 inline-flex rounded-xl px-5 py-3 font-semibold text-black" style={{ background: "linear-gradient(135deg,#C8965A,#E8C896)" }}>{cta} →</Link>}</div>
+    {free && <div className="mt-4 rounded-3xl p-6" style={{ background: "rgba(122,184,154,.08)", border: "1px solid rgba(122,184,154,.22)" }}>
+      <h2 className="text-lg font-semibold">Ogłoszenia lokalne i praca — bezpłatnie, bez Partnera Handlowego</h2>
+      <p className="mt-2 text-sm leading-6" style={{ color: "var(--mut)" }}>Sprzedam, oddam, zamienię, usługi, a także <strong>ofertę pracy</strong> i <strong>szukam pracy</strong> dodasz od razu na zwykłym koncie. Publikacja nic nie kosztuje, a zainteresowani odpisują Ci bezpośrednio.</p>
+      <div className="mt-4 flex flex-wrap gap-2">
+        <Link to="/sprzedawca/wystaw?typ=lokalne" className="rounded-xl px-4 py-2.5 text-sm font-semibold text-black" style={{ background: "linear-gradient(135deg,#E8891A,#F5A623)" }}>+ Dodaj ogłoszenie</Link>
+        <Link to="/sprzedawca/wystaw?typ=lokalne&kategoria=ogloszenia-lokalne-praca" className="rounded-xl px-4 py-2.5 text-sm font-semibold" style={{ border: "1px solid var(--line)" }}>💼 Dodaj ofertę pracy</Link>
+        <Link to="/sprzedawca/wystaw?typ=lokalne&kategoria=ogloszenia-lokalne-szukam-pracy" className="rounded-xl px-4 py-2.5 text-sm font-semibold" style={{ border: "1px solid var(--line)" }}>🙋 Szukam pracy</Link>
+      </div>
+    </div>}
+  </div></main>;
 }

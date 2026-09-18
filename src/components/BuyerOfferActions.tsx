@@ -8,7 +8,7 @@ import BookingPurchaseModal from "./BookingPurchaseModal";
 
 type PurchaseMode="purchase"|"appointment"|"daily";
 type Props = { offerId: string; categorySlug?: string; priceGross?: number | null; purchaseMode?: PurchaseMode; title?: string };
-type Interaction = { type:"viewing"|"consultation"|"installation"|"quote"|"demo"|"reservation"|"contact"|"application"; label:string; title:string; needsDate:boolean; icon:string };
+type Interaction = { type:"viewing"|"consultation"|"installation"|"quote"|"demo"|"reservation"|"contact"|"application"|"job_offer"; label:string; title:string; needsDate:boolean; icon:string };
 const COMPARE_KEY = "sunrise_compare_ids";
 
 function interactionFor(slug:string):Interaction {
@@ -18,8 +18,10 @@ function interactionFor(slug:string):Interaction {
   if(s.startsWith("uslugi-")||s.includes("ubezpiec")||s.includes("finans")||s.includes("dorad")) return {type:"consultation",label:"Umów konsultację",title:"Umów konsultację",needsDate:true,icon:"💬"};
   if(s.includes("motoryzacja-")||s.includes("elektronik")||s.includes("agd")||s.includes("maszyn")) return {type:"demo",label:"Umów prezentację",title:"Umów prezentację / demo",needsDate:true,icon:"▶️"};
   if(s.includes("podroz")||s.includes("hotel")||s.includes("nocleg")||s.includes("wynajem")) return {type:"reservation",label:"Zapytaj o rezerwację",title:"Zapytaj o rezerwację",needsDate:true,icon:"🗓️"};
-  // Ogloszenie o prace: kandydat aplikuje, nie prosi o wycene.
+  // Rynek pracy ma dwie strony. Oferta pracy -> kandydat aplikuje.
   if(s==="ogloszenia-lokalne-praca") return {type:"application",label:"Aplikuj",title:"Aplikuj na to ogłoszenie",needsDate:false,icon:"📨"};
+  // Szukam pracy -> to pracodawca odzywa sie do kandydata, wiec odwrotny kierunek.
+  if(s==="ogloszenia-lokalne-szukam-pracy") return {type:"job_offer",label:"Zaproponuj pracę",title:"Zaproponuj pracę tej osobie",needsDate:false,icon:"🤝"};
   if(s.startsWith("ogloszenia-lokalne-")||s.includes("budow")||s.includes("dom-ogrod")) return {type:"quote",label:"Poproś o wycenę",title:"Poproś o wycenę",needsDate:false,icon:"🧾"};
   return {type:"contact",label:"Zapytaj sprzedawcę",title:"Skontaktuj się ze sprzedawcą",needsDate:false,icon:"✉️"};
 }
@@ -138,7 +140,7 @@ export default function BuyerOfferActions({ offerId, categorySlug="", priceGross
     });
     setBusy(false);
     if (error) { setStatus(error.message); return; }
-    setStatus(action.type==="application" ? "Zgłoszenie zostało wysłane do ogłoszeniodawcy." : action.needsDate ? "Propozycja została wysłana do sprzedawcy." : "Wiadomość została wysłana do sprzedawcy.");
+    setStatus(action.type==="application" ? "Zgłoszenie zostało wysłane do ogłoszeniodawcy." : action.type==="job_offer" ? "Propozycja pracy została wysłana do tej osoby." : action.needsDate ? "Propozycja została wysłana do sprzedawcy." : "Wiadomość została wysłana do sprzedawcy.");
     setOpen(false);
   }
 
@@ -163,7 +165,7 @@ export default function BuyerOfferActions({ offerId, categorySlug="", priceGross
           <input required value={name} onChange={e => setName(e.target.value)} placeholder="Imię i nazwisko" className="rounded-xl px-3 py-2" style={{ background: "var(--glass)", border: "1px solid var(--line)" }} />
           <div className="grid gap-3 sm:grid-cols-2"><input value={email} onChange={e => setEmail(e.target.value)} type="email" placeholder="E-mail" className="rounded-xl px-3 py-2" style={{ background: "var(--glass)", border: "1px solid var(--line)" }} /><input value={phone} onChange={e => setPhone(e.target.value)} placeholder="Telefon" className="rounded-xl px-3 py-2" style={{ background: "var(--glass)", border: "1px solid var(--line)" }} /></div>
           {action.needsDate&&<input required value={when} onChange={e => setWhen(e.target.value)} type="datetime-local" className="rounded-xl px-3 py-2" style={{ background: "var(--glass)", border: "1px solid var(--line)" }} />}
-          <textarea value={message} onChange={e => setMessage(e.target.value)} placeholder={action.type==="application"?"Napisz kilka słów o sobie — doświadczenie, dyspozycyjność, link do CV":action.type==="quote"?"Napisz, czego potrzebujesz do wyceny":"Wiadomość dla sprzedawcy (opcjonalnie)"} rows={3} className="rounded-xl px-3 py-2" style={{ background: "var(--glass)", border: "1px solid var(--line)" }} />
+          <textarea value={message} onChange={e => setMessage(e.target.value)} placeholder={action.type==="application"?"Napisz kilka słów o sobie — doświadczenie, dyspozycyjność, link do CV":action.type==="job_offer"?"Napisz, co oferujesz — stanowisko, miejsce pracy, forma zatrudnienia, wynagrodzenie":action.type==="quote"?"Napisz, czego potrzebujesz do wyceny":"Wiadomość dla sprzedawcy (opcjonalnie)"} rows={3} className="rounded-xl px-3 py-2" style={{ background: "var(--glass)", border: "1px solid var(--line)" }} />
           <button disabled={busy} className="rounded-xl py-3 font-semibold text-black disabled:opacity-60" style={{ background: "linear-gradient(135deg,#E8891A,#F5A623)" }}>{busy ? "Wysyłanie…" : action.label}</button>
         </div>
       </form>

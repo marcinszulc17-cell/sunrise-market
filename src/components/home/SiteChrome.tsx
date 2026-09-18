@@ -19,6 +19,7 @@ export const MENU: { to: string; label: string; key: string }[] = [
   { to: "/nieruchomosci", label: "Nieruchomości", key: "property" },
   { to: "/motoryzacja", label: "Motoryzacja", key: "car" },
   { to: "/szukaj?kat=uslugi-i-reklama", label: "Usługi", key: "services" },
+  { to: "/praca", label: "Praca", key: "jobs" },
   { to: "/szukaj?kat=oze-i-energia", label: "OZE i Energia", key: "energy" },
 ];
 
