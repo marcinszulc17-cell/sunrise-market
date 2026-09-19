@@ -94,9 +94,20 @@ export default function Portfel() {
           <div className="text-xs" style={{ color: "var(--mut)" }}>Cashback • MySunrise</div>
           <div className="text-3xl font-extrabold" style={{ color: "var(--green)" }}>{pkt(points)} <span className="text-base">pkt</span></div>
         </div>
+        {/* Portfel złota widoczny dla każdego — decyzja właściciela 2026-09-19.
+            Dopóki ktoś nie ma złota, kafel mówi wprost „wkrótce" zamiast myślnika,
+            który wyglądał na błąd. Gdy pojawi się saldo, pokazujemy gramy. */}
         <div className="rounded-2xl p-5" style={{ background: "var(--glass)", border: "1px solid var(--line)" }}>
-          <div className="text-xs" style={{ color: "var(--mut)" }}>Gold • MySunrise</div>
-          <div className="text-3xl font-extrabold" style={{ color: "#F5A623" }}>{gold == null ? "—" : gold.toLocaleString("pl-PL")} {gold != null && <span className="text-base">g</span>}</div>
+          <div className="flex items-center justify-between gap-2">
+            <div className="text-xs" style={{ color: "var(--mut)" }}>Portfel złota • MySunrise</div>
+            {!(gold && gold > 0) && <span className="rounded-full px-2 py-0.5 text-[10px] font-semibold" style={{ background: "rgba(245,166,35,.14)", color: "#F5A623" }}>Wkrótce</span>}
+          </div>
+          {gold && gold > 0
+            ? <div className="text-3xl font-extrabold" style={{ color: "#F5A623" }}>{gold.toLocaleString("pl-PL")} <span className="text-base">g</span></div>
+            : <>
+                <div className="mt-1 text-3xl font-extrabold" style={{ color: "rgba(245,166,35,.45)" }}>0 <span className="text-base">g</span></div>
+                <div className="mt-1 text-xs leading-5" style={{ color: "var(--mut)" }}>Zamiana punktów i salda na złoto fizyczne — przygotowujemy.</div>
+              </>}
         </div>
       </div>
 
