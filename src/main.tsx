@@ -73,7 +73,21 @@ startMarketAvailabilityFilter();
 startQuickBookingDeepLink();
 startSellerResourceOperationalStatus();
 startSellerResourceOperationsNav();
-try { const _r = new URLSearchParams(window.location.search).get("ref"); if (_r && _r.trim()) localStorage.setItem("sunrise_ref", _r.trim().slice(0, 64)); } catch { /* ignore */ }
+// Kod polecajacy: dluga postac ?ref=KOD (dziala dalej — sa juz wydrukowane kody QR)
+// oraz krotka /r/KOD — decyzja wlasciciela 2026-09-19.
+// Uwaga na oczekiwania: krotsza postac NIE zmniejsza gestosci kodu QR. Sprawdzone:
+// 38 znakow i 35 znakow daja tak samo 37 modulow, bo obie mieszcza sie w tej samej
+// wersji symbolu. Zysk jest wylacznie ludzki — link wyglada lepiej wklejony
+// w wiadomosc, w opis profilu albo podyktowany przez telefon.
+try {
+  const _q = new URLSearchParams(window.location.search).get("ref");
+  const _p = window.location.pathname.match(/^\/r\/([A-Za-z0-9_-]{4,64})\/?$/);
+  const _r = (_q && _q.trim()) || (_p && _p[1]) || "";
+  if (_r) localStorage.setItem("sunrise_ref", _r.trim().slice(0, 64));
+  // /r/KOD to samo przekierowanie — po zapisaniu kodu odsylamy na strone glowna,
+  // zeby adres w pasku nie zostal z technicznym kodem.
+  if (_p) window.history.replaceState({}, "", "/");
+} catch { /* ignore */ }
 
 if ("serviceWorker" in navigator) {
   window.addEventListener("load", async () => {

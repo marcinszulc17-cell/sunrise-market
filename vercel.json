@@ -22,6 +22,7 @@
     {"source":"/potwierdz-zakup/(.*)","headers":[{"key":"X-Robots-Tag","value":"noindex, nofollow"}]},
     {"source":"/szukaj","headers":[{"key":"X-Robots-Tag","value":"noindex, follow"}]},
     {"source":"/porownaj","headers":[{"key":"X-Robots-Tag","value":"noindex, follow"}]},
+    {"source":"/r/(.*)","headers":[{"key":"X-Robots-Tag","value":"noindex, nofollow"}]},
     {"source":"/social/(.*)","headers":[{"key":"Access-Control-Allow-Origin","value":"*"},{"key":"Cache-Control","value":"public, max-age=31536000, immutable"}]}
   ],
   "rewrites": [
