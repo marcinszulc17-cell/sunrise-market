@@ -78,11 +78,24 @@ export async function getOffer(id: string) {
     throw e;
   }
 }
-// Galeria zdjęć oferty (główne + dodatkowe)
+// Galeria zdjęć oferty (główne + dodatkowe). Filmy są odfiltrowane — ekrany, które
+// wołają tę funkcję, renderują <img> i film byłby dla nich pustym kwadratem.
 export async function offerImages(id: string): Promise<string[]> {
   const { data, error } = await supabase.rpc("offer_images", { p_offer: id });
   if (error) return [];
-  return (data ?? []).map((r: any) => r.url);
+  return (data ?? []).filter((r: any) => (r.rodzaj ?? "image") !== "video").map((r: any) => r.url);
+}
+// Pełna galeria: zdjęcia I film. Osobna funkcja, żeby nie zmieniać zachowania
+// wszystkich istniejących ekranów naraz.
+export type OfferMedia = { url: string; rodzaj: "image" | "video"; poster: string | null };
+export async function offerMedia(id: string): Promise<OfferMedia[]> {
+  const { data, error } = await supabase.rpc("offer_images", { p_offer: id });
+  if (error) return [];
+  return (data ?? []).map((r: any) => ({
+    url: r.url as string,
+    rodzaj: (r.rodzaj === "video" ? "video" : "image") as "image" | "video",
+    poster: (r.poster_url ?? null) as string | null,
+  }));
 }
 // Checkout przez edge function (kupujący z JWT; płaci z portfela, nalicza cashback, dostawa)
 export type ShipAddress = { name: string; phone: string; street: string; city: string; postal: string; country?: string };
@@ -461,6 +474,97 @@ export async function uploadProductImage(file: File): Promise<string> {
   if (error) throw error;
   return productImageUrl(path);
 }
+
+/* ---------- FILM W OFERCIE ----------
+ *
+ * DLACZEGO TU SĄ TWARDE LIMITY
+ * Zdjęcie waży kilkaset kilobajtów, film — dziesiątki megabajtów, a każde odtworzenie
+ * to pobranie CAŁEGO pliku. Pakiet transferu (250 GB/mies.) jest wspólny dla Marketu
+ * i MySunrise, więc jeden nieograniczony plik potrafiłby zjeść miesiąc obu platformom.
+ * Kosz `product-images` ma limit 50 MB po stronie serwera; te sprawdzenia są po to,
+ * żeby sprzedawca dostał zrozumiałe zdanie po polsku, zanim zmarnuje minutę na wysyłkę.
+ *
+ * DLACZEGO TYLKO MP4 I WEBM
+ * iPhone nagrywa .mov w HEVC. Safari to odtworzy, Chrome na Androidzie w wielu
+ * wypadkach nie — kupujący zobaczyłby czarny prostokąt i nie wiedziałby dlaczego.
+ * Przekodowanie po naszej stronie to osobny koszt i osobna usługa, więc na razie
+ * mówimy wprost, czego potrzebujemy, zamiast udawać, że przyjmiemy wszystko.
+ */
+export const VIDEO_MAX_MB = 50;
+export const VIDEO_MAX_SEC = 60;
+const VIDEO_TYPES = ["video/mp4", "video/webm"];
+
+/** Metadane filmu z przeglądarki + pierwsza klatka na miniaturę. */
+function readVideo(file: File): Promise<{ seconds: number; poster: Blob | null }> {
+  return new Promise((resolve) => {
+    const url = URL.createObjectURL(file);
+    const v = document.createElement("video");
+    v.preload = "metadata"; v.muted = true; (v as any).playsInline = true; v.src = url;
+    const done = (seconds: number, poster: Blob | null) => { URL.revokeObjectURL(url); resolve({ seconds, poster }); };
+    // Gdyby przeglądarka nie odpowiedziała (kodek, którego nie zna), nie blokujemy
+    // wysyłki w nieskończoność — puszczamy dalej bez miniatury.
+    const stoper = setTimeout(() => done(0, null), 8000);
+    v.onloadedmetadata = () => {
+      const seconds = Number.isFinite(v.duration) ? v.duration : 0;
+      // Klatka z 1. sekundy, a nie z zerowej — pierwsza klatka bywa czarna.
+      v.currentTime = Math.min(1, Math.max(0, seconds - 0.1));
+      v.onseeked = () => {
+        try {
+          const skala = Math.min(1, 1280 / Math.max(v.videoWidth || 1, v.videoHeight || 1));
+          const c = document.createElement("canvas");
+          c.width = Math.max(1, Math.round((v.videoWidth || 640) * skala));
+          c.height = Math.max(1, Math.round((v.videoHeight || 360) * skala));
+          const ctx = c.getContext("2d");
+          if (!ctx) { clearTimeout(stoper); return done(seconds, null); }
+          ctx.drawImage(v, 0, 0, c.width, c.height);
+          c.toBlob((b) => { clearTimeout(stoper); done(seconds, b); }, "image/jpeg", 0.8);
+        } catch { clearTimeout(stoper); done(seconds, null); }
+      };
+    };
+    v.onerror = () => { clearTimeout(stoper); done(0, null); };
+  });
+}
+
+/** Wgrywa film i miniaturę. Zwraca adresy — zapis przy ofercie robi setOfferVideo. */
+export async function uploadProductVideo(file: File): Promise<{ url: string; poster: string | null }> {
+  if (!VIDEO_TYPES.includes(file.type)) {
+    throw new Error("Przyjmujemy filmy MP4 i WEBM. Film z iPhone'a (.mov) wyeksportuj jako MP4 — inaczej część kupujących zobaczy czarny ekran.");
+  }
+  const mb = file.size / 1024 / 1024;
+  if (mb > VIDEO_MAX_MB) {
+    throw new Error(`Film waży ${mb.toFixed(0)} MB, a maksimum to ${VIDEO_MAX_MB} MB. Skróć go albo zmniejsz jakość — kupujący na telefonie i tak nie doczeka końca ładowania.`);
+  }
+
+  const { seconds, poster } = await readVideo(file);
+  if (seconds > VIDEO_MAX_SEC + 1) {
+    throw new Error(`Film trwa ${Math.round(seconds)} s, a maksimum to ${VIDEO_MAX_SEC} s. Pokaż produkt w minutę — dłuższych i tak nikt nie ogląda do końca.`);
+  }
+
+  const stamp = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+  const ext = file.type === "video/webm" ? "webm" : "mp4";
+  const { error } = await supabase.storage.from(IMG_BUCKET)
+    .upload(`wideo/${stamp}.${ext}`, file, { upsert: false, contentType: file.type });
+  if (error) throw error;
+  const url = supabase.storage.from(IMG_BUCKET).getPublicUrl(`wideo/${stamp}.${ext}`).data.publicUrl;
+
+  let posterUrl: string | null = null;
+  if (poster) {
+    const p = await supabase.storage.from(IMG_BUCKET)
+      .upload(`wideo/${stamp}.jpg`, poster, { upsert: false, contentType: "image/jpeg" });
+    if (!p.error) posterUrl = productImageUrl(`wideo/${stamp}.jpg`, { width: 1280 });
+  }
+  return { url, poster: posterUrl };
+}
+
+export async function setOfferVideo(offerId: string, url: string, poster: string | null) {
+  const { error } = await supabase.rpc("offer_video_set", { p_offer: offerId, p_url: url, p_poster: poster });
+  if (error) throw error;
+}
+export async function removeOfferVideo(offerId: string) {
+  const { error } = await supabase.rpc("offer_video_remove", { p_offer: offerId });
+  if (error) throw error;
+}
+
 // ŻYWE saldo Sunrise Pay z MySunrise (server-to-server, źródło prawdy)
 export type WalletLive = { linked: boolean; balance: number; points: number; gold: number | null; currency: string };
 export async function walletBalance(): Promise<WalletLive> {

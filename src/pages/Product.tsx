@@ -6,7 +6,7 @@ import ShowPhoneButton from "../components/ShowPhoneButton";
 import LocationMap, { locationKind } from "../components/LocationMap";
 import { Link, useParams } from "react-router-dom";
 import SwipeGallery from "../components/SwipeGallery";
-import { addReview, getOffer, offerCancellationTerms, offerImages, offerReviews, offerSellerBadge, offerStayDetails, similarOffers, trackView, type CancellationTerms, type SellerBadge, type StayDetails } from "../lib/api";
+import { addReview, getOffer, offerCancellationTerms, offerMedia, offerReviews, offerSellerBadge, offerStayDetails, similarOffers, trackView, type CancellationTerms, type SellerBadge, type StayDetails } from "../lib/api";
 import { addToCart, cleanTitle, isTestProduct } from "../lib/cart";
 import { zl, pkt } from "../lib/money";
 import { getMarketConfig, cashbackFor } from "../lib/marketConfig";
@@ -63,6 +63,9 @@ export default function Product() {
   const [myComment, setMyComment] = useState("");
   const [revMsg, setRevMsg] = useState<string | null>(null);
   const [imgs, setImgs] = useState<string[]>([]);
+  // Film sprzedawcy. Celowo NIE trafia do SwipeGallery: tamta karuzela renderuje
+  // <img>, a film wymaga plakatu i ładowania dopiero po kliknięciu.
+  const [film, setFilm] = useState<{ url: string; poster: string | null } | null>(null);
   const [active, setActive] = useState(0);
   const [color, setColor] = useState("");
   const [size, setSize] = useState("");
@@ -104,7 +107,12 @@ export default function Product() {
       pushRecent({ offer_id: oo.offer_id, title: oo.title, price_gross: oo.price_gross, image_url: oo.image_url });
     }).catch((e) => setErr(String((e as Error).message))).finally(() => setLoading(false));
     loadReviews(id).catch(() => {});
-    offerImages(id).then((u) => { setImgs(u); setActive(0); }).catch(() => {});
+    offerMedia(id).then((m) => {
+      setImgs(m.filter((x) => x.rodzaj === "image").map((x) => x.url));
+      const v = m.find((x) => x.rodzaj === "video");
+      setFilm(v ? { url: v.url, poster: v.poster } : null);
+      setActive(0);
+    }).catch(() => {});
     supabase.auth.getUser().then(({ data }) => setAuthed(!!data.user));
     trackView(id);
     offerSellerBadge(id).then(setSellerBadge).catch(() => {});
@@ -140,7 +148,20 @@ export default function Product() {
         <div className="mt-5 grid gap-8 lg:grid-cols-[minmax(0,1.15fr)_minmax(0,1fr)]">
           <div className="flex flex-col gap-3">
             <SwipeGallery images={imgs.length ? imgs : (o.image_url ? [o.image_url] : [])} alt={o.title} fallback={visual(o.title + o.category).emoji} />
-            {A.video && <div className="overflow-hidden rounded-2xl" style={{ border: "1px solid var(--line)" }}><video src={A.video} controls playsInline preload="metadata" poster={imgs[0] || o.image_url || undefined} className="h-auto w-full bg-black" style={{ maxHeight: 360 }}/><div className="px-3 py-2 text-xs" style={{ color: "var(--mut)" }}>🎬 Wideo produktu</div></div>}
+            {/* preload="none" jest tu najważniejszym atrybutem: bez niego przeglądarka
+                zaczyna ściągać film każdemu, kto tylko otworzy ofertę — także temu,
+                kto nigdy go nie odtworzy. Plakat pokazuje, co jest na filmie, za darmo. */}
+            {(film || A.video) && (
+              <div className="overflow-hidden rounded-2xl" style={{ border: "1px solid var(--line)" }}>
+                <video
+                  src={film?.url || A.video || undefined}
+                  controls playsInline preload="none"
+                  poster={film?.poster || imgs[0] || o.image_url || undefined}
+                  className="h-auto w-full bg-black" style={{ maxHeight: 360 }}
+                />
+                <div className="px-3 py-2 text-xs" style={{ color: "var(--mut)" }}>🎬 Film od sprzedawcy</div>
+              </div>
+            )}
           </div>
 
           <div className="flex flex-col gap-4">

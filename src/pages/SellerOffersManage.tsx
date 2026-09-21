@@ -1,11 +1,12 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
-import { adRates, myOffers, promoteOffer, uploadProductImage } from "../lib/api";
+import { adRates, myOffers, offerMedia, promoteOffer, uploadProductImage } from "../lib/api";
 import { deleteMyOffer, setMyOfferVisibility } from "../lib/sellerOfferActions";
 import { getOfferForManage, updateOfferManage, type ManagedOffer } from "../lib/sellerOfferManage";
 import { supabase } from "../lib/supabase";
 import OfferDescriptionEditor from "../components/OfferDescriptionEditor";
 import OfferPhotoManager from "../components/OfferPhotoManager";
+import OfferVideoManager from "../components/OfferVideoManager";
 import BulkOfferActions, { runBulkAction, type BulkAction } from "../components/BulkOfferActions";
 
 type OfferRow = {
@@ -110,9 +111,18 @@ export default function SellerOffersManage() {
       const attrs = (o.attributes ?? {}) as Record<string, unknown>;
       const rawVat = String(attrs.vat_rate ?? "");
       setEdit({ ...o, full_vat_invoice: Boolean(attrs.full_vat_invoice), vat_rate: VAT_RATES.includes(rawVat as typeof VAT_RATES[number]) ? rawVat : "" });
+      offerMedia(o.offer_id).then((m) => {
+        const v = m.find((x) => x.rodzaj === "video");
+        setFilm(v ? { url: v.url, poster: v.poster } : null);
+      }).catch(() => setFilm(null));
       window.scrollTo({ top: 0, behavior: "smooth" });
     } catch (e) { setMsg("Nie udało się otworzyć oferty: " + (e as Error).message); }
   }
+
+  // Film jest trzymany osobno od zdjęć: zapisuje go własna funkcja bazy od razu
+  // po wgraniu, a nie przycisk „Zapisz ofertę". Dzięki temu sprzedawca, który wgra
+  // film i zamknie kartę, nie straci minuty wysyłki.
+  const [film, setFilm] = useState<{ url: string; poster: string | null } | null>(null);
 
   async function uploadEditFiles(files: FileList | null) {
     if (!files?.length || !edit) return;
@@ -233,6 +243,7 @@ export default function SellerOffersManage() {
             <label className="flex items-center justify-between gap-4"><div><div className="font-medium">Pełna faktura VAT</div><div className="text-xs" style={{ color: "var(--mut)" }}>To informacja widoczna klientowi. Stawka VAT powyżej służy do prawidłowych rozliczeń netto.</div></div><input type="checkbox" checked={edit.full_vat_invoice} onChange={e => setEdit({ ...edit, full_vat_invoice: e.target.checked })}/></label>
           </div>
           <OfferPhotoManager images={edit.image_urls} onChange={image_urls=>setEdit({...edit,image_urls})} onAddFiles={uploadEditFiles} uploading={uploading} onBuyMore={()=>setMsg("Płatne pakiety dodatkowych zdjęć są przygotowane jako następny moduł płatności Sunrise Pay.")}/>
+          <OfferVideoManager offerId={edit.offer_id} film={film} onChange={setFilm} />
           <button disabled={saving} onClick={saveOffer} className="w-full rounded-xl py-3 font-bold text-black disabled:opacity-50" style={{ background: "linear-gradient(135deg,#E8891A,#F5A623)" }}>{saving ? "Zapisuję…" : "Zapisz ofertę"}</button>
         </div>
       </Card>
