@@ -1,0 +1,131 @@
+<!doctype html>
+<html lang="pl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>API dla sprzedawców — Sunrise Market</title>
+<meta name="description" content="Publiczne API Sunrise Market: wystawianie ofert, stany magazynowe, ceny i odbiór zamówień. Uwierzytelnienie kluczem, limity, przykłady wywołań.">
+<link rel="canonical" href="https://sunrisemarket.pl/api-sprzedawcy">
+<meta property="og:title" content="API dla sprzedawców — Sunrise Market">
+<meta property="og:description" content="Wystawiaj oferty i odbieraj zamówienia z własnego systemu. Klucz API, jedno wywołanie na paczkę do 200 pozycji.">
+<meta property="og:url" content="https://sunrisemarket.pl/api-sprzedawcy">
+<style>
+  :root { --bg:#0B0B0D; --ink:#F5F5F7; --mut:#A1A1AA; --gold:#F5A623; --line:#2A2A2E; --card:#141416; }
+  @media (prefers-color-scheme: light) {
+    :root:not([data-theme="dark"]) { --bg:#FBFBFD; --ink:#101012; --mut:#5B5B64; --line:#E4E4E8; --card:#FFFFFF; }
+  }
+  * { box-sizing: border-box; }
+  body { margin:0; background:var(--bg); color:var(--ink); font-family:system-ui,-apple-system,"Segoe UI",sans-serif; line-height:1.65; }
+  .wrap { max-width:840px; margin:0 auto; padding:32px 16px 72px; }
+  a { color:var(--gold); }
+  h1 { font-size:2rem; margin:.4em 0 .2em; }
+  h2 { font-size:1.25rem; margin:2.2em 0 .4em; }
+  h3 { font-size:1rem; margin:1.6em 0 .3em; }
+  p, li { color:var(--mut); }
+  h1 + p { font-size:1.05rem; }
+  code, pre { font-family:ui-monospace,SFMono-Regular,Menlo,monospace; font-size:.9rem; }
+  code { background:var(--card); border:1px solid var(--line); border-radius:6px; padding:1px 5px; color:var(--ink); }
+  pre { background:var(--card); border:1px solid var(--line); border-radius:12px; padding:14px; overflow:auto; color:var(--ink); }
+  pre code { background:none; border:0; padding:0; }
+  table { width:100%; border-collapse:collapse; margin:.8em 0; }
+  th, td { text-align:left; padding:8px 10px; border-bottom:1px solid var(--line); font-size:.92rem; }
+  th { color:var(--ink); }
+  td { color:var(--mut); }
+  .note { border:1px solid var(--line); border-left:3px solid var(--gold); border-radius:10px; padding:12px 14px; margin:1.2em 0; background:var(--card); }
+  .note b { color:var(--ink); }
+  footer { margin-top:56px; padding-top:20px; border-top:1px solid var(--line); font-size:.85rem; color:var(--mut); }
+</style>
+</head>
+<body>
+<div class="wrap">
+<p><a href="/">← Sunrise Market</a></p>
+<h1>API dla sprzedawców</h1>
+<p>Wystawiaj oferty, aktualizuj ceny i stany oraz odbieraj zamówienia prosto ze swojego systemu — sklepu, hurtowni albo integratora. Bez logowania się do panelu i bez plików CSV.</p>
+
+<h2>1. Klucz</h2>
+<p>Klucz tworzysz w panelu: <a href="/sprzedawca/api">Sprzedawca → Integracje</a>. Pokazujemy go jeden raz — trzymamy wyłącznie jego skrót, więc nie odtworzymy go ani my, ani nikt, kto dostałby się do bazy. Klucz należy do jednego sprzedawcy i nie sięgnie cudzych ofert ani cudzych zamówień.</p>
+<pre><code>Authorization: Bearer sm_live_...</code></pre>
+<p>Adres bazowy:</p>
+<pre><code>https://ihehncaaokbwbdqdztna.supabase.co/functions/v1/market-api/v1</code></pre>
+
+<div class="note"><b>Limity.</b> Domyślnie 120 zapytań na minutę na klucz i ustawiony przez sprzedawcę limit aktywnych ofert. Limit ofert to świadoma bariera: katalog integratora potrafi mieć milion pozycji, a milion ofert wysyłkowych utopiłby oferty lokalne i zrobiłby z Marketu kopię wszystkich innych sklepów. Po przekroczeniu limitu dostajesz <code>limit_ofert</code> przy tej pozycji, reszta paczki przechodzi normalnie.</div>
+
+<h2>2. Punkty</h2>
+<table>
+  <tr><th>Metoda</th><th>Ścieżka</th><th>Po co</th></tr>
+  <tr><td>GET</td><td><code>/ping</code></td><td>sprawdzenie klucza</td></tr>
+  <tr><td>GET</td><td><code>/categories</code></td><td>drzewo kategorii (slug + rodzic)</td></tr>
+  <tr><td>GET</td><td><code>/offers?since=&amp;limit=</code></td><td>Twoje oferty</td></tr>
+  <tr><td>POST</td><td><code>/offers</code></td><td>wystawienie i aktualizacja (paczka do 200)</td></tr>
+  <tr><td>GET</td><td><code>/orders?since=&amp;limit=</code></td><td>zamówienia do realizacji</td></tr>
+  <tr><td>POST</td><td><code>/orders/&lt;id&gt;/shipped</code></td><td>numer przesyłki</td></tr>
+</table>
+
+<h2>3. Wystawienie oferty</h2>
+<p>Ofertę rozpoznajemy po <code>sku</code> — Twoim identyfikatorze. Ten sam plik możesz wysyłać codziennie: pozycja, która już istnieje, zostanie zaktualizowana, a nie zduplikowana.</p>
+<pre><code>curl -X POST "$BASE/offers" \
+  -H "Authorization: Bearer $KLUCZ" \
+  -H "Content-Type: application/json" \
+  -d '[{
+    "sku": "PV-450-MONO",
+    "title": "Panel fotowoltaiczny 450 W mono",
+    "description": "Pełny opis oferty — to on trafia do wyszukiwarek.",
+    "price_gross": 549.00,
+    "stock": 24,
+    "status": "active",
+    "category_slug": "oze-i-energia-fotowoltaika",
+    "image_url": "https://twoj-serwer/zdjecia/pv-450.jpg",
+    "location": "Nowy Tomyśl"
+  }]'</code></pre>
+<table>
+  <tr><th>Pole</th><th>Wymagane</th><th>Uwagi</th></tr>
+  <tr><td><code>sku</code></td><td>tak</td><td>Twój identyfikator, po nim rozpoznajemy ofertę</td></tr>
+  <tr><td><code>title</code></td><td>tak</td><td>bez WIELKICH LITER i bez numeru telefonu</td></tr>
+  <tr><td><code>price_gross</code></td><td>tak</td><td>brutto w PLN, większe od zera</td></tr>
+  <tr><td><code>category_slug</code></td><td>tak</td><td>z <code>/categories</code></td></tr>
+  <tr><td><code>stock</code></td><td>nie</td><td>domyślnie 0</td></tr>
+  <tr><td><code>status</code></td><td>nie</td><td><code>active</code> (domyślnie), <code>draft</code>, <code>ended</code></td></tr>
+  <tr><td><code>image_url</code></td><td>nie</td><td>publiczny adres; nie kopiujemy pliku do siebie</td></tr>
+  <tr><td><code>location</code></td><td>nie</td><td>miejscowość — dzięki niej oferta trafia na strony lokalne</td></tr>
+</table>
+<p>Odpowiedź jest pozycja po pozycji, więc jedna zła oferta nie wywraca całej paczki:</p>
+<pre><code>{
+  "przyjeto": 1,
+  "odrzucono": 1,
+  "wyniki": [
+    { "ok": true, "sku": "PV-450-MONO", "offer_id": "…", "utworzono": true },
+    { "error": "nieznana_kategoria", "sku": "PV-999", "detal": "panele-sloneczne" }
+  ]
+}</code></pre>
+
+<h2>4. Zamówienia</h2>
+<p>Pobierasz zamówienia zawierające Twoje pozycje wraz z danymi do wysyłki, a po nadaniu odsyłasz numer przesyłki.</p>
+<pre><code>curl "$BASE/orders?since=2026-09-01T00:00:00Z" -H "Authorization: Bearer $KLUCZ"
+
+curl -X POST "$BASE/orders/&lt;order_id&gt;/shipped" \
+  -H "Authorization: Bearer $KLUCZ" -H "Content-Type: application/json" \
+  -d '{"carrier":"InPost","tracking_no":"6200000000000"}'</code></pre>
+
+<h2>5. Zasady, o których warto wiedzieć wcześniej</h2>
+<ul>
+  <li><b>Moderacja dotyczy też ofert z API.</b> Ogłoszenie z numerem telefonu w opisie, z ceną dziesięć razy odstającą od kategorii albo z zakazaną treścią dostaje znacznik do przejrzenia — a część jest odrzucana od razu, z powodem w polu <code>detal</code>.</li>
+  <li><b>Prowizję pobieramy wyłącznie od sprzedaży</b> — 7,9% przy płatności Sunrise Pay (w tym 3% cashbacku dla kupującego), 12,9% przy karcie. Wystawienie oferty nie kosztuje nic.</li>
+  <li><b>Opis ma znaczenie.</b> Oferty z prawdziwym opisem i miejscowością trafiają na strony lokalne typu „Fotowoltaika Wolsztyn". Skopiowana nazwa producenta bez treści nie trafi nigdzie.</li>
+  <li><b>Nie usuwamy ofert.</b> Zamiast kasować, ustaw <code>status: "ended"</code> — historia zamówień musi zostać spójna.</li>
+</ul>
+
+<h2>6. Błędy</h2>
+<table>
+  <tr><th>Kod</th><th>Znaczenie</th></tr>
+  <tr><td>401</td><td><code>brak_klucza</code>, <code>zly_klucz</code>, <code>klucz_odwolany</code></td></tr>
+  <tr><td>429</td><td><code>za_duzo_zapytan</code> — odczekaj minutę</td></tr>
+  <tr><td>400</td><td>błąd danych; szczegóły przy pozycji</td></tr>
+  <tr><td>500</td><td>nasza awaria — powtórz za chwilę, zgłoś, jeśli wraca</td></tr>
+</table>
+
+<footer>
+  Pytania do integracji: <a href="/legal/kontakt.html">kontakt</a> — biuro pracuje w dni robocze 7:00–15:00.
+</footer>
+</div>
+</body>
+</html>

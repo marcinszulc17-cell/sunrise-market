@@ -221,6 +221,7 @@ const SELLER_NAV = (a: Attention) => [
   { to: "/sprzedawca/opinie", label: "Opinie", icon: <Ico name="heart" size={18} /> },
   { to: "/sprzedawca/odbior", label: "Odbiór i kontakt", icon: <Ico name="house" size={18} /> },
   { to: "/sprzedawca/rozliczenia", label: "Rozliczenia", icon: <Ico name="sun" size={18} /> },
+  { to: "/sprzedawca/api", label: "Integracje i API", icon: <Ico name="bolt" size={18} /> },
   { to: "/sprzedawca/partner", label: "Ustawienia partnera", icon: <Ico name="wrench" size={18} /> },
 ];
 function StatTile({ to, tint, icon, value, label, sub }: { to: string; tint: Tint; icon: "bag" | "cart" | "calendar" | "sun"; value: string; label: string; sub: string }) {
