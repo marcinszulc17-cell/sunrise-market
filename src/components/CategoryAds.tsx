@@ -21,9 +21,19 @@ export default function CategoryAds({mode}:{mode:Mode}) {
       if(!alive)return;
       const all:Offer[]=[];
       for(const r of res){ if(r.status==="fulfilled") for(const o of (r.value||[])) if(o?.offer_id&&!all.some(x=>x.offer_id===o.offer_id)) all.push(o); }
+      // O przynależności do działu decyduje KATEGORIA oferty, nie słowa w tytule.
+      //
+      // Wcześniej było tu zgadywanie po tytule i dało dokładnie to, czego można się było
+      // spodziewać: „Zestaw startowy Sunrise GPS — **lokal**izator Teltonika" wpadał pod
+      // „Wyróżnione nieruchomości", bo w słowie „lokalizator" siedzi „lokal". Po stronie aut
+      // było tak samo krucho — dowolny tytuł ze słowem „ford" czy „samochód" wchodził do
+      // motoryzacji, choćby to był dywanik albo ubezpieczenie.
+      //
+      // Jeśli po filtrze nie zostaje nic, sekcja się nie pokazuje — i dobrze. Pusty dział
+      // ma wyglądać na pusty, a nie być zapychany przypadkowym towarem z innej półki.
       const filtered=all.filter(o=>{
-        const slug=String(o.category_slug||"").toLowerCase(); const cat=String(o.category||"").toLowerCase(); const title=String(o.title||"").toLowerCase();
-        return car ? (slug.includes("motoryz")||cat.includes("motoryz")||title.includes("samoch")||title.includes("ford")||title.includes("bmw")||title.includes("audi")||title.includes("mercedes")) : (slug.includes("nieruch")||cat.includes("nieruch")||title.includes("mieszkan")||title.includes("dom ")||title.includes("działk")||title.includes("lokal"));
+        const slug=String(o.category_slug||"").toLowerCase();
+        return car ? slug.startsWith("motoryzacja") : slug.startsWith("nieruchomosci");
       }).slice(0,8);
       setPromoted(filtered);
     });
