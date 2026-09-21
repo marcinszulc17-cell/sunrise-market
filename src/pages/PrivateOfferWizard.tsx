@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { supabase } from "../lib/supabase";
+import OfferPhotoManager from "../components/OfferPhotoManager";
 import { childCategories, configureBookingOffer, topCategories, uploadProductImage } from "../lib/api";
 
 type Cat = { id: string; slug: string; name: string };
@@ -199,7 +200,7 @@ export default function PrivateOfferWizard() {
             <div><div className="text-3xl">📷</div><div className="mt-2">{uploading ? "Dodaję zdjęcia…" : images.length ? "+ Dodaj kolejne" : "Dodaj zdjęcia"}</div><div className="mt-1 text-xs font-normal" style={{ color: "var(--mut)" }}>Pierwsze będzie zdjęciem głównym</div></div>
             <input type="file" accept="image/*" multiple className="hidden" onChange={e => upload(e.target.files)} />
           </label>
-          {images.length > 0 && <div className="mt-3 grid grid-cols-3 gap-2 sm:grid-cols-5">{images.map((url, i) => <div key={`${url}-${i}`} className="relative"><img src={url} alt="" className="aspect-square w-full rounded-xl object-cover"/><button type="button" onClick={() => setImages(p => p.filter((_,j) => j !== i))} className="absolute right-1 top-1 rounded-full bg-black/70 px-2 py-1 text-xs text-white">×</button>{i===0 && <span className="absolute bottom-1 left-1 rounded-lg bg-black/70 px-2 py-1 text-[10px] text-white">Główne</span>}</div>)}</div>}
+          {images.length > 0 && <div className="mt-3"><OfferPhotoManager images={images} onChange={setImages} /></div>}
         </div>
 
         <div><h2 className="mb-3 text-lg font-semibold">{mode === "daily" ? "3" : "2"}. {copy.itemLabel}</h2><input className={field} style={fieldStyle} placeholder={copy.placeholder} value={title} onChange={e=>setTitle(e.target.value)} /></div>

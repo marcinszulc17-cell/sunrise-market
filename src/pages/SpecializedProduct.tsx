@@ -33,13 +33,20 @@ type Offer = {
 
 const LABELS: Record<string, string> = {
   brand: "Marka", model: "Model", year: "Rok", mileage_km: "Przebieg", mileage: "Przebieg", fuel: "Paliwo", engine_cc: "Pojemność", engine: "Pojemność", power_hp: "Moc", power: "Moc", gearbox: "Skrzynia biegów", doors: "Drzwi", seats: "Miejsca", first_registration: "Pierwsza rejestracja", location: "Lokalizacja", condition: "Stan", body_type: "Nadwozie", color: "Kolor",
+  // Ogłoszenia o pracę — bez tych etykiet strona pokazywała surowe nazwy pól
+  // („employer", „work mode", „salary to"), co wygląda jak wyciek z bazy, a nie oferta.
+  employer: "Pracodawca", employment_type: "Forma zatrudnienia", work_mode: "Tryb pracy",
+  work_schedule: "Wymiar etatu", contact_person: "Kontakt", experience: "Doświadczenie",
+  start_date: "Możliwy start", industry: "Branża", position_level: "Poziom stanowiska",
   engine_capacity: "Pojemność", drive: "Napęd", vehicle_type: "Typ pojazdu", generation: "Generacja", version: "Wersja", origin: "Pochodzenie", damaged: "Uszkodzony", registered_pl: "Zarejestrowany w PL", plate: "Rejestracja", warranty: "Gwarancja", area_m2: "Powierzchnia", market_type: "Rynek", ownership: "Forma własności", rooms: "Pokoje", floor: "Piętro", rent_pln: "Czynsz", heating: "Ogrzewanie", year_built: "Rok budowy",
 };
 const BOOLEAN_LABELS: Record<string, string> = {
   accident_free: "Bezwypadkowy", first_owner: "Pierwszy właściciel", serviced: "Serwisowany", heated_seats: "Podgrzewane fotele", electric_mirrors: "Elektryczne lusterka", air_conditioning: "Klimatyzacja", financing_available: "Finansowanie", balcony: "Balkon / taras", parking: "Miejsce parkingowe", full_vat_invoice: "Pełna faktura VAT",
 };
 // Klucze techniczne (sync MySunrise, promocje, flagi) — nie są danymi oferty i nie pokazujemy ich klientowi.
-const PRIVATE_KEYS = new Set(["vin", "registration_number", "offer_type", "cashback_only", "purchase_mode", "source", "enriched", "ms_stock", "own_brand", "mysunrise_id", "mysunrise_sku", "subscription", "promo", "price_locked", "private_listing", "buy_now_only", "specs", "images", "gallery", "seo", "sync", "has_vin", "service_lat", "service_lon", "service_radius_km", "kw_number", "full_vat_invoice", "vat_rate", "km_limit_per_day", "min_driver_age", "deposit", "instant_confirmation", "pickup_location", "rental_kind", "rental_operations", "seller_nature", "delivery", "negotiable", "commission_model"]);
+const PRIVATE_KEYS = new Set(["vin", "registration_number", "offer_type", "cashback_only", "purchase_mode", "source", "enriched", "ms_stock", "own_brand", "mysunrise_id", "mysunrise_sku", "subscription", "promo", "price_locked", "private_listing", "buy_now_only", "specs", "images", "gallery", "seo", "sync", "has_vin", "service_lat", "service_lon", "service_radius_km", "kw_number", "full_vat_invoice", "vat_rate", "km_limit_per_day", "min_driver_age", "deposit", "instant_confirmation", "pickup_location", "rental_kind", "rental_operations", "seller_nature", "delivery", "negotiable", "commission_model",
+  // Ogłoszenia: flagi sterujące kreatorem, nie treść oferty.
+  "job_side", "free_listing", "listing_kind", "salary_from", "salary_to", "salary_period"]);
 
 function kindOf(slug: string) {
   if (slug.includes("motoryzacja-samochody-osobowe")) return "car";
@@ -105,6 +112,18 @@ export default function SpecializedProduct() {
   }, [o, A, kind, mileage, power, engine]);
 
   const bools = Object.entries(BOOLEAN_LABELS).filter(([k]) => A[k] === true);
+  // Wynagrodzenie sklejamy w jeden wiersz („6 000 – 8 500 zł / miesięcznie”).
+  // Rozbite na salary_from / salary_to / salary_period czyta się jak formularz, nie jak oferta.
+  const wynagrodzenie = (() => {
+    const od = Number(A.salary_from) || 0, do_ = Number(A.salary_to) || 0;
+    if (!od && !do_) return null;
+    const kwota = od && do_ && od !== do_
+      ? `${od.toLocaleString("pl-PL")} – ${do_.toLocaleString("pl-PL")} zł`
+      : `${(do_ || od).toLocaleString("pl-PL")} zł`;
+    const okres = String(A.salary_period || "").trim();
+    return okres ? `${kwota} / ${okres}` : kwota;
+  })();
+
   const details = Object.entries(A).filter(([k, v]) => v !== null && v !== "" && v !== false && typeof v !== "object" && !BOOLEAN_LABELS[k] && !PRIVATE_KEYS.has(k) && !["colors","sizes","features","packing","video"].includes(k));
   const mainImage = imgs[active] || o?.image_url || null;
   const isCar = kind === "car";
@@ -148,7 +167,7 @@ export default function SpecializedProduct() {
           {heroStats.length > 0 && <div className="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-3">{heroStats.map(([k,v]) => <div key={k} className="rounded-2xl p-4" style={{ background: "var(--glass)", border: "1px solid var(--line)" }}><div className="text-xs" style={{ color: "var(--mut)" }}>{k}</div><div className="mt-1 font-semibold">{v}</div></div>)}</div>}
           {isCar && A.vin && <div className="mt-4 rounded-2xl p-4 text-sm" style={{ background:"rgba(56,224,240,.07)", border:"1px solid rgba(56,224,240,.20)" }}><b>VIN:</b> dostępny do weryfikacji w Sunrise Verify. Pełny numer nie jest publikowany w ogłoszeniu.</div>}
           {bools.length > 0 && <section className="mt-8 rounded-2xl p-5" style={CARD}><SectionTitle className="mb-4">Najważniejsze cechy</SectionTitle><div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">{bools.map(([k]) => <div key={k} className="rounded-xl px-4 py-3 text-sm" style={{ background: "rgba(122,184,154,.10)", border: "1px solid rgba(122,184,154,.28)" }}>✓ {BOOLEAN_LABELS[k]}</div>)}</div></section>}
-          {details.length > 0 && <section className="mt-6 rounded-2xl p-5" style={CARD}><SectionTitle className="mb-4">{isCar ? "Dane pojazdu" : isProperty ? "Dane nieruchomości" : "Najważniejsze informacje"}</SectionTitle><div className="overflow-hidden rounded-2xl" style={{ border: "1px solid var(--line)" }}>{details.map(([k,v],i) => <div key={k} className="grid grid-cols-[140px_1fr] gap-4 px-4 py-3 text-sm" style={{ background: i%2 ? "transparent" : "var(--glass)", borderBottom: "1px solid var(--line)" }}><span style={{ color: "var(--mut)" }}>{LABELS[k] || k.split("_").join(" ")}</span><span className="font-medium">{(k === "mileage_km" || k === "mileage") ? `${Number(v).toLocaleString("pl-PL")} km` : k === "area_m2" ? `${v} m²` : k === "rent_pln" ? `${Number(v).toLocaleString("pl-PL")} zł` : (k === "power_hp" || k === "power") && Number(v) > 0 ? `${v} KM` : (k === "engine_cc" || k === "engine" || k === "engine_capacity") && Number(v) > 0 ? `${Number(v).toLocaleString("pl-PL")} cm³` : v === true ? "tak" : String(v)}</span></div>)}</div></section>}
+          {(details.length > 0 || wynagrodzenie) && <section className="mt-6 rounded-2xl p-5" style={CARD}><SectionTitle className="mb-4">{isCar ? "Dane pojazdu" : isProperty ? "Dane nieruchomości" : "Najważniejsze informacje"}</SectionTitle><div className="overflow-hidden rounded-2xl" style={{ border: "1px solid var(--line)" }}>{wynagrodzenie && <div className="grid grid-cols-[140px_1fr] gap-4 px-4 py-3 text-sm" style={{ background: "var(--glass)", borderBottom: "1px solid var(--line)" }}><span style={{ color: "var(--mut)" }}>Wynagrodzenie</span><span className="font-semibold" style={{ color: "var(--gold)" }}>{wynagrodzenie}</span></div>}{details.map(([k,v],i) => <div key={k} className="grid grid-cols-[140px_1fr] gap-4 px-4 py-3 text-sm" style={{ background: i%2 ? "transparent" : "var(--glass)", borderBottom: "1px solid var(--line)" }}><span style={{ color: "var(--mut)" }}>{LABELS[k] || k.split("_").join(" ")}</span><span className="font-medium">{(k === "mileage_km" || k === "mileage") ? `${Number(v).toLocaleString("pl-PL")} km` : k === "area_m2" ? `${v} m²` : k === "rent_pln" ? `${Number(v).toLocaleString("pl-PL")} zł` : (k === "power_hp" || k === "power") && Number(v) > 0 ? `${v} KM` : (k === "engine_cc" || k === "engine" || k === "engine_capacity") && Number(v) > 0 ? `${Number(v).toLocaleString("pl-PL")} cm³` : v === true ? "tak" : String(v)}</span></div>)}</div></section>}
           <LocationMap location={typeof A.location === "string" ? A.location : null} radiusKm={Number(A.service_radius_km) || null} kind={locationKind(o?.category_slug, String(A.purchase_mode || ""))} className="mt-6" />
           {o.description && <section className="mt-6 rounded-2xl p-5" style={CARD}><SectionTitle className="mb-4">{isProperty ? "Opis nieruchomości" : isCar ? "Opis pojazdu" : "Opis"}</SectionTitle><OfferDescription value={o.description} /></section>}
         </section>
