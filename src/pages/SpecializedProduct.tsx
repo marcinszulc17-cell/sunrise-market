@@ -4,7 +4,8 @@ import ShareOfferButton from "../components/ShareOfferButton";
 import MessageSellerButton from "../components/MessageSellerButton";
 import ShowPhoneButton from "../components/ShowPhoneButton";
 import LocationMap, { locationKind } from "../components/LocationMap";
-import { useParams } from "react-router-dom";
+
+import { useOfferId } from "../lib/offerId";
 import { getOffer, offerImages, trackView, similarOffers } from "../lib/api";
 import { supabase } from "../lib/supabase";
 import { cena, zl, pkt } from "../lib/money";
@@ -72,7 +73,7 @@ function kindOf(slug: string) {
 }
 
 export default function SpecializedProduct() {
-  const { id } = useParams();
+  const id = useOfferId();
   const [o, setO] = useState<Offer | null>(null);
   const [imgs, setImgs] = useState<string[]>([]);
   const [active, setActive] = useState(0);

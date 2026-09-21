@@ -1,6 +1,7 @@
 import { ProductSkeleton } from "../components/Skeleton";
 import { useEffect, useState } from "react";
-import { useParams } from "react-router-dom";
+
+import { useOfferId, offerPath } from "../lib/offerId";
 import { getOffer, countOfferView } from "../lib/api";
 import Product from "./Product";
 import PrivateProduct from "./PrivateProduct";
@@ -16,7 +17,7 @@ type PurchaseMode="purchase"|"appointment"|"daily";
 type ProductKind="generic"|"special"|"private";
 
 export default function ProductRouter() {
-  const { id } = useParams();
+  const id = useOfferId();
   const [kind, setKind] = useState<ProductKind | null>(null);
   const [verifyKind,setVerifyKind]=useState<"vehicle"|"property"|null>(null);
   const [categorySlug,setCategorySlug]=useState("");
@@ -49,7 +50,7 @@ export default function ProductRouter() {
   }, [id]);
 
   const seoDescription=(seoOffer?.description||`${seoOffer?.title||"Oferta"} w Sunrise Market`).replace(/[#*_`\[\]]/g,"").replace(/\s+/g," ").trim().slice(0,160);
-  useSeo(seoOffer?.title||"Oferta Sunrise Market",seoDescription,id?`/produkt/${id}`:"");
+  useSeo(seoOffer?.title||"Oferta Sunrise Market",seoDescription,id?offerPath(id,seoOffer?.title):"");
   useProductJsonLd(seoOffer&&id?{id,name:seoOffer.title,price:Number(seoOffer.price_gross||0),image:seoOffer.image_url||null,rating:Number(seoOffer.rating||0),reviews:Number(seoOffer.reviews||0)}:null);
 
   if (kind === null) return <ProductSkeleton />;

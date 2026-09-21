@@ -11,3 +11,12 @@ export async function rpc(name: string, body: Record<string, unknown>) {
   return r.ok ? r.json() : [];
 }
 export function zl(n: number) { return new Intl.NumberFormat("pl-PL", { style: "currency", currency: "PLN", maximumFractionDigits: 2 }).format(n); }
+
+/** Tytul oferty -> czesc adresu. Bez polskich znakow: adres z „a-ogonkiem" w wynikach wyglada jak %C4%85. */
+export function slugify(s: unknown) {
+  return String(s || "").toLowerCase()
+    .replace(/[\u0105\u00e0\u00e1\u00e2\u00e3]/g, "a").replace(/\u0107/g, "c").replace(/[\u0119\u00e8\u00e9\u00ea\u00eb]/g, "e")
+    .replace(/\u0142/g, "l").replace(/\u0144/g, "n").replace(/[\u00f3\u00f2\u00f4\u00f5\u00f6]/g, "o")
+    .replace(/[\u015b\u0161]/g, "s").replace(/[\u017a\u017c]/g, "z").replace(/[\u00fc\u00f9]/g, "u")
+    .replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 70);
+}

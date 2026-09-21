@@ -4,7 +4,8 @@ import ShareOfferButton from "../components/ShareOfferButton";
 import MessageSellerButton from "../components/MessageSellerButton";
 import ShowPhoneButton from "../components/ShowPhoneButton";
 import LocationMap, { locationKind } from "../components/LocationMap";
-import { Link, useParams } from "react-router-dom";
+import { Link } from "react-router-dom";
+import { useOfferId } from "../lib/offerId";
 import SwipeGallery from "../components/SwipeGallery";
 import { addReview, getOffer, offerCancellationTerms, offerMedia, offerReviews, offerSellerBadge, offerStayDetails, similarOffers, trackView, type CancellationTerms, type SellerBadge, type StayDetails } from "../lib/api";
 import { addToCart, cleanTitle, isTestProduct } from "../lib/cart";
@@ -50,7 +51,7 @@ function visual(t: string): { emoji: string; from: string; to: string } {
 }
 
 export default function Product() {
-  const { id } = useParams();
+  const id = useOfferId();
   const [o, setO] = useState<Offer | null>(null);
   // Stawka cashbacku z konfiguracji rynku — nigdy zaszyta w widoku, bo zmiana stawki
   // musi natychmiast przelozyc sie na to, co widzi kupujacy.

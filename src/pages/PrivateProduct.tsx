@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { SiteHeader } from "../components/home/SiteChrome";
-import { useParams } from "react-router-dom";
+
+import { useOfferId } from "../lib/offerId";
 import { getOffer, offerImages } from "../lib/api";
 import { addToCart } from "../lib/cart";
 import { zl } from "../lib/money";
@@ -38,7 +39,7 @@ const deliveryLabel: Record<string,string> = {
 };
 
 export default function PrivateProduct(){
-  const { id } = useParams();
+  const id = useOfferId();
   const [offer,setOffer]=useState<PrivateOffer|null>(null);
   const [imgs,setImgs]=useState<string[]>([]);
   const [active,setActive]=useState(0);
