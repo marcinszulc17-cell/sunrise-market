@@ -2,6 +2,8 @@ import { useEffect, useMemo, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { searchOffersWithAttributes } from "../lib/api";
 import { SiteHeader, Breadcrumbs } from "../components/home/SiteChrome";
+import { useSeo } from "../lib/seo";
+import { offerPath } from "../lib/offerId";
 
 // Rynek pracy w Sunrise Market ma dwie strony. „Oferty pracy” to ogloszenia firm,
 // „Szukam pracy” to ogloszenia kandydatow — tego drugiego nie ma na typowych portalach.
@@ -47,6 +49,16 @@ export default function Praca() {
   const count = rows?.length ?? 0;
   const heading = useMemo(() => side === "oferty" ? "Praca w Twojej okolicy" : "Ludzie, którzy szukają pracy", [side]);
 
+  // Strona miała tytuł strony głównej, więc w wynikach wyglądała jak kopia Sunrise Market.
+  // Rynek pracy jest pełnoprawnym działem i musi mieć własny wpis w Google.
+  useSeo(
+    side === "oferty" ? "Oferty pracy w okolicy — Sunrise Market" : "Szukam pracy — ogłoszenia kandydatów | Sunrise Market",
+    side === "oferty"
+      ? "Bezpłatne ogłoszenia o pracę od lokalnych firm. Stanowisko, wynagrodzenie brutto lub netto i forma zatrudnienia widoczne od razu — aplikujesz bezpośrednio do pracodawcy."
+      : "Ogłoszenia osób szukających pracy. Zobacz, kto jest dostępny w Twojej okolicy, i odezwij się bezpośrednio — dodanie ogłoszenia jest bezpłatne.",
+    side === "oferty" ? "/praca" : "/praca?strona=szukam",
+  );
+
   // Ta strona długo nie miała nagłówka serwisu: kto na nią wszedł, zostawał bez logo,
   // bez koszyka i bez drogi powrotnej — jedynym wyjściem był przycisk „wstecz" przeglądarki.
   return <div className="min-h-screen" style={{ background: "var(--bg)", color: "var(--ink)" }}>
@@ -86,7 +98,7 @@ export default function Praca() {
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {rows.map(r => {
               const loc = r.attributes?.location ? String(r.attributes.location) : null;
-              return <Link key={r.offer_id} to={`/produkt/${r.offer_id}`} className="overflow-hidden rounded-2xl transition-transform hover:-translate-y-0.5" style={CARD}>
+              return <Link key={r.offer_id} to={offerPath(r.offer_id, r.title)} className="overflow-hidden rounded-2xl transition-transform hover:-translate-y-0.5" style={CARD}>
                 {r.image_url
                   ? <img src={r.image_url} alt="" className="h-40 w-full object-cover" />
                   : <div className="grid h-40 w-full place-items-center text-5xl" style={{ background: "rgba(232,137,26,.08)" }}>{cfg.icon}</div>}
