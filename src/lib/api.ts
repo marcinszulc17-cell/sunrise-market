@@ -205,6 +205,21 @@ export async function reviewSeller(sellerId: string, approve: boolean) {
 export async function listOffersAdmin() {
   const { data, error } = await supabase.rpc("list_offers_admin"); if (error) throw error; return data ?? [];
 }
+// Ogłoszenia, które opublikowały się automatycznie, ale coś w nich zwróciło uwagę
+// (kontakt w opisie, cena odstająca od kategorii, pierwsza oferta sprzedawcy, duża kwota).
+// Kolejność ustala baza — po wadze, nie po dacie.
+export type OfertaDoPrzejrzenia = {
+  offer_id: string; title: string; seller: string; price_gross: number; status: string;
+  waga: number; powody: string; szczegoly: string; created_at: string;
+};
+export async function ofertyDoPrzejrzenia(limit = 100): Promise<OfertaDoPrzejrzenia[]> {
+  const { data, error } = await supabase.rpc("oferty_do_przejrzenia", { p_limit: limit });
+  if (error) throw error; return (data ?? []) as OfertaDoPrzejrzenia[];
+}
+export async function flagiZalatwione(offerId: string, notatka?: string) {
+  const { error } = await supabase.rpc("flagi_zalatwione", { p_offer: offerId, p_notatka: notatka ?? null });
+  if (error) throw error;
+}
 export async function moderateOffer(offerId: string, hide: boolean) {
   const { error } = await supabase.rpc("moderate_offer", { p_offer: offerId, p_hide: hide }); if (error) throw error;
 }

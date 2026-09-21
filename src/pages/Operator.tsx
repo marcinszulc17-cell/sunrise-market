@@ -5,6 +5,7 @@ import {
   adminCustomers, adminSellers, adminSetSellerStatus,
   listReturns, resolveReturn, listPendingSellers, reviewSeller, listOffersAdmin, moderateOffer,
   bridgeQueue, retryBridgeOrder, getAutoForward, setAutoForward, approveBridgeForward, rejectBridgeForward,
+  ofertyDoPrzejrzenia, flagiZalatwione, type OfertaDoPrzejrzenia,
   cjImport, eproloImport, eproloProbe, eproloForwardOrder, cjDrafts, cjSetStatus, cjActivateAll, cjStats, catalogStats, type CjDraft, type CjStat, type CatalogStat, adminShipments,
 } from "../lib/api";
 
@@ -12,13 +13,14 @@ import { zl } from "../lib/money";
 const n = (v: number) => Number(v || 0).toLocaleString("pl-PL");
 const dt = (s: string) => new Date(s).toLocaleString("pl-PL");
 
-type Tab = "pulpit" | "zamowienia" | "klienci" | "sprzedawcy" | "oferty" | "cjdrop" | "fulfillment" | "zwroty" | "spory";
+type Tab = "pulpit" | "zamowienia" | "klienci" | "sprzedawcy" | "oferty" | "weryfikacja" | "cjdrop" | "fulfillment" | "zwroty" | "spory";
 const TABS: { id: Tab; label: string }[] = [
   { id: "pulpit", label: "📊 Pulpit" },
   { id: "zamowienia", label: "🧾 Zamówienia" },
   { id: "klienci", label: "👤 Klienci" },
   { id: "sprzedawcy", label: "🏪 Sprzedawcy" },
   { id: "oferty", label: "📦 Oferty" },
+  { id: "weryfikacja", label: "🔍 Do przejrzenia" },
   { id: "cjdrop", label: "🛒 CJ Drop" },
   { id: "fulfillment", label: "🚚 Fulfillment" },
   { id: "zwroty", label: "↩️ Zwroty" },
@@ -81,6 +83,7 @@ export default function Operator() {
         {isOp && tab === "klienci" && <Klienci />}
         {isOp && tab === "sprzedawcy" && <Sprzedawcy />}
         {isOp && tab === "oferty" && <Oferty />}
+        {isOp && tab === "weryfikacja" && <DoPrzejrzenia />}
         {isOp && tab === "cjdrop" && <CjDrop />}
         {isOp && tab === "fulfillment" && <Fulfillment />}
         {isOp && tab === "zwroty" && <Zwroty />}
@@ -752,4 +755,86 @@ function Spory() {
       </div>
     </>
   );
+}
+
+/**
+ * Kolejka ogłoszeń do przejrzenia.
+ *
+ * DLACZEGO OGŁOSZENIA SĄ TU JUŻ OPUBLIKOWANE
+ * Ręczne zatwierdzanie każdego ogłoszenia przed publikacją zabiłoby tempo — sprzedawca,
+ * który czeka dobę, drugi raz nie przyjdzie. Rzeczy nie do przyjęcia baza odrzuca od razu
+ * przy zapisie (zapory). Tutaj trafia to, co jest tylko PODEJRZANE: kontakt w opisie,
+ * cena dziesięciokrotnie odstająca od kategorii, pierwsza oferta nowego sprzedawcy,
+ * duża kwota. Oglądamy po fakcie, tak jak robią to OLX i Allegro.
+ *
+ * „Sprawdzone" zamyka wszystkie powody naraz i ogłoszenie znika z listy.
+ * „Ukryj" zdejmuje je ze strony — to ta sama moderacja co w zakładce Oferty.
+ */
+function DoPrzejrzenia() {
+  const [rows, setRows] = useState<OfertaDoPrzejrzenia[] | null>(null);
+  const [busy, setBusy] = useState<string | null>(null);
+  const [err, setErr] = useState<string | null>(null);
+
+  async function odswiez() {
+    try { setRows(await ofertyDoPrzejrzenia(200)); setErr(null); }
+    catch (e) { setErr((e as Error).message); setRows([]); }
+  }
+  useEffect(() => { odswiez(); }, []);
+
+  async function sprawdzone(id: string) {
+    setBusy(id);
+    try { await flagiZalatwione(id); setRows((r) => (r ?? []).filter((x) => x.offer_id !== id)); }
+    catch (e) { setErr((e as Error).message); }
+    finally { setBusy(null); }
+  }
+  async function ukryj(id: string) {
+    setBusy(id);
+    try { await moderateOffer(id, true); await flagiZalatwione(id, "ukryte przez biuro"); setRows((r) => (r ?? []).filter((x) => x.offer_id !== id)); }
+    catch (e) { setErr((e as Error).message); }
+    finally { setBusy(null); }
+  }
+
+  const box = { background: "var(--glass)", border: "1px solid var(--line)" } as const;
+  const kolorWagi = (w: number) => w >= 3 ? "#fca5a5" : w === 2 ? "var(--gold)" : "var(--mut)";
+
+  return <div className="space-y-3">
+    <div className="flex items-center justify-between gap-3">
+      <div>
+        <h2 className="text-lg font-semibold">Ogłoszenia do przejrzenia</h2>
+        <p className="text-xs" style={{ color: "var(--mut)" }}>
+          Te ogłoszenia są już na stronie. Zapory odrzuciły to, czego nie publikujemy w ogóle —
+          tu zostaje to, co warto obejrzeć ludzkim okiem.
+        </p>
+      </div>
+      <button onClick={odswiez} className="rounded-xl px-3 py-2 text-sm" style={box}>Odśwież</button>
+    </div>
+
+    {err && <div className="rounded-xl px-3 py-2 text-sm" style={{ background: "rgba(239,68,68,.10)", color: "#fca5a5" }}>{err}</div>}
+    {rows === null && <div className="text-sm" style={{ color: "var(--mut)" }}>Wczytuję…</div>}
+    {rows && rows.length === 0 && <div className="rounded-2xl p-6 text-sm" style={{ ...box, color: "var(--mut)" }}>Nic nie czeka. Wszystkie ogłoszenia przejrzane.</div>}
+
+    {rows && rows.map((r) => <div key={r.offer_id} className="rounded-2xl p-4" style={box}>
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div className="min-w-0">
+          <a href={`/produkt/${r.offer_id}`} target="_blank" rel="noreferrer" className="font-semibold underline">{r.title}</a>
+          <div className="mt-0.5 text-xs" style={{ color: "var(--mut)" }}>
+            {r.seller} · {zl(Number(r.price_gross || 0))} · dodane {dt(r.created_at)}
+            {r.status !== "active" && <span> · <b>ukryte</b></span>}
+          </div>
+          <div className="mt-2 text-sm font-medium" style={{ color: kolorWagi(r.waga) }}>{r.powody}</div>
+          <div className="text-xs" style={{ color: "var(--mut)" }}>{r.szczegoly}</div>
+        </div>
+        <div className="flex shrink-0 gap-2">
+          <button disabled={busy === r.offer_id} onClick={() => sprawdzone(r.offer_id)}
+            className="rounded-xl px-3 py-2 text-sm font-semibold" style={{ border: "1px solid rgba(122,184,154,.45)", color: "var(--green)" }}>
+            Sprawdzone
+          </button>
+          <button disabled={busy === r.offer_id} onClick={() => ukryj(r.offer_id)}
+            className="rounded-xl px-3 py-2 text-sm font-semibold" style={{ border: "1px solid rgba(239,68,68,.35)", color: "#fca5a5" }}>
+            Ukryj
+          </button>
+        </div>
+      </div>
+    </div>)}
+  </div>;
 }
