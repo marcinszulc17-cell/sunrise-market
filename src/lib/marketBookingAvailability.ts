@@ -1,4 +1,5 @@
 import { ensureMarketDiscovery, marketDiscoveryFor, type MarketDiscoverySummary } from "./marketDiscoveryBatch";
+import { OFFER_LINK_SELECTOR, offerIdFromHref } from "./offerId";
 
 function formatAppointment(iso: string): string {
   return new Intl.DateTimeFormat("pl-PL", {
@@ -84,8 +85,8 @@ function insertSummary(article: HTMLElement, offerId: string, summary: MarketDis
 }
 
 function offerIdFor(article: HTMLElement): string | null {
-  const link = article.querySelector('a[href^="/produkt/"]') as HTMLAnchorElement | null;
-  return (link?.getAttribute("href") || "").split("/produkt/")[1]?.split("?")[0] || null;
+  const link = article.querySelector(OFFER_LINK_SELECTOR) as HTMLAnchorElement | null;
+  return offerIdFromHref(link?.getAttribute("href"));
 }
 
 async function scan() {

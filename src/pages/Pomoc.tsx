@@ -66,7 +66,7 @@ export default function Pomoc() {
     <div className="mx-auto max-w-[1100px] px-4 py-8 sm:px-6">
       <div className="text-[11px] font-semibold tracking-[.3em]" style={{ color: "var(--gold)" }}>POMOC</div>
       <h1 className="mt-3 text-4xl font-extrabold leading-tight">Jak możemy pomóc?</h1>
-      <p className="mt-3 max-w-2xl text-base leading-7" style={{ color: "var(--mut)" }}>Odpowiedzi na najczęstsze pytania o zakupy, cashback, Ochronę Kupujących, rezerwacje i sprzedawanie. Nie znalazłeś swojego? Napisz do nas — odpowiadamy zwykle w ciągu jednego dnia roboczego.</p>
+      <p className="mt-3 max-w-2xl text-base leading-7" style={{ color: "var(--mut)" }}>Odpowiedzi na najczęstsze pytania o zakupy, cashback, Ochronę Kupujących, rezerwacje i sprzedawanie. Nie znalazłeś swojego? Napisz do nas — biuro obsługi pracuje w dni robocze 7:00–15:00 i odpowiadamy zwykle tego samego dnia.</p>
       <label className="mt-6 flex h-12 max-w-2xl items-center gap-2 rounded-xl px-4" style={CARD}><span style={{ color: "var(--mut)" }}><Ico name="search" size={20} /></span><input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Szukaj w pytaniach, np. zwrot, cashback, odbiór…" className="min-w-0 flex-1 bg-transparent text-sm outline-none" style={{ color: "var(--ink)" }} aria-label="Szukaj w pomocy" /></label>
 
       <nav className="mt-6 flex flex-wrap gap-2" aria-label="Tematy">{GROUPS.map((g) => <a key={g.id} href={`#${g.id}`} className="flex h-10 items-center gap-2 rounded-xl px-3 text-sm font-medium" style={CARD}><Ico name={g.icon} size={16} stroke="var(--gold)" />{g.title}</a>)}</nav>
@@ -81,7 +81,7 @@ export default function Pomoc() {
       </section>)}
 
       <section className="mt-12 flex flex-wrap items-center gap-4 rounded-2xl p-6" style={{ background: "linear-gradient(135deg,rgba(232,137,26,.14),rgba(232,137,26,.03))", border: "1px solid rgba(245,166,35,.3)" }}>
-        <div className="min-w-0 flex-1"><div className="font-bold">Nadal potrzebujesz pomocy?</div><div className="text-sm" style={{ color: "var(--mut)" }}>kontakt@sunrisemarket.pl · +48 728 105 424 · pon.–pt. 9:00–17:00</div></div>
+        <div className="min-w-0 flex-1"><div className="font-bold">Nadal potrzebujesz pomocy?</div><div className="text-sm" style={{ color: "var(--mut)" }}>kontakt@sunrisemarket.pl · +48 728 105 424 · pon.–pt. 7:00–15:00</div></div>
         <a href="/legal/kontakt.html" className="flex h-11 items-center rounded-xl px-5 text-sm font-bold" style={{ background: GOLD_GRAD, color: "#101012" }}>Kontakt</a>
         <Link to="/o-nas" className="flex h-11 items-center rounded-xl px-5 text-sm font-semibold" style={CARD}>O nas</Link>
       </section>

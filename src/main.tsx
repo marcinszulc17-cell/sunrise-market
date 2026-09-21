@@ -89,9 +89,32 @@ try {
   if (_p) window.history.replaceState({}, "", "/");
 } catch { /* ignore */ }
 
+// Aplikacja dodana na ekran początkowy telefonu potrafi tygodniami chodzić na starym
+// kodzie: przeglądarka trzyma poprzedniego service workera, dopóki wszystkie karty nie
+// zostaną zamknięte — a ikony z ekranu początkowego nikt nie zamyka. Dlatego:
+//  1) sprawdzamy aktualizację przy starcie i przy każdym powrocie do aplikacji,
+//  2) nowy worker przejmuje stronę od razu (skip-waiting),
+//  3) po przejęciu przeładowujemy widok jeden raz, żeby wejść na nową wersję.
 if ("serviceWorker" in navigator) {
+  let przeladowano = false;
+  navigator.serviceWorker.addEventListener("controllerchange", () => {
+    if (przeladowano) return;
+    przeladowano = true;
+    window.location.reload();
+  });
   window.addEventListener("load", async () => {
-    try { const reg = await navigator.serviceWorker.register("/sw.js", { updateViaCache: "none" }); await reg.update(); } catch { /* optional */ }
+    try {
+      const reg = await navigator.serviceWorker.register("/sw.js", { updateViaCache: "none" });
+      const przejmij = () => reg.waiting?.postMessage({ type: "skip-waiting" });
+      reg.addEventListener("updatefound", () => {
+        reg.installing?.addEventListener("statechange", function () {
+          if (this.state === "installed" && navigator.serviceWorker.controller) przejmij();
+        });
+      });
+      przejmij();
+      await reg.update();
+      document.addEventListener("visibilitychange", () => { if (!document.hidden) reg.update().catch(() => {}); });
+    } catch { /* optional */ }
   });
 }
 

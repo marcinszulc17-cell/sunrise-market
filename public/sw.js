@@ -1,6 +1,9 @@
 // Service worker Sunrise Market (2026-09-06): app shell + offline, stale-while-revalidate dla assetów z hashem w nazwie,
 // cache obrazów/fontów, ostatnio oglądane oferty offline (odpowiedzi get_offer trzymane w cache API), push.
-const CACHE='sunrise-market-v3';
+// Numer podbijamy przy każdej zmianie, która ma dotrzeć do telefonów: aktywacja nowego
+// SW kasuje stare cache, więc aplikacja zainstalowana na ekranie początkowym przestaje
+// pokazywać wersję sprzed tygodnia.
+const CACHE='sunrise-market-v4';
 const DATA_CACHE='sunrise-market-data-v1';
 const APP_SHELL=['/','/offline.html','/manifest.webmanifest','/icon-192x192.png','/pwa-icon.svg','/apple-touch-icon.png','/logo-sunrise-market.png','/logo-sunrise-market-light.png'];
 
@@ -14,6 +17,7 @@ self.addEventListener('activate',event=>{
 // Odpowiedzi RPC get_offer (POST) — strona aplikacji wysyła je do SW wiadomością, żeby oferta działała offline
 self.addEventListener('message',event=>{
   const d=event.data||{};
+  if(d.type==='skip-waiting'){ self.skipWaiting(); return; }
   if(d.type==='cache-offer'&&d.id&&d.payload){
     caches.open(DATA_CACHE).then(c=>c.put(new Request('/__offer/'+d.id),new Response(JSON.stringify(d.payload),{headers:{'Content-Type':'application/json'}}))).catch(()=>{});
   }

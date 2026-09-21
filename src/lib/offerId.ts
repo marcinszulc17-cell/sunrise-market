@@ -17,6 +17,14 @@ export function offerIdFrom(value: string | undefined | null): string | undefine
   return m ? m[0] : undefined;
 }
 
+/** Selektor kart ofert — adresy są dwojakie: stare /produkt/<uuid> i nowe /oferta/<slug>-<uuid>. */
+export const OFFER_LINK_SELECTOR = 'a[href^="/produkt/"], a[href^="/oferta/"]';
+
+/** Id oferty z adresu w atrybucie href (obie formy). */
+export function offerIdFromHref(href: string | null | undefined): string | null {
+  return offerIdFrom(href || undefined) ?? null;
+}
+
 export function useOfferId(): string | undefined {
   const { id } = useParams();
   return offerIdFrom(id);

@@ -13,7 +13,9 @@ const items: { href: string; label: string; icon: IconName; primary?: boolean; m
 
 export default function MobileAppNav() {
   const { pathname } = useLocation();
-  if (pathname.startsWith("/produkt/")) return null;
+  // Karta oferty ma na dole własny pasek „Kup / Zarezerwuj" — dwa paski naraz zasłaniają
+  // pół ekranu telefonu. Adres oferty bywa w dwóch postaciach, obie muszą chować nawigację.
+  if (pathname.startsWith("/produkt/") || pathname.startsWith("/oferta/")) return null;
   return (
     <nav className="pwa-bottom-nav" aria-label="Główna nawigacja aplikacji">
       {items.map((it) => {

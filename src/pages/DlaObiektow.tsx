@@ -124,7 +124,7 @@ export default function DlaObiektow() {
         <div className="mt-8 text-center">
           <Link to="/sprzedawca/dolacz" className="inline-grid h-12 items-center rounded-xl px-6 text-sm font-bold" style={{ background: GOLD_GRAD, color: "#101012" }}>Dodaj obiekt — bez opłat na start</Link>
           <p className="mt-2 text-xs" style={{ color: "var(--mut)" }}>
-            Masz pytania? <a href="/legal/kontakt.html" className="underline" style={{ color: "var(--gold)" }}>Napisz do nas</a> — odpowiadamy w jeden dzień roboczy.
+            Masz pytania? <a href="/legal/kontakt.html" className="underline" style={{ color: "var(--gold)" }}>Napisz do nas</a> — biuro obsługi pracuje w dni robocze 7:00–15:00 i odpowiadamy zwykle tego samego dnia.
           </p>
           <p className="mt-1 text-xs" style={{ color: "var(--mut)" }}>
             Chcesz to komuś pokazać? <Link to="/materialy" className="underline" style={{ color: "var(--gold)" }}>Materiały do pobrania</Link> — kalkulator i warunki w jednym miejscu.
