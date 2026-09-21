@@ -34,6 +34,7 @@ type Offer = {
   offer_id: string; title: string; description: string | null; price_gross: number; stock: number;
   category: string; category_slug: string; seller: string; image_url: string | null;
   avg_rating: number; review_count: number; attributes: Record<string, any> | null;
+  created_at: string | null;
 };
 
 function danePlacowki(o: Offer, url: string, obraz: string) {
@@ -54,7 +55,12 @@ function danePlacowki(o: Offer, url: string, obraz: string) {
       "@type": "JobPosting",
       title: o.title,
       description: plain(o.description, 2000) || o.title,
-      datePosted: new Date().toISOString().slice(0, 10),
+      // PRAWDZIWA data dodania, nie dzisiejsza. Ogłoszenie, które każdego dnia przedstawia
+      // się jako świeże, wprowadza kandydata w błąd — i za to Google usuwa oferty z modułu pracy.
+      datePosted: (o.created_at || new Date().toISOString()).slice(0, 10),
+      // Po dwóch miesiącach oferta znika z modułu pracy zamiast wisieć w nim martwa.
+      validThrough: new Date(new Date(o.created_at || Date.now()).getTime() + 60 * 864e5).toISOString().slice(0, 10),
+      identifier: { "@type": "PropertyValue", name: "Sunrise Market", value: o.offer_id },
       employmentType: String(A.work_schedule || "").includes("Pełny") ? "FULL_TIME" : "PART_TIME",
       hiringOrganization: { "@type": "Organization", name: String(A.employer || o.seller || "Sunrise Market") },
       jobLocation: lokalizacja
