@@ -4,11 +4,12 @@
 //  • usePopularCategories: kategorie główne z aktywnymi ofertami (category_counts).
 import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { recommendedOffers, homePromoted, searchOffersWithAttributes, toggleWatch, watchedIds, categoryCounts } from "../../lib/api";
+import { recommendedOffers, homePromoted, searchOffersWithAttributes, toggleWatch, watchedIds, categoryCounts, liczbyDzialow } from "../../lib/api";
 import { getMarketConfig, cashbackFor } from "../../lib/marketConfig";
 import { supabase } from "../../lib/supabase";
 import { zl } from "../../lib/money";
 import { CITIES } from "../../lib/cities";
+import { offerPath } from "../../lib/offerId";
 
 export const GOLD_GRAD = "linear-gradient(135deg,#E8891A,#F5A623)";
 export const CARD = { background: "var(--glass)", border: "1px solid var(--line)" } as const;
@@ -58,15 +59,15 @@ export function IconTile({ name, size = 48, tint = "amber" }: { name: IconName; 
 }
 
 // Działy strony głównej — istniejące trasy: /sklep (pełny katalog), /szukaj (parametry q/kat/tryb), portale.
-export type Section = { to: string; icon: IconName; tint: Tint; title: string; short: string; desc: string; cta: string };
+export type Section = { key: string; to: string; icon: IconName; tint: Tint; title: string; short: string; desc: string; cta: string };
 // Opisy = prawdziwe kategorie z bazy (market.categories), bez wymyślonych działów.
 export const SECTIONS: Section[] = [
-  { to: "/sklep", icon: "bag", tint: "amber", title: "Zakupy", short: "Produkty dla Ciebie", desc: "Elektronika, Moda, Dom, Dziecko, Sport i więcej", cta: "Przeglądaj produkty" },
-  { to: "/szukaj?tryb=appointment", icon: "calendar", tint: "violet", title: "Rezerwacje", short: "Usługi i terminy", desc: "Noclegi, Wydarzenia, Usługi z terminarzem", cta: "Zarezerwuj termin" },
-  { to: "/nieruchomosci", icon: "house", tint: "green", title: "Nieruchomości", short: "Domy i lokale", desc: "Mieszkania, Domy, Działki, Lokale użytkowe", cta: "Zobacz oferty" },
-  { to: "/motoryzacja", icon: "car", tint: "blue", title: "Motoryzacja", short: "Pojazdy i części", desc: "Samochody, Motocykle, Części, Akcesoria", cta: "Znajdź pojazd" },
-  { to: "/szukaj?kat=uslugi-i-reklama", icon: "wrench", tint: "orange", title: "Usługi", short: "Fachowcy i firmy", desc: "Remonty, Transport, Zdrowie, Edukacja i więcej", cta: "Znajdź wykonawcę" },
-  { to: "/szukaj?kat=oze-i-energia", icon: "bolt", tint: "amber", title: "OZE i Energia", short: "PV, pompy ciepła", desc: "Fotowoltaika, Pompy ciepła, Magazyny energii", cta: "Sprawdź oferty" },
+  { key: "zakupy", to: "/sklep", icon: "bag", tint: "amber", title: "Zakupy", short: "Produkty dla Ciebie", desc: "Elektronika, Moda, Dom, Dziecko, Sport i więcej", cta: "Przeglądaj produkty" },
+  { key: "rezerwacje", to: "/szukaj?tryb=appointment", icon: "calendar", tint: "violet", title: "Rezerwacje", short: "Usługi i terminy", desc: "Noclegi, Wydarzenia, Usługi z terminarzem", cta: "Zarezerwuj termin" },
+  { key: "nieruchomosci", to: "/nieruchomosci", icon: "house", tint: "green", title: "Nieruchomości", short: "Domy i lokale", desc: "Mieszkania, Domy, Działki, Lokale użytkowe", cta: "Zobacz oferty" },
+  { key: "motoryzacja", to: "/motoryzacja", icon: "car", tint: "blue", title: "Motoryzacja", short: "Pojazdy i części", desc: "Samochody, Motocykle, Części, Akcesoria", cta: "Znajdź pojazd" },
+  { key: "uslugi", to: "/szukaj?kat=uslugi-i-reklama", icon: "wrench", tint: "orange", title: "Usługi", short: "Fachowcy i firmy", desc: "Remonty, Transport, Zdrowie, Edukacja i więcej", cta: "Znajdź wykonawcę" },
+  { key: "oze", to: "/szukaj?kat=oze-i-energia", icon: "bolt", tint: "amber", title: "OZE i Energia", short: "PV, pompy ciepła", desc: "Fotowoltaika, Pompy ciepła, Magazyny energii", cta: "Sprawdź oferty" },
 ];
 
 export type FeedOffer = { offer_id: string; title: string; price_gross: number; image_url: string | null; category: string | null; seller: string | null; rating?: number; reviews?: number; location?: string | null; created_at?: string | null; views?: number; radius_km?: number | null };
@@ -150,6 +151,24 @@ export function useHomeFeed(limit: number) {
 
 export type Cat = { id: string; slug: string; name: string; count: number };
 /** Kategorie główne z co najmniej jedną aktywną ofertą. */
+/**
+ * Prawdziwe liczby ofert w działach — z bazy, nie z nadziei.
+ *
+ * Strona główna obiecywała sześć działów, a cztery z nich były puste (Nieruchomości 0,
+ * Motoryzacja 2, Rezerwacje 1). Klient klikał „Zobacz oferty" i trafiał na pustkę.
+ * Teraz kafel mówi, ile naprawdę jest, a pusty dział zamienia się w zaproszenie dla
+ * sprzedawcy — bo to jego, a nie kupującego, tam brakuje.
+ */
+export function useLiczbyDzialow() {
+  const [liczby, setLiczby] = useState<Record<string, number> | null>(null);
+  useEffect(() => {
+    let alive = true;
+    liczbyDzialow().then((d) => { if (alive) setLiczby(d); }).catch(() => { if (alive) setLiczby(null); });
+    return () => { alive = false; };
+  }, []);
+  return liczby;
+}
+
 export function usePopularCategories() {
   const [cats, setCats] = useState<Cat[]>([]);
   useEffect(() => {
@@ -181,7 +200,8 @@ export function categoryTint(name?: string | null): Tint | null {
 
 /** Karta polecanej oferty: zdjęcie, cena, tytuł, lokalizacja/sprzedawca, kategoria, ♡. */
 export function RecoCard({ o, fav, onFav, rate, compact = false, className = "", style }: { o: FeedOffer; fav: boolean; onFav: (id: string) => void; rate: number; compact?: boolean; className?: string; style?: React.CSSProperties }) {
-  const href = `/produkt/${o.offer_id}`;
+  // Adres kanoniczny z nazwą oferty — ten sam, który wystawiamy Google.
+  const href = offerPath(o.offer_id, o.title);
   return <article className={`group relative overflow-hidden rounded-2xl transition ${compact ? "" : "hover:-translate-y-0.5"} ${className}`} style={{ ...CARD, ...(compact ? {} : { boxShadow: "0 10px 30px rgba(0,0,0,.15)" }), ...style }}>
     <Link to={href} className={`block w-full overflow-hidden ${compact ? "aspect-square" : "aspect-[4/3]"}`} style={{ background: "var(--header)" }} tabIndex={-1} aria-hidden="true">{o.image_url ? <img src={o.image_url} alt="" loading="lazy" decoding="async" className={`h-full w-full object-cover ${compact ? "" : "transition duration-500 group-hover:scale-[1.04]"}`} /> : <div className="grid h-full place-items-center text-3xl">🛍️</div>}</Link>
     <button type="button" onClick={() => onFav(o.offer_id)} aria-pressed={fav} aria-label={fav ? "Usuń z ulubionych" : "Dodaj do ulubionych"} className="absolute right-2 top-2 grid h-11 w-11 place-items-center rounded-full backdrop-blur transition hover:scale-105 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#F5A623]" style={{ background: "rgba(10,18,36,.7)", border: "1px solid rgba(237,231,214,.15)", color: fav ? "#F25CB0" : "#EDE7D6" }}><svg width="20" height="20" viewBox="0 0 24 24" fill={fav ? "currentColor" : "none"} stroke="currentColor" strokeWidth="1.8" strokeLinejoin="round" aria-hidden="true">{ICONS.heart}</svg></button>

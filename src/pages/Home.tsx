@@ -6,7 +6,9 @@
 // „Porady i artykuły”, „Pomoc”, „O nas”, social media, „x godz. temu” (RPC nie zwracają daty).
 import { Link } from "react-router-dom";
 import { useSeo } from "../lib/seo";
-import { Ico, IconTile, SECTIONS, RecoCard, HomeFooter, useHomeFeed, usePopularCategories, tileStyle, GOLD_GRAD, CARD } from "../components/home/HomeShared";
+import { useEffect, useState } from "react";
+import { Ico, IconTile, SECTIONS, RecoCard, HomeFooter, useHomeFeed, usePopularCategories, useLiczbyDzialow, tileStyle, GOLD_GRAD, CARD, type FeedOffer } from "../components/home/HomeShared";
+import { searchOffersWithAttributes } from "../lib/api";
 import { SiteHeader } from "../components/home/SiteChrome";
 import { CITIES, SERVICE_REGIONS } from "../lib/cities";
 
@@ -15,6 +17,7 @@ import { CITIES, SERVICE_REGIONS } from "../lib/cities";
 export default function Home() {
   const { rows: reco, personalized, watched, heart, rate } = useHomeFeed(8);
   const popular = usePopularCategories();
+  const liczby = useLiczbyDzialow();
   useSeo("Sunrise Market — wszystko, czego potrzebujesz w jednym miejscu", "Zakupy, rezerwacje, nieruchomości, motoryzacja i usługi. Płać Sunrise Pay, odbieraj 3% cashbacku, kupuj z Ochroną Kupujących.", "/");
 
   const tiles = SECTIONS; // wszystkie 6 działów — tyle samo, co w pasku działów
@@ -42,11 +45,35 @@ export default function Home() {
 
       {/* ── Kafle działów ─────────────────────────────────────── */}
       <section className="mt-5 grid gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6" aria-label="Działy">
-        {tiles.map((t) => <Link key={t.title} to={t.to} className="group flex items-center gap-3 rounded-2xl p-4 transition hover:-translate-y-0.5 hover:brightness-110 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#F5A623]" style={tileStyle(t.tint)}>
-          <IconTile name={t.icon} tint={t.tint} size={46} />
-          <div className="min-w-0 flex-1"><div className="whitespace-nowrap font-bold">{t.title}</div><div className="mt-0.5 line-clamp-2 text-xs leading-4" style={{ color: "var(--mut)" }}>{t.desc}</div></div>
-          <span aria-hidden="true" className="text-xl transition group-hover:translate-x-0.5" style={{ color: "var(--mut)" }}>›</span>
-        </Link>)}
+        {tiles.map((t) => {
+          const ile = liczby?.[t.key];
+          // Dział bez ofert nie udaje, że coś ma: prowadzi do dodania ogłoszenia, nie do pustej listy.
+          const pusty = ile === 0;
+          return <Link key={t.title} to={pusty ? `/sprzedawca/wystaw` : t.to} className="group flex items-center gap-3 rounded-2xl p-4 transition hover:-translate-y-0.5 hover:brightness-110 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#F5A623]" style={tileStyle(t.tint)}>
+            <IconTile name={t.icon} tint={t.tint} size={46} />
+            <div className="min-w-0 flex-1">
+              <div className="whitespace-nowrap font-bold">{t.title}</div>
+              <div className="mt-0.5 line-clamp-2 text-xs leading-4" style={{ color: "var(--mut)" }}>
+                {ile === undefined ? t.desc : pusty ? "Nikt jeszcze nic tu nie wystawił — bądź pierwszy." : `${ile.toLocaleString("pl-PL")} ${ile === 1 ? "oferta" : ile < 5 ? "oferty" : "ofert"} · ${t.desc}`}
+              </div>
+            </div>
+            <span aria-hidden="true" className="text-xl transition group-hover:translate-x-0.5" style={{ color: pusty ? "var(--gold)" : "var(--mut)" }}>{pusty ? "+" : "›"}</span>
+          </Link>;
+        })}
+      </section>
+
+      {/* ── Dlaczego u nas ─────────────────────────────────────── */}
+      {/* Trzy zdania zamiast sloganów: każde odpowiada na realną obawę kupującego
+          w nowym serwisie — „stracę pieniądze", „a co mi z tego", „kto to obsługuje". */}
+      <section className="mt-5 grid gap-3 sm:grid-cols-3" aria-label="Dlaczego Sunrise Market">
+        {[
+          { i: "🛡", t: "Ochrona Kupujących", d: "Płacisz przez Sunrise. Sprzedający dostaje pieniądze dopiero, gdy potwierdzisz odbiór." },
+          { i: "💰", t: "3% cashbacku", d: "Po każdym zakupie punkty wracają na Twój portfel Sunrise Pay." },
+          { i: "🇵🇱", t: "Polski sprzedawca", d: "Konkretna firma z NIP-em i historią, nie anonimowy profil zza granicy." },
+        ].map((x) => <div key={x.t} className="rounded-2xl p-4" style={CARD}>
+          <div className="font-semibold"><span aria-hidden="true">{x.i}</span> {x.t}</div>
+          <div className="mt-1 text-xs leading-5" style={{ color: "var(--mut)" }}>{x.d}</div>
+        </div>)}
       </section>
 
       {/* ── Polecane ogłoszenia ───────────────────────────────── */}
@@ -61,6 +88,12 @@ export default function Home() {
           {reco.map((o) => <RecoCard key={o.offer_id} o={o} fav={watched.has(o.offer_id)} onFav={heart} rate={rate} />)}
         </div>}
       </section>
+
+      {/* ── Realny asortyment ─────────────────────────────────── */}
+      {/* Dwa działy, w których naprawdę jest co kupować (303 i 296 ofert). Strona główna
+          ma pokazywać towar, a nie deklarować, że go ma. */}
+      <RzadKategorii slug="komputery-i-biuro" tytul="Komputery i biuro" watched={watched} heart={heart} rate={rate} />
+      <RzadKategorii slug="zwierzeta" tytul="Dla zwierzaka" watched={watched} heart={heart} rate={rate} />
 
       {/* ── Popularne kategorie ───────────────────────────────── */}
       {popular.length > 0 && <section className="mt-10" aria-labelledby="pop-h">
@@ -91,4 +124,28 @@ export default function Home() {
 
     <HomeFooter />
   </main>;
+}
+
+/** Rząd czterech ofert z jednego działu. Nic nie rysuje, jeśli dział jest pusty —
+ *  pusty nagłówek „Komputery i biuro" bez produktów wygląda jak zepsuta strona. */
+function RzadKategorii({ slug, tytul, watched, heart, rate }: { slug: string; tytul: string; watched: Set<string>; heart: (id: string) => void; rate: number }) {
+  const [rows, setRows] = useState<FeedOffer[] | null>(null);
+  useEffect(() => {
+    let alive = true;
+    searchOffersWithAttributes(null, slug, { sort: "najnowsze", limit: 4 })
+      .then((d) => { if (alive) setRows(d as FeedOffer[]); })
+      .catch(() => { if (alive) setRows([]); });
+    return () => { alive = false; };
+  }, [slug]);
+
+  if (!rows || rows.length === 0) return null;
+  return <section className="mt-10" aria-label={tytul}>
+    <div className="flex items-end justify-between gap-4">
+      <h2 className="border-l-4 pl-4 text-2xl font-bold" style={{ borderColor: "var(--gold)" }}>{tytul}</h2>
+      <Link to={`/szukaj?kat=${encodeURIComponent(slug)}`} className="flex h-10 items-center rounded-xl px-4 text-sm font-semibold transition hover:opacity-90" style={CARD}>Zobacz wszystkie ›</Link>
+    </div>
+    <div className="mt-5 grid gap-5 md:grid-cols-2 xl:grid-cols-4">
+      {rows.map((o) => <RecoCard key={o.offer_id} o={o} fav={watched.has(o.offer_id)} onFav={heart} rate={rate} />)}
+    </div>
+  </section>;
 }

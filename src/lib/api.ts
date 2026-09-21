@@ -212,6 +212,13 @@ export type OfertaDoPrzejrzenia = {
   offer_id: string; title: string; seller: string; price_gross: number; status: string;
   waga: number; powody: string; szczegoly: string; created_at: string;
 };
+// Ile ofert naprawdę jest w każdym dziale strony głównej. Kafel, który obiecuje dział,
+// a prowadzi do pustej listy, kosztuje więcej niż brak kafla — raz stracone zaufanie nie wraca.
+export async function liczbyDzialow(): Promise<Record<string, number>> {
+  const { data, error } = await supabase.rpc("liczby_dzialow");
+  if (error) throw error;
+  return Object.fromEntries(((data ?? []) as { klucz: string; ofert: number }[]).map((r) => [r.klucz, Number(r.ofert) || 0]));
+}
 export async function ofertyDoPrzejrzenia(limit = 100): Promise<OfertaDoPrzejrzenia[]> {
   const { data, error } = await supabase.rpc("oferty_do_przejrzenia", { p_limit: limit });
   if (error) throw error; return (data ?? []) as OfertaDoPrzejrzenia[];
