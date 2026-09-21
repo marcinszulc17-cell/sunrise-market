@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { searchOffersWithAttributes } from "../lib/api";
+import { SiteHeader, Breadcrumbs } from "../components/home/SiteChrome";
 
 // Rynek pracy w Sunrise Market ma dwie strony. „Oferty pracy” to ogloszenia firm,
 // „Szukam pracy” to ogloszenia kandydatow — tego drugiego nie ma na typowych portalach.
@@ -46,8 +47,13 @@ export default function Praca() {
   const count = rows?.length ?? 0;
   const heading = useMemo(() => side === "oferty" ? "Praca w Twojej okolicy" : "Ludzie, którzy szukają pracy", [side]);
 
-  return <main className="min-h-screen px-4 py-8 sm:px-6" style={{ background: "var(--bg)", color: "var(--ink)" }}>
+  // Ta strona długo nie miała nagłówka serwisu: kto na nią wszedł, zostawał bez logo,
+  // bez koszyka i bez drogi powrotnej — jedynym wyjściem był przycisk „wstecz" przeglądarki.
+  return <div className="min-h-screen" style={{ background: "var(--bg)", color: "var(--ink)" }}>
+    <SiteHeader back active="jobs" />
+    <main className="px-4 py-8 sm:px-6">
     <div className="mx-auto max-w-6xl">
+      <div className="mb-5"><Breadcrumbs back="/" items={[{ label: "Strona główna", to: "/" }, { label: "Ogłoszenia lokalne", to: "/szukaj?kat=ogloszenia-lokalne" }, { label: cfg.label }]} /></div>
       <div className="text-xs font-semibold tracking-[.15em]" style={{ color: "var(--gold)" }}>SUNRISE MARKET</div>
       <h1 className="mt-1 font-display text-3xl font-semibold sm:text-4xl">{heading}</h1>
       <p className="mt-2 max-w-3xl text-sm leading-6 sm:text-base" style={{ color: "var(--mut)" }}>
@@ -115,5 +121,6 @@ export default function Praca() {
         </div>
       </div>
     </div>
-  </main>;
+    </main>
+  </div>;
 }

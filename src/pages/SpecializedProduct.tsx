@@ -38,6 +38,11 @@ const LABELS: Record<string, string> = {
   employer: "Pracodawca", employment_type: "Forma zatrudnienia", work_mode: "Tryb pracy",
   work_schedule: "Wymiar etatu", contact_person: "Kontakt", experience: "Doświadczenie",
   start_date: "Możliwy start", industry: "Branża", position_level: "Poziom stanowiska",
+  // Pozostałe klucze, które realnie występują w ofertach — bez etykiety strona pokazywała
+  // „power kw", „jezyki", „czas realizacji" i klient widział nazwy pól z bazy.
+  power_kw: "Moc", storage_kwh: "Pojemność magazynu", engine_capacity_cm3: "Pojemność",
+  deposit_gross: "Kaucja", dimensions_cm: "Wymiary", pakiet: "Pakiet", jezyki: "Języki",
+  kraje: "Kraje", okres: "Okres", jednostka: "Jednostka", czas_realizacji: "Czas realizacji",
   engine_capacity: "Pojemność", drive: "Napęd", vehicle_type: "Typ pojazdu", generation: "Generacja", version: "Wersja", origin: "Pochodzenie", damaged: "Uszkodzony", registered_pl: "Zarejestrowany w PL", plate: "Rejestracja", warranty: "Gwarancja", area_m2: "Powierzchnia", market_type: "Rynek", ownership: "Forma własności", rooms: "Pokoje", floor: "Piętro", rent_pln: "Czynsz", heating: "Ogrzewanie", year_built: "Rok budowy",
 };
 const BOOLEAN_LABELS: Record<string, string> = {
@@ -46,7 +51,18 @@ const BOOLEAN_LABELS: Record<string, string> = {
 // Klucze techniczne (sync MySunrise, promocje, flagi) — nie są danymi oferty i nie pokazujemy ich klientowi.
 const PRIVATE_KEYS = new Set(["vin", "registration_number", "offer_type", "cashback_only", "purchase_mode", "source", "enriched", "ms_stock", "own_brand", "mysunrise_id", "mysunrise_sku", "subscription", "promo", "price_locked", "private_listing", "buy_now_only", "specs", "images", "gallery", "seo", "sync", "has_vin", "service_lat", "service_lon", "service_radius_km", "kw_number", "full_vat_invoice", "vat_rate", "km_limit_per_day", "min_driver_age", "deposit", "instant_confirmation", "pickup_location", "rental_kind", "rental_operations", "seller_nature", "delivery", "negotiable", "commission_model",
   // Ogłoszenia: flagi sterujące kreatorem, nie treść oferty.
-  "job_side", "free_listing", "listing_kind", "salary_from", "salary_to", "salary_period"]);
+  "job_side", "free_listing", "listing_kind", "salary_from", "salary_to", "salary_period", "salary_kind",
+  // DANE HANDLOWE — NIGDY NA STRONIE OFERTY.
+  // 600 aktywnych ofert ma w atrybutach marżę, cenę zakupu u dostawcy, próg opłacalności,
+  // zysk i ceny konkurencji. Dopóki tych kluczy tu nie było, wystarczyło, że oferta trafi
+  // do kategorii obsługiwanej przez ten widok (usługi, nieruchomości, auta, ogłoszenia),
+  // żeby kupujący zobaczył, ile na nim zarabiamy. To jest zapora.
+  "markup_percent", "margin_percent", "net_margin_percent", "min_margin_required",
+  "supplier_price_gross_pln", "break_even_price_pln", "net_profit_pln", "below_market",
+  "market_lowest_pln", "market_source", "market_note", "market_checked_at",
+  "supplier_key", "base_product_id", "base_inventory_id", "base_category", "base_refreshed_at",
+  "price_source", "description_source", "cashback_percent", "sku", "ean", "weight_kg",
+  "produkt_sunrise", "status_vip_do_firm", "sekcji_max", "cena_regularna_pln"]);
 
 function kindOf(slug: string) {
   if (slug.includes("motoryzacja-samochody-osobowe")) return "car";
@@ -121,13 +137,32 @@ export default function SpecializedProduct() {
       ? `${od.toLocaleString("pl-PL")} – ${do_.toLocaleString("pl-PL")} zł`
       : `${(do_ || od).toLocaleString("pl-PL")} zł`;
     const okres = String(A.salary_period || "").trim();
-    return okres ? `${kwota} / ${okres}` : kwota;
+    // Brutto czy netto — bez tego kwota nic nie znaczy: 8 500 brutto to ok. 6 100 na rękę.
+    // Kandydat, który się o tym dowie dopiero na rozmowie, ma prawo poczuć się oszukany.
+    // Starsze ogłoszenia (sprzed dodania pola) mówią wprost, że pracodawca tego nie podał —
+    // niczego nie domyślamy się za niego.
+    const rodzaj = String(A.salary_kind || "").trim().toLowerCase();
+    const znacznik = rodzaj === "netto" ? "netto" : rodzaj === "brutto" ? "brutto" : null;
+    return { kwota: `${kwota}${znacznik ? ` ${znacznik}` : ""}${okres ? ` / ${okres}` : ""}`, brakRodzaju: !znacznik };
   })();
 
   const details = Object.entries(A).filter(([k, v]) => v !== null && v !== "" && v !== false && typeof v !== "object" && !BOOLEAN_LABELS[k] && !PRIVATE_KEYS.has(k) && !["colors","sizes","features","packing","video"].includes(k));
   const mainImage = imgs[active] || o?.image_url || null;
   const isCar = kind === "car";
   const isProperty = kind === "property";
+  // Dział w okruszkach liczony z prawdziwej kategorii oferty, a nie „wszystko, co nie jest
+  // autem ani mieszkaniem, to Usługi". Przez to ogłoszenie o pracę pokazywało się jako
+  // Usługi i wracało do listy usług — czyli donikąd.
+  const dzial = (() => {
+    const slug = String(o?.category_slug || "");
+    if (isCar) return { label: "Motoryzacja", to: "/motoryzacja" };
+    if (isProperty) return { label: "Nieruchomości", to: "/nieruchomosci" };
+    if (slug.startsWith("ogloszenia-lokalne-praca") || slug.startsWith("ogloszenia-lokalne-szukam-pracy"))
+      return { label: "Praca", to: slug.includes("szukam") ? "/praca?strona=szukam" : "/praca" };
+    if (slug.startsWith("ogloszenia-lokalne")) return { label: "Ogłoszenia lokalne", to: "/szukaj?kat=ogloszenia-lokalne" };
+    if (slug.startsWith("uslugi-")) return { label: "Usługi", to: "/szukaj?kat=uslugi-i-reklama" };
+    return { label: "Ogłoszenia", to: "/szukaj" };
+  })();
   // Ochrona Kupujących: każda oferta z ceną kupowalna przez Sunrise (poza rezerwacjami i nieruchomościami).
   const canBuy = Boolean(o && o.price_gross > 0 && !isProperty && !["appointment", "daily"].includes(String(A.purchase_mode || "")));
   function buyViaSunrise() {
@@ -152,10 +187,10 @@ export default function SpecializedProduct() {
   if (err || !o) return <main className="min-h-screen px-4 py-10" style={{ background: "var(--bg)", color: "var(--ink)" }}>Nie udało się wczytać oferty.</main>;
 
   return <div className="min-h-screen" style={{ background: "var(--bg)", color: "var(--ink)" }}>
-    <SiteHeader back active={isCar ? "car" : isProperty ? "property" : "services"} />
+    <SiteHeader back active={isCar ? "car" : isProperty ? "property" : dzial.label === "Praca" ? "jobs" : dzial.label === "Usługi" ? "services" : undefined} />
 
     <main className="mx-auto max-w-[1440px] px-4 py-5 sm:px-6 xl:px-10">
-      <div className="mb-5"><Breadcrumbs back={isCar ? "/motoryzacja" : isProperty ? "/nieruchomosci" : "/szukaj"} items={[{ label: "Strona główna", to: "/" }, { label: isCar ? "Motoryzacja" : isProperty ? "Nieruchomości" : "Usługi", to: isCar ? "/motoryzacja" : isProperty ? "/nieruchomosci" : "/szukaj?kat=uslugi-i-reklama" }, { label: o.category }, { label: o.title }]} /></div>
+      <div className="mb-5"><Breadcrumbs back={dzial.to} items={[{ label: "Strona główna", to: "/" }, { label: dzial.label, to: dzial.to }, { label: o.category, to: `/szukaj?kat=${encodeURIComponent(o.category_slug || "")}` }, { label: o.title }]} /></div>
       <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_390px]">
         <section>
           <div className="group relative overflow-hidden rounded-3xl" style={{ border: "1px solid var(--line)", background: "rgba(0,0,0,.16)" }} onTouchStart={(e)=>{ swipeStartX.current=e.touches[0]?.clientX ?? null; }} onTouchEnd={(e)=>{ const start=swipeStartX.current; const end=e.changedTouches[0]?.clientX; swipeStartX.current=null; if(start===null || end===undefined) return; const dx=end-start; if(Math.abs(dx)>45) dx<0?nextPhoto():prevPhoto(); }}>
@@ -167,7 +202,7 @@ export default function SpecializedProduct() {
           {heroStats.length > 0 && <div className="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-3">{heroStats.map(([k,v]) => <div key={k} className="rounded-2xl p-4" style={{ background: "var(--glass)", border: "1px solid var(--line)" }}><div className="text-xs" style={{ color: "var(--mut)" }}>{k}</div><div className="mt-1 font-semibold">{v}</div></div>)}</div>}
           {isCar && A.vin && <div className="mt-4 rounded-2xl p-4 text-sm" style={{ background:"rgba(56,224,240,.07)", border:"1px solid rgba(56,224,240,.20)" }}><b>VIN:</b> dostępny do weryfikacji w Sunrise Verify. Pełny numer nie jest publikowany w ogłoszeniu.</div>}
           {bools.length > 0 && <section className="mt-8 rounded-2xl p-5" style={CARD}><SectionTitle className="mb-4">Najważniejsze cechy</SectionTitle><div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">{bools.map(([k]) => <div key={k} className="rounded-xl px-4 py-3 text-sm" style={{ background: "rgba(122,184,154,.10)", border: "1px solid rgba(122,184,154,.28)" }}>✓ {BOOLEAN_LABELS[k]}</div>)}</div></section>}
-          {(details.length > 0 || wynagrodzenie) && <section className="mt-6 rounded-2xl p-5" style={CARD}><SectionTitle className="mb-4">{isCar ? "Dane pojazdu" : isProperty ? "Dane nieruchomości" : "Najważniejsze informacje"}</SectionTitle><div className="overflow-hidden rounded-2xl" style={{ border: "1px solid var(--line)" }}>{wynagrodzenie && <div className="grid grid-cols-[140px_1fr] gap-4 px-4 py-3 text-sm" style={{ background: "var(--glass)", borderBottom: "1px solid var(--line)" }}><span style={{ color: "var(--mut)" }}>Wynagrodzenie</span><span className="font-semibold" style={{ color: "var(--gold)" }}>{wynagrodzenie}</span></div>}{details.map(([k,v],i) => <div key={k} className="grid grid-cols-[140px_1fr] gap-4 px-4 py-3 text-sm" style={{ background: i%2 ? "transparent" : "var(--glass)", borderBottom: "1px solid var(--line)" }}><span style={{ color: "var(--mut)" }}>{LABELS[k] || k.split("_").join(" ")}</span><span className="font-medium">{(k === "mileage_km" || k === "mileage") ? `${Number(v).toLocaleString("pl-PL")} km` : k === "area_m2" ? `${v} m²` : k === "rent_pln" ? `${Number(v).toLocaleString("pl-PL")} zł` : (k === "power_hp" || k === "power") && Number(v) > 0 ? `${v} KM` : (k === "engine_cc" || k === "engine" || k === "engine_capacity") && Number(v) > 0 ? `${Number(v).toLocaleString("pl-PL")} cm³` : v === true ? "tak" : String(v)}</span></div>)}</div></section>}
+          {(details.length > 0 || wynagrodzenie) && <section className="mt-6 rounded-2xl p-5" style={CARD}><SectionTitle className="mb-4">{isCar ? "Dane pojazdu" : isProperty ? "Dane nieruchomości" : "Najważniejsze informacje"}</SectionTitle><div className="overflow-hidden rounded-2xl" style={{ border: "1px solid var(--line)" }}>{wynagrodzenie && <div className="grid grid-cols-[140px_1fr] gap-4 px-4 py-3 text-sm" style={{ background: "var(--glass)", borderBottom: "1px solid var(--line)" }}><span style={{ color: "var(--mut)" }}>Wynagrodzenie</span><span className="font-semibold" style={{ color: "var(--gold)" }}>{wynagrodzenie.kwota}{wynagrodzenie.brakRodzaju && <span className="ml-2 text-xs font-normal" style={{ color: "var(--mut)" }}>(pracodawca nie podał, czy brutto czy netto)</span>}</span></div>}{details.map(([k,v],i) => <div key={k} className="grid grid-cols-[140px_1fr] gap-4 px-4 py-3 text-sm" style={{ background: i%2 ? "transparent" : "var(--glass)", borderBottom: "1px solid var(--line)" }}><span style={{ color: "var(--mut)" }}>{LABELS[k] || k.split("_").join(" ")}</span><span className="font-medium">{(k === "mileage_km" || k === "mileage") ? `${Number(v).toLocaleString("pl-PL")} km` : k === "area_m2" ? `${v} m²` : k === "rent_pln" ? `${Number(v).toLocaleString("pl-PL")} zł` : (k === "power_hp" || k === "power") && Number(v) > 0 ? `${v} KM` : (k === "engine_cc" || k === "engine" || k === "engine_capacity") && Number(v) > 0 ? `${Number(v).toLocaleString("pl-PL")} cm³` : v === true ? "tak" : String(v)}</span></div>)}</div></section>}
           <LocationMap location={typeof A.location === "string" ? A.location : null} radiusKm={Number(A.service_radius_km) || null} kind={locationKind(o?.category_slug, String(A.purchase_mode || ""))} className="mt-6" />
           {o.description && <section className="mt-6 rounded-2xl p-5" style={CARD}><SectionTitle className="mb-4">{isProperty ? "Opis nieruchomości" : isCar ? "Opis pojazdu" : "Opis"}</SectionTitle><OfferDescription value={o.description} /></section>}
         </section>
