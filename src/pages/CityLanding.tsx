@@ -8,6 +8,7 @@ import { Link, useParams } from "react-router-dom";
 import { supabase } from "../lib/supabase";
 import { zl } from "../lib/money";
 import { useSeo } from "../lib/seo";
+import { offerPath } from "../lib/offerId";
 import { CITIES, BASE_CITY, SERVICE_REGIONS, cityBySlug, inCity } from "../lib/cities";
 import { SiteHeader, Breadcrumbs, SectionTitle } from "../components/home/SiteChrome";
 import { Ico, IconTile, HomeFooter, GOLD_GRAD, CARD, timeAgo } from "../components/home/HomeShared";
@@ -22,6 +23,9 @@ export default function CityLanding() {
   const { slug } = useParams();
   const city = slug ? cityBySlug(slug) : undefined;
   const [rows, setRows] = useState<Row[] | null>(null);
+  // Czego ludzie szukają w Google: „fotowoltaika wolsztyn", „karma dla psa poznań".
+  // Każdy z tych odnośników prowadzi do strony zbudowanej dokładnie pod taką frazę.
+  const [tematy, setTematy] = useState<{ temat: string; temat_nazwa: string; ofert: number }[]>([]);
   const title = city ? `Sunrise Market ${inCity(city.name)} — ogłoszenia, usługi, nieruchomości, OZE` : "Sunrise Market w Twoim mieście — ogłoszenia i usługi w całej Polsce";
   const desc = city ? `Kupuj i sprzedawaj ${inCity(city.name)}: produkty, usługi z terminarzem, nieruchomości, motoryzacja oraz fotowoltaika i pompy ciepła z montażem. Cashback 3% i Ochrona Kupujących przy każdej transakcji.` : `Sunrise Market to marketplace dla wszystkich — lokalnych sprzedawców, firm i marek własnych Sunrise (OZE z montażem w całej Polsce). Wybierz swoje miasto.`;
   useSeo(title, desc, city ? `/miasto/${city.slug}` : "/miasto");
@@ -30,6 +34,8 @@ export default function CityLanding() {
     if (!city) { setRows([]); return; }
     let alive = true; setRows(null);
     supabase.rpc("city_offers", { p_slug: city.slug, p_limit: 24 }).then(({ data }) => { if (alive) setRows((data as Row[]) ?? []); });
+    supabase.from("mapa_lokalna").select("temat,temat_nazwa,ofert").eq("miasto", city.slug).order("ofert", { ascending: false }).limit(24)
+      .then(({ data }) => { if (alive) setTematy((data as { temat: string; temat_nazwa: string; ofert: number }[]) ?? []); });
     return () => { alive = false; };
   }, [city?.slug]);
 
@@ -63,11 +69,20 @@ export default function CityLanding() {
           </div>
         </div>
 
+        {tematy.length > 0 && <section className="mt-10">
+          <SectionTitle sub={`Strony zbudowane pod to, czego ludzie naprawdę szukają ${inCity(city.name)}.`}>Czego szukasz {inCity(city.name)}?</SectionTitle>
+          <div className="mt-4 flex flex-wrap gap-2">
+            {tematy.map((t) => <Link key={t.temat} to={`/oferty/${t.temat}/${city.slug}`} className="flex h-10 items-center rounded-xl px-3 text-sm font-medium transition hover:-translate-y-0.5" style={CARD}>
+              {t.temat_nazwa} <span className="ml-1.5" style={{ color: "var(--mut)" }}>({t.ofert})</span>
+            </Link>)}
+          </div>
+        </section>}
+
         <section id="oferty" className="mt-10 scroll-mt-28">
           <SectionTitle sub={`Prawdziwe oferty sprzedawców i marek Sunrise dostępne ${inCity(city.name)}.`} action={<Link to={`/szukaj?lok=${encodeURIComponent(city.name)}`} className="flex h-10 items-center rounded-xl px-4 text-sm font-semibold" style={CARD}>Wszystkie oferty ›</Link>}>Oferty {inCity(city.name)}</SectionTitle>
           {rows === null ? <div className="mt-5 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">{[0, 1, 2, 3].map((i) => <div key={i} className="aspect-[4/5] animate-pulse rounded-2xl" style={CARD} />)}</div>
           : rows.length === 0 ? <div className="mt-5 rounded-2xl p-6 text-sm" style={{ ...CARD, color: "var(--mut)" }}>Brak ofert w tej chwili — <a href="/legal/kontakt.html" style={{ color: "var(--gold)" }}>napisz do nas</a>, przygotujemy wycenę.</div>
-          : <div className="mt-5 grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">{rows.map((o) => <Link key={o.offer_id} to={`/produkt/${o.offer_id}`} className="group flex flex-col overflow-hidden rounded-2xl transition hover:-translate-y-0.5" style={CARD}><div className="aspect-[4/3] overflow-hidden" style={{ background: "var(--header)" }}>{o.image_url ? <img src={o.image_url} alt={o.title} loading="lazy" className="h-full w-full object-cover transition duration-500 group-hover:scale-[1.04]" /> : <div className="grid h-full place-items-center text-4xl">☀️</div>}</div><div className="flex flex-1 flex-col p-3 sm:p-4"><div className="text-base font-bold sm:text-lg" style={{ color: "var(--gold)" }}>{zl(o.price_gross)}</div><div className="mt-0.5 line-clamp-2 text-sm font-semibold leading-5">{o.title}</div><div className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-[11px]" style={{ color: "var(--mut)" }}><span className="rounded-md px-2 py-0.5" style={{ background: "rgba(255,255,255,.06)", border: "1px solid var(--line)", color: "var(--ink)" }}>{o.category}</span><span>📍 {o.location && !/nowy tomy/i.test(o.location) ? o.location : `${city.name} · dojazd`}</span>{timeAgo(o.created_at) && <span className="ml-auto">🕒 {timeAgo(o.created_at)}</span>}</div></div></Link>)}</div>}
+          : <div className="mt-5 grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">{rows.map((o) => <Link key={o.offer_id} to={offerPath(o.offer_id, o.title)} className="group flex flex-col overflow-hidden rounded-2xl transition hover:-translate-y-0.5" style={CARD}><div className="aspect-[4/3] overflow-hidden" style={{ background: "var(--header)" }}>{o.image_url ? <img src={o.image_url} alt={o.title} loading="lazy" className="h-full w-full object-cover transition duration-500 group-hover:scale-[1.04]" /> : <div className="grid h-full place-items-center text-4xl">☀️</div>}</div><div className="flex flex-1 flex-col p-3 sm:p-4"><div className="text-base font-bold sm:text-lg" style={{ color: "var(--gold)" }}>{zl(o.price_gross)}</div><div className="mt-0.5 line-clamp-2 text-sm font-semibold leading-5">{o.title}</div><div className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-[11px]" style={{ color: "var(--mut)" }}><span className="rounded-md px-2 py-0.5" style={{ background: "rgba(255,255,255,.06)", border: "1px solid var(--line)", color: "var(--ink)" }}>{o.category}</span><span>📍 {o.location && !/nowy tomy/i.test(o.location) ? o.location : `${city.name} · dojazd`}</span>{timeAgo(o.created_at) && <span className="ml-auto">🕒 {timeAgo(o.created_at)}</span>}</div></div></Link>)}</div>}
         </section>
 
         <section className="mt-10 grid gap-4 md:grid-cols-3">

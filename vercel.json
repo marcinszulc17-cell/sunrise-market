@@ -197,6 +197,10 @@
       "destination": "/api/oferta?id=:id"
     },
     {
+      "source": "/oferty/:temat/:miasto",
+      "destination": "/api/temat?temat=:temat&miasto=:miasto"
+    },
+    {
       "source": "/(.*)",
       "destination": "/index.html"
     }
