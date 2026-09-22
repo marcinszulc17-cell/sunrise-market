@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { supabase } from "../lib/supabase";
 import OfferPhotoManager from "../components/OfferPhotoManager";
-import { childCategories, configureBookingOffer, topCategories, uploadProductImage } from "../lib/api";
+import { childCategories, configureBookingOffer, myOffers, topCategories, uploadProductImage } from "../lib/api";
 
 type Cat = { id: string; slug: string; name: string };
 type Delivery = "shipping" | "pickup" | "both";
@@ -173,7 +173,29 @@ export default function PrivateOfferWizard() {
       }
 
       navigate(`/sprzedawca/oferty/${id}/edytuj?new=1`, { replace: true });
-    } catch (e) { setMsg("Nie udało się opublikować: " + (e as Error).message); }
+    } catch (e) {
+      const err = e as Error;
+      const networkLike = /load failed|failed to fetch|network|fetch/i.test(err.message || "");
+      if (networkLike) {
+        try {
+          const rows = await myOffers() as Array<{ offer_id: string; title: string; price_gross: number | string; created_at: string }>;
+          const now = Date.now();
+          const recovered = rows.find((row) =>
+            row.title?.trim() === title.trim()
+            && Number(row.price_gross) === Number(price)
+            && now - new Date(row.created_at).getTime() < 5 * 60 * 1000
+          );
+          if (recovered?.offer_id) {
+            localStorage.removeItem(DRAFT_KEY);
+            navigate(`/sprzedawca/oferty/${recovered.offer_id}/edytuj?new=1&recovered=1`, { replace: true });
+            return;
+          }
+        } catch { /* odzyskanie jest best-effort */ }
+        setMsg("Połączenie zerwało się przy publikacji. Nie klikaj ponownie — sprawdź „Moje oferty”, bo oferta mogła zostać zapisana.");
+      } else {
+        setMsg("Nie udało się opublikować: " + err.message);
+      }
+    }
     finally { setBusy(false); }
   }
 
