@@ -25,6 +25,9 @@ Deno.serve(async(req)=>{
  if(!SERVICE_KEY) return json({error:"service_key_missing"},500);
  try{
   const sb=createClient(SUPABASE_URL,SERVICE_KEY,{db:{schema:"market"}});
+  const provided=req.headers.get("x-cron-secret")??"";
+  const {data:secretRow}=await sb.from("internal_secrets").select("value").eq("key","cron_worker_secret").maybeSingle();
+  if(!secretRow?.value||provided!==secretRow.value) return json({error:"unauthorized"},401);
   const stripe=new Stripe(await resolveStripeKey(),{apiVersion:"2024-06-20",httpClient:Stripe.createFetchHttpClient()});
   const {data:rows,error}=await sb.from("verification_requests").select("id,status,stripe_session_id").in("status",["payment_pending","paid","processing"]).order("created_at",{ascending:true}).limit(25);
   if(error) throw error;
