@@ -20,6 +20,36 @@ const RENTAL_KINDS: Array<{ id: RentalKind; icon: string; title: string; root?: 
   { id: "property", icon: "🏠", title: "Nieruchomość", root: "nieruchomosci" },
 ];
 
+
+type TitleSuggestion = { kind: "car" | "car_part" | "property"; rootSlug: string; childSlug?: string; label: string };
+
+function normalizeTitle(value: string) {
+  return value.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+}
+
+function inferListingFromTitle(value: string): TitleSuggestion | null {
+  const t = normalizeTitle(value.trim());
+  if (t.length < 4) return null;
+
+  const partWords = /\b(reflektor|reflektory|ksenon|ksenony|lampa|lampy|zderzak|maska|blotnik|felga|felgi|opona|opony|kolo|kola|silnik|skrzynia|turbo|turbina|alternator|rozrusznik|wahacz|amortyzator|chlodnica|sprzeglo|hamulec|hamulce|tarcza|tarcze|klocki|szyba|lusterko|drzwi|klapa|czesc|czesci)\b/;
+  if (partWords.test(t)) {
+    return { kind: "car_part", rootSlug: "motoryzacja", childSlug: "motoryzacja-czesci", label: "Części samochodowe" };
+  }
+
+  const carMakes = /\b(mercedes|bmw|audi|volkswagen|vw|skoda|toyota|ford|opel|peugeot|renault|citroen|fiat|kia|hyundai|volvo|mazda|honda|nissan|lexus|porsche|tesla|seat|cupra|dacia|suzuki|jeep|land rover|range rover|alfa romeo|mini|mitsubishi|subaru)\b/;
+  const vehicleWords = /\b(samochod|auto|sedan|kombi|coupe|suv|cabrio|hatchback|limuzyna)\b/;
+  const modelYear = /\b(19\d{2}|20\d{2})\b/;
+  if ((carMakes.test(t) && modelYear.test(t)) || vehicleWords.test(t)) {
+    return { kind: "car", rootSlug: "motoryzacja", childSlug: "motoryzacja-samochody-osobowe", label: "Samochód osobowy" };
+  }
+
+  const propertyWords = /\b(mieszkanie|apartament|dom|dzialka|lokal|garaz|nieruchomosc|nieruchomosci)\b/;
+  if (propertyWords.test(t)) {
+    return { kind: "property", rootSlug: "nieruchomosci", label: "Nieruchomość" };
+  }
+  return null;
+}
+
 export default function PrivateOfferWizard() {
   const navigate = useNavigate();
   const [sp] = useSearchParams();
@@ -45,6 +75,8 @@ export default function PrivateOfferWizard() {
   const [s1, setS1] = useState<Cat | null>(null);
   const [s2, setS2] = useState<Cat | null>(null);
   const [s3, setS3] = useState<Cat | null>(null);
+  const [titleSuggestion, setTitleSuggestion] = useState<TitleSuggestion | null>(null);
+  const [categoryTouched, setCategoryTouched] = useState(false);
   const chosen = s3 ?? s2 ?? s1;
 
   const copy = useMemo(() => {
@@ -106,6 +138,15 @@ export default function PrivateOfferWizard() {
     childCategories(root.id).then(x => setD2(x as Cat[])).catch(() => setD2([]));
   }, [d1, mode, rentalKind, s1?.id]);
 
+
+  useEffect(() => {
+    const suggestion = inferListingFromTitle(title);
+    setTitleSuggestion(suggestion);
+    if (!suggestion || mode !== "purchase" || categoryTouched || !d1.length) return;
+    const t = setTimeout(() => { applyTitleSuggestion(suggestion).catch(() => {}); }, 350);
+    return () => clearTimeout(t);
+  }, [title, mode, categoryTouched, d1.length]);
+
   async function pick1(slug: string) {
     const c = d1.find(x => x.slug === slug) ?? null;
     setS1(c); setS2(null); setS3(null); setD2([]); setD3([]);
@@ -117,6 +158,29 @@ export default function PrivateOfferWizard() {
     if (c) setD3(await childCategories(c.id) as Cat[]);
   }
   function pick3(slug: string) { setS3(d3.find(x => x.slug === slug) ?? null); }
+
+
+  async function applyTitleSuggestion(suggestion: TitleSuggestion) {
+    const root = d1.find(x => x.slug === suggestion.rootSlug);
+    if (!root) return;
+    setS1(root); setS2(null); setS3(null); setD3([]);
+    const children = await childCategories(root.id) as Cat[];
+    setD2(children);
+    if (suggestion.childSlug) {
+      const child = children.find(x => x.slug === suggestion.childSlug) ?? null;
+      setS2(child);
+      if (child) setD3(await childCategories(child.id) as Cat[]);
+    }
+  }
+
+  function categoryConflictsWithTitle() {
+    if (!titleSuggestion || !chosen) return false;
+    const slug = chosen.slug;
+    if (titleSuggestion.kind === "car") return !slug.startsWith("motoryzacja-samochody");
+    if (titleSuggestion.kind === "car_part") return !slug.startsWith("motoryzacja-czesci");
+    if (titleSuggestion.kind === "property") return !slug.startsWith("nieruchomosci");
+    return false;
+  }
 
   async function upload(files: FileList | null) {
     if (!files?.length) return;
@@ -134,6 +198,7 @@ export default function PrivateOfferWizard() {
     if (!images.length) { setMsg("Dodaj przynajmniej jedno zdjęcie."); setStep(2); return; }
     if (!title.trim()) { setMsg(mode === "appointment" ? "Wpisz nazwę usługi." : "Wpisz nazwę oferty."); setStep(1); return; }
     if (!chosen) { setMsg("Wybierz kategorię."); setStep(1); return; }
+    if (categoryConflictsWithTitle()) { setMsg(`Tytuł wygląda jak „${titleSuggestion?.label}”, ale wybrana kategoria do tego nie pasuje. Popraw kategorię przed publikacją.`); setStep(1); return; }
     if (!(Number(price) > 0)) { setMsg("Podaj cenę większą od 0 zł."); setStep(3); return; }
     setBusy(true); setMsg(null);
     try {
@@ -236,16 +301,21 @@ export default function PrivateOfferWizard() {
           <div className="grid gap-2 sm:grid-cols-3">{RENTAL_KINDS.map(k => <button type="button" key={k.id} onClick={() => { setRentalKind(k.id); setS1(null); setS2(null); setS3(null); setD2([]); setD3([]); }} className="rounded-2xl p-4 text-left" style={{ background: rentalKind === k.id ? "rgba(200,150,90,.14)" : "var(--header)", border: rentalKind === k.id ? "1px solid var(--gold)" : "1px solid var(--line)" }}><div className="text-2xl">{k.icon}</div><div className="mt-2 text-sm font-semibold">{k.title}</div></button>)}</div>
         </div>}
         <label className="block"><span className="mb-2 block text-sm font-semibold">{copy.itemLabel}</span><input className={field} style={fieldStyle} placeholder={copy.placeholder} value={title} onChange={e=>setTitle(e.target.value)} /></label>
+        {mode === "purchase" && titleSuggestion && <div className="rounded-2xl p-3 text-sm" style={{ background: "rgba(56,224,240,.08)", border: "1px solid rgba(56,224,240,.18)", color: "var(--mut)" }}>
+          <div className="font-semibold" style={{ color: "var(--ink)" }}>✨ Rozpoznano: {titleSuggestion.label}</div>
+          <div className="mt-1 text-xs">Market dopasuje kategorię automatycznie. Jeśli wybierzesz inną ręcznie, sprawdzimy zgodność przed publikacją.</div>
+          {categoryTouched && <button type="button" className="mt-2 rounded-lg px-3 py-1.5 text-xs font-semibold" style={{ border: "1px solid var(--line)" }} onClick={() => { setCategoryTouched(false); applyTitleSuggestion(titleSuggestion).catch(() => {}); }}>Użyj podpowiedzi</button>}
+        </div>}
         <div>
           <div className="mb-2 text-sm font-semibold">Kategoria</div>
           <div className="grid gap-2 sm:grid-cols-3">
-            <select disabled={forcedRoot} className={field} style={{...fieldStyle, opacity: forcedRoot ? .75 : 1}} value={s1?.slug || ""} onChange={e=>pick1(e.target.value)}><option value="">Wybierz dział</option>{d1.map(cat=><option key={cat.id} value={cat.slug}>{cat.name}</option>)}</select>
-            {d2.length>0 && <select className={field} style={fieldStyle} value={s2?.slug || ""} onChange={e=>pick2(e.target.value)}><option value="">Wybierz kategorię</option>{d2.map(cat=><option key={cat.id} value={cat.slug}>{cat.name}</option>)}</select>}
-            {d3.length>0 && <select className={field} style={fieldStyle} value={s3?.slug || ""} onChange={e=>pick3(e.target.value)}><option value="">Wybierz podkategorię</option>{d3.map(cat=><option key={cat.id} value={cat.slug}>{cat.name}</option>)}</select>}
+            <select disabled={forcedRoot} className={field} style={{...fieldStyle, opacity: forcedRoot ? .75 : 1}} value={s1?.slug || ""} onChange={e=>{ setCategoryTouched(true); pick1(e.target.value); }}><option value="">Wybierz dział</option>{d1.map(cat=><option key={cat.id} value={cat.slug}>{cat.name}</option>)}</select>
+            {d2.length>0 && <select className={field} style={fieldStyle} value={s2?.slug || ""} onChange={e=>{ setCategoryTouched(true); pick2(e.target.value); }}><option value="">Wybierz kategorię</option>{d2.map(cat=><option key={cat.id} value={cat.slug}>{cat.name}</option>)}</select>}
+            {d3.length>0 && <select className={field} style={fieldStyle} value={s3?.slug || ""} onChange={e=>{ setCategoryTouched(true); pick3(e.target.value); }}><option value="">Wybierz podkategorię</option>{d3.map(cat=><option key={cat.id} value={cat.slug}>{cat.name}</option>)}</select>}
           </div>
         </div>
         {mode !== "appointment" && <label className="block"><span className="mb-2 block text-sm font-semibold">Stan</span><select className={field} style={fieldStyle} value={condition} onChange={e=>setCondition(e.target.value as Condition)}><option value="new">Nowy</option><option value="very_good">Bardzo dobry</option><option value="good">Dobry</option><option value="used">Używany</option><option value="damaged">Uszkodzony / do naprawy</option></select></label>}
-        <button type="button" onClick={() => { if (!title.trim()) return setMsg("Wpisz nazwę oferty."); if (!chosen) return setMsg("Wybierz kategorię."); setMsg(null); setStep(2); }} className="w-full rounded-2xl px-5 py-3 font-bold text-black" style={{ background: "linear-gradient(135deg,#C8965A,#E8C896)" }}>Dalej: zdjęcia i opis →</button>
+        <button type="button" onClick={() => { if (!title.trim()) return setMsg("Wpisz nazwę oferty."); if (!chosen) return setMsg("Wybierz kategorię."); if (categoryConflictsWithTitle()) return setMsg(`Tytuł wygląda jak „${titleSuggestion?.label}”, ale wybrana kategoria do tego nie pasuje.`); setMsg(null); setStep(2); }} className="w-full rounded-2xl px-5 py-3 font-bold text-black" style={{ background: "linear-gradient(135deg,#C8965A,#E8C896)" }}>Dalej: zdjęcia i opis →</button>
       </section>}
 
       {step === 2 && <section className="space-y-5 rounded-3xl p-5 sm:p-7" style={{ background: "var(--glass)", border: "1px solid var(--line)" }}>
