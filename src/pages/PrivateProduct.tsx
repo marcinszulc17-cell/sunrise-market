@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { SiteHeader } from "../components/home/SiteChrome";
 
 import { useOfferId } from "../lib/offerId";
-import { getOffer, offerImages, startConversation } from "../lib/api";
+import { offerImages, startConversation } from "../lib/api";
 import { addToCart } from "../lib/cart";
 import { zl } from "../lib/money";
 
@@ -48,24 +48,26 @@ const deliveryLabel: Record<string,string> = {
   pickup: "Odbiór osobisty",
 };
 
-export default function PrivateProduct(){
+export default function PrivateProduct({ initialOffer }: { initialOffer?: PrivateOffer | null }){
   const id = useOfferId();
-  const [offer,setOffer]=useState<PrivateOffer|null>(null);
+  const [offer,setOffer]=useState<PrivateOffer|null>(initialOffer ?? null);
   const [imgs,setImgs]=useState<string[]>([]);
   const [active,setActive]=useState(0);
-  const [loading,setLoading]=useState(true);
+  const [loading,setLoading]=useState(!initialOffer);
   const [err,setErr]=useState<string|null>(null);
   const [lightbox,setLightbox]=useState(false);
   const [contactBusy,setContactBusy]=useState(false);
+  const [message,setMessage]=useState("Dzień dobry, interesuje mnie ta oferta. Czy jest nadal aktualna?");
   const [touchX,setTouchX]=useState<number|null>(null);
 
   useEffect(()=>{
     if(!id) return;
-    Promise.all([getOffer(id),offerImages(id)])
-      .then(([o,images])=>{setOffer(o as PrivateOffer);setImgs(images||[]);})
-      .catch(e=>setErr((e as Error).message))
+    if(initialOffer) setOffer(initialOffer);
+    offerImages(id)
+      .then((images)=>setImgs(images||[]))
+      .catch(()=>setImgs([]))
       .finally(()=>setLoading(false));
-  },[id]);
+  },[id,initialOffer]);
 
   function prevImage(){ setActive((i)=>imgs.length?((i-1+imgs.length)%imgs.length):0); }
   function nextImage(){ setActive((i)=>imgs.length?((i+1)%imgs.length):0); }
@@ -85,7 +87,9 @@ export default function PrivateProduct(){
       const { supabase } = await import("../lib/supabase");
       const { data:{ session } } = await supabase.auth.getSession();
       if(!session){ window.location.href=`/login?next=${encodeURIComponent(window.location.pathname)}`; return; }
-      const conv=await startConversation(offer.offer_id,"Dzień dobry, interesuje mnie ta oferta. Czy jest nadal aktualna?");
+      const body=message.trim();
+      if(!body){ setErr("Wpisz wiadomość do sprzedającego."); return; }
+      const conv=await startConversation(offer.offer_id,body);
       window.location.href=`/wiadomosci?w=${encodeURIComponent(conv)}`;
     }catch(e){ setErr((e as Error).message || "Nie udało się rozpocząć rozmowy."); }
     finally{ setContactBusy(false); }
@@ -97,8 +101,8 @@ export default function PrivateProduct(){
     window.location.href="/koszyk";
   }
 
-  if(loading) return <main className="min-h-screen px-4 py-10" style={{background:"var(--bg)",color:"var(--mut)"}}>Ładowanie…</main>;
-  if(err || !offer) return <main className="min-h-screen px-4 py-10" style={{background:"var(--bg)",color:"var(--ink)"}}>Nie udało się wczytać oferty.</main>;
+  if(loading) return <div className="min-h-screen" style={{background:"var(--bg)",color:"var(--ink)"}}><SiteHeader back /><main className="px-4 py-10" style={{color:"var(--mut)"}}>Ładowanie…</main></div>;
+  if(!offer) return <div className="min-h-screen" style={{background:"var(--bg)",color:"var(--ink)"}}><SiteHeader back /><main className="mx-auto max-w-xl px-4 py-10"><div className="rounded-2xl p-5" style={{background:"var(--glass)",border:"1px solid var(--line)"}}><h1 className="text-xl font-bold">Nie udało się wczytać oferty.</h1><p className="mt-2 text-sm" style={{color:"var(--mut)"}}>Spróbuj ponownie albo wróć do poprzedniego ekranu.</p><div className="mt-4 flex gap-2"><button onClick={()=>window.location.reload()} className="rounded-xl px-4 py-3 font-semibold" style={{background:"linear-gradient(135deg,#E8891A,#F5A623)",color:"#111"}}>Spróbuj ponownie</button><button onClick={()=>window.history.length>1?window.history.back():window.location.assign("/")} className="rounded-xl px-4 py-3 font-semibold" style={{background:"var(--glass)",border:"1px solid var(--line)"}}>Wróć</button></div></div></main></div>;
 
   const A=offer.attributes||{};
   const main=imgs[active]||offer.image_url;
@@ -135,7 +139,12 @@ export default function PrivateProduct(){
           {offer.description&&<div className="whitespace-pre-line rounded-2xl p-4 text-sm leading-6" style={{background:"var(--glass)",border:"1px solid var(--line)",color:"var(--mut)"}}>{offer.description}</div>}
           <div className="flex flex-wrap gap-2">{["Ochrona płatności","Sunrise Pay","Cashback na portfel"].map(x=><span key={x} className="rounded-lg px-2.5 py-1 text-xs" style={{background:"var(--glass)",border:"1px solid var(--line)",color:"var(--mut)"}}>✓ {x}</span>)}</div>
           {isCar ? <>
-            <button onClick={contactSeller} disabled={contactBusy} className="mt-2 w-full rounded-2xl py-4 text-lg font-bold text-black disabled:opacity-50" style={{background:"linear-gradient(135deg,#E8891A,#F5A623)"}}>{contactBusy?"Otwieram rozmowę…":"Napisz do sprzedającego"}</button>
+            <div className="rounded-2xl p-4" style={{background:"var(--glass)",border:"1px solid var(--line)"}}>
+              <label className="text-sm font-semibold" htmlFor="seller-message">Wiadomość do sprzedającego</label>
+              <textarea id="seller-message" rows={3} value={message} onChange={(e)=>setMessage(e.target.value)} className="mt-2 w-full resize-none rounded-xl px-3 py-3 text-sm outline-none" style={{background:"rgba(255,255,255,.04)",border:"1px solid var(--line)",color:"var(--ink)"}} />
+              {err&&<div className="mt-2 text-sm" style={{color:"#f87171"}}>{err}</div>}
+            </div>
+            <button onClick={contactSeller} disabled={contactBusy||!message.trim()} className="mt-2 w-full rounded-2xl py-4 text-lg font-bold text-black disabled:opacity-50" style={{background:"linear-gradient(135deg,#E8891A,#F5A623)"}}>{contactBusy?"Wysyłam…":"Napisz do sprzedającego"}</button>
             <div className="grid gap-2 sm:grid-cols-2">
               <button onClick={contactSeller} disabled={contactBusy} className="rounded-2xl py-3 text-sm font-semibold" style={{border:"1px solid var(--line)",background:"var(--glass)"}}>Umów oględziny</button>
               <div className="grid place-items-center rounded-2xl px-3 py-3 text-center text-sm" style={{border:"1px solid var(--line)",background:"var(--glass)",color:"var(--mut)"}}>📍 {A.location||"Lokalizacja u sprzedającego"}</div>

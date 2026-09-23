@@ -25,6 +25,7 @@ export default function ProductRouter() {
   const [purchaseMode,setPurchaseMode]=useState<PurchaseMode>("purchase");
   const [seoOffer,setSeoOffer]=useState<SeoOffer|null>(null);
   const [isSubscription,setIsSubscription]=useState(false);
+  const [loadedOffer,setLoadedOffer]=useState<any|null>(null);
 
   useEffect(() => {
     if (!id) return;
@@ -44,6 +45,7 @@ export default function ProductRouter() {
       setCategorySlug(slug);
       const p=Number(o?.price_gross ?? o?.price ?? 0); setPriceGross(Number.isFinite(p)&&p>0?p:null);
       setSeoOffer(o as SeoOffer);
+      setLoadedOffer(o);
       setKind(isPrivateBuyNow ? "private" : special ? "special" : "generic");
       setVerifyKind(isPrivateListing?null:slug.includes("motoryzacja-samochody-osobowe")?"vehicle":slug.startsWith("nieruchomosci-")?"property":null);
     }).catch(() => setKind("generic"));
@@ -54,7 +56,7 @@ export default function ProductRouter() {
   useProductJsonLd(seoOffer&&id?{id,name:seoOffer.title,price:Number(seoOffer.price_gross||0),image:seoOffer.image_url||null,rating:Number(seoOffer.rating||0),reviews:Number(seoOffer.reviews||0)}:null);
 
   if (kind === null) return <ProductSkeleton />;
-  if (kind === "private") return <><PrivateProduct /><MarketFooter /></>;
+  if (kind === "private") return <><PrivateProduct initialOffer={loadedOffer} /><MarketFooter /></>;
   return <>
     {kind === "special" ? <SpecializedProduct /> : <Product />}
     {id&&verifyKind&&<VerifyOfferButton offerId={id} kind={verifyKind}/>}
