@@ -8,6 +8,7 @@ const cors = { "Access-Control-Allow-Origin": "*", "Access-Control-Allow-Headers
 const json = (o: unknown, status = 200) => new Response(JSON.stringify(o), { status, headers: { ...cors, "Content-Type": "application/json" } });
 const SUPA = Deno.env.get("SUPABASE_URL")!;
 const SERVICE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? Deno.env.get("SUPABASE_SERVICE_KEY") ?? "";
+const ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY") ?? "";
 const HUB = (Deno.env.get("MYSUNRISE_PAY_BASE_URL") ?? "https://lvmrhgpxhqvfuoftblky.supabase.co/functions/v1").replace(/\/$/, "");
 export const ASSISTANT_NAME = "Sunny";
 
@@ -101,11 +102,27 @@ Deno.serve(async (req) => {
   const sb = createClient(SUPA, SERVICE_KEY, { db: { schema: "market" } });
   try {
     const body = await req.json();
-    const { action, message, session_id, user_id } = body ?? {};
+    const { action, message, session_id } = body ?? {};
+    const jwt = (req.headers.get("Authorization") ?? "").replace(/^Bearer\s+/i, "");
+    let authUserId: string | null = null;
+    if (jwt) {
+      const { data: authData } = await createClient(SUPA, SERVICE_KEY).auth.getUser(jwt);
+      authUserId = authData.user?.id ?? null;
+    }
+
+    const sid = typeof session_id === "string" && /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(session_id)
+      ? session_id
+      : null;
+    if (session_id && !sid) return json({ error: "Nieprawidłowa sesja" }, 400);
+
+    const { data: existingSession } = sid
+      ? await sb.from("suri_sessions").select("id,user_id").eq("id", sid).maybeSingle()
+      : { data: null as any };
+    if (existingSession?.user_id && existingSession.user_id !== authUserId) return json({ error: "Brak dostępu do sesji" }, 403);
 
     if (action === "history") {
-      if (!session_id) return json({ messages: [] });
-      const { data } = await sb.from("suri_messages").select("role, content, created_at").eq("session_id", session_id).order("created_at", { ascending: true }).limit(50);
+      if (!sid) return json({ messages: [] });
+      const { data } = await sb.from("suri_messages").select("role, content, created_at").eq("session_id", sid).order("created_at", { ascending: true }).limit(50);
       return json({ messages: data ?? [] });
     }
 
@@ -136,20 +153,28 @@ Deno.serve(async (req) => {
 
     // --- czat kupującego ---
     if (!message || typeof message !== "string") return json({ reply: "Napisz, czego szukasz 🙂", offers: [] });
+    if (message.length > 1200) return json({ error: "Wiadomość jest zbyt długa" }, 413);
     let convo: Turn[] = [];
-    if (session_id) {
+    if (sid) {
       try {
-        const { data: prev } = await sb.from("suri_messages").select("role, content").eq("session_id", session_id).order("created_at", { ascending: true }).limit(20);
+        const { data: prev } = await sb.from("suri_messages").select("role, content").eq("session_id", sid).order("created_at", { ascending: true }).limit(20);
         convo = (prev ?? []).map((m: any) => ({ role: m.role === "user" ? "user" : "assistant", content: String(m.content ?? "") } as Turn)).filter((m) => m.content.length > 0);
       } catch { /* brak historii */ }
     }
     let prefs = "";
-    if (user_id) {
-      try { const { data: hist } = await sb.rpc("buyer_pref_categories", { p_user: user_id, p_limit: 5 }); if (hist?.length) prefs = `Preferencje klienta (ostatnie kategorie): ${hist.map((h: any) => h.name).join(", ")}.`; } catch { /* brak */ }
+    if (authUserId && jwt && ANON_KEY) {
+      try {
+        const userClient = createClient(SUPA, ANON_KEY, { global: { headers: { Authorization: `Bearer ${jwt}` } } });
+        const { data: hist } = await userClient.rpc("buyer_pref_categories", { p_user: authUserId, p_limit: 5 });
+        if (hist?.length) prefs = `Preferencje klienta (ostatnie kategorie): ${hist.map((h: any) => h.name).join(", ")}.`;
+      } catch { /* brak */ }
     }
     // intencja (kategoria / tryb / budżet / fraza): najpierw parser słów kluczowych (działa zawsze, także bez AI), potem AI może doprecyzować.
     let intent: any = parseIntent(message);
-    const im = await llm(sb, `Wyciągnij z wiadomości klienta JSON: {"query": string (2-4 słowa kluczowe produktu, bez „szukam/chcę”), "budget": number|null (zł), "category_slug": ${JSON.stringify(Object.values(CAT_SLUGS))}|null, "mode": "purchase"|"appointment"|"daily"|null (daily = wynajem na dni, appointment = usługa z terminem)}. Zwróć TYLKO JSON.`, [{ role: "user", content: message }], { json: true, max_tokens: 140, temperature: 0 });
+    let im: { text: string | null; error?: string } = { text: null, error: "login_required_for_ai" };
+    if (authUserId) {
+      im = await llm(sb, `Wyciągnij z wiadomości klienta JSON: {"query": string (2-4 słowa kluczowe produktu, bez „szukam/chcę”), "budget": number|null (zł), "category_slug": ${JSON.stringify(Object.values(CAT_SLUGS))}|null, "mode": "purchase"|"appointment"|"daily"|null (daily = wynajem na dni, appointment = usługa z terminem)}. Zwróć TYLKO JSON.`, [{ role: "user", content: message }], { json: true, max_tokens: 140, temperature: 0 });
+    }
     if (im.text) { try { const j = JSON.parse(im.text.replace(/```json|```/g, "")); intent = { query: j.query || intent.query, budget: j.budget ?? intent.budget, category_slug: j.category_slug ?? intent.category_slug, mode: j.mode ?? intent.mode }; } catch { /* zostaje parser */ } }
     // Pytanie o zasady (Ochrona Kupujących, cashback, dostawa…) bez kategorii → odpowiedź z FAQ, bez listy ofert.
     const isQuestion = !intent.category_slug && (/\?/.test(message) || /^\s*(jak|co|czy|ile|gdzie|kiedy|dlaczego|po co)\b/i.test(message));
@@ -158,13 +183,23 @@ Deno.serve(async (req) => {
     const list = offers ?? [];
 
     const turns: Turn[] = [...convo, { role: "user", content: `${prefs}\nPytanie klienta: ${message}\nOferty z bazy (użyj tylko tych): ${JSON.stringify(list)}` }];
-    const out = await llm(sb, SYSTEM, turns, { max_tokens: 450, temperature: 0.5 });
+    const out = authUserId
+      ? await llm(sb, SYSTEM, turns, { max_tokens: 450, temperature: 0.5 })
+      : { text: null, error: "login_required_for_ai" };
     const text = out.text ?? faq ?? fallbackReply(list, message, intent);
 
-    if (session_id) {
+    if (sid) {
       try {
-        await sb.from("suri_sessions").upsert({ id: session_id, user_id: user_id ?? null }, { onConflict: "id", ignoreDuplicates: true });
-        await sb.from("suri_messages").insert([{ session_id, role: "user", content: message }, { session_id, role: "suri", content: text }]);
+        if (authUserId) {
+          if (existingSession?.id && !existingSession.user_id) {
+            await sb.from("suri_sessions").update({ user_id: authUserId }).eq("id", sid).is("user_id", null);
+          } else if (!existingSession?.id) {
+            await sb.from("suri_sessions").insert({ id: sid, user_id: authUserId });
+          }
+        } else if (!existingSession?.id) {
+          await sb.from("suri_sessions").insert({ id: sid, user_id: null });
+        }
+        await sb.from("suri_messages").insert([{ session_id: sid, role: "user", content: message }, { session_id: sid, role: "suri", content: text }]);
       } catch { /* pamięć best-effort */ }
     }
     return json({ reply: text, offers: list, ai: Boolean(out.text) });
