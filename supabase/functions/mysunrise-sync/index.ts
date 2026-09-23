@@ -15,7 +15,6 @@ const json = (b, s = 200) => new Response(JSON.stringify(b), { status: s, header
 
 const MS_URL = "https://lvmrhgpxhqvfuoftblky.supabase.co";
 const MS_ANON = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imx2bXJoZ3B4aHF2ZnVvZnRibGt5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE2MDgzMDgsImV4cCI6MjA5NzE4NDMwOH0.tqxTejWN-sSn43qQkVKSVAXBxUb6KbQRRq2wQIhunfw";
-const SYNC_SECRET = Deno.env.get("MYSUNRISE_SYNC_SECRET") ?? "sunrise-ms-sync-2026"; // współdzielony sekret dla pg_cron
 
 // Statusy ustawione ręcznie przez sprzedawcę/operatora — sync ich nie nadpisuje.
 const STATUSY_RECZNE = new Set(["paused", "blocked", "archived"]);
@@ -88,10 +87,11 @@ function svgFor(name) {
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: CORS });
-  if (req.headers.get("x-sync-secret") !== SYNC_SECRET) return json({ error: "unauthorized" }, 401);
 
   const URL = Deno.env.get("SUPABASE_URL"); const SVC = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
   const admin = createClient(URL, SVC, { db: { schema: "market" } });
+  const { data: secretRow } = await admin.from("internal_secrets").select("value").eq("key", "cron_worker_secret").maybeSingle();
+  if (!secretRow?.value || req.headers.get("x-sync-secret") !== secretRow.value) return json({ error: "unauthorized" }, 401);
 
   const h = { apikey: MS_ANON, Authorization: "Bearer " + MS_ANON };
   const [pr, cr] = await Promise.all([
