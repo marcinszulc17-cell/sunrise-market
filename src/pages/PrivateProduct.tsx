@@ -112,7 +112,7 @@ export default function PrivateProduct(){
     if(A.fuel) details.push(["Paliwo",A.fuel==="diesel"?"Diesel":A.fuel]);
     if(A.transmission) details.push(["Skrzynia",A.transmission==="automatic"?"Automatyczna":A.transmission]);
     if(A.location) details.push(["Lokalizacja",A.location]);
-    if(A.has_vin) details.push(["VIN","Zweryfikowany / ukryty"]);
+    if(A.has_vin) details.push(["VIN","Dostępny tylko do Sunrise Verify"]);
   }
   return <div className="min-h-screen overflow-x-hidden" style={{background:"var(--bg)",color:"var(--ink)"}}>
     <SiteHeader back />
