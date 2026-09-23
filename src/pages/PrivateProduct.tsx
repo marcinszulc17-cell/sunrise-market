@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { SiteHeader } from "../components/home/SiteChrome";
 
 import { useOfferId } from "../lib/offerId";
-import { getOffer, offerImages } from "../lib/api";
+import { getOffer, offerImages, startConversation } from "../lib/api";
 import { addToCart } from "../lib/cart";
 import { zl } from "../lib/money";
 
@@ -22,6 +22,16 @@ type PrivateOffer = {
     delivery?: string;
     private_listing?: boolean;
     buy_now_only?: boolean;
+    offer_type?: string;
+    location?: string;
+    year?: number;
+    mileage_km?: number;
+    engine_cc?: number;
+    power_hp?: number;
+    power_kw?: number;
+    fuel?: string;
+    transmission?: string;
+    has_vin?: boolean;
   } | null;
 };
 
@@ -45,6 +55,9 @@ export default function PrivateProduct(){
   const [active,setActive]=useState(0);
   const [loading,setLoading]=useState(true);
   const [err,setErr]=useState<string|null>(null);
+  const [lightbox,setLightbox]=useState(false);
+  const [contactBusy,setContactBusy]=useState(false);
+  const [touchX,setTouchX]=useState<number|null>(null);
 
   useEffect(()=>{
     if(!id) return;
