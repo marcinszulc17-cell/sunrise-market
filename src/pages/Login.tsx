@@ -6,9 +6,9 @@ import { loginWithPasskey, passkeyLabel, passkeysAvailable } from "../lib/passke
  * Ekran logowania Sunrise Market.
  * Grafiki hero (public/sunrise-market-login-{desktop,tablet,mobile}.png) sa uzyte
  * bez modyfikacji — wariant dobierany jest przez <picture> zaleznie od szerokosci ekranu.
- * Formularz to prawdziwy HTML: e-mail, haslo z podgladem, zapamietaj mnie,
- * reset hasla i logowanie. Bez Google/Apple. Logika auth (Supabase + sso-register)
- * pozostaje bez zmian, uzytkownik zostaje w Sunrise Market.
+ * Główna ścieżka logowania prowadzi przez MySunrise SSO lub passkey.
+ * Formularz hasłowy pozostaje wyłącznie dla historycznych kont Market i nie
+ * przekazuje hasła do MySunrise ani nie kopiuje haseł między systemami.
  */
 
 const LOGIN_CSS = `.sl-root{position:relative;min-height:100dvh;overflow:hidden;display:flex;flex-direction:column;background:#05070c;color:#fff;font-family:system-ui,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;-webkit-font-smoothing:antialiased}
@@ -168,21 +168,17 @@ export default function Login() {
     setBusy(true);
     setError(null);
     try {
-      let { error: signErr } = await supabase.auth.signInWithPassword({ email: email.trim(), password });
+      const { error: signErr } = await supabase.auth.signInWithPassword({ email: email.trim(), password });
       if (signErr) {
-        // Konto istnieje w MySunrise, ale nie było jeszcze w Market (albo hasło się zmieniło):
-        // sso-login sprawdza dane w MySunrise i zakłada / aktualizuje konto Market z tym samym hasłem.
-        const { data: sso } = await supabase.functions.invoke("sso-login", { body: { email: email.trim(), password } });
-        if ((sso as { ok?: boolean } | null)?.ok) {
-          ({ error: signErr } = await supabase.auth.signInWithPassword({ email: email.trim(), password }));
+        if (/invalid login credentials/i.test(signErr.message)) {
+          throw new Error("Nieprawidłowe dane starszego konta Market. Jeśli masz konto MySunrise, użyj przycisku „Zaloguj przez MySunrise”.");
         }
-        if (signErr) throw signErr;
+        throw signErr;
       }
       try {
         if (remember) window.localStorage.setItem(REMEMBER_KEY, email.trim());
         else window.localStorage.removeItem(REMEMBER_KEY);
       } catch { /* ignorujemy */ }
-      try { await supabase.functions.invoke("sso-register", { body: { password } }); } catch { /* opcjonalne */ }
       window.location.replace(next);
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
