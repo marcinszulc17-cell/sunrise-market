@@ -5,7 +5,6 @@
 // głowa w przycisku, poza „wskazuje” w nagłówku, film powitalny (5 s, bez dźwięku) przy pierwszym otwarciu, „macha” gdy brak wyników.
 import { useEffect, useRef, useState } from "react";
 import { askSuri, suriHistory } from "../lib/api";
-import { supabase } from "../lib/supabase";
 import { zl } from "../lib/money";
 
 export const ASSISTANT_NAME = "Sunny";
@@ -35,7 +34,7 @@ export default function SuriChat({ initialPrompt }: { initialPrompt?: string }) 
   const [recs, setRecs] = useState<Rec[]>([]);
   const [input, setInput] = useState("");
   const [busy, setBusy] = useState(false);
-  const sidRef = useRef(""); const uidRef = useRef<string | undefined>(undefined);
+  const sidRef = useRef("");
   const boxRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const scroll = () => setTimeout(() => boxRef.current?.scrollTo({ top: boxRef.current.scrollHeight, behavior: "smooth" }), 60);
@@ -43,8 +42,7 @@ export default function SuriChat({ initialPrompt }: { initialPrompt?: string }) 
   useEffect(() => {
     let alive = true;
     (async () => {
-      let sid = "";
-      try { const { data: { user } } = await supabase.auth.getUser(); uidRef.current = user?.id; sid = user?.id || guestSid(); } catch { sid = guestSid(); }
+      const sid = guestSid();
       if (!alive) return; sidRef.current = sid; if (!sid) return;
       try { const hist = await suriHistory(sid); if (alive && hist.length) { setMsgs([GREETING, ...hist.slice(-12).map((h) => ({ role: h.role === "user" ? "user" : "suri", text: h.content } as Msg))]); } } catch { /* brak historii */ }
     })();
@@ -59,7 +57,7 @@ export default function SuriChat({ initialPrompt }: { initialPrompt?: string }) 
     if (!m || busy) return;
     setInput(""); setMsgs((x) => [...x, { role: "user", text: m }]); setBusy(true); scroll();
     try {
-      const res = await askSuri(m, sidRef.current || undefined, uidRef.current);
+      const res = await askSuri(m, sidRef.current || undefined);
       setMsgs((x) => [...x, { role: "suri", text: res.reply ?? "…" }]);
       setRecs((res.offers ?? []).map((o: any) => ({ offer_id: o.offer_id, title: o.title, price: Number(o.price), reason: o.reason })));
     } catch { setMsgs((x) => [...x, { role: "suri", text: "Ups, nie udało się połączyć. Spróbuj ponownie." }]); }
