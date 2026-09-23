@@ -69,7 +69,6 @@ async function decodeVin(attrs: any) {
   const matched = known.filter((x) => x.match === true);
   return {
     source: "NHTSA vPIC",
-    vin_masked: vin.length >= 6 ? `${vin.slice(0,3)}••••••••••${vin.slice(-4)}` : "ukryty",
     make: r.Make || null,
     model: r.Model || null,
     model_year: r.ModelYear || null,
