@@ -26,7 +26,11 @@ export async function toggleWatch(offerId: string): Promise<boolean> {
   const { data, error } = await supabase.rpc("toggle_watch", { p_offer: offerId }); if (error) throw error; return data === true;
 }
 export async function watchedIds(): Promise<string[]> {
-  const { data, error } = await supabase.rpc("watched_ids"); if (error) return []; return (data ?? []) as string[];
+  const { data: { session } } = await supabase.auth.getSession();
+  if (!session) return [];
+  const { data, error } = await supabase.rpc("watched_ids");
+  if (error) return [];
+  return (data ?? []) as string[];
 }
 export async function myWatchlist() {
   const { data, error } = await supabase.rpc("my_watchlist"); if (error) return [];
@@ -49,7 +53,10 @@ export async function sellerOfferStats() {
   const { data, error } = await supabase.rpc("seller_offer_stats"); if (error) throw error; return (data as any[]) ?? [];
 }
 export async function trackView(offerId: string) {
-  try { await supabase.rpc("track_view", { p_offer: offerId }); } catch { /* niezalogowany — pomiń */ }
+  const { data: { session } } = await supabase.auth.getSession();
+  if (!session) return;
+  const { error } = await supabase.rpc("track_view", { p_offer: offerId });
+  if (error) return;
 }
 export async function recommendedOffers(limit = 12) {
   const { data, error } = await supabase.rpc("recommended_offers", { p_limit: limit });
