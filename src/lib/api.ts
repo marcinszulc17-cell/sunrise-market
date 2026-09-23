@@ -496,11 +496,33 @@ async function toJpeg(file: File, maxSide = 2000): Promise<{ blob: Blob; ext: st
     return { blob: file, ext: (file.name.split(".").pop() || "jpg").toLowerCase().replace(/[^a-z0-9]/g, "") || "jpg" };
   }
 }
+async function requireMediaOwnerId(): Promise<string> {
+  const { data: { user }, error } = await supabase.auth.getUser();
+  if (error || !user?.id) throw new Error("Sesja wygasła. Zaloguj się ponownie i spróbuj dodać plik jeszcze raz.");
+  return user.id;
+}
+
+function mediaStamp() {
+  return typeof crypto !== "undefined" && typeof crypto.randomUUID === "function"
+    ? crypto.randomUUID()
+    : `${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+}
+
 export async function uploadProductImage(file: File): Promise<string> {
+  if (!file.type.startsWith("image/") && !/\.(heic|heif)$/i.test(file.name)) {
+    throw new Error("Wybierz plik zdjęcia (JPG, PNG, WEBP, HEIC lub HEIF).");
+  }
+  if (file.size > 50 * 1024 * 1024) throw new Error("Zdjęcie jest większe niż 50 MB. Wybierz mniejszy plik.");
+  const ownerId = await requireMediaOwnerId();
   const { blob, ext } = await toJpeg(file);
-  const path = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`;
+  const path = `${ownerId}/zdjecia/${mediaStamp()}.${ext}`;
   const { error } = await supabase.storage.from(IMG_BUCKET).upload(path, blob, { upsert: false, contentType: blob.type || undefined });
-  if (error) throw error;
+  if (error) {
+    if (/jwt|unauthorized|permission|row-level security/i.test(error.message)) {
+      throw new Error("Nie udało się dodać zdjęcia, bo sesja wygasła. Zaloguj się ponownie.");
+    }
+    throw error;
+  }
   return productImageUrl(path);
 }
 
@@ -569,18 +591,26 @@ export async function uploadProductVideo(file: File): Promise<{ url: string; pos
     throw new Error(`Film trwa ${Math.round(seconds)} s, a maksimum to ${VIDEO_MAX_SEC} s. Pokaż produkt w minutę — dłuższych i tak nikt nie ogląda do końca.`);
   }
 
-  const stamp = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+  const ownerId = await requireMediaOwnerId();
+  const stamp = mediaStamp();
   const ext = file.type === "video/webm" ? "webm" : "mp4";
+  const videoPath = `${ownerId}/wideo/${stamp}.${ext}`;
+  const posterPath = `${ownerId}/wideo/${stamp}.jpg`;
   const { error } = await supabase.storage.from(IMG_BUCKET)
-    .upload(`wideo/${stamp}.${ext}`, file, { upsert: false, contentType: file.type });
-  if (error) throw error;
-  const url = supabase.storage.from(IMG_BUCKET).getPublicUrl(`wideo/${stamp}.${ext}`).data.publicUrl;
+    .upload(videoPath, file, { upsert: false, contentType: file.type });
+  if (error) {
+    if (/jwt|unauthorized|permission|row-level security/i.test(error.message)) {
+      throw new Error("Nie udało się dodać filmu, bo sesja wygasła. Zaloguj się ponownie.");
+    }
+    throw error;
+  }
+  const url = supabase.storage.from(IMG_BUCKET).getPublicUrl(videoPath).data.publicUrl;
 
   let posterUrl: string | null = null;
   if (poster) {
     const p = await supabase.storage.from(IMG_BUCKET)
-      .upload(`wideo/${stamp}.jpg`, poster, { upsert: false, contentType: "image/jpeg" });
-    if (!p.error) posterUrl = productImageUrl(`wideo/${stamp}.jpg`, { width: 1280 });
+      .upload(posterPath, poster, { upsert: false, contentType: "image/jpeg" });
+    if (!p.error) posterUrl = productImageUrl(posterPath, { width: 1280 });
   }
   return { url, poster: posterUrl };
 }
