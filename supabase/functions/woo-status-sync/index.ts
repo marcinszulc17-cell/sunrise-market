@@ -10,7 +10,7 @@ const sb = createClient(
 );
 
 async function validSig(body: string, sig: string | null): Promise<boolean> {
-  if (!SECRET) return true; // brak sekretu = tryb bez weryfikacji (do konfiguracji)
+  if (!SECRET) return false; // fail closed: webhook bez skonfigurowanego sekretu jest odrzucany
   if (!sig) return false;
   const key = await crypto.subtle.importKey('raw', new TextEncoder().encode(SECRET), { name: 'HMAC', hash: 'SHA-256' }, false, ['sign']);
   const mac = await crypto.subtle.sign('HMAC', key, new TextEncoder().encode(body));

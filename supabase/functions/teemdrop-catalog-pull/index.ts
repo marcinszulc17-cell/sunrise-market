@@ -34,7 +34,7 @@ Deno.serve(async (req)=>{
   if(req.method==='OPTIONS') return new Response('ok',{headers:cors});
   try{
     const body = await req.json().catch(()=>({}));
-    if(INTERNAL && req.headers.get('x-token')!==INTERNAL){
+    if(!INTERNAL || req.headers.get('x-token')!==INTERNAL){
       return new Response(JSON.stringify({error:'unauthorized'}),{status:401,headers:cors});
     }
     const pageSize = Math.min(30, body.pageSize||20);

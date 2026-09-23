@@ -8,7 +8,7 @@ const pub = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_S
 function niner(v:number){ v=Math.round(v); if(v<=19) return 19; const r = v<100 ? Math.ceil(v/10)*10-1 : Math.round(v/10)*10-1; return r; }
 
 Deno.serve(async (req)=>{
-  if (BRIDGE && req.headers.get('x-token')!==BRIDGE) return new Response('unauthorized',{status:401});
+  if (!BRIDGE || req.headers.get('x-token')!==BRIDGE) return new Response('unauthorized',{status:401});
   if (!ANTHROPIC) return new Response(JSON.stringify({error:'no key'}),{status:500});
   const body = await req.json().catch(()=>({}));
   const limit = Math.min(Number(body.limit ?? 20), 25);
