@@ -3,10 +3,12 @@
 import { createClient } from 'jsr:@supabase/supabase-js@2';
 const cors = { 'Access-Control-Allow-Origin': '*', 'Access-Control-Allow-Headers': 'content-type, x-bridge-token', 'Access-Control-Allow-Methods': 'POST, OPTIONS' };
 const sb = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? Deno.env.get('SUPABASE_SERVICE_KEY')!, { db: { schema: 'market' } });
+const BRIDGE_TOKEN = Deno.env.get('BRIDGE_INTERNAL_TOKEN') ?? '';
 function json(b: unknown, s = 200) { return new Response(JSON.stringify(b), { status: s, headers: { ...cors, 'Content-Type': 'application/json' } }); }
 
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: cors });
+  if (!BRIDGE_TOKEN || req.headers.get('x-bridge-token') !== BRIDGE_TOKEN) return json({ error: 'unauthorized' }, 401);
   const body = await req.json().catch(() => ({}));
   const items = Array.isArray(body.items) ? body.items : [];
   let matched = 0, images = 0;
