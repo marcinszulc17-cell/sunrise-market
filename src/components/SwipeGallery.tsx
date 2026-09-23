@@ -20,9 +20,9 @@ export default function SwipeGallery({ images, alt, fallback, className = "", as
 
   if (!n) return <div className={`grid ${aspect} place-items-center overflow-hidden rounded-2xl text-8xl ${className}`} style={{ background: "var(--glass)", border: "1px solid var(--line)" }}>{fallback ?? "🌅"}</div>;
 
-  return <div className={className}>
+  return <div className={`min-w-0 max-w-full overflow-hidden ${className}`}>
     <div className="group relative overflow-hidden rounded-2xl" style={{ border: "1px solid var(--line)", background: "rgba(0,0,0,.16)" }}>
-      <div ref={track} onScroll={onScroll} className={`flex ${aspect} snap-x snap-mandatory overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden`} style={{ scrollBehavior: "smooth" }}>
+      <div ref={track} onScroll={onScroll} className={`flex w-full max-w-full ${aspect} snap-x snap-mandatory overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden`} style={{ scrollBehavior: "smooth" }}>
         {images.map((u, k) => <button type="button" key={u} onClick={() => setOpen(true)} className="h-full w-full shrink-0 snap-center" aria-label={`Zdjęcie ${k + 1} — powiększ`}>
           <img src={thumb(u)} alt={k === 0 ? alt : ""} loading={k === 0 ? "eager" : "lazy"} decoding="async" className="h-full w-full object-cover" draggable={false} />
         </button>)}
@@ -34,7 +34,7 @@ export default function SwipeGallery({ images, alt, fallback, className = "", as
         <div className="pointer-events-none absolute bottom-3 left-1/2 flex -translate-x-1/2 gap-1.5 sm:hidden">{images.map((_, k) => <span key={k} className="h-1.5 rounded-full transition-all" style={{ width: k === i ? 16 : 6, background: k === i ? "#F5A623" : "rgba(255,255,255,.55)" }} />)}</div>
       </>}
     </div>
-    {n > 1 && <div className="mt-3 hidden gap-2 overflow-x-auto pb-1 sm:flex">{images.map((u, k) => <button key={u} type="button" onClick={() => scrollTo(k)} aria-label={`Zdjęcie ${k + 1}`} className="h-20 w-24 shrink-0 overflow-hidden rounded-xl" style={{ border: i === k ? "2px solid var(--gold)" : "1px solid var(--line)" }}><img src={thumb(u)} alt="" loading="lazy" className="h-full w-full object-cover" /></button>)}</div>}
+    {n > 1 && <div className="mt-3 hidden w-full max-w-full gap-2 overflow-x-auto overscroll-x-contain pb-1 sm:flex">{images.map((u, k) => <button key={u} type="button" onClick={() => scrollTo(k)} aria-label={`Zdjęcie ${k + 1}`} className="h-20 w-24 shrink-0 overflow-hidden rounded-xl" style={{ border: i === k ? "2px solid var(--gold)" : "1px solid var(--line)" }}><img src={thumb(u)} alt="" loading="lazy" className="h-full w-full object-cover" /></button>)}</div>}
     {open && <Lightbox images={images} start={i} alt={alt} full={full} onClose={(k) => { setOpen(false); scrollTo(k, false); }} />}
   </div>;
 }

@@ -187,19 +187,19 @@ export default function SpecializedProduct() {
   if (loading) return <ProductSkeleton />;
   if (err || !o) return <main className="min-h-screen px-4 py-10" style={{ background: "var(--bg)", color: "var(--ink)" }}>Nie udało się wczytać oferty.</main>;
 
-  return <div className="min-h-screen" style={{ background: "var(--bg)", color: "var(--ink)" }}>
+  return <div className="min-h-screen overflow-x-hidden" style={{ background: "var(--bg)", color: "var(--ink)" }}>
     <SiteHeader back active={isCar ? "car" : isProperty ? "property" : dzial.label === "Praca" ? "jobs" : dzial.label === "Usługi" ? "services" : undefined} />
 
-    <main className="mx-auto max-w-[1440px] px-4 py-5 sm:px-6 xl:px-10">
+    <main className="mx-auto w-full max-w-[1440px] min-w-0 overflow-x-hidden px-4 py-5 sm:px-6 xl:px-10">
       <div className="mb-5"><Breadcrumbs back={dzial.to} items={[{ label: "Strona główna", to: "/" }, { label: dzial.label, to: dzial.to }, { label: o.category, to: `/szukaj?kat=${encodeURIComponent(o.category_slug || "")}` }, { label: o.title }]} /></div>
-      <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_390px]">
-        <section>
-          <div className="group relative overflow-hidden rounded-3xl" style={{ border: "1px solid var(--line)", background: "rgba(0,0,0,.16)" }} onTouchStart={(e)=>{ swipeStartX.current=e.touches[0]?.clientX ?? null; }} onTouchEnd={(e)=>{ const start=swipeStartX.current; const end=e.changedTouches[0]?.clientX; swipeStartX.current=null; if(start===null || end===undefined) return; const dx=end-start; if(Math.abs(dx)>45) dx<0?nextPhoto():prevPhoto(); }}>
+      <div className="grid min-w-0 gap-6 lg:grid-cols-[minmax(0,1fr)_390px]">
+        <section className="min-w-0 max-w-full">
+          <div className="group relative max-w-full overflow-hidden rounded-3xl" style={{ border: "1px solid var(--line)", background: "rgba(0,0,0,.16)" }} onTouchStart={(e)=>{ swipeStartX.current=e.touches[0]?.clientX ?? null; }} onTouchEnd={(e)=>{ const start=swipeStartX.current; const end=e.changedTouches[0]?.clientX; swipeStartX.current=null; if(start===null || end===undefined) return; const dx=end-start; if(Math.abs(dx)>45) dx<0?nextPhoto():prevPhoto(); }}>
             {mainImage ? <button type="button" onClick={()=>{setLightboxOpen(true);resetZoom();}} className="block w-full cursor-zoom-in"><img src={displayImageUrl(mainImage,1800)} alt={o.title} className="h-[430px] w-full object-contain sm:h-[540px]" /></button> : <div className="grid h-[430px] place-items-center text-8xl">{isCar ? "🚗" : isProperty ? "🏠" : "🌅"}</div>}
             {imgs.length>1&&<><button type="button" aria-label="Poprzednie zdjęcie" onClick={prevPhoto} className="absolute left-3 top-1/2 -translate-y-1/2 rounded-full bg-black/65 px-4 py-3 text-2xl text-white opacity-90 backdrop-blur transition hover:bg-black/80 sm:opacity-0 sm:group-hover:opacity-100">‹</button><button type="button" aria-label="Następne zdjęcie" onClick={nextPhoto} className="absolute right-3 top-1/2 -translate-y-1/2 rounded-full bg-black/65 px-4 py-3 text-2xl text-white opacity-90 backdrop-blur transition hover:bg-black/80 sm:opacity-0 sm:group-hover:opacity-100">›</button><div className="absolute bottom-3 right-3 rounded-full bg-black/65 px-3 py-1 text-xs text-white">{active+1}/{imgs.length}</div></>}
             {mainImage&&<div className="pointer-events-none absolute bottom-3 left-3 rounded-full bg-black/65 px-3 py-1 text-xs text-white">Kliknij, aby powiększyć</div>}
           </div>
-          {imgs.length > 1 && <div className="mt-3 flex gap-2 overflow-x-auto pb-2">{imgs.map((u,i) => <button key={u} onClick={() => choosePhoto(i)} className="h-20 w-24 shrink-0 overflow-hidden rounded-xl" style={{ border: active===i ? "2px solid var(--gold)" : "1px solid var(--line)", background:"rgba(0,0,0,.16)" }}><img src={displayImageUrl(u,320)} className="h-full w-full object-contain" alt="" /></button>)}</div>}
+          {imgs.length > 1 && <div className="mt-3 flex w-full max-w-full gap-2 overflow-x-auto overscroll-x-contain pb-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">{imgs.map((u,i) => <button key={u} onClick={() => choosePhoto(i)} className="h-20 w-24 shrink-0 overflow-hidden rounded-xl" style={{ border: active===i ? "2px solid var(--gold)" : "1px solid var(--line)", background:"rgba(0,0,0,.16)" }}><img src={displayImageUrl(u,320)} className="h-full w-full object-contain" alt="" /></button>)}</div>}
           {heroStats.length > 0 && <div className="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-3">{heroStats.map(([k,v]) => <div key={k} className="rounded-2xl p-4" style={{ background: "var(--glass)", border: "1px solid var(--line)" }}><div className="text-xs" style={{ color: "var(--mut)" }}>{k}</div><div className="mt-1 font-semibold">{v}</div></div>)}</div>}
           {isCar && A.vin && <div className="mt-4 rounded-2xl p-4 text-sm" style={{ background:"rgba(56,224,240,.07)", border:"1px solid rgba(56,224,240,.20)" }}><b>VIN:</b> dostępny do weryfikacji w Sunrise Verify. Pełny numer nie jest publikowany w ogłoszeniu.</div>}
           {bools.length > 0 && <section className="mt-8 rounded-2xl p-5" style={CARD}><SectionTitle className="mb-4">Najważniejsze cechy</SectionTitle><div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">{bools.map(([k]) => <div key={k} className="rounded-xl px-4 py-3 text-sm" style={{ background: "rgba(122,184,154,.10)", border: "1px solid rgba(122,184,154,.28)" }}>✓ {BOOLEAN_LABELS[k]}</div>)}</div></section>}
@@ -208,7 +208,7 @@ export default function SpecializedProduct() {
           {o.description && <section className="mt-6 rounded-2xl p-5" style={CARD}><SectionTitle className="mb-4">{isProperty ? "Opis nieruchomości" : isCar ? "Opis pojazdu" : "Opis"}</SectionTitle><OfferDescription value={o.description} /></section>}
         </section>
 
-        <aside className="lg:sticky lg:top-24 lg:h-fit">
+        <aside className="min-w-0 lg:sticky lg:top-24 lg:h-fit">
           <div className="rounded-3xl p-5 shadow-2xl sm:p-6" style={{ background: "var(--glass)", border: "1px solid rgba(232,137,26,.22)" }}>
             <div className="text-xs font-semibold tracking-[.14em]" style={{color:"var(--gold)"}}>SUNRISE MARKET</div>
             <h1 className="mt-2 text-3xl font-semibold leading-tight">{o.title}</h1>

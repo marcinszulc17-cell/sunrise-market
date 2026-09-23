@@ -65,17 +65,17 @@ export default function PrivateProduct(){
 
   const A=offer.attributes||{};
   const main=imgs[active]||offer.image_url;
-  return <div className="min-h-screen" style={{background:"var(--bg)",color:"var(--ink)"}}>
+  return <div className="min-h-screen overflow-x-hidden" style={{background:"var(--bg)",color:"var(--ink)"}}>
     <SiteHeader back />
-    <main className="mx-auto max-w-5xl px-4 py-6 sm:py-8">
-      <div className="grid gap-7 md:grid-cols-2">
-        <div>
-          <div className="grid aspect-square max-h-[560px] place-items-center overflow-hidden rounded-3xl" style={{background:"var(--glass)",border:"1px solid var(--line)"}}>{main?<img src={main} alt={offer.title} className="h-full w-full object-cover"/>:<span className="text-7xl">📦</span>}</div>
-          {imgs.length>1&&<div className="mt-3 flex gap-2 overflow-x-auto">{imgs.map((u,i)=><button key={`${u}-${i}`} onClick={()=>setActive(i)} className="h-20 w-20 shrink-0 overflow-hidden rounded-xl" style={{border:active===i?"2px solid var(--gold)":"1px solid var(--line)"}}><img src={u} alt="" className="h-full w-full object-cover"/></button>)}</div>}
+    <main className="mx-auto w-full max-w-5xl min-w-0 overflow-x-hidden px-4 py-6 sm:py-8">
+      <div className="grid min-w-0 gap-7 md:grid-cols-2">
+        <div className="min-w-0 max-w-full">
+          <div className="grid aspect-square w-full max-w-full max-h-[560px] place-items-center overflow-hidden rounded-3xl" style={{background:"var(--glass)",border:"1px solid var(--line)"}}>{main?<img src={main} alt={offer.title} className="h-full w-full max-w-full object-cover"/>:<span className="text-7xl">📦</span>}</div>
+          {imgs.length>1&&<div className="mt-3 flex w-full max-w-full gap-2 overflow-x-auto overscroll-x-contain pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">{imgs.map((u,i)=><button key={`${u}-${i}`} onClick={()=>setActive(i)} className="h-20 w-20 shrink-0 overflow-hidden rounded-xl" style={{border:active===i?"2px solid var(--gold)":"1px solid var(--line)"}}><img src={u} alt="" className="h-full w-full object-cover"/></button>)}</div>}
         </div>
-        <div className="flex flex-col gap-4">
+        <div className="min-w-0 flex flex-col gap-4">
           <div className="flex flex-wrap items-center gap-2"><span className="rounded-full px-3 py-1 text-xs font-semibold" style={{background:"rgba(232,137,26,.12)",color:"var(--gold)",border:"1px solid rgba(232,137,26,.25)"}}>Sprzedający prywatny</span><span className="text-xs" style={{color:"var(--mut)"}}>{offer.category}</span></div>
-          <h1 className="font-display text-3xl font-semibold leading-tight sm:text-4xl">{offer.title}</h1>
+          <h1 className="break-words font-display text-3xl font-semibold leading-tight sm:text-4xl">{offer.title}</h1>
           <div className="font-display text-4xl font-bold">{zl(offer.price_gross)}</div>
           <div className="flex flex-wrap gap-2 text-xs">
             {A.condition&&<span className="rounded-xl px-3 py-2" style={{background:"var(--glass)",border:"1px solid var(--line)"}}>Stan: <b>{conditionLabel[A.condition]||A.condition}</b></span>}
