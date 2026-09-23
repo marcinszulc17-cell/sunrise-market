@@ -5,7 +5,7 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import webpush from "npm:web-push@3.6.7";
 
-const cors = { "Access-Control-Allow-Origin": "*", "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type" };
+const cors = { "Access-Control-Allow-Origin": "*", "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-cron-secret" };
 const json = (b: unknown, s = 200) => new Response(JSON.stringify(b), { status: s, headers: { ...cors, "Content-Type": "application/json" } });
 const SERVICE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? Deno.env.get("SUPABASE_SERVICE_KEY") ?? "";
 const APP_URL = (Deno.env.get("MARKET_APP_URL") ?? "https://app.sunrisemarket.pl").replace(/\/$/, "");
@@ -23,6 +23,9 @@ Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: cors });
   if (req.method !== "POST") return json({ error: "method_not_allowed" }, 405);
   const sb = createClient(Deno.env.get("SUPABASE_URL")!, SERVICE_KEY, { db: { schema: "market" } });
+  const provided = req.headers.get("x-cron-secret") ?? "";
+  const { data: cronSecret } = await sb.from("internal_secrets").select("value").eq("key", "cron_worker_secret").maybeSingle();
+  if (!cronSecret?.value || provided !== cronSecret.value) return json({ error: "unauthorized" }, 401);
 
   const { data: secrets } = await sb.from("internal_secrets").select("key,value").in("key", ["vapid_public_key", "vapid_private_key", "vapid_subject"]);
   const s = Object.fromEntries((secrets ?? []).map((r: any) => [r.key, r.value]));
