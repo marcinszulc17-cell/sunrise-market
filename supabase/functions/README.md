@@ -48,8 +48,8 @@ Legenda wywołania: **front** = `supabase.functions.invoke` z `src/`, **cron** =
 | `seller-withdraw` | Wypłata sprzedawcy na żądanie (lustro portfela + transfer Stripe). | true | front |
 | `smart-subscribe` * | Zakup abonamentu „Sunrise Smart” z portfela. | true | front |
 | `sso-handoff` * | SSO z MySunrise: weryfikuje token huba, tworzy konto, zwraca magiclink `token_hash`. | false | front |
-| `sso-login` * | Logowanie hasłem MySunrise; tworzy/aktualizuje konto w Markecie. | false | front |
-| `sso-register` | Rejestracja klienta (SSO z MySunrise). | true | front |
+| `sso-login` * | Stub 410 — wyłączony historyczny relay hasła MySunrise → Market. | false | 410 |
+| `sso-register` | Stub 410 — wyłączony historyczny relay hasła Market → MySunrise. | true | 410 |
 | `stripe-webhook` | Webhook Stripe: oznacza `paid`, nalicza rozliczenia. | false | webhook |
 | `suri-commerce` * | Asystentka zakupowa Suri (Claude) + historia rozmowy. | false | front |
 | `teemdrop-bridge` | Wypycha zakolejkowane zamówienia dropship do WooCommerce. | false | cron / op |
@@ -67,4 +67,4 @@ Legenda wywołania: **front** = `supabase.functions.invoke` z `src/`, **cron** =
 | `woo-catalog-pull` * | Import produktów WooCommerce/TeemDrop z wyceną AI, galeriami, wariantami. | false | wewn. (`x-bridge-token`) |
 | `woo-status-sync` * | Webhook WooCommerce `order.updated` (HMAC) → status + tracking zamówienia. | false | webhook |
 
-Uwagi: `repair-offer-images` jako jedyna ma `import_map: true` (`deno.json`). Funkcje `ad-buy`, `smart-subscribe`, `member-status`, `ref-attribute`, `globkurier`, `sso-login`, `sso-handoff` mają zahardkodowane fallbacki tokenu/klucza anon MySunrise w kodzie.
+Uwagi: `repair-offer-images` jako jedyna ma `import_map: true` (`deno.json`). Funkcje wymagające integracji z MySunrise powinny używać SSO/tokenów serwisowych; historyczne relaye haseł `sso-login` i `sso-register` są wyłączone.
