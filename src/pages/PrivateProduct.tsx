@@ -102,17 +102,18 @@ export default function PrivateProduct(){
 
   const A=offer.attributes||{};
   const main=imgs[active]||offer.image_url;
-  const isCar=A.offer_type==="car" || offer.category_slug?.startsWith("motoryzacja-samochody");
-  const details = isCar ? [
-    ["Rok", A.year],
-    ["Przebieg", A.mileage_km ? `${Number(A.mileage_km).toLocaleString("pl-PL")} km` : null],
-    ["Silnik", A.engine_cc ? `${(Number(A.engine_cc)/1000).toFixed(1)} l` : null],
-    ["Moc", A.power_hp ? `${A.power_hp} KM` : null],
-    ["Paliwo", A.fuel==="diesel" ? "Diesel" : A.fuel],
-    ["Skrzynia", A.transmission==="automatic" ? "Automatyczna" : A.transmission],
-    ["Lokalizacja", A.location],
-    ["VIN", A.has_vin ? "Zweryfikowany / ukryty" : null],
-  ].filter((x)=>x[1]!==null && x[1]!==undefined && x[1]!=="");
+  const isCar=Boolean(A.offer_type==="car" || offer.category_slug?.startsWith("motoryzacja-samochody"));
+  const details:Array<[string,string]> = [];
+  if(isCar){
+    if(A.year) details.push(["Rok",String(A.year)]);
+    if(A.mileage_km) details.push(["Przebieg",`${Number(A.mileage_km).toLocaleString("pl-PL")} km`]);
+    if(A.engine_cc) details.push(["Silnik",`${(Number(A.engine_cc)/1000).toFixed(1)} l`]);
+    if(A.power_hp) details.push(["Moc",`${A.power_hp} KM`]);
+    if(A.fuel) details.push(["Paliwo",A.fuel==="diesel"?"Diesel":A.fuel]);
+    if(A.transmission) details.push(["Skrzynia",A.transmission==="automatic"?"Automatyczna":A.transmission]);
+    if(A.location) details.push(["Lokalizacja",A.location]);
+    if(A.has_vin) details.push(["VIN","Zweryfikowany / ukryty"]);
+  }
   return <div className="min-h-screen overflow-x-hidden" style={{background:"var(--bg)",color:"var(--ink)"}}>
     <SiteHeader back />
     <main className="mx-auto w-full max-w-5xl min-w-0 overflow-x-hidden px-4 py-6 sm:py-8">
@@ -130,7 +131,7 @@ export default function PrivateProduct(){
             {A.delivery&&<span className="rounded-xl px-3 py-2" style={{background:"var(--glass)",border:"1px solid var(--line)"}}>🚚 {deliveryLabel[A.delivery]||A.delivery}</span>}
           </div>
           <div className="rounded-2xl p-4 text-sm" style={{background:"rgba(122,184,154,.08)",border:"1px solid rgba(122,184,154,.2)"}}><b>{offer.seller}</b><div className="mt-1 text-xs" style={{color:"var(--mut)"}}>Oferta osoby prywatnej w Sunrise Market.</div></div>
-          {details.length>0&&<div className="grid grid-cols-2 gap-2 rounded-2xl p-4 sm:grid-cols-3" style={{background:"var(--glass)",border:"1px solid var(--line)"}}>{details.map(([label,value])=><div key={String(label)} className="rounded-xl p-3" style={{background:"rgba(255,255,255,.035)"}}><div className="text-[11px] uppercase tracking-wide" style={{color:"var(--mut)"}}>{label}</div><div className="mt-1 text-sm font-semibold">{String(value)}</div></div>)}</div>}
+          {details.length>0&&<div className="grid grid-cols-2 gap-2 rounded-2xl p-4 sm:grid-cols-3" style={{background:"var(--glass)",border:"1px solid var(--line)"}}>{details.map(([label,value])=><div key={label} className="rounded-xl p-3" style={{background:"rgba(255,255,255,.035)"}}><div className="text-[11px] uppercase tracking-wide" style={{color:"var(--mut)"}}>{label}</div><div className="mt-1 text-sm font-semibold">{String(value)}</div></div>)}</div>}
           {offer.description&&<div className="whitespace-pre-line rounded-2xl p-4 text-sm leading-6" style={{background:"var(--glass)",border:"1px solid var(--line)",color:"var(--mut)"}}>{offer.description}</div>}
           <div className="flex flex-wrap gap-2">{["Ochrona płatności","Sunrise Pay","Cashback na portfel"].map(x=><span key={x} className="rounded-lg px-2.5 py-1 text-xs" style={{background:"var(--glass)",border:"1px solid var(--line)",color:"var(--mut)"}}>✓ {x}</span>)}</div>
           {isCar ? <>
