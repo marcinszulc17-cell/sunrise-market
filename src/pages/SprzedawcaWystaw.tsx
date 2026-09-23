@@ -93,9 +93,9 @@ export default function SprzedawcaWystaw() {
         <div className="mb-8 flex flex-wrap items-start justify-between gap-4">
           <div>
             <div className="text-sm font-semibold" style={{ color: "var(--gold)" }}>SUNRISE MARKET</div>
-            <h1 className="mt-1 font-display text-3xl font-semibold sm:text-4xl">Co chcesz zrobić?</h1>
+            <h1 className="mt-1 font-display text-3xl font-semibold sm:text-4xl">Dodaj ofertę</h1>
             <p className="mt-2 max-w-2xl text-sm sm:text-base" style={{ color: "var(--mut)" }}>
-              Najpierw wybierz sposób sprzedaży. Kategorię i szczegóły podasz dopiero w następnym kroku.
+              Wybierz, co chcesz dodać. Resztę przeprowadzimy krok po kroku.
             </p>
           </div>
           <Link to="/sprzedawca" className="text-sm font-semibold underline" style={{ color: "var(--mut)" }}>← Centrum sprzedawcy</Link>
@@ -120,7 +120,7 @@ export default function SprzedawcaWystaw() {
         </div>
 
         <div className="mt-4 rounded-3xl p-6" style={{ background: "rgba(122,184,154,.08)", border: "1px solid rgba(122,184,154,.22)" }}>
-          <h2 className="text-lg font-semibold">📍 Ogłoszenie lokalne — bezpłatnie</h2>
+          <h2 className="text-lg font-semibold">📍 Dodaj bezpłatne ogłoszenie</h2>
           <p className="mt-2 text-sm leading-6" style={{ color: "var(--mut)" }}>Sprzedam, oddam, zamienię, usługi, <strong>oferta pracy</strong> i <strong>szukam pracy</strong>. Bez ceny, bez VAT-u, bez prowizji — zainteresowani odpisują Ci bezpośrednio.</p>
           <div className="mt-4 flex flex-wrap gap-2">
             <Link to="/sprzedawca/wystaw?typ=lokalne" className="rounded-xl px-4 py-2.5 text-sm font-semibold text-black" style={{ background: "linear-gradient(135deg,#E8891A,#F5A623)" }}>+ Dodaj ogłoszenie</Link>
@@ -130,7 +130,7 @@ export default function SprzedawcaWystaw() {
         </div>
 
         <div className="mt-6 rounded-2xl p-4 text-sm" style={{ background: "rgba(122,184,154,.08)", border: "1px solid rgba(122,184,154,.22)", color: "var(--mut)" }}>
-          Nie musisz wybierać osobno „samochód”, „nieruchomość” czy „sprzęt” na starcie. Po wyborze trybu kreator dopasuje kategorię i właściwy booking.
+          Nie musisz znać nazw kategorii ani ustawień technicznych. Wybierz jedną z opcji powyżej, a Market poprowadzi Cię dalej.
         </div>
       </div>
     </main>

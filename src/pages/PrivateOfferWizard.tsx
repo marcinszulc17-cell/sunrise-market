@@ -46,28 +46,28 @@ export default function PrivateOfferWizard() {
 
   const copy = useMemo(() => {
     if (mode === "appointment") return {
-      title: "Wystaw usługę na termin",
-      subtitle: "Klient wybierze dzień i godzinę, a potem zapłaci za rezerwację.",
+      title: "Dodaj usługę",
+      subtitle: "Podaj najważniejsze informacje. Kalendarz ustawisz zaraz po utworzeniu oferty.",
       itemLabel: "Jaką usługę oferujesz?",
       placeholder: "Np. montaż klimatyzacji, masaż, konsultacja",
       priceLabel: "Cena usługi",
-      publishLabel: "Dalej: ustaw kalendarz",
+      publishLabel: "Zapisz i ustaw terminy",
     };
     if (mode === "daily") return {
-      title: "Wystaw wynajem",
-      subtitle: "Klient wybierze daty od–do, zobaczy czynsz za cały okres i od razu zapłaci.",
+      title: "Dodaj wynajem",
+      subtitle: "Podaj, co wynajmujesz i cenę za dobę. Dostępność ustawisz w następnym kroku.",
       itemLabel: "Co wynajmujesz?",
       placeholder: rentalKind === "car" ? "Np. Toyota Corolla Hybrid" : rentalKind === "property" ? "Np. Apartament nad morzem" : "Np. agregat, kamera, rower elektryczny",
       priceLabel: "Cena za dobę",
-      publishLabel: "Dalej: ustaw kalendarz i kaucję",
+      publishLabel: "Zapisz i ustaw dostępność",
     };
     return {
-      title: "Wystaw przedmiot",
-      subtitle: "Stała cena i jeden prosty zakup: Kup teraz.",
+      title: "Dodaj produkt",
+      subtitle: "Dodaj zdjęcia, nazwę, kategorię i cenę. To wystarczy, aby opublikować ofertę.",
       itemLabel: "Co sprzedajesz?",
       placeholder: "Np. iPhone 15 Pro 256 GB",
       priceLabel: "Cena",
-      publishLabel: "Opublikuj ofertę",
+      publishLabel: "Opublikuj",
     };
   }, [mode, rentalKind]);
 
@@ -172,7 +172,7 @@ export default function PrivateOfferWizard() {
         return;
       }
 
-      navigate(`/sprzedawca/oferty/${id}/edytuj?new=1`, { replace: true });
+      navigate(`/sprzedawca/oferty/${id}/edytuj?new=1&published=1`, { replace: true });
     } catch (e) {
       const err = e as Error;
       const networkLike = /load failed|failed to fetch|network|fetch/i.test(err.message || "");
@@ -191,7 +191,7 @@ export default function PrivateOfferWizard() {
             return;
           }
         } catch { /* odzyskanie jest best-effort */ }
-        setMsg("Połączenie zerwało się przy publikacji. Nie klikaj ponownie — sprawdź „Moje oferty”, bo oferta mogła zostać zapisana.");
+        setMsg("Sprawdzamy, czy oferta została zapisana. Nie klikaj ponownie. Jeśli jej tu nie zobaczysz, wejdź w „Moje oferty”.");
       } else {
         setMsg("Nie udało się opublikować: " + err.message);
       }
