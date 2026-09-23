@@ -69,7 +69,7 @@ async function decodeVin(attrs: any) {
   const matched = known.filter((x) => x.match === true);
   return {
     source: "NHTSA vPIC",
-    vin,
+    vin_masked: vin.length >= 6 ? `${vin.slice(0,3)}••••••••••${vin.slice(-4)}` : "ukryty",
     make: r.Make || null,
     model: r.Model || null,
     model_year: r.ModelYear || null,
@@ -124,7 +124,9 @@ async function externalVehicle(attrs: any, offerId: string) {
 }
 
 async function runVehicle(sb: any, row: any, offer: any) {
-  const attrs = offer.attributes ?? {};
+  const publicAttrs = offer.attributes ?? {};
+  const { data: privateData } = await sb.schema("market").from("offer_private_data").select("vin,registration_number,first_registration").eq("offer_id", offer.id).maybeSingle();
+  const attrs = { ...publicAttrs, ...(privateData ?? {}) };
   const providerStatus: any = {
     vin_decoder: { status: "pending" },
     cepik_reference: { status: "pending" },
@@ -172,7 +174,7 @@ async function runVehicle(sb: any, row: any, offer: any) {
     kind: "vehicle",
     generated_at: new Date().toISOString(),
     automation_version: "v6",
-    listing: { title: offer.title, attributes: attrs },
+    listing: { title: offer.title, attributes: publicAttrs },
     sources: { vin_decoder: vin, cepik_reference: cepik, external_history: external },
     validation: { checks: vin?.checks ?? [], score },
     coverage,
