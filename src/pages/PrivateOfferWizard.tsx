@@ -221,7 +221,7 @@ export default function PrivateOfferWizard() {
           offer_type: offerType,
           rental_kind: mode === "daily" ? rentalKind : null,
           private_listing: true,
-          buy_now_only: mode === "purchase",
+          buy_now_only: mode === "purchase" && !privateCarSale,
         },
       });
       if (error) throw error;
