@@ -39,6 +39,9 @@ const LOGIN_CSS = `.sl-root{position:relative;min-height:100dvh;overflow:hidden;
 .sl-btn{margin-top:18px;width:100%;height:50px;border:0;border-radius:14px;font-size:15px;font-weight:800;color:var(--sl-ink);background:linear-gradient(135deg,var(--sl-a1),var(--sl-a2));cursor:pointer;font-family:inherit}
 .sl-btn:hover{filter:brightness(1.08)}
 .sl-btn:disabled{opacity:.6;cursor:default}
+.sl-hub{display:flex;align-items:center;justify-content:center;text-decoration:none;box-sizing:border-box}
+.sl-legacy{margin-top:12px;width:100%;background:none;border:0;color:rgba(255,255,255,.62);font:600 13px inherit;cursor:pointer;padding:8px;text-align:center}
+.sl-legacy:hover{color:#fff;text-decoration:underline}
 .sl-err{margin-top:14px;border-radius:14px;padding:11px 14px;font-size:13px;background:rgba(239,68,68,.12);border:1px solid rgba(239,68,68,.28);color:#fecaca}
 .sl-bio{margin-top:12px;width:100%;height:50px;border-radius:14px;font-size:15px;font-weight:700;color:#fff;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.18);cursor:pointer;font-family:inherit;display:flex;align-items:center;justify-content:center;gap:10px}
 .sl-bio:hover{background:rgba(255,255,255,.13)}
@@ -134,6 +137,7 @@ export default function Login() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [bio, setBio] = useState(false);
+  const [showLegacy, setShowLegacy] = useState(false);
   const bioLabel = useMemo(() => passkeyLabel(), []);
   useEffect(() => { passkeysAvailable().then(setBio); }, []);
 
@@ -217,54 +221,64 @@ export default function Login() {
           <form className="sl-card" onSubmit={submit}>
             <img className="sl-logo" src="/logo-sunrise-market-light.png" alt="Sunrise Market" />
             <h1 className="sl-h1">Witaj ponownie</h1>
-            <p className="sl-sub">Zaloguj się bezpośrednio do Sunrise Market swoim kontem Sunrise.</p>
+            <p className="sl-sub">Jedno konto MySunrise działa w całym ekosystemie Sunrise.</p>
 
-            <div className="sl-field">
-              <label className="sl-label" htmlFor="sl-email">E-mail</label>
-              <input id="sl-email" className="sl-input" type="email" required autoComplete="email"
-                value={email} onChange={(e) => setEmail(e.target.value)} placeholder="twoj@email.pl" />
+            <a className="sl-btn sl-hub" href={hubLoginUrl(next)}>
+              Zaloguj przez MySunrise
+            </a>
+
+            <div className="sl-row" style={{ marginTop: 12 }}>
+              <span style={{ color: "rgba(255,255,255,.6)", fontSize: 13 }}>Nie masz jeszcze konta?</span>
+              <a className="sl-link" href={registerUrl(next)}>Załóż konto →</a>
             </div>
-
-            <div className="sl-field">
-              <label className="sl-label" htmlFor="sl-password">Hasło</label>
-              <input id="sl-password" className="sl-input" type={showPassword ? "text" : "password"} required
-                autoComplete="current-password" value={password} onChange={(e) => setPassword(e.target.value)}
-                placeholder="••••••••" />
-              <button type="button" className="sl-eye" onClick={() => setShowPassword((v) => !v)}
-                aria-label={showPassword ? "Ukryj hasło" : "Pokaż hasło"}>
-                <EyeIcon off={showPassword} />
-              </button>
-            </div>
-
-            <div className="sl-row">
-              <label className="sl-chk">
-                <input type="checkbox" checked={remember} onChange={(e) => setRemember(e.target.checked)} />
-                Zapamiętaj mnie
-              </label>
-              <a className="sl-link" href={RESET_URL}>Nie pamiętasz hasła?</a>
-            </div>
-            <div className="sl-row" style={{ marginTop: 6 }}>
-              <span style={{ color: "rgba(255,255,255,.6)", fontSize: 13 }}>Nie masz konta Sunrise?</span>
-              <a className="sl-link" href={registerUrl(next)}>Zarejestruj się w MySunrise →</a>
-            </div>
-
-            {error && <div className="sl-err">{error}</div>}
-
-            <button className="sl-btn" type="submit" disabled={busy}>
-              {busy ? "Logowanie…" : "Zaloguj się"}
-            </button>
 
             {bio && <>
-              <div className="sl-or">albo</div>
+              <div className="sl-or">albo szybciej</div>
               <button type="button" className="sl-bio" disabled={busy} onClick={loginBio} aria-label={`Zaloguj przez ${bioLabel}`}>
                 <FaceIcon /> Zaloguj przez {bioLabel}
               </button>
             </>}
 
-            <div className="sl-foot" style={{ marginTop: 8 }}>
-              <a className="sl-link" href={hubLoginUrl(next)} style={{ color: "rgba(255,255,255,.7)" }}>Zaloguj przez MySunrise →</a>
-            </div>
-            <div className="sl-foot" style={{ marginTop: 10 }}>Jedno konto Sunrise działa w całym ekosystemie.</div>
+            <button type="button" className="sl-legacy" onClick={() => { setShowLegacy((v) => !v); setError(null); }}>
+              {showLegacy ? "Ukryj starsze logowanie" : "Mam starsze konto Market"}
+            </button>
+
+            {showLegacy && <>
+              <div className="sl-or">starsze logowanie</div>
+
+              <div className="sl-field">
+                <label className="sl-label" htmlFor="sl-email">E-mail</label>
+                <input id="sl-email" className="sl-input" type="email" required autoComplete="email"
+                  value={email} onChange={(e) => setEmail(e.target.value)} placeholder="twoj@email.pl" />
+              </div>
+
+              <div className="sl-field">
+                <label className="sl-label" htmlFor="sl-password">Hasło</label>
+                <input id="sl-password" className="sl-input" type={showPassword ? "text" : "password"} required
+                  autoComplete="current-password" value={password} onChange={(e) => setPassword(e.target.value)}
+                  placeholder="••••••••" />
+                <button type="button" className="sl-eye" onClick={() => setShowPassword((v) => !v)}
+                  aria-label={showPassword ? "Ukryj hasło" : "Pokaż hasło"}>
+                  <EyeIcon off={showPassword} />
+                </button>
+              </div>
+
+              <div className="sl-row">
+                <label className="sl-chk">
+                  <input type="checkbox" checked={remember} onChange={(e) => setRemember(e.target.checked)} />
+                  Zapamiętaj mnie
+                </label>
+                <a className="sl-link" href={RESET_URL}>Nie pamiętasz hasła?</a>
+              </div>
+
+              {error && <div className="sl-err">{error}</div>}
+
+              <button className="sl-btn" type="submit" disabled={busy}>
+                {busy ? "Logowanie…" : "Zaloguj starsze konto"}
+              </button>
+            </>}
+
+            <div className="sl-foot" style={{ marginTop: 10 }}>Nowe konta zakładamy wyłącznie przez MySunrise.</div>
           </form>
         </div>
       </div>
