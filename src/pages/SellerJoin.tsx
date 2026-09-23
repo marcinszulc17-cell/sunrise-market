@@ -77,6 +77,17 @@ export default function SellerJoin() {
           />
         </div>
 
+        <section className="mt-5 rounded-3xl p-6 sm:p-7" style={{ background: "rgba(122,184,154,.08)", border: "1px solid rgba(122,184,154,.24)" }}>
+          <div className="text-xs font-semibold tracking-[.15em]" style={{ color: "var(--green)" }}>BEZPŁATNE OGŁOSZENIE</div>
+          <h2 className="mt-2 font-display text-2xl font-semibold">Chcesz tylko dodać ogłoszenie?</h2>
+          <p className="mt-2 text-sm" style={{ color: "var(--mut)" }}>
+            Sprzedam, oddam, zamienię, usługa lokalna, oferta pracy albo szukam pracy — bez aktywowania konta Sprzedawcy i bez opłaty rocznej.
+          </p>
+          <button type="button" onClick={go("/sprzedawca/wystaw?typ=lokalne")} className="mt-5 rounded-2xl px-5 py-3 font-semibold text-black" style={{ background: "linear-gradient(135deg,#7AB89A,#9BD3B6)" }}>
+            Dodaj bezpłatne ogłoszenie →
+          </button>
+        </section>
+
         <p className="mt-6 text-center text-xs" style={{ color: "var(--mut)" }}>
           Prowizja od sprzedaży: 7,9% przy płatności Sunrise Pay (cashback dla klienta zawarty), 12,9% przy płatności kartą (Stripe). Szczegóły w <Link to="/cennik" className="underline">cenniku</Link>.
         </p>
