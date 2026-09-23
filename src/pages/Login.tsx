@@ -77,8 +77,20 @@ const MARKET_ORIGIN = "https://app.sunrisemarket.pl";
 function hubReturnPath(next: string) {
   return `/market?return=${encodeURIComponent(next)}&origin=${encodeURIComponent(MARKET_ORIGIN)}`;
 }
+function storedReferralCode() {
+  try {
+    const raw = window.localStorage.getItem("sunrise_ref")?.trim() || "";
+    return /^[A-Za-z0-9_-]{4,64}$/.test(raw) ? raw : "";
+  } catch {
+    return "";
+  }
+}
 function registerUrl(next: string) {
-  return `${MYSUNRISE_URL}/dolacz?next=${encodeURIComponent(hubReturnPath(next))}`;
+  const url = new URL(`${MYSUNRISE_URL}/dolacz`);
+  url.searchParams.set("next", hubReturnPath(next));
+  const referral = storedReferralCode();
+  if (referral) url.searchParams.set("ref", referral);
+  return url.toString();
 }
 function hubLoginUrl(next: string) {
   return `${MYSUNRISE_URL}/login?next=${encodeURIComponent(hubReturnPath(next))}`;
