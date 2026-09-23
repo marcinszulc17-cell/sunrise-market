@@ -29,6 +29,9 @@ export default function PrivateOfferWizard() {
   const [busy, setBusy] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
+  const [step, setStep] = useState(1);
+  const [successId, setSuccessId] = useState<string | null>(null);
+  const [draftSaved, setDraftSaved] = useState(false);
   const [images, setImages] = useState<string[]>([]);
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
@@ -85,7 +88,11 @@ export default function PrivateOfferWizard() {
   }, [mode]);
 
   useEffect(() => {
-    const t = setTimeout(() => localStorage.setItem(DRAFT_KEY, JSON.stringify({ mode, rentalKind, title, description, price, condition, delivery, referrals, images })), 250);
+    setDraftSaved(false);
+    const t = setTimeout(() => {
+      localStorage.setItem(DRAFT_KEY, JSON.stringify({ mode, rentalKind, title, description, price, condition, delivery, referrals, images }));
+      setDraftSaved(true);
+    }, 300);
     return () => clearTimeout(t);
   }, [mode, rentalKind, title, description, price, condition, delivery, referrals, images]);
 
@@ -124,10 +131,10 @@ export default function PrivateOfferWizard() {
   }
 
   async function publish() {
-    if (!images.length) { setMsg("Dodaj przynajmniej jedno zdjęcie."); return; }
-    if (!title.trim()) { setMsg(mode === "appointment" ? "Wpisz nazwę usługi." : "Wpisz nazwę oferty."); return; }
-    if (!chosen) { setMsg("Wybierz kategorię."); return; }
-    if (!(Number(price) > 0)) { setMsg("Podaj cenę większą od 0 zł."); return; }
+    if (!images.length) { setMsg("Dodaj przynajmniej jedno zdjęcie."); setStep(2); return; }
+    if (!title.trim()) { setMsg(mode === "appointment" ? "Wpisz nazwę usługi." : "Wpisz nazwę oferty."); setStep(1); return; }
+    if (!chosen) { setMsg("Wybierz kategorię."); setStep(1); return; }
+    if (!(Number(price) > 0)) { setMsg("Podaj cenę większą od 0 zł."); setStep(3); return; }
     setBusy(true); setMsg(null);
     try {
       const offerType = mode === "appointment" ? "service" : mode === "daily" ? `${rentalKind}_rental` : "product";
@@ -172,7 +179,8 @@ export default function PrivateOfferWizard() {
         return;
       }
 
-      navigate(`/sprzedawca/oferty/${id}/edytuj?new=1&published=1`, { replace: true });
+      setSuccessId(id);
+      setStep(4);
     } catch (e) {
       const err = e as Error;
       const networkLike = /load failed|failed to fetch|network|fetch/i.test(err.message || "");
@@ -187,7 +195,8 @@ export default function PrivateOfferWizard() {
           );
           if (recovered?.offer_id) {
             localStorage.removeItem(DRAFT_KEY);
-            navigate(`/sprzedawca/oferty/${recovered.offer_id}/edytuj?new=1&recovered=1`, { replace: true });
+            setSuccessId(recovered.offer_id);
+            setStep(4);
             return;
           }
         } catch { /* odzyskanie jest best-effort */ }
@@ -200,60 +209,77 @@ export default function PrivateOfferWizard() {
   }
 
   const forcedRoot = mode === "appointment" || (mode === "daily" && rentalKind !== "product");
+  const stepLabels = ["Dane", "Zdjęcia i opis", mode === "purchase" ? "Cena i publikacja" : "Cena i dalej"];
 
   return <main className="min-h-screen px-4 py-6 sm:px-6" style={{ background: "var(--bg)", color: "var(--ink)" }}>
     <div className="mx-auto max-w-3xl">
-      <div className="mb-5 flex items-center justify-between gap-3">
-        <div><div className="text-xs font-semibold tracking-[.14em]" style={{ color: "var(--gold)" }}>SPRZEDAWCA</div><h1 className="mt-1 text-3xl font-semibold">{copy.title}</h1><p className="mt-1 text-sm" style={{ color: "var(--mut)" }}>{copy.subtitle}</p></div>
-        <Link to="/sprzedawca/wystaw" className="text-sm underline" style={{ color: "var(--mut)" }}>Zmień tryb</Link>
+      <div className="mb-5 flex items-start justify-between gap-3">
+        <div>
+          <div className="text-xs font-semibold tracking-[.14em]" style={{ color: "var(--gold)" }}>SPRZEDAWCA</div>
+          <h1 className="mt-1 text-3xl font-semibold">{copy.title}</h1>
+          <p className="mt-1 text-sm" style={{ color: "var(--mut)" }}>{copy.subtitle}</p>
+          {step < 4 && <div className="mt-2 text-xs" style={{ color: draftSaved ? "var(--green)" : "var(--mut)" }}>{draftSaved ? "✓ Wersja robocza zapisana" : "Zapisuję wersję roboczą…"}</div>}
+        </div>
+        <Link to="/sprzedawca/wystaw" className="text-sm underline" style={{ color: "var(--mut)" }}>Zmień rodzaj</Link>
       </div>
 
       {msg && <div className="mb-4 rounded-2xl px-4 py-3 text-sm" style={{ background: "rgba(200,150,90,.12)", border: "1px solid rgba(200,150,90,.24)", color: "var(--gold)" }}>{msg}</div>}
 
-      <section className="space-y-6 rounded-3xl p-5 sm:p-7" style={{ background: "var(--glass)", border: "1px solid var(--line)" }}>
+      {step < 4 && <div className="mb-4 grid grid-cols-3 gap-2">
+        {stepLabels.map((label, i) => <button type="button" key={label} onClick={() => setStep(i + 1)} className="rounded-xl px-2 py-2 text-xs font-semibold" style={{ background: step === i + 1 ? "rgba(200,150,90,.16)" : "var(--glass)", border: step === i + 1 ? "1px solid var(--gold)" : "1px solid var(--line)", color: step === i + 1 ? "var(--gold)" : "var(--mut)" }}>{i + 1}. {label}</button>)}
+      </div>}
+
+      {step === 1 && <section className="space-y-5 rounded-3xl p-5 sm:p-7" style={{ background: "var(--glass)", border: "1px solid var(--line)" }}>
         {mode === "daily" && <div>
-          <h2 className="mb-3 text-lg font-semibold">1. Co chcesz wynajmować?</h2>
+          <h2 className="mb-3 text-lg font-semibold">Co chcesz wynajmować?</h2>
           <div className="grid gap-2 sm:grid-cols-3">{RENTAL_KINDS.map(k => <button type="button" key={k.id} onClick={() => { setRentalKind(k.id); setS1(null); setS2(null); setS3(null); setD2([]); setD3([]); }} className="rounded-2xl p-4 text-left" style={{ background: rentalKind === k.id ? "rgba(200,150,90,.14)" : "var(--header)", border: rentalKind === k.id ? "1px solid var(--gold)" : "1px solid var(--line)" }}><div className="text-2xl">{k.icon}</div><div className="mt-2 text-sm font-semibold">{k.title}</div></button>)}</div>
         </div>}
-
+        <label className="block"><span className="mb-2 block text-sm font-semibold">{copy.itemLabel}</span><input className={field} style={fieldStyle} placeholder={copy.placeholder} value={title} onChange={e=>setTitle(e.target.value)} /></label>
         <div>
-          <div className="mb-2 flex items-center justify-between"><h2 className="text-lg font-semibold">{mode === "daily" ? "2" : "1"}. Zdjęcia</h2><span className="text-xs" style={{ color: "var(--mut)" }}>{images.length}/12</span></div>
-          <label className="flex min-h-32 cursor-pointer items-center justify-center rounded-2xl border border-dashed text-center text-sm font-semibold" style={{ borderColor: "var(--line)", background: "var(--header)" }}>
-            <div><div className="text-3xl">📷</div><div className="mt-2">{uploading ? "Dodaję zdjęcia…" : images.length ? "+ Dodaj kolejne" : "Dodaj zdjęcia"}</div><div className="mt-1 text-xs font-normal" style={{ color: "var(--mut)" }}>Pierwsze będzie zdjęciem głównym</div></div>
+          <div className="mb-2 text-sm font-semibold">Kategoria</div>
+          <div className="grid gap-2 sm:grid-cols-3">
+            <select disabled={forcedRoot} className={field} style={{...fieldStyle, opacity: forcedRoot ? .75 : 1}} value={s1?.slug || ""} onChange={e=>pick1(e.target.value)}><option value="">Wybierz dział</option>{d1.map(cat=><option key={cat.id} value={cat.slug}>{cat.name}</option>)}</select>
+            {d2.length>0 && <select className={field} style={fieldStyle} value={s2?.slug || ""} onChange={e=>pick2(e.target.value)}><option value="">Wybierz kategorię</option>{d2.map(cat=><option key={cat.id} value={cat.slug}>{cat.name}</option>)}</select>}
+            {d3.length>0 && <select className={field} style={fieldStyle} value={s3?.slug || ""} onChange={e=>pick3(e.target.value)}><option value="">Wybierz podkategorię</option>{d3.map(cat=><option key={cat.id} value={cat.slug}>{cat.name}</option>)}</select>}
+          </div>
+        </div>
+        {mode !== "appointment" && <label className="block"><span className="mb-2 block text-sm font-semibold">Stan</span><select className={field} style={fieldStyle} value={condition} onChange={e=>setCondition(e.target.value as Condition)}><option value="new">Nowy</option><option value="very_good">Bardzo dobry</option><option value="good">Dobry</option><option value="used">Używany</option><option value="damaged">Uszkodzony / do naprawy</option></select></label>}
+        <button type="button" onClick={() => { if (!title.trim()) return setMsg("Wpisz nazwę oferty."); if (!chosen) return setMsg("Wybierz kategorię."); setMsg(null); setStep(2); }} className="w-full rounded-2xl px-5 py-3 font-bold text-black" style={{ background: "linear-gradient(135deg,#C8965A,#E8C896)" }}>Dalej: zdjęcia i opis →</button>
+      </section>}
+
+      {step === 2 && <section className="space-y-5 rounded-3xl p-5 sm:p-7" style={{ background: "var(--glass)", border: "1px solid var(--line)" }}>
+        <div>
+          <div className="mb-2 flex items-center justify-between"><h2 className="text-lg font-semibold">Zdjęcia</h2><span className="text-xs" style={{ color: "var(--mut)" }}>{images.length}/12</span></div>
+          <label className="flex min-h-36 cursor-pointer items-center justify-center rounded-2xl border border-dashed text-center text-sm font-semibold" style={{ borderColor: "var(--line)", background: "var(--header)" }}>
+            <div><div className="text-3xl">📷</div><div className="mt-2">{uploading ? "Dodaję zdjęcia…" : images.length ? "+ Dodaj kolejne" : "Dodaj zdjęcia"}</div><div className="mt-1 text-xs font-normal" style={{ color: "var(--mut)" }}>Minimum 1 zdjęcie. Pierwsze będzie główne.</div></div>
             <input type="file" accept="image/*" multiple className="hidden" onChange={e => upload(e.target.files)} />
           </label>
           {images.length > 0 && <div className="mt-3"><OfferPhotoManager images={images} onChange={setImages} /></div>}
         </div>
+        <label className="block"><span className="mb-2 block text-sm font-semibold">Opis <span className="font-normal" style={{color:"var(--mut)"}}>(opcjonalnie)</span></span><textarea rows={6} className={field} style={fieldStyle} placeholder={mode === "appointment" ? "Zakres usługi i ważne informacje…" : mode === "daily" ? "Co jest w zestawie i jakie są zasady wynajmu…" : "Stan, wyposażenie i najważniejsze informacje…"} value={description} onChange={e=>setDescription(e.target.value)} /></label>
+        <div className="flex gap-3"><button type="button" onClick={()=>setStep(1)} className="rounded-xl px-4 py-3 text-sm" style={{border:"1px solid var(--line)"}}>← Wstecz</button><button type="button" onClick={() => { if (!images.length) return setMsg("Dodaj przynajmniej jedno zdjęcie."); setMsg(null); setStep(3); }} className="flex-1 rounded-2xl px-5 py-3 font-bold text-black" style={{ background: "linear-gradient(135deg,#C8965A,#E8C896)" }}>Dalej: cena →</button></div>
+      </section>}
 
-        <div><h2 className="mb-3 text-lg font-semibold">{mode === "daily" ? "3" : "2"}. {copy.itemLabel}</h2><input className={field} style={fieldStyle} placeholder={copy.placeholder} value={title} onChange={e=>setTitle(e.target.value)} /></div>
-
-        <div>
-          <h2 className="mb-3 text-lg font-semibold">{mode === "daily" ? "4" : "3"}. Kategoria</h2>
-          <div className="grid gap-2 sm:grid-cols-3"><select disabled={forcedRoot} className={field} style={{...fieldStyle, opacity: forcedRoot ? .75 : 1}} value={s1?.slug || ""} onChange={e=>pick1(e.target.value)}><option value="">Dział</option>{d1.map(c=><option key={c.id} value={c.slug}>{c.name}</option>)}</select>{d2.length>0 && <select className={field} style={fieldStyle} value={s2?.slug || ""} onChange={e=>pick2(e.target.value)}><option value="">Kategoria</option>{d2.map(c=><option key={c.id} value={c.slug}>{c.name}</option>)}</select>}{d3.length>0 && <select className={field} style={fieldStyle} value={s3?.slug || ""} onChange={e=>pick3(e.target.value)}><option value="">Podkategoria</option>{d3.map(c=><option key={c.id} value={c.slug}>{c.name}</option>)}</select>}</div>
+      {step === 3 && <section className="space-y-5 rounded-3xl p-5 sm:p-7" style={{ background: "var(--glass)", border: "1px solid var(--line)" }}>
+        <label className="block"><span className="mb-2 block text-sm font-semibold">{copy.priceLabel}</span><div className="relative"><input inputMode="decimal" type="number" min="0" step="0.01" className={field} style={{...fieldStyle,paddingRight:52}} placeholder="0" value={price} onChange={e=>setPrice(e.target.value)} /><span className="absolute right-4 top-3.5 text-sm" style={{color:"var(--mut)"}}>zł</span></div></label>
+        {mode === "purchase" && <label className="block"><span className="mb-2 block text-sm font-semibold">Dostawa</span><select className={field} style={fieldStyle} value={delivery} onChange={e=>setDelivery(e.target.value as Delivery)}><option value="both">Wysyłka lub odbiór</option><option value="shipping">Tylko wysyłka</option><option value="pickup">Tylko odbiór osobisty</option></select></label>}
+        <Toggle label="Pozwól zarabiać na poleceniu" checked={referrals} onChange={setReferrals}/>
+        <div className="rounded-2xl p-4 text-sm" style={{ background: "rgba(122,184,154,.08)", border: "1px solid rgba(122,184,154,.2)", color: "var(--mut)" }}>
+          {mode === "purchase" ? "Po publikacji oferta będzie od razu widoczna w Market." : mode === "appointment" ? "Po zapisaniu ustawisz dostępne dni i godziny. Do tego czasu oferta nie będzie przyjmowała rezerwacji." : "Po zapisaniu ustawisz dostępne terminy i ewentualną kaucję. Do tego czasu wynajem nie będzie przyjmował rezerwacji."}
         </div>
+        <div className="flex gap-3"><button type="button" onClick={()=>setStep(2)} className="rounded-xl px-4 py-3 text-sm" style={{border:"1px solid var(--line)"}}>← Wstecz</button><button type="button" disabled={busy || uploading} onClick={publish} className="flex-1 rounded-2xl px-5 py-4 text-lg font-bold text-black disabled:opacity-50" style={{ background: "linear-gradient(135deg,#C8965A,#E8C896)" }}>{busy ? "Publikuję…" : copy.publishLabel}</button></div>
+      </section>}
 
-        <div className="grid gap-3 sm:grid-cols-2">
-          {mode !== "appointment" && <label><span className="mb-2 block text-sm font-semibold">Stan</span><select className={field} style={fieldStyle} value={condition} onChange={e=>setCondition(e.target.value as Condition)}><option value="new">Nowy</option><option value="very_good">Bardzo dobry</option><option value="good">Dobry</option><option value="used">Używany</option><option value="damaged">Uszkodzony / do naprawy</option></select></label>}
-          <label><span className="mb-2 block text-sm font-semibold">{copy.priceLabel}</span><div className="relative"><input inputMode="decimal" type="number" min="0" step="0.01" className={field} style={{...fieldStyle,paddingRight:52}} placeholder="0" value={price} onChange={e=>setPrice(e.target.value)} /><span className="absolute right-4 top-3.5 text-sm" style={{color:"var(--mut)"}}>zł</span></div></label>
+      {step === 4 && <section className="rounded-3xl p-8 text-center" style={{ background: "var(--glass)", border: "1px solid rgba(122,184,154,.3)" }}>
+        <div className="text-6xl">✅</div>
+        <h2 className="mt-4 text-3xl font-semibold">Oferta opublikowana</h2>
+        <p className="mx-auto mt-2 max-w-md text-sm leading-6" style={{color:"var(--mut)"}}>Gotowe. Oferta jest zapisana i możesz teraz ją zobaczyć, wrócić do swoich ofert albo dodać następną.</p>
+        <div className="mt-6 flex flex-wrap justify-center gap-3">
+          {successId && <Link to={`/oferta/${successId}`} className="rounded-xl px-5 py-3 font-semibold text-black" style={{background:"linear-gradient(135deg,#C8965A,#E8C896)"}}>Zobacz ofertę</Link>}
+          <Link to="/sprzedawca/oferty" className="rounded-xl px-5 py-3" style={{border:"1px solid var(--line)"}}>Moje oferty</Link>
+          <Link to="/sprzedawca/wystaw" className="rounded-xl px-5 py-3" style={{border:"1px solid var(--line)"}}>Dodaj kolejną</Link>
         </div>
-
-        <label><span className="mb-2 block text-sm font-semibold">Opis <span className="font-normal" style={{color:"var(--mut)"}}>(opcjonalnie)</span></span><textarea rows={5} className={field} style={fieldStyle} placeholder={mode === "appointment" ? "Opisz usługę, zakres i przygotowanie do wizyty…" : mode === "daily" ? "Opisz zasady wynajmu, wyposażenie i ważne informacje…" : "Napisz krótko, w jakim jest stanie i co warto wiedzieć…"} value={description} onChange={e=>setDescription(e.target.value)} /></label>
-
-        <div className="grid gap-3 sm:grid-cols-2">
-          {mode === "purchase" && <label><span className="mb-2 block text-sm font-semibold">Dostawa</span><select className={field} style={fieldStyle} value={delivery} onChange={e=>setDelivery(e.target.value as Delivery)}><option value="both">Wysyłka lub odbiór</option><option value="shipping">Tylko wysyłka</option><option value="pickup">Tylko odbiór osobisty</option></select></label>}
-          <div className={mode === "purchase" ? "pt-1 sm:pt-7" : ""}><Toggle label="Pozwól zarabiać na poleceniu" checked={referrals} onChange={setReferrals}/></div>
-        </div>
-
-        <div className="rounded-2xl p-4 text-xs leading-5" style={{ background: "rgba(122,184,154,.08)", border: "1px solid rgba(122,184,154,.2)", color: "var(--mut)" }}>
-          {mode === "purchase"
-            ? "Sprzedajesz jako osoba prywatna. Oferta ma stałą cenę, bez negocjacji, i jest dostępna przez „Kup teraz”."
-            : mode === "appointment"
-              ? "Po utworzeniu usługi ustawisz długość wizyty, godziny dostępności i kalendarz. Termin zostanie zablokowany podczas płatności."
-              : "Po utworzeniu wynajmu ustawisz dostępność, zasoby i kalendarz oraz opcjonalną kaucję dla auta lub sprzętu. Klient wybierze daty od–do, zobaczy czynsz za cały okres i od razu opłaci rezerwację."}
-        </div>
-
-        <button type="button" disabled={busy || uploading} onClick={publish} className="w-full rounded-2xl px-5 py-4 text-lg font-bold text-black disabled:opacity-50" style={{ background: "linear-gradient(135deg,#C8965A,#E8C896)" }}>{busy ? "Tworzę ofertę…" : copy.publishLabel}</button>
-      </section>
+      </section>}
     </div>
   </main>;
 }
