@@ -8,6 +8,7 @@ import {
   type SellerWallet,
 } from "../lib/api";
 import { setMode } from "../lib/mode";
+import { lookupNip } from "../lib/nip";
 
 import { zl } from "../lib/money";
 const dt = (s: string) => new Date(s).toLocaleString("pl-PL");
@@ -70,10 +71,9 @@ export default function Sprzedawca() {
               const clean = nip.replace(/[^0-9]/g, "");
               if (clean.length !== 10) return;
               try {
-                const r = await fetch(`https://ihehncaaokbwbdqdztna.supabase.co/functions/v1/nip-lookup?nip=${clean}`);
-                const j = await r.json();
-                if (j?.ok && j.name) { setLegalName(j.name); setMsg(`Firma z rejestru VAT: ${j.name}${j.address ? " · " + j.address : ""}`); }
-                else if (j?.error) setMsg(`NIP: ${j.error}`);
+                const j = await lookupNip(clean);
+                if (j.ok && j.name) { setLegalName(j.name); setMsg(`Firma z rejestru VAT: ${j.name}${j.address ? " · " + j.address : ""}`); }
+                else if (!j.ok) setMsg(`NIP: ${j.error}`);
               } catch { /* ignoruj — reczne wpisanie nadal mozliwe */ }
             }} />
           <label className="flex items-start gap-2 text-sm" style={{ color: "var(--mut)" }}>

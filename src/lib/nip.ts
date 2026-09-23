@@ -1,4 +1,4 @@
-// Dane firmy po NIP — edge fn `nip-lookup` (Biała Lista MF, rejestr VAT). Bez kluczy, publiczne dane rejestrowe.
+// Dane firmy po NIP — edge fn `nip-lookup` (Biała Lista MF, rejestr VAT). Źródło danych jest publiczne, ale endpoint wymaga aktywnej sesji Market.
 import { supabase } from "./supabase";
 
 export type NipLookup =
