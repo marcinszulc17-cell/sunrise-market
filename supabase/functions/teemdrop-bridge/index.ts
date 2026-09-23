@@ -82,11 +82,12 @@ async function pushOrder(row: any): Promise<{ ok: boolean; wooId?: number; err?:
 }
 
 Deno.serve(async (req) => {
-  if (BRIDGE_TOKEN && req.headers.get('x-bridge-token') !== BRIDGE_TOKEN) {
-    return new Response('unauthorized', { status: 401 });
-  }
+  const bridgeOk = Boolean(BRIDGE_TOKEN) && req.headers.get('x-bridge-token') === BRIDGE_TOKEN;
+  const { data: cronSecret } = await sb.from('internal_secrets').select('value').eq('key', 'cron_worker_secret').maybeSingle();
+  const cronOk = Boolean(cronSecret?.value) && req.headers.get('x-cron-secret') === cronSecret.value;
+  if (!bridgeOk && !cronOk) return new Response('unauthorized', { status: 401 });
 
-  // Read the queue before requiring Woo credentials. An idle cron tick must stay healthy.
+  // First inspect the queue. Missing Woo credentials should not turn an idle cron tick into a production 500.
   const { data: pending, error } = await sb
     .from('teemdrop_bridge_orders')
     .select('*')
