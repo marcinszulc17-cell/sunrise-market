@@ -137,7 +137,8 @@ export default function PrivateOfferWizard() {
     if (!(Number(price) > 0)) { setMsg("Podaj cenę większą od 0 zł."); setStep(3); return; }
     setBusy(true); setMsg(null);
     try {
-      const offerType = mode === "appointment" ? "service" : mode === "daily" ? `${rentalKind}_rental` : "product";
+      const privateCarSale = mode === "purchase" && Boolean((s2?.slug || chosen?.slug || "").startsWith("motoryzacja-samochody"));
+      const offerType = mode === "appointment" ? "service" : mode === "daily" ? `${rentalKind}_rental` : privateCarSale ? "car" : "product";
       const { data, error } = await supabase.rpc("create_offer_v2", {
         p_title: title.trim(),
         p_description: description.trim(),
@@ -149,7 +150,7 @@ export default function PrivateOfferWizard() {
         p_attributes: {
           seller_nature: "private",
           condition: mode === "appointment" ? null : condition,
-          delivery: mode === "purchase" ? delivery : null,
+          delivery: mode === "purchase" ? (privateCarSale ? "pickup" : delivery) : null,
           negotiable: false,
           purchase_mode: mode,
           offer_type: offerType,
