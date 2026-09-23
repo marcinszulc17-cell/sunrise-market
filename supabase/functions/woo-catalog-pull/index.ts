@@ -26,7 +26,10 @@ async function analyze(batch: { id: number; title: string; desc: string }[], cat
 }
 
 Deno.serve(async (req) => {
-  if (BRIDGE_TOKEN && req.headers.get('x-bridge-token') !== BRIDGE_TOKEN) return new Response('unauthorized', { status: 401 });
+  const bridgeOk = Boolean(BRIDGE_TOKEN) && req.headers.get('x-bridge-token') === BRIDGE_TOKEN;
+  const { data: cronSecret } = await sb.from('internal_secrets').select('value').eq('key', 'cron_worker_secret').maybeSingle();
+  const cronOk = Boolean(cronSecret?.value) && req.headers.get('x-cron-secret') === cronSecret.value;
+  if (!bridgeOk && !cronOk) return new Response('unauthorized', { status: 401 });
   if (!WOO || !CK || !CS) return new Response(JSON.stringify({ error: 'Brak konfiguracji WOO_*' }), { status: 500 });
   const body = await req.json().catch(() => ({})); const maxPages = Math.min(Number(body.max_pages ?? 20), 100);
   const { data: cats } = await sb.rpc('leaf_categories_for_ai');
