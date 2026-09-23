@@ -67,6 +67,30 @@ export default function PrivateProduct(){
       .finally(()=>setLoading(false));
   },[id]);
 
+  function prevImage(){ setActive((i)=>imgs.length?((i-1+imgs.length)%imgs.length):0); }
+  function nextImage(){ setActive((i)=>imgs.length?((i+1)%imgs.length):0); }
+
+  useEffect(()=>{
+    if(!lightbox) return;
+    const onKey=(e:KeyboardEvent)=>{ if(e.key==="Escape") setLightbox(false); if(e.key==="ArrowLeft") prevImage(); if(e.key==="ArrowRight") nextImage(); };
+    document.body.style.overflow="hidden";
+    window.addEventListener("keydown",onKey);
+    return ()=>{ document.body.style.overflow=""; window.removeEventListener("keydown",onKey); };
+  },[lightbox,imgs.length]);
+
+  async function contactSeller(){
+    if(!offer || contactBusy) return;
+    setContactBusy(true); setErr(null);
+    try{
+      const { supabase } = await import("../lib/supabase");
+      const { data:{ session } } = await supabase.auth.getSession();
+      if(!session){ window.location.href=`/login?next=${encodeURIComponent(window.location.pathname)}`; return; }
+      const conv=await startConversation(offer.offer_id,"Dzień dobry, interesuje mnie ta oferta. Czy jest nadal aktualna?");
+      window.location.href=`/wiadomosci?w=${encodeURIComponent(conv)}`;
+    }catch(e){ setErr((e as Error).message || "Nie udało się rozpocząć rozmowy."); }
+    finally{ setContactBusy(false); }
+  }
+
   function buyNow(){
     if(!offer || offer.stock<=0) return;
     addToCart({offer_id:offer.offer_id,title:offer.title,price:offer.price_gross});
