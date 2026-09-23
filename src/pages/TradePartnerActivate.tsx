@@ -47,7 +47,7 @@ export default function TradePartnerActivate() {
           const { data, error } = await supabase.functions.invoke("trade-partner-renew", { body: { action: "verify", session_id: sessionId } });
           if (error) throw error;
           if (!data?.ok) throw new Error(data?.error || "Nie udało się potwierdzić płatności");
-          setMsg("Odnowienie opłacone. Partner Handlowy jest aktywny przez kolejny rok ✅");
+          setMsg("Odnowienie opłacone. Konto Sprzedawcy jest aktywne przez kolejny rok ✅");
           await loadStatus();
           window.history.replaceState({}, "", "/sprzedawca/partner");
         } else if (renewal === "cancel") {
@@ -55,7 +55,7 @@ export default function TradePartnerActivate() {
           window.history.replaceState({}, "", "/sprzedawca/partner");
         }
       } catch (e) {
-        setMsg((e as Error).message || "Nie udało się wczytać statusu Partnera Handlowego");
+        setMsg((e as Error).message || "Nie udało się wczytać statusu Sprzedawcy");
       } finally {
         setLoading(false);
       }
@@ -65,7 +65,7 @@ export default function TradePartnerActivate() {
 
   async function activate() {
     if (!accept) {
-      setMsg("Zaakceptuj warunki Partnera Handlowego i regulamin Sunrise Market.");
+      setMsg("Zaakceptuj warunki Sprzedawcy i regulamin Sunrise Market.");
       return;
     }
     setBusy(true);
@@ -79,7 +79,7 @@ export default function TradePartnerActivate() {
       await loadStatus();
       setMsg("Konto Sprzedawcy aktywne. Pierwsze 12 miesięcy bez opłaty ✅");
     } catch (e) {
-      setMsg((e as Error).message || "Nie udało się aktywować Partnera Handlowego");
+      setMsg((e as Error).message || "Nie udało się aktywować konta Sprzedawcy");
     } finally {
       setBusy(false);
     }
@@ -156,7 +156,7 @@ export default function TradePartnerActivate() {
         ) : status?.seller_id ? (
           <div className="mt-6 rounded-2xl p-5" style={{ background: "rgba(34,197,94,.07)", border: "1px solid rgba(34,197,94,.22)" }}>
             <div className="font-semibold">Konto profesjonalnego sprzedawcy jest aktywne</div>
-            <p className="mt-1 text-sm" style={{ color: "var(--mut)" }}>Ten profil nie korzysta z prywatnego planu Partnera Handlowego.</p>
+            <p className="mt-1 text-sm" style={{ color: "var(--mut)" }}>Ten profil korzysta z firmowego planu Partnera Handlowego.</p>
             <Link to="/sprzedawca" className="mt-4 inline-flex underline" style={{ color: "var(--gold)" }}>Przejdź do centrum sprzedawcy →</Link>
           </div>
         ) : <>
