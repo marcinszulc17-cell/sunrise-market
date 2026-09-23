@@ -701,8 +701,8 @@ export async function childCategories(parentId: string) {
   return data ?? [];
 }
 
-export async function askSuri(message: string, sessionId?: string, userId?: string) {
-  const { data, error } = await supabase.functions.invoke("suri-commerce", { body: { message, session_id: sessionId, user_id: userId } });
+export async function askSuri(message: string, sessionId?: string) {
+  const { data, error } = await supabase.functions.invoke("suri-commerce", { body: { message, session_id: sessionId } });
   if (error) throw error;
   return data;
 }
