@@ -150,13 +150,19 @@ export default function AdvancedSearchUniversal(){
     if(loc.trim()) sp.set("lok",loc.trim()); else sp.delete("lok");
     sp.delete("zapisane");
     if(sp.toString()!==before) window.history.replaceState(window.history.state,"",`${window.location.pathname}${sp.toString()?`?${sp}`:""}`);
-    // Nowe kryteria zaczynają od pierwszej porcji. Gdy porcja faktycznie się zmienia,
-    // szukanie uruchomi efekt [limit] — inaczej poszłyby dwa zapytania naraz.
-    if(limit!==PORCJA) setLimit(PORCJA); else setAutoRun(true);
+    setLimit(PORCJA); // nowe kryteria zaczynają od pierwszej porcji
+    setAutoRun(true);
   },[selected,mode,sort]); // eslint-disable-line react-hooks/exhaustive-deps
-  useEffect(()=>{ if(run>0){ fromUrl.current=false; search(); } },[run]);
-  const pierwszyLimit=useRef(true);
-  useEffect(()=>{ if(pierwszyLimit.current){ pierwszyLimit.current=false; return; } setAutoRun(true); },[limit]); // eslint-disable-line react-hooks/exhaustive-deps // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(()=>{ if(run>0){ fromUrl.current=false; search(); } },[run]); // eslint-disable-line react-hooks/exhaustive-deps
+  // Szukamy ponownie TYLKO wtedy, gdy porcja urosła, czyli po „Pokaż więcej”. Zjazd
+  // z powrotem do PORCJA towarzyszy zmianie kryteriów, która i tak już szuka — bez tego
+  // warunku każda zmiana kategorii wysyłałaby dwa zapytania naraz.
+  const poprzedniaPorcja=useRef(PORCJA);
+  useEffect(()=>{
+    const wzrosla=limit>poprzedniaPorcja.current;
+    poprzedniaPorcja.current=limit;
+    if(wzrosla) setAutoRun(true);
+  },[limit]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const selectedCategory=useMemo(()=>categories.find(c=>c.slug===selected)||null,[categories,selected]);
   const roots=useMemo(()=>categories.filter(c=>!c.parent_id),[categories]);
