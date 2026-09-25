@@ -35,3 +35,11 @@ test("nigdzie nie nazywamy tego dotacją ani dofinansowaniem", () => {
   }
   assert.match(modul, /rabatu lub zwrotu na portfel MySunrise/);
 });
+
+// Katalog bez filtrów szedł przez stare search_offers, które NIE zwraca `attributes` —
+// karta nie miała czym rozpoznać oznaczenia i plakietka nie pojawiała się nigdzie poza
+// stroną oferty, mimo że kod karty był poprawny.
+test("katalog pobiera oferty razem z atrybutami", () => {
+  assert.match(sklep, /setOffers\(await searchOffersWithAttributes\(query, slug, opts\) as Offer\[\]\)/);
+  assert.doesNotMatch(sklep, /setOffers\(await searchOffers\(query, slug, opts\)/);
+});

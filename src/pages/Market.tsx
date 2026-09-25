@@ -328,7 +328,13 @@ export default function Market() {
       if (hasAttributeFilters) {
         const candidates = await searchOffersWithAttributes(query, slug, { ...opts, limit: Math.max(100, lim) }) as Offer[];
         setOffers(candidates.filter((offer) => matchesAttributeFilters(offer, effectiveAttributes)).slice(0, lim));
-      } else setOffers(await searchOffers(query, slug, opts) as Offer[]);
+      } else {
+        // Zawsze v2: stare search_offers nie zwraca `attributes`, wiec karta katalogu nie miala
+        // czym rozpoznac np. oznaczenia Czysta Polska Plus i plakietka nie pojawiala sie nigdzie
+        // poza strona oferty (zgloszenie wlasciciela 2026-09-25). Parametry sa te same,
+        // a v2 zwraca nadzbior kolumn i spycha produkty testowe na koniec.
+        setOffers(await searchOffersWithAttributes(query, slug, opts) as Offer[]);
+      }
     }
     catch (e) { setErr(String((e as Error).message ?? e)); }
     finally { setLoading(false); setMore(false); }
