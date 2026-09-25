@@ -279,11 +279,17 @@ pierwszeństwo przy każdej zmianie kodu. Nie wolno ich naruszać ani obchodzić
   Pilnuje tego `tests/czysta-polska-plus-widoczna.test.mjs`.
 - Wycofanie produktu z programu musi **jawnie kasować** `attributes.cpp` — sync scala
   atrybuty, więc sam brak klucza zostawiłby starą plakietkę na zawsze.
-- **Pułapka przy wdrażaniu:** niezapięte `jsr:@supabase/supabase-js@2` wskazuje od
-  2026-09-25 na 2.117.2, które zależy od `@supabase/postgrest-js` 2.117.2 — a ta paczka
-  nigdy nie trafiła do npm (latest 2.117.1). Bundler Supabase wywala się wtedy na
-  „Could not find npm package". `mysunrise-sync` ma z tego powodu wersję zapiętą na
-  `@2.117.1`. **Każda inna funkcja brzegowa uderzy w to samo przy najbliższym wdrożeniu.**
+- **Wyścig przy publikacji zależności — nie pomyl go z trwałą awarią.** 2026-09-25 o 10:09
+  wdrożenie stanęło na „Could not find npm package '@supabase/postgrest-js' matching
+  '2.117.2'". Wyglądało to na paczkę, której nie ma, i tak to początkowo zdiagnozowano —
+  błędnie. `postgrest-js` 2.117.2 został opublikowany na npm o **10:10:11**, czyli w trakcie
+  tych prób: JSR miał już `supabase-js@2.117.2`, a bundler Supabase jeszcze nie widział jego
+  zależności. Po kilkunastu minutach niezapięte `@2` wdraża się normalnie i tak zostało.
+  **Wniosek na przyszłość: przy takim błędzie najpierw sprawdź `time` publikacji w rejestrze
+  npm, a nie `dist-tags.latest`** (tag propaguje się z opóźnieniem), i ponów wdrożenie za
+  kwadrans, zamiast zapinać wersję. Uwaga na pułapkę przy sprawdzaniu: `sorted()` po
+  numerach wersji sortuje je jak tekst, więc „2.117.2" wypada przed „3.0.0-next.5" i znika
+  z końca listy — trzeba pytać wprost o konkretny numer.
 
 ## 3. Zasady sprzedawców (decyzja właściciela 2026-09-05: dwa poziomy)
 

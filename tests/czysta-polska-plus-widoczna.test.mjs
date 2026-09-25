@@ -43,3 +43,11 @@ test("katalog pobiera oferty razem z atrybutami", () => {
   assert.match(sklep, /setOffers\(await searchOffersWithAttributes\(query, slug, opts\) as Offer\[\]\)/);
   assert.doesNotMatch(sklep, /setOffers\(await searchOffers\(query, slug, opts\)/);
 });
+
+// Wersja supabase-js zostaje NIEZAPIĘTA. Chwilowy błąd bundlera z 2026-09-25 wynikał
+// z wyścigu przy publikacji postgrest-js 2.117.2 na npm, a nie z braku paczki — zapinanie
+// wersji zostawiłoby tę jedną funkcję w tyle za resztą bez powodu.
+test("sync nie ma zapiętej wersji supabase-js", () => {
+  assert.match(sync, /jsr:@supabase\/supabase-js@2"/);
+  assert.doesNotMatch(sync, /supabase-js@2\.\d+\.\d+/);
+});
