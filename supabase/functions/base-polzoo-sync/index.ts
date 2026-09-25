@@ -286,7 +286,8 @@ function rozpoznajPolzoo(haystack: string, pewne: boolean): string | null {
   const cat = /(kot|koci|kuwet|drapak)/.test(s);
   // „Szczeniąt" i „kociąt" muszą liczyć się jak pies i kot — bez tego karma dla szczeniąt
   // przelatywała do zwierząt gospodarskich przez słowo „Drób" w nazwie smaku.
-  const dog = /(pies|psa|psu|psy|psi|szczeni|smycz|obroż|szelk)/.test(s);
+  // Krótkie formy w granicach słowa — bez tego „psu" łapałoby angielskie „capsules".
+  const dog = /(pies|psa|\bpsu\b|\bpsy\b|psi|szczeni|smycz|obroż|szelk)/.test(s);
   // Trutki i preparaty na szkodniki to nie akcesoria dla zwierząt domowych — „granulat na
   // myszy i szczury" trafiał do Gryzoni, czyli do działu z klatkami dla chomików.
   if (/trutk|deratyz|granulat na (mysz|szczur)|na szkodnik|owadob|insektob|przeciw komar.*dom|gryzoniob/.test(s)) {
