@@ -1,7 +1,7 @@
 // Ekran startowy mobile / app.sunrisemarket.pl (decyzja właściciela 2026-09-05: „premium marketplace”, spójny z desktopowym Home.tsx,
 // ale nie kopia 1:1). Pokazywany na telefonie (≤ 640 px) i w aplikacji; duży ekran sunrisemarket.pl ma Home.tsx.
 // Tylko istniejące dane i trasy: wyszukiwarka → /szukaj?q=, działy (SECTIONS), polecane (useHomeFeed: „Dla Ciebie” dla
-// zalogowanych, inaczej „Polecane ogłoszenia”), popularne kategorie, rezerwacje (/szukaj?tryb=appointment, /rezerwacje),
+// zalogowanych, inaczej „Polecane ogłoszenia”), popularne kategorie, rezerwacje (/szukaj?tryb=rezerwacje, /rezerwacje),
 // cashback (stawka z public_market_config), wejście dla sprzedających (/sprzedawca/wystaw).
 import SearchBox from "../components/SearchBox";
 import { useState } from "react";
@@ -81,7 +81,7 @@ export default function Start() {
       <section className="mt-6 rounded-2xl p-4" style={CARD} aria-labelledby="rez-h">
         <div className="flex items-center gap-3"><IconTile name="calendar" size={44} /><div className="min-w-0"><h2 id="rez-h" className="font-semibold">Rezerwacje</h2><p className="text-xs" style={{ color: "var(--mut)" }}>Umów usługę i zapłać od razu — termin trafia do Twojego kalendarza w aplikacji.</p></div></div>
         <div className="mt-3 grid grid-cols-2 gap-2">
-          <Link to="/szukaj?tryb=appointment" className="grid min-h-[44px] place-items-center rounded-xl px-3 text-sm font-semibold" style={{ background: GOLD_GRAD, color: "#101012" }}>Znajdź termin</Link>
+          <Link to="/szukaj?tryb=rezerwacje" className="grid min-h-[44px] place-items-center rounded-xl px-3 text-sm font-semibold" style={{ background: GOLD_GRAD, color: "#101012" }}>Znajdź termin</Link>
           <Link to="/rezerwacje" className="grid min-h-[44px] place-items-center rounded-xl px-3 text-sm font-semibold" style={{ background: "var(--header)", border: "1px solid var(--line)" }}>Moje rezerwacje</Link>
         </div>
       </section>

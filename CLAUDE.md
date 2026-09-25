@@ -180,6 +180,46 @@ pierwszeństwo przy każdej zmianie kodu. Nie wolno ich naruszać ani obchodzić
 - Dopóki liczniki się nie załadują, pokazujemy wszystko — lepiej to niż migający pasek.
 - **Nie „naprawiaj" tego przenosząc ofert w bazie bez ruszenia `mysunrise-sync`** — wróci.
 
+## 2h. Puste działy, licznik „Rezerwacje" i droga noclegu (zgłoszenie właściciela 2026-09-25)
+
+- Objaw: „kategorie pomieszane, pokazuje że w noclegach jest oferta, a jej nie ma".
+- **Licznik i link muszą liczyć to samo.** `liczby_dzialow()` dla klucza `rezerwacje` sumuje
+  `tryb in ('appointment','daily')`, a kafel prowadził na `/szukaj?tryb=appointment`. Jedyna
+  rezerwowalna oferta w Market to wynajem auta (`daily`), więc kafel mówił „1 oferta", a lista
+  była pusta. Jest tryb **`?tryb=rezerwacje`** — `AdvancedSearchUniversal` pyta wtedy bazę dwa
+  razy (`REZERWACJE_MODES`) i scala wyniki. `search_offers_v2` porównuje `purchase_mode`
+  dokładnie, więc nie da się tego załatwić jednym zapytaniem bez migracji.
+- **Wyniki wyszukiwarki mają porcje.** `p_limit` było na sztywno 100 przy 700 ofertach i
+  lista po prostu się urywała. Teraz `PORCJA` + „Pokaż więcej ofert".
+- **Pusty dział nie może renderować pustki.** `CategoryPortal` (Motoryzacja, Nieruchomości)
+  chował sekcje przez `if(!rows.length) return null`, więc „Pokaż oferty" wyglądało na zepsuty
+  przycisk. Jest `PustyWynik` z CTA. Kafle na telefonie (`Start.tsx`) zachowują się teraz jak
+  na dużym ekranie: dział z zerem prowadzi do `/sprzedawca/wystaw`, a nie do pustej listy.
+- **Nocleg ma własną drogę wystawienia.** `search_stays` filtruje `c.slug like 'noclegi%'`,
+  a `SellerBookingSetup` włącza ustawienia obiektu po tym samym prefiksie — kreator, który
+  nie trafia w tę gałąź, tworzy nocleg niewidoczny w `/noclegi`. Stąd `typ=nocleg`
+  w `DedicatedOfferWizard` (root `noclegi`, wyłącznie `daily`) i kafel „Nocleg"
+  w `PrivateOfferWizard` (`RENTAL_KINDS`). „Wystaw swój obiekt" prowadzi na
+  `/sprzedawca/wystaw?typ=nocleg`, a nie na formularz samochodu.
+- **Kreator wymaga kategorii doprowadzonej do liścia i minimum jednego zdjęcia** — we
+  wszystkich trzech kreatorach. Wcześniej tylko prywatny pilnował zdjęcia, a dział z dziećmi
+  dało się zapisać, więc oferta wisiała piętro wyżej, niż klient jej szuka.
+- **Awaria `configureBookingOffer` nie jest awarią publikacji.** Oferta powstaje wcześniej;
+  komunikat „nie udało się opublikować" kazał sprzedawcy kliknąć ponownie i robił duplikat.
+  Teraz `try/catch` i przejście do kalendarza.
+- **Klasyfikator dostawców czyta najpierw NAZWĘ, potem dział dostawcy.** Sklejka
+  „kategoria + nazwa" wrzucała pokarm z działu „Filtry akwarystyczne" do Filtrów, karmę dla
+  szczeniąt do Zwierząt gospodarskich (słowo „Drób" w nazwie smaku), ściółkę dla gryzoni do
+  Terrarystyki, a części drukarki do Papieru. Pierwsza próba idzie na samej nazwie i pomija
+  reguły ogólne (`pewne = true`: bez „klatka", „miska", „kot", „laptop"), bo o gatunku lepiej
+  wie dział dostawcy; druga próba dostaje sklejkę. Trutki na gryzonie idą do `dom-i-ogrod-ogrod`,
+  nie do Gryzoni. Sprawdzone na 556 zaimportowanych ofertach: 545 bez zmian, 11 poprawionych.
+  Test `tests/supplier-category-mapping.test.mjs` **uruchamia** klasyfikator na prawdziwych
+  nazwach — nie sprawdza wyrażeń regularnych po wyglądzie.
+- **Pułapka:** `market.create_offer_v2` liczy „gałąź ogłoszeń" z **rodzica**, nie z korzenia
+  (`coalesce(pc.slug, c.slug)`). Dziś `ogloszenia-lokalne` ma tylko dwa poziomy, więc to nie
+  boli — ale pierwsza podkategoria trzeciego poziomu straci darmową publikację po cichu.
+
 ## 3. Zasady sprzedawców (decyzja właściciela 2026-09-05: dwa poziomy)
 
 - **Sprzedawca** (`sellers.seller_type = 'private_partner'`): uproszczone centrum,

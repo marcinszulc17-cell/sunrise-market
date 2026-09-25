@@ -270,24 +270,50 @@ function nicePrice(value: number): number {
   return Math.max(0.01, rounded - 0.01);
 }
 
-function classifyPolzoo(haystack: string): string {
+// Nazwa produktu rozstrzyga PRZED kategorią dostawcy. Wcześniej klasyfikator dostawał
+// sklejkę „kategoria + nazwa", więc pokarm z działu „Oczka wodne – filtry" lądował w Filtrach,
+// a ściółka dla gryzoni z działu terrarystycznego w Terrarystyce (zgłoszenie 2026-09-25).
+// Kategoria dostawcy zostaje jako druga próba — dla produktów, których nazwa nic nie mówi.
+function classifyPolzoo(kategoria: string, nazwa: string): string {
+  return rozpoznajPolzoo(nazwa, true) ?? rozpoznajPolzoo(`${kategoria} ${nazwa}`, false) ?? "zwierzeta";
+}
+
+/** `pewne` = pierwsza próba, na samej nazwie: reguły ogólne („klatka", „miska", „kot")
+ *  są wtedy wyłączone, bo o gatunku lepiej wie dział dostawcy. Rozstrzygają tylko reguły,
+ *  które wprost nazywają produkt (karma dla psa, filtr, pokarm, trutka). */
+function rozpoznajPolzoo(haystack: string, pewne: boolean): string | null {
   const s = haystack.toLocaleLowerCase("pl-PL");
   const cat = /(kot|koci|kuwet|drapak)/.test(s);
-  const dog = /(pies|psa|psi|smycz|obroż|szelk)/.test(s);
+  // „Szczeniąt" i „kociąt" muszą liczyć się jak pies i kot — bez tego karma dla szczeniąt
+  // przelatywała do zwierząt gospodarskich przez słowo „Drób" w nazwie smaku.
+  const dog = /(pies|psa|psu|psy|psi|szczeni|smycz|obroż|szelk)/.test(s);
+  // Trutki i preparaty na szkodniki to nie akcesoria dla zwierząt domowych — „granulat na
+  // myszy i szczury" trafiał do Gryzoni, czyli do działu z klatkami dla chomików.
+  if (/trutk|deratyz|granulat na (mysz|szczur)|na szkodnik|owadob|insektob|przeciw komar.*dom|gryzoniob/.test(s)) {
+    return "dom-i-ogrod-ogrod";
+  }
   // Zwierzeta gospodarskie i hodowla — sprawdzamy PRZED karma, bo "Purina Kon rekreacyjny 25kg"
   // to pasza dla konia, a nie karma dla psa (kontrola partii PolZoo 2026-09-08).
-  if (/drób|drobiu|kur[ay]?\b|niosk|brojler|koń|konia|koni\b|krow|bydł|owc|trzod|świń|prosiąt|cielą|hodowl|pastuch|inkubator|promiennik|rozsiew|siano|słom/.test(s)) {
+  // Ale NIE wtedy, gdy nazwa wprost mówi „dla psa" albo „dla kota" — nazwy smaków (drób,
+  // kurczak, wołowina) same w sobie nic nie znaczą.
+  if (!dog && !cat && /drób|drobiu|kur[ay]?\b|niosk|brojler|koń|konia|koni\b|krow|bydł|owc|trzod|świń|prosiąt|cielą|hodowl|pastuch|inkubator|promiennik|rozsiew|siano|słom/.test(s)) {
     return "zwierzeta-gospodarskie";
   }
-  if (/akwari|ryb|filtr.*wod|pond|oczek wodn|aquael|tropical\b/.test(s)) {
+  // „akwari" nie łapało słowa „akwarystyka" (akwary-, nie akwari-), więc cały dział dostawcy
+  // przelatywał obok tej gałęzi. „akwar" łapie akwarium i akwarystykę.
+  if (/akwar|ryb|filtr.*wod|pond|oczek wodn|aquael|tropical\b|eheim|juwel/.test(s)) {
     if (/podłoże|soil|dekor|roślin|kamie|żwir/.test(s)) return "zwierzeta-akwarystyka-dekoracje";
-    if (/filtr/.test(s)) return "zwierzeta-akwarystyka-filtry";
+    // Pokarm przed filtrem: „Pond Sticks" to jedzenie, nawet jeśli dostawca trzyma je
+    // w dziale o nazwie „filtry".
     if (/pokarm|karma|sticks|pellet|flake|granul|soft line/.test(s)) return "zwierzeta-akwarystyka-pokarm";
-    return "zwierzeta-akwarystyka";
+    if (/filtr|wkład gąbkow|wkład filtracyjn/.test(s)) return "zwierzeta-akwarystyka-filtry";
+    return pewne ? null : "zwierzeta-akwarystyka";
   }
-  if (/terrari|gad|reptil/.test(s)) return "zwierzeta-inne-zwierzeta-terrarystyka";
+  // Gryzonie i ptaki przed terrarystyką: „podściółka dla gryzoni" i „poidło dla ptaków"
+  // bywają u dostawcy w dziale terrarystycznym.
   if (/gryzo|chomik|królik|mysz|szczur|śwink.*morsk/.test(s)) return "zwierzeta-inne-zwierzeta-gryzonie";
   if (/ptak|papug|kanar/.test(s)) return "zwierzeta-inne-zwierzeta-ptaki";
+  if (/terrari|gad|reptil/.test(s)) return "zwierzeta-inne-zwierzeta-terrarystyka";
   // Pielegnacja i zdrowie to duzy kawalek katalogu PolZoo (suplementy, preparaty weterynaryjne,
   // kosmetyki) — bez tych regul ladowaly hurtem w korzeniu "Zwierzeta" (kontrola partii 2026-09-08).
   if (/szampon|odżywk|szczotk|grzebie|obcinacz|trymer|strzyżark|chusteczk|wipes|pielęgnac|dezodor|perfum|zgrzebł/.test(s)) {
@@ -306,34 +332,45 @@ function classifyPolzoo(haystack: string): string {
   if (dog && /legow|posłan|mata/.test(s)) return "zwierzeta-pies-poslania";
   if (dog && /higien|szampon|pielęgn/.test(s)) return "zwierzeta-pies-higiena";
   if (/gryzak|kong|piszcz|aport|frisbee|zabawk/.test(s)) return cat ? "zwierzeta-kot-zabawki" : "zwierzeta-pies-zabawki";
-  if (/transporter|torba transport|klatk|kaganiec|buda|kojec|miska|poidł|karmnik|worki na odchody|siatka ochronn|lodówk|mata\b|sofa|legowisk|fontann|pet fountain|filtry wymienne/.test(s)) {
+  if (!pewne && /transporter|torba transport|klatk|kaganiec|buda|kojec|miska|poidł|karmnik|worki na odchody|siatka ochronn|lodówk|mata\b|sofa|legowisk|fontann|pet fountain|filtry wymienne/.test(s)) {
     return "zwierzeta-akcesoria";
   }
-  if (cat) return "zwierzeta-kot";
-  if (dog) return "zwierzeta-pies";
-  return "zwierzeta";
+  if (!pewne && cat) return "zwierzeta-kot";
+  if (!pewne && dog) return "zwierzeta-pies";
+  return null;
 }
 
-function classifyEuroshop(haystack: string): string {
+function classifyEuroshop(kategoria: string, nazwa: string): string {
+  return rozpoznajEuroshop(nazwa) ?? rozpoznajEuroshop(`${kategoria} ${nazwa}`) ?? "supermarket-chemia-czystosc";
+}
+
+function rozpoznajEuroshop(haystack: string): string | null {
+  // Euroshop to jeden dział chemii — nazwy są opisowe, więc nie ma tu reguł „gatunkowych".
   const s = haystack.toLocaleLowerCase("pl-PL");
   if (/folia alumini|jednoraz|papier śniadani|woreczk/.test(s)) return "supermarket-artykuly-domowe-jednorazowe";
   if (/prani|wasch|płuk|pluk|weichspül|softener|lenor|gama|zagniece|crease|felce azzurra|kuschelweich/.test(s)) return "supermarket-chemia-pranie";
   if (/dove|palmolive|żel pod prysznic|zel pod prysznic|balsam|kosmet|ciał|cial|szampon|mydł|mydl/.test(s)) return "supermarket-chemia-kosmetyki";
   if (/naczyn|zmywan|spül|spul/.test(s)) return "supermarket-chemia-zmywanie";
-  return "supermarket-chemia-czystosc";
+  if (/czyst|clean|reiniger|płyn do|proszek/.test(s)) return "supermarket-chemia-czystosc";
+  return null;
 }
 
 /** EET Polska to dystrybutor IT (sieci, komponenty, peryferia, biuro) — nie chemia. */
-function classifyEet(haystack: string): string {
+function classifyEet(kategoria: string, nazwa: string): string {
+  return rozpoznajEet(nazwa, true) ?? rozpoznajEet(`${kategoria} ${nazwa}`, false) ?? "komputery-i-biuro";
+}
+
+function rozpoznajEet(haystack: string, pewne: boolean): string | null {
   const s = haystack.toLocaleLowerCase("pl-PL");
   if (/toner|tusz|kartrid|b\u0119ben|drum|ribbon|photoconduct|cartridge/.test(s)) return "komputery-i-biuro-biuro-tonery";
   if (/niszczark/.test(s)) return "komputery-i-biuro-biuro-niszczarki";
-  if (/papier/.test(s)) return "komputery-i-biuro-biuro-papier";
+  // Czesci eksploatacyjne do drukarek PRZED papierem: „zespol rolki pobierania papieru"
+  // i „zestaw opon do podawania papieru" to serwis drukarki, a nie ryza papieru.
+  if (/fuser|utrwalacz|folia utrwalaj|zestaw rolek|rolk[ai]|opon[ay] do|maintenance kit|transfer belt|pas transfer|pobierania papieru|podawania papieru/.test(s)) return "komputery-i-biuro-peryferia-drukarki";
+  if (/papier ksero|papier do druk|papier fotograficzn|ryza|etykiet|papier termiczn/.test(s)) return "komputery-i-biuro-biuro-papier";
   if (/switch|prze\u0142\u0105cznik sieciow/.test(s)) return "komputery-i-biuro-sieci-switche";
   if (/router|access point|punkt dost\u0119pow/.test(s)) return "komputery-i-biuro-sieci-routery";
   if (/karta sieciow|nic |ethernet|gigabit network|wi-?fi adapter/.test(s)) return "komputery-i-biuro-sieci-karty-sieciowe";
-  // Czesci eksploatacyjne do drukarek to nie tonery — maja wlasne miejsce przy drukarkach.
-  if (/fuser|utrwalacz|folia utrwalaj|zestaw rolek|rolk[ai]|maintenance kit|transfer belt|pas transfer/.test(s)) return "komputery-i-biuro-peryferia-drukarki";
   if (/\u015bwiat\u0142ow|patchcord|patch cord|kabel|przew\u00f3d|hdmi|displayport|usb-c|usb |rj45|skr\u0119tk/.test(s)) return "komputery-i-biuro-sieci-kable";
   if (/dysk|ssd|hdd|nvme/.test(s)) return "komputery-i-biuro-komponenty-dyski-ssd";
   if (/pami\u0119\u0107|ram |ddr[2-5]|sodimm/.test(s)) return "komputery-i-biuro-komponenty-pamiec-ram";
@@ -354,15 +391,15 @@ function classifyEet(haystack: string): string {
   if (/\bide\b|\bhdd\b|dysk twardy|\bsas\b.*\bgb\b/.test(s)) return "komputery-i-biuro-komponenty-dyski-ssd";
   if (/stojak|stand|podstawk|filtr prywatyz|privacy filter|presenter|wska\u017anik prezent/.test(s)) return "komputery-i-biuro-peryferia";
   if (/narz\u0119dzi|tools|soldering|hot air|\u015brubokr\u0119t|iscrews|p\u0119seta|ta\u015bma|tape|project mat/.test(s)) return "komputery-i-biuro-komponenty";
-  if (/ramka|kiesze|tacka|tray|obudow|adapter|z\u0142\u0105cz|listwa|mocowanie|uchwyt/.test(s)) return "komputery-i-biuro-komponenty";
-  if (/laptop|notebook/.test(s)) return "komputery-i-biuro";
-  return "komputery-i-biuro";
+  if (!pewne && /ramka|kiesze|tacka|tray|obudow|adapter|z\u0142\u0105cz|listwa|mocowanie|uchwyt/.test(s)) return "komputery-i-biuro-komponenty";
+  if (!pewne && /laptop|notebook/.test(s)) return "komputery-i-biuro";
+  return null;
 }
 
-function classifySlug(supplier: SupplierKey, haystack: string): string {
-  if (supplier === "polzoo") return classifyPolzoo(haystack);
-  if (supplier === "eet") return classifyEet(haystack);
-  return classifyEuroshop(haystack);
+function classifySlug(supplier: SupplierKey, kategoria: string, nazwa: string): string {
+  if (supplier === "polzoo") return classifyPolzoo(kategoria, nazwa);
+  if (supplier === "eet") return classifyEet(kategoria, nazwa);
+  return classifyEuroshop(kategoria, nazwa);
 }
 
 function pickInventory(inventories: any[], requested: string): any | null {
@@ -542,7 +579,7 @@ Deno.serve(async (req: Request) => {
         rows.push({
           id, title, base_category: baseCategory, supplier_price_gross_pln: supplierPrice, stock,
           images: urls.length, sku: p.sku ?? null, ean: p.ean ?? null,
-          suggested_category: classifySlug(supplier.key, `${baseCategory} ${title}`),
+          suggested_category: classifySlug(supplier.key, baseCategory, title),
         });
       }
       const usable = rows.filter((r) => r.title && r.supplier_price_gross_pln > 0 && r.stock > 0 && r.images > 0);
@@ -607,7 +644,7 @@ Deno.serve(async (req: Request) => {
           const belowMinMargin = netMarginPct < requiredMargin;
           const baseCategory = baseCategoryNames[String(p.category_id)] ?? "";
           const description = buildDescription(rawDescription, title, p, baseCategory);
-          const slug = classifySlug(supplier.key, `${baseCategory} ${title}`);
+          const slug = classifySlug(supplier.key, baseCategory, title);
           const categoryId = categoryIds[slug] ?? categoryIds[supplier.fallbackCategory];
           const existingOfferId = existingOfferIdEarly;
           const attrs = {

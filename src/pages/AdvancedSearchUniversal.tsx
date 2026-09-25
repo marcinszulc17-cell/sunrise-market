@@ -150,8 +150,9 @@ export default function AdvancedSearchUniversal(){
     if(loc.trim()) sp.set("lok",loc.trim()); else sp.delete("lok");
     sp.delete("zapisane");
     if(sp.toString()!==before) window.history.replaceState(window.history.state,"",`${window.location.pathname}${sp.toString()?`?${sp}`:""}`);
-    setAutoRun(true);
-    setLimit(PORCJA);
+    // Nowe kryteria zaczynają od pierwszej porcji. Gdy porcja faktycznie się zmienia,
+    // szukanie uruchomi efekt [limit] — inaczej poszłyby dwa zapytania naraz.
+    if(limit!==PORCJA) setLimit(PORCJA); else setAutoRun(true);
   },[selected,mode,sort]); // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(()=>{ if(run>0){ fromUrl.current=false; search(); } },[run]);
   const pierwszyLimit=useRef(true);
