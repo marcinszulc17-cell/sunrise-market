@@ -5,7 +5,7 @@ import { cena, zl, pkt } from "../lib/money";
 import { getMarketConfig, cashbackFor } from "../lib/marketConfig";
 import { subscriptionInfo } from "../lib/subscription";
 import { getRecent } from "../lib/recent";
-import { searchOffers, searchOffersWithAttributes, homePromoted, categoryCounts, recommendedOffers, sponsoredOffers, toggleWatch, watchedIds, myWatchlist, bannersFor, bannerView, bannerClick } from "../lib/api";
+import { searchOffers, searchOffersWithAttributes, homePromoted, categoryCounts, filtryKategorii, recommendedOffers, sponsoredOffers, toggleWatch, watchedIds, myWatchlist, bannersFor, bannerView, bannerClick } from "../lib/api";
 import { supabase } from "../lib/supabase";
 import { useCart, addToCart, isTestProduct, cleanTitle } from "../lib/cart";
 import NotificationsBell from "../components/NotificationsBell";
@@ -401,10 +401,20 @@ export default function Market() {
     if (!selected?.id) { setAttrDefs([]); setLoadingAttrs(false); return; }
     let current = true;
     setLoadingAttrs(true);
-    supabase.from("category_attributes").select("key,label,data_type,options").eq("category_id", selected.id).order("label")
-      .then(({ data }) => {
+    // Pole ze slownika, ktorego zadna oferta w tej galezi nie wypelnia, to filtr donikad —
+    // przy Magazynach energii wisiala "Moc (kW)" (zgloszenie wlasciciela 2026-09-25).
+    // To samo ograniczenie, co w wyszukiwarce zaawansowanej; kreatory ofert zostaja z pelnym
+    // slownikiem, bo tam sprzedawca te dane dopiero tworzy.
+    const uzycie = filtryKategorii(selected.slug).then((z) => z?.pola ?? {}).catch(() => ({} as Record<string, number>));
+    Promise.all([
+      supabase.from("category_attributes").select("key,label,data_type,options").eq("category_id", selected.id).order("label"),
+      uzycie,
+    ])
+      .then(([{ data }, pola]) => {
         if (!current) return;
-        setAttrDefs(((data ?? []) as AttrDef[]).filter((definition) => !PRIVATE_FILTER_KEYS.has(definition.key)));
+        const wszystkie = ((data ?? []) as AttrDef[]).filter((definition) => !PRIVATE_FILTER_KEYS.has(definition.key));
+        const uzywane = Object.keys(pola).length ? wszystkie.filter((d) => (pola[d.key] ?? 0) > 0) : wszystkie;
+        setAttrDefs(uzywane);
         setLoadingAttrs(false);
       }, () => {
         if (!current) return;

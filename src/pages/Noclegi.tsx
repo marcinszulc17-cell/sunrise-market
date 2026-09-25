@@ -44,6 +44,9 @@ export default function Noclegi() {
   const [amenities, setAmenities] = useState<string[]>((sp.get("udogodnienia") ?? "").split(",").filter(Boolean));
   const [rows, setRows] = useState<Stay[] | null>(null);
   const [err, setErr] = useState("");
+  // null = jeszcze nie wiadomo. Dopóki w Market nie ma ani jednego obiektu, dwanaście chipów
+  // z udogodnieniami to dwanaście filtrów do pustej listy (zgłoszenie właściciela 2026-09-25).
+  const [brakObiektow, setBrakObiektow] = useState<boolean | null>(null);
 
   useSeo("Noclegi — Sunrise Market", "Domki, apartamenty, kwatery i hotele. Rezerwuj online, płać Sunrise Pay albo kartą i odbieraj 3% cashbacku.", "/noclegi");
 
@@ -53,8 +56,11 @@ export default function Noclegi() {
   async function run() {
     if (datesInvalid) { setErr("Data wyjazdu musi być późniejsza niż przyjazdu."); return; }
     setErr(""); setRows(null);
+    const bezKryteriow = !where.trim() && !from && !to && !amenities.length;
     try {
-      setRows(await searchStays({ query: where.trim() || null, from: from || null, to: to || null, guests, amenities }));
+      const wynik = await searchStays({ query: where.trim() || null, from: from || null, to: to || null, guests, amenities });
+      setRows(wynik);
+      if (bezKryteriow) setBrakObiektow(wynik.length === 0);
     } catch (e) { setErr((e as Error).message); setRows([]); }
   }
 
@@ -98,11 +104,12 @@ export default function Noclegi() {
         <button className="mt-auto flex h-[46px] items-center justify-center gap-2 rounded-xl px-6 font-bold text-black" style={{ background: GOLD_GRAD }}><Ico name="search" size={18} stroke="#101012" />Szukaj</button>
       </form>
 
-      {/* Udogodnienia — filtr działa na tych samych znacznikach, które ustawia właściciel obiektu */}
-      <div className="mt-3 flex flex-wrap gap-2">
+      {/* Udogodnienia — filtr działa na tych samych znacznikach, które ustawia właściciel obiektu.
+          Przy pustym katalogu nie pokazujemy ich wcale: nie ma czego zawężać. */}
+      {brakObiektow !== true && <div className="mt-3 flex flex-wrap gap-2">
         {AMENITIES.map((a) => { const on = amenities.includes(a.id); return <button type="button" key={a.id} onClick={() => toggleAmenity(a.id)} className="min-h-[40px] rounded-full px-3 py-2 text-sm" style={on ? { background: "rgba(245,166,35,.14)", border: "1px solid var(--gold)", color: "var(--gold)" } : { background: "rgba(255,255,255,.04)", border: "1px solid var(--line)", color: "var(--ink)" }}>{a.icon} {a.label}</button>; })}
         {amenities.length > 0 && <button type="button" onClick={() => setAmenities([])} className="min-h-[40px] px-3 text-sm underline" style={{ color: "var(--mut)" }}>Wyczyść</button>}
-      </div>
+      </div>}
 
       {err && <div className="mt-4 rounded-xl p-3 text-sm" style={{ background: "rgba(232,137,26,.12)", color: "var(--gold)" }}>{err}</div>}
 

@@ -3,7 +3,7 @@ import { useLocation } from "react-router-dom";
 import SearchBox from "../components/SearchBox";
 import SavedSearchButton, { ActiveFilterChips } from "../components/SavedSearches";
 import { offerDetailHref } from "../lib/bookingLink";
-import { categoryCounts, trybyOfert } from "../lib/api";
+import { categoryCounts, filtryKategorii, type ZakresFiltrow } from "../lib/api";
 import { supabase } from "../lib/supabase";
 import { zl } from "../lib/money";
 import { ViewToggle, useViewMode, Ico, HomeFooter, timeAgo } from "../components/home/HomeShared";
@@ -105,12 +105,13 @@ export default function AdvancedSearchUniversal(){
   const [view,setView]=useViewMode("szukaj");
   const [catCounts,setCatCounts]=useState<Record<string,number>>({});
   useEffect(()=>{ categoryCounts().then(c=>setCatCounts(c.byId)).catch(()=>{}); },[]);
-  // Ile ofert ma każdy tryb w WYBRANEJ gałęzi. Bez tego „Usługi" i „Wynajem" sterczały
-  // w Fotowoltaice, gdzie wszystkie 36 ofert to zakup — trzy przyciski do pustej listy
-  // (pytanie właściciela 2026-09-25).
-  const [trybCounts,setTrybCounts]=useState<Record<string,number>|null>(null);
-  useEffect(()=>{ let alive=true; setTrybCounts(null);
-    trybyOfert(selected||null).then(t=>{ if(alive) setTrybCounts(t); }).catch(()=>{ if(alive) setTrybCounts({}); });
+  // Co w tej gałęzi da się w ogóle wyfiltrować. Bez tego panel obiecywał opcje, których
+  // pod nimi nie ma: w Fotowoltaice „Usługi" i „Wynajem" (wszystkie 36 ofert to zakup),
+  // widełki „Do 500 zł" przy najtańszej ofercie za 6 990 zł, a przy Magazynach energii
+  // pole „Moc (kW)", którego żadna oferta nie wypełnia (zgłoszenie właściciela 2026-09-25).
+  const [zakres,setZakres]=useState<ZakresFiltrow|null>(null);
+  useEffect(()=>{ let alive=true; setZakres(null);
+    filtryKategorii(selected||null).then(z=>{ if(alive) setZakres(z); }).catch(()=>{ if(alive) setZakres(null); });
     return ()=>{alive=false;}; },[selected]);
   const [loc,setLoc]=useState(""); // lokalizacja: ?lok= z nagłówka (województwo) albo wpisana w filtrach — attributes.location ilike // telefon: filtry zwijane, wyniki od razu
 
@@ -173,20 +174,39 @@ export default function AdvancedSearchUniversal(){
 
   // Ile ofert kryje się pod danym przyciskiem trybu — „Do rezerwacji" to suma dwóch.
   const ileWTrybie=(id:PurchaseModeFilter)=>{
-    if(!trybCounts) return null;
-    const razem=Object.values(trybCounts).reduce((a,b)=>a+b,0);
-    if(id==="") return razem;
-    if(id==="rezerwacje") return (trybCounts.appointment??0)+(trybCounts.daily??0);
-    return trybCounts[id]??0;
+    if(!zakres) return null;
+    const t=zakres.tryby;
+    if(id==="") return Object.values(t).reduce((a,b)=>a+b,0);
+    if(id==="rezerwacje") return (t.appointment??0)+(t.daily??0);
+    return t[id]??0;
   };
   // Tryb bez ani jednej oferty w tej gałęzi znika z filtrów — chyba że jest właśnie wybrany
   // (wtedy musi zostać, żeby dało się go odkliknąć). Gdy zostaje sama jedna droga zakupu,
   // chowamy cały blok: filtr z jedną opcją niczego nie filtruje.
   const trybyDoPokazania=useMemo(()=>{
-    if(!trybCounts) return MODE_FILTERS;
+    if(!zakres) return MODE_FILTERS;
     return MODE_FILTERS.filter(m=>m.id===""||m.id===mode||(ileWTrybie(m.id)??0)>0);
-  },[trybCounts,mode]); // eslint-disable-line react-hooks/exhaustive-deps
+  },[zakres,mode]); // eslint-disable-line react-hooks/exhaustive-deps
   const pokazTryby=trybyDoPokazania.length>2;
+
+  // Gotowe widełki mają sens tylko wtedy, gdy zahaczają o ceny, które w tej gałęzi są.
+  const WIDELKI: [string,string,string][]=[["","500","Do 500 zł"],["500","1500","500 – 1 500 zł"],["1500","3000","1 500 – 3 000 zł"],["3000","","Powyżej 3 000 zł"]];
+  const widelkiDoPokazania=useMemo(()=>{
+    if(!zakres||zakres.cenaMin===null||zakres.cenaMax===null) return WIDELKI;
+    return WIDELKI.filter(([lo,hi])=>{
+      const od=lo?Number(lo):0, doK=hi?Number(hi):Infinity;
+      return od<=(zakres.cenaMax as number) && doK>=(zakres.cenaMin as number);
+    });
+  },[zakres]); // eslint-disable-line react-hooks/exhaustive-deps
+  const pokazWidelki=widelkiDoPokazania.length>1;
+
+  // Pole ze słownika, którego żadna oferta w tej gałęzi nie wypełnia, jest filtrem donikąd —
+  // przy Magazynach energii wisiała „Moc (kW)", a przy Ogrzewaniu „Pojemność magazynu (kWh)".
+  // Pole z już ustawioną wartością zostaje, żeby dało się je wyczyścić.
+  const defsDoPokazania=useMemo(()=>{
+    if(!zakres||!Object.keys(zakres.pola).length) return defs;
+    return defs.filter(d=>(zakres.pola[d.key]??0)>0||(filters[d.key]!==undefined&&filters[d.key]!==""&&filters[d.key]!==false));
+  },[defs,zakres,filters]);
 
   const selectedCategory=useMemo(()=>categories.find(c=>c.slug===selected)||null,[categories,selected]);
   const roots=useMemo(()=>categories.filter(c=>!c.parent_id),[categories]);
@@ -199,6 +219,8 @@ export default function AdvancedSearchUniversal(){
     let alive=true; setLoadingFilters(true);
     supabase.from("category_attributes").select("key,label,data_type,options").eq("category_id",selectedCategory.id).order("label")
       .then(({data})=>{ if(alive){setDefs(((data||[]) as AttrDef[]).filter(d=>!PRIVATE_FILTER_KEYS.has(d.key)));setLoadingFilters(false); if(pend) setAutoRun(true);} },()=>{if(alive){setDefs([]);setLoadingFilters(false); if(pend) setAutoRun(true);}});
+    // UWAGA: filtrowanie po użyciu robi `defsDoPokazania` niżej — słownik zostaje w całości,
+    // bo to z niego korzystają też chipy aktywnych filtrów i zapisane wyszukiwania.
     return()=>{alive=false;};
   },[selectedCategory?.id]);
 
@@ -255,9 +277,11 @@ export default function AdvancedSearchUniversal(){
           </div>
           <div><div className="mb-2 text-sm font-semibold">Lokalizacja</div><input list="sm-regions" value={loc} onChange={e=>setLoc(e.target.value)} placeholder="Miasto lub województwo" className="min-h-[44px] w-full rounded-xl px-3 text-sm outline-none" style={{border:"1px solid var(--line)",background:"rgba(255,255,255,.04)",color:"var(--ink)"}} aria-label="Lokalizacja"/><datalist id="sm-regions">{REGIONS.map(r=><option key={r} value={r}/>)}</datalist></div>
           <div><div className="mb-2 text-sm font-semibold">Cena</div><div className="grid grid-cols-2 gap-2"><Field label="Od"><input type="number" min="0" value={priceMin} onChange={e=>setPriceMin(e.target.value)} placeholder="zł"/></Field><Field label="Do"><input type="number" min="0" value={priceMax} onChange={e=>setPriceMax(e.target.value)} placeholder="zł"/></Field></div>
-            {/* Gotowe widełki — skracają drogę do wyniku (makiety 2026-09-10). */}
-            <div className="mt-2 grid grid-cols-2 gap-2">{([["","500","Do 500 zł"],["500","1500","500 – 1 500 zł"],["1500","3000","1 500 – 3 000 zł"],["3000","","Powyżej 3 000 zł"]] as [string,string,string][]).map(([lo,hi,label])=>{const on=priceMin===lo&&priceMax===hi;return <button type="button" key={label} onClick={()=>{if(on){setPriceMin("");setPriceMax("");}else{setPriceMin(lo);setPriceMax(hi);}setAutoRun(true);}} className="min-h-[36px] rounded-lg px-2 text-xs font-semibold" style={chip(on)}>{label}</button>;})}</div></div>
-          {defs.length>0&&<div><div className="mb-2 text-sm font-semibold">Szczegóły</div><div className="grid gap-2">{defs.map(d=><DynamicField key={d.key} def={d} value={filters[d.key]??""} onChange={v=>setFilter(d.key,v)}/>)}</div></div>}
+            {/* Gotowe widełki — skracają drogę do wyniku (makiety 2026-09-10). Pokazujemy tylko
+                te, które zahaczają o ceny obecne w tej gałęzi: w Fotowoltaice „Do 500 zł"
+                przy najtańszej ofercie za 6 990 zł prowadziło donikąd. */}
+            {pokazWidelki&&<div className="mt-2 grid grid-cols-2 gap-2">{widelkiDoPokazania.map(([lo,hi,label])=>{const on=priceMin===lo&&priceMax===hi;return <button type="button" key={label} onClick={()=>{if(on){setPriceMin("");setPriceMax("");}else{setPriceMin(lo);setPriceMax(hi);}setAutoRun(true);}} className="min-h-[36px] rounded-lg px-2 text-xs font-semibold" style={chip(on)}>{label}</button>;})}</div>}</div>
+          {defsDoPokazania.length>0&&<div><div className="mb-2 text-sm font-semibold">Szczegóły</div><div className="grid gap-2">{defsDoPokazania.map(d=><DynamicField key={d.key} def={d} value={filters[d.key]??""} onChange={v=>setFilter(d.key,v)}/>)}</div></div>}
           {loadingFilters&&<div className="text-xs" style={{color:"var(--mut)"}}>Pobieram filtry dla tej kategorii…</div>}
           <button disabled={busy} className="flex h-11 items-center justify-center gap-2 rounded-xl font-bold" style={{background:"linear-gradient(135deg,#E8891A,#F5A623)",color:"#101012"}}><Ico name="search" size={18} strokeWidth={2.2}/>{busy?"Szukam…":"Pokaż oferty"}</button>
         </form>

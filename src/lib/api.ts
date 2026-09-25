@@ -720,13 +720,15 @@ export async function catalogStats(opts: { provider?: string | null; search?: st
   if (error) throw error;
   return (data?.items ?? []) as CatalogStat[];
 }
-/** Ile ofert ma każdy tryb (zakup / usługa na termin / wynajem) w danej gałęzi kategorii.
- *  Liczone tak samo jak w search_offers_v2, żeby filtr nie obiecywał trybu, którego lista
- *  potem nie pokaże. Bez kategorii — dla całego katalogu. */
-export async function trybyOfert(categorySlug?: string | null): Promise<Record<string, number>> {
-  const { data, error } = await supabase.rpc("tryby_ofert", { p_category_slug: categorySlug || null });
-  if (error) return {};
-  return Object.fromEntries(((data ?? []) as { tryb: string; ofert: number }[]).map((r) => [r.tryb, Number(r.ofert) || 0]));
+/** Co da się w tej gałęzi wyfiltrować: tryby zakupu, widełki cen i pola ze słownika, które
+ *  oferty faktycznie wypełniają. Liczone tak samo jak w search_offers_v2, żeby panel nie
+ *  obiecywał opcji, której lista potem nie pokaże. Bez kategorii — dla całego katalogu. */
+export type ZakresFiltrow = { tryby: Record<string, number>; cenaMin: number | null; cenaMax: number | null; pola: Record<string, number> };
+export async function filtryKategorii(categorySlug?: string | null): Promise<ZakresFiltrow | null> {
+  const { data, error } = await supabase.rpc("filtry_kategorii", { p_category_slug: categorySlug || null });
+  if (error || !data) return null;
+  const d = data as { tryby?: Record<string, number>; cena_min?: number | null; cena_max?: number | null; pola?: Record<string, number> };
+  return { tryby: d.tryby ?? {}, cenaMin: d.cena_min ?? null, cenaMax: d.cena_max ?? null, pola: d.pola ?? {} };
 }
 export async function topCategories() {
   const { data, error } = await supabase.from("categories").select("id,slug,name").is("parent_id", null).order("sort_order");

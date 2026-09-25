@@ -224,12 +224,28 @@ pierwszeństwo przy każdej zmianie kodu. Nie wolno ich naruszać ani obchodzić
   pokazywał dwie (części i wynajem były niewidoczne).
 - Sprawdzian, który to trzyma: `select` porównujący `category_counts().total_cnt`
   z `count(*)` ze `search_offers_v2` dla każdej niepustej kategorii ma zwracać zero wierszy.
-- **Filtr trybu pokazuje tylko tryby, które w tej gałęzi istnieją.** `market.tryby_ofert(slug)`
-  (migracja `20260925140000`) liczy oferty per `purchase_mode` dokładnie tak, jak liczy je
-  `search_offers_v2` — ten sam status i te same złączenia. W Fotowoltaice wszystkie 36 ofert
-  to zakup, więc „Usługi", „Wynajem" i „Do rezerwacji" były trzema przyciskami do pustej listy;
-  teraz cały blok „Jak chcesz skorzystać?" znika, gdy zostaje jedna droga zakupu. Wybrany tryb
-  zostaje widoczny nawet przy zerze — inaczej nie dałoby się go odkliknąć.
+- **Panel filtrów pokazuje tylko to, czym da się coś znaleźć** (zgłoszenie właściciela
+  2026-09-25: „czy te filtry odnośnie najmu itd powinny tu być?", „żeby nie było, że pojawiają
+  się niepotrzebne pola"). `market.filtry_kategorii(slug)` (migracja `20260925140000`) oddaje
+  jednym zapytaniem trzy rzeczy dla całej gałęzi: liczby ofert per `purchase_mode`, widełki
+  cen oraz ile ofert wypełnia każde pole ze słownika. Liczy **dokładnie tak, jak liczy
+  `search_offers_v2`** (ten sam status, te same złączenia) — inaczej liczba przy przycisku
+  rozjechałaby się z długością listy po kliknięciu.
+  - tryb bez ofert znika; przy jednej drodze zakupu znika cały blok „Jak chcesz skorzystać?",
+  - gotowe widełki cenowe pokazują się tylko wtedy, gdy zahaczają o realne ceny (w Fotowoltaice
+    „Do 500 zł" przy najtańszej ofercie za 6 990 zł prowadziło donikąd),
+  - pole ze słownika, którego nikt nie wypełnia, nie jest filtrem („Moc (kW)" przy Magazynach
+    energii, „Pojemność magazynu (kWh)" przy Ogrzewaniu, Pompach ciepła i Klimatyzacji;
+    przy okazji znika zdublowane „Pojemność silnika (cm³)" — słownik ma `engine_cc`
+    **i** nieużywane `engine_capacity_cm3`).
+  - **Aktywny wybór zostaje widoczny nawet przy zerze** — inaczej nie dałoby się go odkliknąć
+    i klient utknąłby na pustej liście bez wyjścia.
+  - **To dotyczy wyłącznie filtrowania.** Kreatory ofert czytają `category_attributes` osobno
+    i muszą pokazywać komplet pól — tam sprzedawca te dane dopiero tworzy.
+  - Ta sama zasada poza wyszukiwarką: `/sklep` używa tego samego `pola`, portal działu bez ofert
+    nie renderuje formularza (metraż i pokoje w pustych Nieruchomościach), a `/noclegi` nie
+    pokazuje dwunastu chipów udogodnień, dopóki nie ma ani jednego obiektu (pasek
+    „dokąd / termin / osoby" zostaje — to sens tej strony, nie filtr donikąd).
 - **Pułapka:** `market.create_offer_v2` liczy „gałąź ogłoszeń" z **rodzica**, nie z korzenia
   (`coalesce(pc.slug, c.slug)`). Dziś `ogloszenia-lokalne` ma tylko dwa poziomy, więc to nie
   boli — ale pierwsza podkategoria trzeciego poziomu straci darmową publikację po cichu.
