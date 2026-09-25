@@ -69,6 +69,8 @@ const Odbior = React.lazy(() => import("./pages/Odbior"));
 const Powiadomienia = React.lazy(() => import("./pages/Powiadomienia"));
 const SellerPulse = React.lazy(() => import("./pages/SellerPulse"));
 
+import { startReferralAttribution, zapamietajKodZAdresu } from "./lib/referralAttribution";
+
 initTheme();
 startMarketBookingAvailability();
 startMarketAvailabilityFilter();
@@ -81,15 +83,17 @@ startSellerResourceOperationsNav();
 // 38 znakow i 35 znakow daja tak samo 37 modulow, bo obie mieszcza sie w tej samej
 // wersji symbolu. Zysk jest wylacznie ludzki — link wyglada lepiej wklejony
 // w wiadomosc, w opis profilu albo podyktowany przez telefon.
+// Zapis kodu i JEGO UZYCIE to dwie rozne rzeczy. Do 2026-09-24 robilismy tylko
+// pierwsza: kod ladowal w localStorage i tam zostawal na zawsze. Zadne polecenie
+// z Marketu nie doszlo do ambasadora. Przypisanie robi teraz
+// startReferralAttribution() — patrz src/lib/referralAttribution.ts.
 try {
-  const _q = new URLSearchParams(window.location.search).get("ref");
-  const _p = window.location.pathname.match(/^\/r\/([A-Za-z0-9_-]{4,64})\/?$/);
-  const _r = (_q && _q.trim()) || (_p && _p[1]) || "";
-  if (_r) localStorage.setItem("sunrise_ref", _r.trim().slice(0, 64));
+  const krotkiLink = zapamietajKodZAdresu();
   // /r/KOD to samo przekierowanie — po zapisaniu kodu odsylamy na strone glowna,
   // zeby adres w pasku nie zostal z technicznym kodem.
-  if (_p) window.history.replaceState({}, "", "/");
+  if (krotkiLink) window.history.replaceState({}, "", "/");
 } catch { /* ignore */ }
+startReferralAttribution();
 
 // Aplikacja dodana na ekran początkowy telefonu potrafi tygodniami chodzić na starym
 // kodzie: przeglądarka trzyma poprzedniego service workera, dopóki wszystkie karty nie

@@ -14,7 +14,11 @@ test("booking helper adds booking=1 only for booking deep links", () => {
 test("market booking CTA deep-links to the booking flow", () => {
   assert.match(market, /offerDetailHref\(offerId, true\)/);
   assert.match(market, /if \(cta\.booking\)/);
-  assert.match(market, /split\("\/produkt\/"\)\[1\]\?\.split\("\?"\)\[0\]/);
+  // Id oferty czytamy przez wspólny offerIdFromHref — obsługuje stary /produkt/<uuid>
+  // i nowy /oferta/<slug>-<uuid>. Wcześniej asercja pilnowała ręcznego split("/produkt/"),
+  // którego już nie ma (src/lib/offerId.ts).
+  assert.match(market, /offerIdFromHref\(link\.getAttribute\("href"\)\)/);
+  assert.match(market, /OFFER_LINK_SELECTOR/);
 });
 
 test("buyer actions auto-open configured booking once deep-linked", () => {

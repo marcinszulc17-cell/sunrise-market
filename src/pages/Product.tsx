@@ -12,6 +12,7 @@ import { addToCart, cleanTitle, isTestProduct } from "../lib/cart";
 import { zl, pkt } from "../lib/money";
 import { getMarketConfig, cashbackFor } from "../lib/marketConfig";
 import { subscriptionInfo } from "../lib/subscription";
+import { czystaPolskaPlusInfo } from "../lib/czystaPolskaPlus";
 import { pushRecent } from "../lib/recent";
 import { supabase } from "../lib/supabase";
 import { useProductJsonLd, useSeo } from "../lib/seo";
@@ -84,6 +85,7 @@ export default function Product() {
   const purchaseMode: PurchaseMode = A.purchase_mode === "appointment" || A.purchase_mode === "daily" ? A.purchase_mode : "purchase";
   const isBooking = purchaseMode !== "purchase";
   const sub = subscriptionInfo(o?.attributes as Record<string, unknown> | undefined, o?.title);
+  const cpp = czystaPolskaPlusInfo(o?.attributes as Record<string, unknown> | undefined);
   const colors = A.colors ?? [];
   const sizes = A.sizes ?? [];
   const specs = A.specs ?? {};
@@ -199,6 +201,7 @@ export default function Product() {
 
             <div><span className="rounded-full px-3 py-1 text-sm font-semibold" style={{ background: "rgba(122,184,154,.12)", color: "var(--green)" }}>+{pkt(cashbackFor(o.price_gross, cashbackRate))} pkt cashback{sub ? " / mies." : ""}</span></div>
             {sub && <div className="rounded-xl px-3 py-2 text-sm" style={{ background: "rgba(56,224,240,.08)", border: "1px solid rgba(56,224,240,.2)" }}><b>🔁 {sub.badge} — płatna z góry</b><div className="mt-1 text-xs" style={{ color: "var(--mut)" }}>{sub.note}</div></div>}
+            {cpp && <div className="rounded-xl px-3 py-2 text-sm" style={{ background: "rgba(122,184,154,.1)", border: "1px solid rgba(122,184,154,.25)" }}><b style={{ color: "var(--green)" }}>🌱 {cpp.badge}</b><div className="mt-1 text-xs" style={{ color: "var(--mut)" }}>{cpp.note}</div></div>}
             <div className="text-sm" style={{ color: o.stock > 0 ? "var(--green)" : "#F25CB0" }}>{o.stock > 0 ? (isBooking ? `Dostępne zasoby: ${o.stock}` : (sub || o.stock >= 9999) ? "Dostępne" : `Dostępne: ${o.stock} szt.`) : "Chwilowo niedostępne"}</div>
 
             {!isBooking ? (() => { const fp=(o as any).fulfillment_provider; const eta=(o as any).delivery_eta||(o as any).attributes?.delivery_eta; const txt=fp==="teemdrop"?`🚚 Dostawa kurierem: ${eta||"15–25 dni roboczych"} (wysyłka z magazynu partnera)`:fp==="mysunrise"?"🔧 Montaż i dostawa po ustaleniu terminu z instalatorem Sunrise · 🏪 możliwy bezpłatny odbiór osobisty w Nowym Tomyślu":"🚚 Wysyłka: Paczkomat InPost lub kurier · darmowa dostawa od 149 zł"; return <div className="text-xs" style={{ color: "var(--mut)" }}>{txt}</div>; })() : <div className="text-xs" style={{ color: "var(--mut)" }}>✓ Dostępność sprawdzana na żywo w kalendarzu · płatność przy rezerwacji</div>}

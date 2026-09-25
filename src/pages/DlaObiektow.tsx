@@ -43,6 +43,7 @@ export default function DlaObiektow() {
           </p>
           <div className="mt-5 flex flex-wrap justify-center gap-2">
             <Link to="/sprzedawca/dolacz" className="grid h-11 items-center rounded-xl px-5 text-sm font-bold" style={{ background: GOLD_GRAD, color: "#101012" }}>Dodaj obiekt</Link>
+            <Link to="/sprzedawca/wystaw?typ=nocleg" className="grid h-11 items-center rounded-xl px-5 text-sm font-semibold" style={{ ...CARD }}>Mam już konto — wystaw obiekt</Link>
             <Link to="/noclegi" className="grid h-11 items-center rounded-xl px-5 text-sm font-semibold" style={{ ...CARD }}>Zobacz, jak wygląda wyszukiwarka</Link>
           </div>
         </div>

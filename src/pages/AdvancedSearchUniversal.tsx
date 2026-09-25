@@ -12,22 +12,41 @@ import { SiteHeader, REGIONS, readRegion } from "../components/home/SiteChrome";
 type Offer = { offer_id:string; title:string; price_gross:number; category:string; category_slug:string; seller:string; image_url:string|null; attributes:Record<string,any>; created_at?:string|null; views?:number };
 type Category = { id:string; slug:string; name:string; parent_id:string|null; sort_order?:number|null };
 type AttrDef = { key:string; label:string; data_type:"text"|"number"|"bool"|"enum"; options:any };
-type PurchaseModeFilter = "" | "purchase" | "appointment" | "daily";
+type PurchaseModeFilter = "" | "purchase" | "appointment" | "daily" | "rezerwacje";
 
 const PRIVATE_FILTER_KEYS = new Set(["vin","registration_number","kw_number","offer_type","cashback_only","purchase_mode"]);
 const box: React.CSSProperties = { background:"var(--glass)", border:"1px solid var(--line)", color:"var(--ink)" };
 const MODE_FILTERS: { id:PurchaseModeFilter; icon:string; label:string; description:string }[] = [
   { id:"", icon:"☰", label:"Wszystko", description:"Zakupy, usługi i wynajem" },
   { id:"purchase", icon:"🛒", label:"Kup", description:"Kupujesz od razu" },
+  { id:"rezerwacje", icon:"📅", label:"Do rezerwacji", description:"Usługi i wynajem razem" },
   { id:"appointment", icon:"⏱️", label:"Usługi", description:"Wybierasz dzień i godzinę" },
   { id:"daily", icon:"🗓️", label:"Wynajem", description:"Wybierasz okres od–do" },
 ];
+// „Rezerwacje” to nie osobny purchase_mode w bazie, tylko suma dwóch: usługi na termin
+// + wynajem na dni. Kafel na stronie głównej i pasek działów liczyły oba (liczby_dzialow),
+// a prowadziły na ?tryb=appointment — czyli licznik mówił „1 oferta”, a lista była pusta
+// (zgłoszenie właściciela 2026-09-25). Dlatego jeden tryb pytający bazę dwa razy.
+const REZERWACJE_MODES: PurchaseModeFilter[] = ["appointment", "daily"];
+const PORCJA = 60; // ile ofert dociągamy jednym kliknięciem „Pokaż więcej”
 
 function resultMode(offer:Offer){
   const mode=String(offer.attributes?.purchase_mode||"purchase");
   if(mode==="appointment") return {label:"📅 Usługa na termin",cta:"Umów termin",booking:true};
   if(mode==="daily") return {label:"🗓️ Wynajem",cta:"Wybierz daty",booking:true};
   return {label:"🛒 Sprzedaż",cta:"Zobacz ofertę",booking:false};
+}
+
+// Scalone wyniki dwóch zapytań trzeba posortować po stronie przeglądarki — baza
+// posortowała każdą połowę osobno.
+function porownaj(sort:string){
+  return (a:Offer,b:Offer)=>{
+    if(sort==="cena_rosnaco") return Number(a.price_gross)-Number(b.price_gross);
+    if(sort==="cena_malejaco") return Number(b.price_gross)-Number(a.price_gross);
+    if(sort==="najnowsze") return new Date(b.created_at||0).getTime()-new Date(a.created_at||0).getTime();
+    if(sort==="popularne") return Number(b.views||0)-Number(a.views||0);
+    return Number(a.price_gross)-Number(b.price_gross);
+  };
 }
 
 function emoji(name:string){
@@ -74,6 +93,10 @@ export default function AdvancedSearchUniversal(){
   const [defs,setDefs]=useState<AttrDef[]>([]);
   const [filters,setFilters]=useState<Record<string,string|boolean>>({});
   const [rows,setRows]=useState<Offer[]>([]);
+  // Katalog ma setki ofert, a jedno zapytanie oddaje najwyżej `limit`. Bez „Pokaż więcej”
+  // klient nigdy nie zobaczył reszty — lista po prostu się urywała (zgłoszenie 2026-09-25).
+  const [limit,setLimit]=useState(PORCJA);
+  const [more,setMore]=useState(false);
   const [busy,setBusy]=useState(false);
   const [loadingFilters,setLoadingFilters]=useState(false);
   const [msg,setMsg]=useState<string|null>(null);
@@ -95,7 +118,7 @@ export default function AdvancedSearchUniversal(){
   const mounted=useRef(false);
   useEffect(()=>{
     const sp=new URLSearchParams(location.search);
-    if(mounted.current){ setPriceMin("");setPriceMax("");setFilters({});setDefs([]);setMsg(null); } // nowe kryteria z linku — czyścimy poprzednie
+    if(mounted.current){ setPriceMin("");setPriceMax("");setFilters({});setDefs([]);setMsg(null);setLimit(PORCJA); } // nowe kryteria z linku — czyścimy poprzednie
     mounted.current=true; fromUrl.current=true;
     const pq=sp.get("q")||"", pk=sp.get("kat")||"", pm=sp.get("tryb")||"", pl=sp.get("lok")||readRegion();
     const saved=sp.get("zapisane");
@@ -109,7 +132,7 @@ export default function AdvancedSearchUniversal(){
       return;
     }
     if(pl) setLoc(pl);
-    setQ(pq); setSelected(pk); setMode(pm==="appointment"||pm==="daily"||pm==="purchase"?pm as PurchaseModeFilter:"");
+    setQ(pq); setSelected(pk); setMode(pm==="appointment"||pm==="daily"||pm==="purchase"||pm==="rezerwacje"?pm as PurchaseModeFilter:"");
     setAutoRun(true); // zawsze pokazujemy oferty od razu (bez parametrów: wszystkie, wg trafności)
     loadCategories().then(setCategories);
   },[location.search]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -128,8 +151,11 @@ export default function AdvancedSearchUniversal(){
     sp.delete("zapisane");
     if(sp.toString()!==before) window.history.replaceState(window.history.state,"",`${window.location.pathname}${sp.toString()?`?${sp}`:""}`);
     setAutoRun(true);
+    setLimit(PORCJA);
   },[selected,mode,sort]); // eslint-disable-line react-hooks/exhaustive-deps
-  useEffect(()=>{ if(run>0){ fromUrl.current=false; search(); } },[run]); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(()=>{ if(run>0){ fromUrl.current=false; search(); } },[run]);
+  const pierwszyLimit=useRef(true);
+  useEffect(()=>{ if(pierwszyLimit.current){ pierwszyLimit.current=false; return; } setAutoRun(true); },[limit]); // eslint-disable-line react-hooks/exhaustive-deps // eslint-disable-line react-hooks/exhaustive-deps
 
   const selectedCategory=useMemo(()=>categories.find(c=>c.slug===selected)||null,[categories,selected]);
   const roots=useMemo(()=>categories.filter(c=>!c.parent_id),[categories]);
@@ -149,33 +175,41 @@ export default function AdvancedSearchUniversal(){
 
   async function search(e?:FormEvent){
     e?.preventDefault(); setBusy(true); setMsg(null);
-    const rpcFilters:Record<string,string|boolean>={};
-    for(const [k,v] of Object.entries(filters)) if(v!==""&&v!==false) rpcFilters[k]=v;
-    if(mode) rpcFilters.purchase_mode=mode;
-    if(loc.trim()) rpcFilters.location=loc.trim();
-    const {data,error}=await supabase.rpc("search_offers_v2",{
+    const base:Record<string,string|boolean>={};
+    for(const [k,v] of Object.entries(filters)) if(v!==""&&v!==false) base[k]=v;
+    if(loc.trim()) base.location=loc.trim();
+    const zapytaj=(purchaseMode:PurchaseModeFilter)=>supabase.rpc("search_offers_v2",{
       p_query:q.trim()||null,
       p_category_slug:selected||null,
       p_price_min:priceMin?Number(priceMin):null,
       p_price_max:priceMax?Number(priceMax):null,
       p_sort:sort,
-      p_limit:100,
-      p_filters:rpcFilters,
+      p_limit:limit,
+      p_filters:purchaseMode?{...base,purchase_mode:purchaseMode}:base,
     });
+    const odpowiedzi=mode==="rezerwacje"
+      ? await Promise.all(REZERWACJE_MODES.map(zapytaj))
+      : [await zapytaj(mode)];
     setBusy(false);
-    if(error){setMsg(error.message);setRows([]);return;}
-    const found=(data||[]) as Offer[]; setRows(found);
+    const blad=odpowiedzi.find(r=>r.error);
+    if(blad?.error){setMsg(blad.error.message);setRows([]);setMore(false);return;}
+    // Dwa zapytania trzeba scalić bez duplikatów i ułożyć tak, jak ułożyłaby je baza.
+    const widziane=new Set<string>();
+    const found=odpowiedzi.flatMap(r=>(r.data||[]) as Offer[]).filter(o=>!widziane.has(o.offer_id)&&widziane.add(o.offer_id));
+    if(mode==="rezerwacje") found.sort(porownaj(sort));
+    setRows(found);
+    setMore(odpowiedzi.some(r=>((r.data||[]) as Offer[]).length>=limit));
     if(!found.length)setMsg("Brak ofert spełniających wybrane kryteria.");
   }
 
-  function reset(){setQ("");setLoc("");setPriceMin("");setPriceMax("");setSort("trafnosc");setSelected("");setMode("");setFilters({});setDefs([]);setRows([]);setMsg(null);}
+  function reset(){setQ("");setLoc("");setPriceMin("");setPriceMax("");setSort("trafnosc");setSelected("");setMode("");setFilters({});setDefs([]);setRows([]);setMsg(null);setLimit(PORCJA);setMore(false);}
 
-  const title=mode==="appointment"?"Rezerwacje":mode==="daily"?"Wynajem":selectedCategory?selectedCategory.name:"Wyszukiwarka";
-  const subtitle=mode==="appointment"?"Usługi z terminarzem — wybierz dzień i godzinę, zapłać od razu.":mode==="daily"?"Wynajem na dni — wybierz okres od–do.":"Produkty, usługi, rezerwacje, wynajem, samochody i nieruchomości w jednym miejscu.";
+  const title=mode==="rezerwacje"?"Rezerwacje":mode==="appointment"?"Usługi na termin":mode==="daily"?"Wynajem":selectedCategory?selectedCategory.name:"Wyszukiwarka";
+  const subtitle=mode==="rezerwacje"?"Wszystko, co rezerwujesz z góry: usługi na termin i wynajem na dni.":mode==="appointment"?"Usługi z terminarzem — wybierz dzień i godzinę, zapłać od razu.":mode==="daily"?"Wynajem na dni — wybierz okres od–do.":"Produkty, usługi, rezerwacje, wynajem, samochody i nieruchomości w jednym miejscu.";
   const chip=(on:boolean):React.CSSProperties=>on?{background:"rgba(245,166,35,.14)",border:"1px solid var(--gold)",color:"var(--gold)"}:{background:"rgba(255,255,255,.04)",border:"1px solid var(--line)",color:"var(--ink)"};
 
   return <main className="min-h-screen pb-24 sm:pb-0" style={{background:"var(--bg)",color:"var(--ink)"}}>
-    <SiteHeader active={mode==="appointment"?"booking":selected==="uslugi-i-reklama"?"services":selected==="oze-i-energia"?"energy":selected==="nieruchomosci"?"property":selected==="motoryzacja"?"car":undefined} />
+    <SiteHeader active={mode==="rezerwacje"||mode==="appointment"?"booking":selected==="uslugi-i-reklama"?"services":selected==="oze-i-energia"?"energy":selected==="nieruchomosci"?"property":selected==="motoryzacja"?"car":undefined} />
     <div className="mx-auto max-w-[1440px] px-4 py-5 sm:px-6 xl:px-10">
     <div className="grid gap-6 lg:grid-cols-[290px_minmax(0,1fr)]">
       {/* ── Filtry ─────────────────────────────────────────── */}
@@ -223,6 +257,7 @@ export default function AdvancedSearchUniversal(){
         {rows.length===0&&!msg&&!busy&&<div className="mt-5 rounded-2xl p-6 text-sm" style={{...box,color:"var(--mut)"}}>Wpisz frazę w wyszukiwarce albo wybierz kategorię w <b style={{color:"var(--ink)"}}>Filtrach</b>.</div>}
         {busy&&rows.length===0&&<div className="mt-5 grid gap-4 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">{[0,1,2,3].map(i=><div key={i} className="aspect-[4/5] animate-pulse rounded-2xl" style={box}/>)}</div>}
         {rows.length>0&&<div className={view==="list"?"mt-4 grid gap-3":"mt-4 grid grid-cols-2 gap-3 sm:gap-4 xl:grid-cols-3 2xl:grid-cols-4"}>{rows.map(o=>{const action=resultMode(o);const href=action.booking?offerDetailHref(o.offer_id,true):`/produkt/${o.offer_id}`;const loc=typeof o.attributes?.location==="string"?o.attributes.location:null;const rad=Number(o.attributes?.service_radius_km)||0;const pm=String(o.attributes?.purchase_mode||"");return <a href={href} key={o.offer_id} className={`group overflow-hidden rounded-2xl transition hover:-translate-y-0.5 ${view==="list"?"flex":"flex flex-col"}`} style={box}><div className={view==="list"?"relative aspect-[4/3] w-32 shrink-0 overflow-hidden sm:w-56":"relative aspect-[4/3] overflow-hidden"} style={{background:"var(--header)"}}>{o.image_url?<img src={o.image_url} alt="" loading="lazy" className="h-full w-full object-cover transition duration-500 group-hover:scale-[1.04]"/>:<div className="grid h-full place-items-center text-5xl">{emoji(o.category||o.category_slug||"")}</div>}{action.booking&&<span className="absolute left-3 top-3 rounded-lg px-2 py-1 text-[11px] font-semibold backdrop-blur" style={{background:"rgba(11,11,13,.75)",border:"1px solid rgba(255,255,255,.15)",color:"#fff"}}>{action.label}</span>}</div><div className="flex flex-1 flex-col p-3 sm:p-4"><div className="text-base font-bold sm:text-lg" style={{color:"var(--gold)"}}>{zl(o.price_gross)}{pm==="daily"&&<span className="text-xs font-medium" style={{color:"var(--mut)"}}> / dobę</span>}{pm==="appointment"&&<span className="text-xs font-medium" style={{color:"var(--mut)"}}> / termin</span>}</div><div className="mt-0.5 line-clamp-2 text-sm font-semibold leading-5">{o.title}</div><div className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-[11px]" style={{color:"var(--mut)"}}>{o.category&&<span className="rounded-md px-2 py-0.5" style={{background:"rgba(255,255,255,.06)",border:"1px solid var(--line)",color:"var(--ink)"}}>{o.category}</span>}<span className="truncate">{loc?`📍 ${loc}${rad?rad>=600?" · cała Polska":` · +${rad} km`:""}`:o.seller}</span>{timeAgo(o.created_at)&&<span className="ml-auto shrink-0">🕒 {timeAgo(o.created_at)}</span>}</div><div className="mt-auto pt-3"><div className="flex h-10 items-center justify-center rounded-xl text-sm font-semibold" style={action.booking?{background:"linear-gradient(135deg,#E8891A,#F5A623)",color:"#101012"}:{border:"1px solid var(--line)",color:"var(--ink)"}}>{action.cta} →</div></div></div></a>;})}</div>}
+        {rows.length>0&&more&&<div className="mt-6 flex justify-center"><button type="button" disabled={busy} onClick={()=>setLimit(n=>n+PORCJA)} className="flex h-12 items-center rounded-xl px-8 text-sm font-bold disabled:opacity-50" style={{background:"linear-gradient(135deg,#E8891A,#F5A623)",color:"#101012"}}>{busy?"Wczytuję…":"Pokaż więcej ofert"}</button></div>}
       </section>
     </div>
     </div>

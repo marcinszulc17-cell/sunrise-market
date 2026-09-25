@@ -95,7 +95,7 @@ Deno.serve(async (req) => {
 
   const h = { apikey: MS_ANON, Authorization: "Bearer " + MS_ANON };
   const [pr, cr] = await Promise.all([
-    fetch(`${MS_URL}/rest/v1/shop_products?active=eq.true&select=id,name,sku,description,price_pln,image_url,category_id,stock_qty,subscription_interval`, { headers: h }),
+    fetch(`${MS_URL}/rest/v1/shop_products?active=eq.true&select=id,name,sku,description,price_pln,image_url,category_id,stock_qty,subscription_interval,cpp_eligible,cpp_note`, { headers: h }),
     fetch(`${MS_URL}/rest/v1/shop_categories?select=id,name`, { headers: h }),
   ]);
   const products = await pr.json().catch(() => []);
@@ -126,12 +126,20 @@ Deno.serve(async (req) => {
       const subscription = (p.subscription_interval === "month" || p.subscription_interval === "year")
         ? { interval: p.subscription_interval, prepaid: true, continuous: true }
         : null;
-      const attrs = { source: "mysunrise", mysunrise_id: p.id, mysunrise_sku: p.sku ?? null, own_brand: true, enriched: true, ...(subscription ? { subscription } : {}) };
+      // Czysta Polska Plus — promocja Green Eco World (rabat lub zwrot na portfel),
+      // NIE dotacja. Front czyta to z attributes.cpp — patrz src/lib/czystaPolskaPlus.ts.
+      const cpp = p.cpp_eligible === true
+        ? { eligible: true, ...(p.cpp_note ? { note: String(p.cpp_note) } : {}) }
+        : null;
+      const attrs = { source: "mysunrise", mysunrise_id: p.id, mysunrise_sku: p.sku ?? null, own_brand: true, enriched: true, ...(subscription ? { subscription } : {}), ...(cpp ? { cpp } : {}) };
       if (match) {
         // Zachowujemy to, co sprzedawca ustawił w Market (VAT, faktura, promocja, blokada ceny) —
         // sync nadpisuje tylko pola pochodzące z MySunrise.
         const prev = (match.attributes && typeof match.attributes === "object") ? match.attributes : {};
         const mergedAttrs = { ...prev, ...attrs };
+        // Scalanie zachowuje stare klucze, wiec wycofanie produktu z Czystej Polski Plus
+        // nie usunelo by plakietki — trzeba ja skasowac jawnie.
+        if (!cpp) delete mergedAttrs.cpp;
         const patch = { title: p.name, description: descr, image_url: img, category_id: cid, commission_model: "mlm_full", attributes: mergedAttrs, updated_at: new Date().toISOString() };
         // Cena z MySunrise tylko gdy nie ma ręcznej zmiany (price_locked) ani aktywnej promocji.
         if (!prev.price_locked && !prev.promo) { patch.price_gross = price; }

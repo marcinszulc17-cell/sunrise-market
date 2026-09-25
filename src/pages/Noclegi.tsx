@@ -157,7 +157,7 @@ function EmptyState({ hasFilters, onReset }: { hasFilters: boolean; onReset: () 
     </p>
     <div className="mt-5 flex flex-wrap justify-center gap-3">
       {hasFilters && <button onClick={onReset} className="flex h-11 items-center rounded-xl px-5 text-sm font-semibold" style={CARD}>Wyczyść filtry</button>}
-      <Link to="/sprzedawca/wystaw?typ=produkt&mode=daily" className="flex h-11 items-center rounded-xl px-5 text-sm font-bold text-black" style={{ background: GOLD_GRAD }}>Wystaw swój obiekt</Link>
+      <Link to="/sprzedawca/wystaw?typ=nocleg" className="flex h-11 items-center rounded-xl px-5 text-sm font-bold text-black" style={{ background: GOLD_GRAD }}>Wystaw swój obiekt</Link>
       <Link to="/sklep" className="flex h-11 items-center rounded-xl px-5 text-sm font-semibold" style={CARD}>Przeglądaj inne oferty</Link>
     </div>
   </div>;

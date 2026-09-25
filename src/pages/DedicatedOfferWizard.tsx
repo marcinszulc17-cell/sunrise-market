@@ -14,14 +14,21 @@ const inputClass = "w-full rounded-xl px-3 py-2.5 outline-none";
 const inputStyle: React.CSSProperties = { background: "var(--glass)", border: "1px solid var(--line)", color: "var(--ink)" };
 const VAT_RATES = ["23", "8", "5", "0"] as const;
 
-const TYPE_CONFIG: Record<string, { icon: string; title: string; subtitle: string; root?: string; fixedCategory?: string }> = {
+export const TYPE_CONFIG: Record<string, { icon: string; title: string; subtitle: string; root?: string; fixedCategory?: string }> = {
   samochod: { icon: "🚗", title: "Dodaj samochód", subtitle: "Wybierz sprzedaż albo wynajem. Dalej poprowadzimy Cię krok po kroku.", root: "motoryzacja", fixedCategory: "motoryzacja-samochody-osobowe" },
   nieruchomosc: { icon: "🏠", title: "Dodaj nieruchomość", subtitle: "Sprzedaż albo wynajem z terminem — bez zbędnych ustawień na starcie.", root: "nieruchomosci" },
+  // Nocleg MUSI trafić w gałąź `noclegi*` — `search_stays` szuka wyłącznie tam, a ustawienia
+  // obiektu (doba hotelowa, goście, udogodnienia, opłata miejscowa) włączają się w
+  // SellerBookingSetup po tym samym slugu. Bez tego wpisu jedyną drogą było wybranie
+  // „Produkt / sprzęt” i ręczne odszukanie działu (zgłoszenie właściciela 2026-09-25).
+  nocleg: { icon: "🏡", title: "Dodaj obiekt noclegowy", subtitle: "Domek, apartament, pokój albo kwatera. Cenę za dobę i dostępność ustawisz zaraz po zapisaniu.", root: "noclegi" },
   usluga: { icon: "🛠️", title: "Dodaj usługę", subtitle: "Klient może kupić usługę od razu albo wybrać wolny termin.", root: "uslugi-i-reklama" },
   lokalne: { icon: "📍", title: "Dodaj ogłoszenie lokalne", subtitle: "Krótko, prosto i bez pól sklepowych, których nie potrzebujesz.", root: "ogloszenia-lokalne" },
 };
+export const TYPY_OFERT = Object.keys(TYPE_CONFIG);
 
 function allowedModes(type: string): PurchaseMode[] {
+  if (type === "nocleg") return ["daily"];
   if (type === "samochod" || type === "nieruchomosc") return ["purchase", "daily"];
   if (type === "usluga") return ["appointment", "purchase"];
   return ["purchase"];
@@ -49,7 +56,7 @@ export default function DedicatedOfferWizard() {
   const jobSide = (slug?: string) => slug === "ogloszenia-lokalne-praca" ? "pracodawca" : slug === "ogloszenia-lokalne-szukam-pracy" ? "kandydat" : null;
   const requestedMode = sp.get("mode") as PurchaseMode | null;
   const modes = allowedModes(type);
-  const initialMode: PurchaseMode = requestedMode && modes.includes(requestedMode) ? requestedMode : (type === "usluga" ? "appointment" : "purchase");
+  const initialMode: PurchaseMode = requestedMode && modes.includes(requestedMode) ? requestedMode : modes[0];
 
   const [authed, setAuthed] = useState<boolean | null>(null);
   const [seller, setSeller] = useState<any>(null);
@@ -73,7 +80,7 @@ export default function DedicatedOfferWizard() {
   const [vatRate, setVatRate] = useState("");
   const [purchaseMode, setPurchaseMode] = useState<PurchaseMode>(initialMode);
 
-  useEffect(() => { setPurchaseMode(requestedMode && modes.includes(requestedMode) ? requestedMode : (type === "usluga" ? "appointment" : "purchase")); }, [type, requestedMode]);
+  useEffect(() => { setPurchaseMode(requestedMode && modes.includes(requestedMode) ? requestedMode : modes[0]); }, [type, requestedMode]);
   useEffect(() => {
     supabase.auth.getUser().then(async ({ data }) => {
       if (!data.user) { setAuthed(false); return; }
@@ -125,6 +132,9 @@ export default function DedicatedOfferWizard() {
   async function publish() {
     if (!category) { setMsg("Wybierz kategorię."); setStep(1); return; }
     if (!title.trim()) { setMsg("Podaj tytuł."); setStep(1); return; }
+    // Oferta bez zdjęcia nie sprzedaje się i wygląda jak błąd katalogu. Kreator prywatny
+    // wymagał zdjęcia od początku, dedykowany i firmowy nie — stąd oferty z samą ikonką.
+    if (!images.length) { setMsg("Dodaj przynajmniej jedno zdjęcie."); setStep(2); return; }
     if (!isOgloszenie && price <= 0) { setMsg("Podaj cenę."); setStep(3); return; }
     if (!isOgloszenie && !VAT_RATES.includes(vatRate as typeof VAT_RATES[number])) { setMsg("Wybierz stawkę VAT: 23%, 8%, 5% lub 0%."); setStep(3); return; }
     if (missing.length) { setMsg("Uzupełnij: " + missing.map(x => x.label).join(", ")); setStep(1); return; }
@@ -138,7 +148,11 @@ export default function DedicatedOfferWizard() {
       if (error) throw error;
       const offerId = String(data || ""); if (!offerId) throw new Error("Oferta powstała, ale nie otrzymano jej ID.");
       if (purchaseMode !== "purchase") {
-        await configureBookingOffer({ offerId, bookingType: purchaseMode === "daily" ? "daily" : "appointment", durationMinutes: purchaseMode === "appointment" ? 60 : null, slotIntervalMinutes: 30, minNoticeHours: 2, maxAdvanceDays: 365, maxUnits: purchaseMode === "daily" ? 60 : 1, pricePerUnit: price, active: false });
+        // Oferta JUŻ istnieje. Gdyby wywrócił się dopiero ten krok, komunikat „nie udało się
+        // opublikować” kazałby sprzedawcy kliknąć jeszcze raz i zrobić duplikat.
+        try {
+          await configureBookingOffer({ offerId, bookingType: purchaseMode === "daily" ? "daily" : "appointment", durationMinutes: purchaseMode === "appointment" ? 60 : null, slotIntervalMinutes: 30, minNoticeHours: 2, maxAdvanceDays: 365, maxUnits: purchaseMode === "daily" ? 60 : 1, pricePerUnit: price, active: false });
+        } catch { /* ustawienia dokończy strona kalendarza */ }
         navigate(`/sprzedawca/rezerwacje/ustawienia/${offerId}?new=1`); return;
       }
       setMsg("Oferta została opublikowana ✅"); setStep(4);

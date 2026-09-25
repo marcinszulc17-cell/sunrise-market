@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { supabase } from "../lib/supabase";
 import SprzedawcaV2 from "./SprzedawcaV2";
-import DedicatedOfferWizard from "./DedicatedOfferWizard";
+import DedicatedOfferWizard, { TYPY_OFERT } from "./DedicatedOfferWizard";
 import PrivateOfferWizard from "./PrivateOfferWizard";
 
 type PurchaseMode = "purchase" | "appointment" | "daily";
@@ -28,6 +28,16 @@ const MODES: Array<{ mode: PurchaseMode; icon: string; title: string; descriptio
     title: "Wynajem",
     description: "Klient wybiera termin od–do i płaci za okres. Dla aut, nieruchomości, noclegów, maszyn i sprzętu.",
     cta: "Wystaw na wynajem",
+  },
+];
+
+const EXTRA: Array<{ to: string; icon: string; title: string; description: string; cta: string }> = [
+  {
+    to: "/sprzedawca/wystaw?typ=nocleg",
+    icon: "🏡",
+    title: "Nocleg",
+    description: "Domek, apartament, pokój albo kwatera. Doba hotelowa, liczba gości, udogodnienia i kalendarz — jak na portalach noclegowych.",
+    cta: "Wystaw obiekt noclegowy",
   },
 ];
 
@@ -73,6 +83,10 @@ export default function SprzedawcaWystaw() {
   if (access === "activate") return <GateCard title="Aktywuj sprzedaż" body="Wybierz prostą ścieżkę: sprzedajesz prywatnie albo jako firma. Konto MySunrise zostaje to samo, a kreator poprowadzi Cię dalej." cta="Wybierz sposób sprzedaży" to="/sprzedawca/dolacz" free />;
   if (access === "renewal") return <GateCard title="Odnowienie dostępu sprzedażowego" body="Twój okres startowy minął. Odnów właściwy plan, aby dalej wystawiać nowe oferty. Konto MySunrise pozostaje aktywne." cta="Przejdź do odnowienia" to={sellerType === "business" ? "/sprzedawca-klasyczny" : "/sprzedawca/partner"} free />;
 
+  // Nocleg ma osobny kreator (dział `noclegi`, wyłącznie wynajem na dni) — bez niego
+  // „Wystaw swój obiekt” kończyło się na formularzu samochodu.
+  if (type === "nocleg") return <DedicatedOfferWizard />;
+
   if (sellerType === "private_partner" && (requestedMode === "purchase" || requestedMode === "appointment" || requestedMode === "daily")) {
     return <PrivateOfferWizard />;
   }
@@ -85,7 +99,9 @@ export default function SprzedawcaWystaw() {
     return <SprzedawcaV2 />;
   }
 
-  if (type && type !== "produkt") return <DedicatedOfferWizard />;
+  // Tylko znany ?typ= trafia do kreatora dedykowanego. Wcześniej dowolna literówka w adresie
+  // lądowała na „Dodaj samochód”, bo TYPE_CONFIG miało takie fallbackowe ustawienie.
+  if (type && type !== "produkt" && TYPY_OFERT.includes(type)) return <DedicatedOfferWizard />;
 
   return (
     <main className="min-h-screen px-4 py-8 sm:px-6" style={{ background: "var(--bg)", color: "var(--ink)" }}>
@@ -106,6 +122,24 @@ export default function SprzedawcaWystaw() {
             <Link
               key={item.mode}
               to={`/sprzedawca/wystaw?typ=produkt&mode=${item.mode}`}
+              className="group rounded-3xl p-6 transition-transform hover:-translate-y-1"
+              style={{ background: "var(--glass)", border: "1px solid var(--line)" }}
+            >
+              <div className="text-5xl">{item.icon}</div>
+              <h2 className="mt-5 text-2xl font-semibold">{item.title}</h2>
+              <p className="mt-3 min-h-[96px] text-sm leading-6" style={{ color: "var(--mut)" }}>{item.description}</p>
+              <div className="mt-5 rounded-xl px-4 py-3 text-center text-sm font-semibold text-black" style={{ background: "linear-gradient(135deg,#C8965A,#E8C896)" }}>
+                {item.cta} →
+              </div>
+            </Link>
+          ))}
+        </div>
+
+        <div className="mt-4 grid gap-4 md:grid-cols-3">
+          {EXTRA.map((item) => (
+            <Link
+              key={item.to}
+              to={item.to}
               className="group rounded-3xl p-6 transition-transform hover:-translate-y-1"
               style={{ background: "var(--glass)", border: "1px solid var(--line)" }}
             >

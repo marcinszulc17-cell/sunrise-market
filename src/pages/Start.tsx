@@ -10,7 +10,7 @@ import ThemeToggle from "../components/ThemeToggle";
 import { useCart } from "../lib/cart";
 import { useSeo } from "../lib/seo";
 import NotificationsBell from "../components/NotificationsBell";
-import { Ico, IconTile, SECTIONS, RecoCard, HomeFooter, useHomeFeed, usePopularCategories, tileStyle, GOLD_GRAD, CARD } from "../components/home/HomeShared";
+import { Ico, IconTile, SECTIONS, RecoCard, HomeFooter, useHomeFeed, usePopularCategories, useLiczbyDzialow, tileStyle, GOLD_GRAD, CARD } from "../components/home/HomeShared";
 
 export default function Start() {
   const navigate = useNavigate();
@@ -19,6 +19,7 @@ export default function Start() {
   const [q, setQ] = useState("");
   const { rows: reco, personalized, watched, heart, rate, authed } = useHomeFeed(8);
   const popular = usePopularCategories();
+  const liczby = useLiczbyDzialow();
   useSeo("Sunrise Market — wszystko, czego potrzebujesz w jednym miejscu", "Zakupy, rezerwacje, nieruchomości, motoryzacja i usługi. Cashback 3% i Ochrona Kupujących.", "/");
   const pct = Math.round(rate * 100);
 
@@ -47,11 +48,15 @@ export default function Start() {
 
       {/* Działy — 2 kolumny */}
       <section className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3" aria-label="Działy">
-        {SECTIONS.map((t) => <Link key={t.title} to={t.to} className="relative flex min-h-[132px] flex-col gap-3 rounded-2xl p-4 transition active:scale-[.98] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#F5A623]" style={tileStyle(t.tint)}>
+        {/* Telefon pokazywał te same kafle co duży ekran, ale bez liczników — dział bez ani jednej
+            oferty prowadził do pustej listy. Teraz zachowuje się jak strona główna: pusty dział
+            zaprasza do wystawienia oferty zamiast udawać, że coś ma (zgłoszenie 2026-09-25). */}
+        {SECTIONS.map((t) => { const ile = liczby?.[t.key]; const pusty = ile === 0;
+        return <Link key={t.title} to={pusty ? "/sprzedawca/wystaw" : t.to} className="relative flex min-h-[132px] flex-col gap-3 rounded-2xl p-4 transition active:scale-[.98] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#F5A623]" style={tileStyle(t.tint)}>
           <IconTile name={t.icon} tint={t.tint} size={44} />
-          <div className="min-w-0"><div className="font-semibold leading-tight">{t.title}</div><div className="mt-0.5 text-xs" style={{ color: "var(--mut)" }}>{t.short}</div></div>
-          <span aria-hidden="true" className="absolute right-4 top-4 text-lg leading-none" style={{ color: "var(--mut)" }}>›</span>
-        </Link>)}
+          <div className="min-w-0"><div className="font-semibold leading-tight">{t.title}</div><div className="mt-0.5 text-xs" style={{ color: "var(--mut)" }}>{ile === undefined ? t.short : pusty ? "Bądź pierwszy — wystaw ofertę" : `${ile.toLocaleString("pl-PL")} ${ile === 1 ? "oferta" : ile < 5 ? "oferty" : "ofert"}`}</div></div>
+          <span aria-hidden="true" className="absolute right-4 top-4 text-lg leading-none" style={{ color: pusty ? "var(--gold)" : "var(--mut)" }}>{pusty ? "+" : "›"}</span>
+        </Link>; })}
       </section>
 
       {/* Polecane / Dla Ciebie — kontrolowany poziomy carousel */}

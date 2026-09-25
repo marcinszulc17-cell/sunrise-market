@@ -63,7 +63,10 @@ export type Section = { key: string; to: string; icon: IconName; tint: Tint; tit
 // Opisy = prawdziwe kategorie z bazy (market.categories), bez wymyślonych działów.
 export const SECTIONS: Section[] = [
   { key: "zakupy", to: "/sklep", icon: "bag", tint: "amber", title: "Zakupy", short: "Produkty dla Ciebie", desc: "Elektronika, Moda, Dom, Dziecko, Sport i więcej", cta: "Przeglądaj produkty" },
-  { key: "rezerwacje", to: "/szukaj?tryb=appointment", icon: "calendar", tint: "violet", title: "Rezerwacje", short: "Usługi i terminy", desc: "Noclegi, Wydarzenia, Usługi z terminarzem", cta: "Zarezerwuj termin" },
+  // Licznik dla tego kafla (liczby_dzialow → „rezerwacje”) sumuje usługi na termin I wynajem na dni,
+  // więc adres musi pokazywać jedno i drugie. Przy ?tryb=appointment kafel mówił „1 oferta”,
+  // a lista była pusta — jedyna rezerwowalna oferta to wynajem (zgłoszenie właściciela 2026-09-25).
+  { key: "rezerwacje", to: "/szukaj?tryb=rezerwacje", icon: "calendar", tint: "violet", title: "Rezerwacje", short: "Usługi i wynajem", desc: "Usługi na termin i wynajem na dni", cta: "Zarezerwuj termin" },
   { key: "nieruchomosci", to: "/nieruchomosci", icon: "house", tint: "green", title: "Nieruchomości", short: "Domy i lokale", desc: "Mieszkania, Domy, Działki, Lokale użytkowe", cta: "Zobacz oferty" },
   { key: "motoryzacja", to: "/motoryzacja", icon: "car", tint: "blue", title: "Motoryzacja", short: "Pojazdy i części", desc: "Samochody, Motocykle, Części, Akcesoria", cta: "Znajdź pojazd" },
   { key: "uslugi", to: "/szukaj?kat=uslugi-i-reklama", icon: "wrench", tint: "orange", title: "Usługi", short: "Fachowcy i firmy", desc: "Remonty, Transport, Zdrowie, Edukacja i więcej", cta: "Znajdź wykonawcę" },

@@ -8,13 +8,18 @@ type Cat = { id: string; slug: string; name: string };
 type Delivery = "shipping" | "pickup" | "both";
 type Condition = "new" | "very_good" | "good" | "used" | "damaged";
 type PurchaseMode = "purchase" | "appointment" | "daily";
-type RentalKind = "product" | "car" | "property";
+type RentalKind = "product" | "stay" | "car" | "property";
 
 const field = "w-full rounded-2xl px-4 py-3 outline-none";
 const fieldStyle: React.CSSProperties = { background: "var(--glass)", border: "1px solid var(--line)", color: "var(--ink)" };
 const DRAFT_KEY = "sunrise_market_private_offer_draft_v2";
 
+// „Nocleg” musi tu być: wyszukiwarka noclegów (RPC search_stays) czyta wyłącznie gałąź
+// `noclegi*`, a przycisk „Wystaw swój obiekt” prowadzi właśnie do tego kreatora. Bez tej
+// pozycji właściciel kwatery trafiał na „Produkt / sprzęt” i musiał sam znaleźć dział,
+// a obiekt w „Nieruchomościach” nigdy nie pojawiał się w Noclegach (zgłoszenie 2026-09-25).
 const RENTAL_KINDS: Array<{ id: RentalKind; icon: string; title: string; root?: string }> = [
+  { id: "stay", icon: "🏡", title: "Nocleg", root: "noclegi" },
   { id: "product", icon: "🧰", title: "Produkt / sprzęt" },
   { id: "car", icon: "🚗", title: "Auto", root: "motoryzacja" },
   { id: "property", icon: "🏠", title: "Nieruchomość", root: "nieruchomosci" },
@@ -55,7 +60,8 @@ export default function PrivateOfferWizard() {
   const [sp] = useSearchParams();
   const rawMode = sp.get("mode");
   const mode: PurchaseMode = rawMode === "appointment" || rawMode === "daily" ? rawMode : "purchase";
-  const [rentalKind, setRentalKind] = useState<RentalKind>("product");
+  const rawKind = sp.get("rodzaj");
+  const [rentalKind, setRentalKind] = useState<RentalKind>(rawKind === "stay" || rawKind === "car" || rawKind === "property" ? rawKind : "product");
   const [busy, setBusy] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
@@ -92,7 +98,7 @@ export default function PrivateOfferWizard() {
       title: "Dodaj wynajem",
       subtitle: "Podaj, co wynajmujesz i cenę za dobę. Dostępność ustawisz w następnym kroku.",
       itemLabel: "Co wynajmujesz?",
-      placeholder: rentalKind === "car" ? "Np. Toyota Corolla Hybrid" : rentalKind === "property" ? "Np. Apartament nad morzem" : "Np. agregat, kamera, rower elektryczny",
+      placeholder: rentalKind === "car" ? "Np. Toyota Corolla Hybrid" : rentalKind === "property" ? "Np. Lokal użytkowy 60 m² w centrum" : rentalKind === "stay" ? "Np. Domek nad jeziorem dla 4 osób" : "Np. agregat, kamera, rower elektryczny",
       priceLabel: "Cena za dobę",
       publishLabel: "Zapisz i ustaw dostępność",
     };
@@ -113,11 +119,13 @@ export default function PrivateOfferWizard() {
       if (d && (!d.mode || d.mode === mode)) {
         setTitle(d.title || ""); setDescription(d.description || ""); setPrice(d.price || "");
         setCondition(d.condition || "good"); setDelivery(d.delivery || "both");
-        setReferrals(d.referrals !== false); setRentalKind(d.rentalKind || "product");
+        // Rodzaj podany w adresie (np. „Wystaw swój obiekt” → ?rodzaj=stay) ma pierwszeństwo
+        // przed wersją roboczą — inaczej kreator wracałby do poprzedniego wyboru.
+        setReferrals(d.referrals !== false); if (!rawKind) setRentalKind(d.rentalKind || "product");
         setImages(Array.isArray(d.images) ? d.images : []);
       }
     } catch { /* ignore */ }
-  }, [mode]);
+  }, [mode, rawKind]);
 
   useEffect(() => {
     setDraftSaved(false);
@@ -173,6 +181,14 @@ export default function PrivateOfferWizard() {
     }
   }
 
+  // Dział albo kategoria z dziećmi to nie miejsce na ofertę — klient schodzi do podkategorii
+  // i widzi pustkę, a oferta zostaje piętro wyżej (zgłoszenie właściciela 2026-09-25).
+  function niedokonczonaKategoria(): string | null {
+    if (d2.length > 0 && !s2) return "Wybierz kategorię wewnątrz działu — inaczej oferta nie trafi tam, gdzie klienci jej szukają.";
+    if (d3.length > 0 && !s3) return "Wybierz podkategorię — to ona decyduje, gdzie klient znajdzie ofertę.";
+    return null;
+  }
+
   function categoryConflictsWithTitle() {
     if (!titleSuggestion || !chosen) return false;
     const slug = chosen.slug;
@@ -198,6 +214,8 @@ export default function PrivateOfferWizard() {
     if (!images.length) { setMsg("Dodaj przynajmniej jedno zdjęcie."); setStep(2); return; }
     if (!title.trim()) { setMsg(mode === "appointment" ? "Wpisz nazwę usługi." : "Wpisz nazwę oferty."); setStep(1); return; }
     if (!chosen) { setMsg("Wybierz kategorię."); setStep(1); return; }
+    const braki = niedokonczonaKategoria();
+    if (braki) { setMsg(braki); setStep(1); return; }
     if (categoryConflictsWithTitle()) { setMsg(`Tytuł wygląda jak „${titleSuggestion?.label}”, ale wybrana kategoria do tego nie pasuje. Popraw kategorię przed publikacją.`); setStep(1); return; }
     if (!(Number(price) > 0)) { setMsg("Podaj cenę większą od 0 zł."); setStep(3); return; }
     setBusy(true); setMsg(null);
@@ -220,6 +238,7 @@ export default function PrivateOfferWizard() {
           purchase_mode: mode,
           offer_type: offerType,
           rental_kind: mode === "daily" ? rentalKind : null,
+          ...(mode === "daily" && rentalKind === "stay" ? { listing_kind: "nocleg" } : {}),
           private_listing: true,
           buy_now_only: mode === "purchase" && !privateCarSale,
         },
@@ -230,17 +249,21 @@ export default function PrivateOfferWizard() {
       localStorage.removeItem(DRAFT_KEY);
 
       if (mode !== "purchase") {
-        await configureBookingOffer({
-          offerId: id,
-          bookingType: mode === "daily" ? "daily" : "appointment",
-          durationMinutes: mode === "appointment" ? 60 : null,
-          slotIntervalMinutes: 30,
-          minNoticeHours: 2,
-          maxAdvanceDays: 365,
-          maxUnits: mode === "daily" ? 60 : 1,
-          pricePerUnit: Number(price),
-          active: false,
-        });
+        // Oferta jest już w bazie — awaria tego kroku nie może wyglądać jak nieudana
+        // publikacja, bo sprzedawca kliknąłby ponownie i zrobił duplikat.
+        try {
+          await configureBookingOffer({
+            offerId: id,
+            bookingType: mode === "daily" ? "daily" : "appointment",
+            durationMinutes: mode === "appointment" ? 60 : null,
+            slotIntervalMinutes: 30,
+            minNoticeHours: 2,
+            maxAdvanceDays: 365,
+            maxUnits: mode === "daily" ? 60 : 1,
+            pricePerUnit: Number(price),
+            active: false,
+          });
+        } catch { /* resztę ustawień dokończy strona kalendarza */ }
         navigate(`/sprzedawca/rezerwacje/ustawienia/${id}?new=1`, { replace: true });
         return;
       }
@@ -298,7 +321,7 @@ export default function PrivateOfferWizard() {
       {step === 1 && <section className="space-y-5 rounded-3xl p-5 sm:p-7" style={{ background: "var(--glass)", border: "1px solid var(--line)" }}>
         {mode === "daily" && <div>
           <h2 className="mb-3 text-lg font-semibold">Co chcesz wynajmować?</h2>
-          <div className="grid gap-2 sm:grid-cols-3">{RENTAL_KINDS.map(k => <button type="button" key={k.id} onClick={() => { setRentalKind(k.id); setS1(null); setS2(null); setS3(null); setD2([]); setD3([]); }} className="rounded-2xl p-4 text-left" style={{ background: rentalKind === k.id ? "rgba(200,150,90,.14)" : "var(--header)", border: rentalKind === k.id ? "1px solid var(--gold)" : "1px solid var(--line)" }}><div className="text-2xl">{k.icon}</div><div className="mt-2 text-sm font-semibold">{k.title}</div></button>)}</div>
+          <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">{RENTAL_KINDS.map(k => <button type="button" key={k.id} onClick={() => { setRentalKind(k.id); setS1(null); setS2(null); setS3(null); setD2([]); setD3([]); }} className="rounded-2xl p-4 text-left" style={{ background: rentalKind === k.id ? "rgba(200,150,90,.14)" : "var(--header)", border: rentalKind === k.id ? "1px solid var(--gold)" : "1px solid var(--line)" }}><div className="text-2xl">{k.icon}</div><div className="mt-2 text-sm font-semibold">{k.title}</div></button>)}</div>
         </div>}
         <label className="block"><span className="mb-2 block text-sm font-semibold">{copy.itemLabel}</span><input className={field} style={fieldStyle} placeholder={copy.placeholder} value={title} onChange={e=>setTitle(e.target.value)} /></label>
         {mode === "purchase" && titleSuggestion && <div className="rounded-2xl p-3 text-sm" style={{ background: "rgba(56,224,240,.08)", border: "1px solid rgba(56,224,240,.18)", color: "var(--mut)" }}>
@@ -315,7 +338,7 @@ export default function PrivateOfferWizard() {
           </div>
         </div>
         {mode !== "appointment" && <label className="block"><span className="mb-2 block text-sm font-semibold">Stan</span><select className={field} style={fieldStyle} value={condition} onChange={e=>setCondition(e.target.value as Condition)}><option value="new">Nowy</option><option value="very_good">Bardzo dobry</option><option value="good">Dobry</option><option value="used">Używany</option><option value="damaged">Uszkodzony / do naprawy</option></select></label>}
-        <button type="button" onClick={() => { if (!title.trim()) return setMsg("Wpisz nazwę oferty."); if (!chosen) return setMsg("Wybierz kategorię."); if (categoryConflictsWithTitle()) return setMsg(`Tytuł wygląda jak „${titleSuggestion?.label}”, ale wybrana kategoria do tego nie pasuje.`); setMsg(null); setStep(2); }} className="w-full rounded-2xl px-5 py-3 font-bold text-black" style={{ background: "linear-gradient(135deg,#C8965A,#E8C896)" }}>Dalej: zdjęcia i opis →</button>
+        <button type="button" onClick={() => { if (!title.trim()) return setMsg("Wpisz nazwę oferty."); if (!chosen) return setMsg("Wybierz kategorię."); const brak = niedokonczonaKategoria(); if (brak) return setMsg(brak); if (categoryConflictsWithTitle()) return setMsg(`Tytuł wygląda jak „${titleSuggestion?.label}”, ale wybrana kategoria do tego nie pasuje.`); setMsg(null); setStep(2); }} className="w-full rounded-2xl px-5 py-3 font-bold text-black" style={{ background: "linear-gradient(135deg,#C8965A,#E8C896)" }}>Dalej: zdjęcia i opis →</button>
       </section>}
 
       {step === 2 && <section className="space-y-5 rounded-3xl p-5 sm:p-7" style={{ background: "var(--glass)", border: "1px solid var(--line)" }}>
