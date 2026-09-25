@@ -3,7 +3,7 @@ import { useLocation } from "react-router-dom";
 import SearchBox from "../components/SearchBox";
 import SavedSearchButton, { ActiveFilterChips } from "../components/SavedSearches";
 import { offerDetailHref } from "../lib/bookingLink";
-import { categoryCounts } from "../lib/api";
+import { categoryCounts, trybyOfert } from "../lib/api";
 import { supabase } from "../lib/supabase";
 import { zl } from "../lib/money";
 import { ViewToggle, useViewMode, Ico, HomeFooter, timeAgo } from "../components/home/HomeShared";
@@ -105,6 +105,13 @@ export default function AdvancedSearchUniversal(){
   const [view,setView]=useViewMode("szukaj");
   const [catCounts,setCatCounts]=useState<Record<string,number>>({});
   useEffect(()=>{ categoryCounts().then(c=>setCatCounts(c.byId)).catch(()=>{}); },[]);
+  // Ile ofert ma każdy tryb w WYBRANEJ gałęzi. Bez tego „Usługi" i „Wynajem" sterczały
+  // w Fotowoltaice, gdzie wszystkie 36 ofert to zakup — trzy przyciski do pustej listy
+  // (pytanie właściciela 2026-09-25).
+  const [trybCounts,setTrybCounts]=useState<Record<string,number>|null>(null);
+  useEffect(()=>{ let alive=true; setTrybCounts(null);
+    trybyOfert(selected||null).then(t=>{ if(alive) setTrybCounts(t); }).catch(()=>{ if(alive) setTrybCounts({}); });
+    return ()=>{alive=false;}; },[selected]);
   const [loc,setLoc]=useState(""); // lokalizacja: ?lok= z nagłówka (województwo) albo wpisana w filtrach — attributes.location ilike // telefon: filtry zwijane, wyniki od razu
 
   // Parametry z adresu (ekran startowy / linki / pasek działów): ?q=… ?kat=slug ?tryb=appointment|daily — po wczytaniu od razu szukamy.
@@ -163,6 +170,23 @@ export default function AdvancedSearchUniversal(){
     poprzedniaPorcja.current=limit;
     if(wzrosla) setAutoRun(true);
   },[limit]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Ile ofert kryje się pod danym przyciskiem trybu — „Do rezerwacji" to suma dwóch.
+  const ileWTrybie=(id:PurchaseModeFilter)=>{
+    if(!trybCounts) return null;
+    const razem=Object.values(trybCounts).reduce((a,b)=>a+b,0);
+    if(id==="") return razem;
+    if(id==="rezerwacje") return (trybCounts.appointment??0)+(trybCounts.daily??0);
+    return trybCounts[id]??0;
+  };
+  // Tryb bez ani jednej oferty w tej gałęzi znika z filtrów — chyba że jest właśnie wybrany
+  // (wtedy musi zostać, żeby dało się go odkliknąć). Gdy zostaje sama jedna droga zakupu,
+  // chowamy cały blok: filtr z jedną opcją niczego nie filtruje.
+  const trybyDoPokazania=useMemo(()=>{
+    if(!trybCounts) return MODE_FILTERS;
+    return MODE_FILTERS.filter(m=>m.id===""||m.id===mode||(ileWTrybie(m.id)??0)>0);
+  },[trybCounts,mode]); // eslint-disable-line react-hooks/exhaustive-deps
+  const pokazTryby=trybyDoPokazania.length>2;
 
   const selectedCategory=useMemo(()=>categories.find(c=>c.slug===selected)||null,[categories,selected]);
   const roots=useMemo(()=>categories.filter(c=>!c.parent_id),[categories]);
@@ -224,7 +248,7 @@ export default function AdvancedSearchUniversal(){
         <div className="flex items-center justify-between"><div className="text-lg font-bold">Filtry</div><button type="button" onClick={reset} className="text-xs underline" style={{color:"var(--mut)"}}>Wyczyść wszystkie</button></div>
         <form onSubmit={search} className="mt-4 grid gap-4">
           <Field label="Szukaj"><input value={q} onChange={e=>setQ(e.target.value)} placeholder="Czego szukasz?"/></Field>
-          <div><div className="mb-2 text-sm font-semibold">Jak chcesz skorzystać?</div><div className="grid gap-1.5">{MODE_FILTERS.map(item=><button type="button" key={item.id||"all"} onClick={()=>setMode(item.id)} className="flex min-h-[44px] items-center gap-2 rounded-xl px-3 py-2 text-left text-sm" style={chip(mode===item.id)}><span>{item.icon}</span><span className="font-semibold">{item.label}</span><span className="ml-auto text-[11px]" style={{color:"var(--mut)"}}>{item.description}</span></button>)}</div></div>
+          {pokazTryby&&<div><div className="mb-2 text-sm font-semibold">Jak chcesz skorzystać?</div><div className="grid gap-1.5">{trybyDoPokazania.map(item=>{const n=ileWTrybie(item.id);return <button type="button" key={item.id||"all"} onClick={()=>setMode(item.id)} className="flex min-h-[44px] items-center gap-2 rounded-xl px-3 py-2 text-left text-sm" style={chip(mode===item.id)}><span>{item.icon}</span><span className="font-semibold">{item.label}</span>{n!==null&&<span className="text-[11px]" style={{color:"var(--mut)"}}>{n}</span>}<span className="ml-auto text-[11px]" style={{color:"var(--mut)"}}>{item.description}</span></button>;})}</div></div>}
           <div><div className="mb-2 flex items-center justify-between text-sm font-semibold"><span>Kategoria</span>{selected&&<button type="button" onClick={()=>{setSelected("");setFilters({});setDefs([]);}} className="text-xs font-normal" style={{color:"var(--gold)"}}>Wszystkie</button>}</div>
             <div className="grid max-h-72 gap-1 overflow-y-auto pr-1">{roots.filter(r=>!Object.keys(catCounts).length||(catCounts[r.id]??0)>0).map(r=><div key={r.id}><button type="button" onClick={()=>setSelected(selected===r.slug?"":r.slug)} className="flex min-h-[40px] w-full items-center gap-2 rounded-lg px-2 text-left text-sm" style={chip(selected===r.slug||selectedCategory?.parent_id===r.id)}><span>{emoji(r.name)}</span><span className="truncate">{r.name}</span>{catCounts[r.id]>0&&<span className="ml-auto shrink-0 text-[11px]" style={{color:"var(--mut)"}}>{catCounts[r.id]}</span>}</button>
               {(selected===r.slug||selectedCategory?.parent_id===r.id)&&children(r.id).filter(c=>!Object.keys(catCounts).length||(catCounts[c.id]??0)>0).length>0&&<div className="ml-6 mt-1 grid gap-0.5">{children(r.id).filter(c=>!Object.keys(catCounts).length||(catCounts[c.id]??0)>0).map(c=><button type="button" key={c.id} onClick={()=>setSelected(c.slug)} className="min-h-[36px] rounded-lg px-2 text-left text-xs" style={{color:selected===c.slug?"var(--gold)":"var(--mut)",background:selected===c.slug?"rgba(245,166,35,.1)":"transparent"}}><span className="flex items-center gap-2"><span className="truncate">{c.name}</span>{catCounts[c.id]>0&&<span className="ml-auto shrink-0">{catCounts[c.id]}</span>}</span></button>)}</div>}</div>)}</div>

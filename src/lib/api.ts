@@ -720,6 +720,14 @@ export async function catalogStats(opts: { provider?: string | null; search?: st
   if (error) throw error;
   return (data?.items ?? []) as CatalogStat[];
 }
+/** Ile ofert ma każdy tryb (zakup / usługa na termin / wynajem) w danej gałęzi kategorii.
+ *  Liczone tak samo jak w search_offers_v2, żeby filtr nie obiecywał trybu, którego lista
+ *  potem nie pokaże. Bez kategorii — dla całego katalogu. */
+export async function trybyOfert(categorySlug?: string | null): Promise<Record<string, number>> {
+  const { data, error } = await supabase.rpc("tryby_ofert", { p_category_slug: categorySlug || null });
+  if (error) return {};
+  return Object.fromEntries(((data ?? []) as { tryb: string; ofert: number }[]).map((r) => [r.tryb, Number(r.ofert) || 0]));
+}
 export async function topCategories() {
   const { data, error } = await supabase.from("categories").select("id,slug,name").is("parent_id", null).order("sort_order");
   if (error) throw error;

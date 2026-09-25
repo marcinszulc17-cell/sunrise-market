@@ -224,6 +224,12 @@ pierwszeństwo przy każdej zmianie kodu. Nie wolno ich naruszać ani obchodzić
   pokazywał dwie (części i wynajem były niewidoczne).
 - Sprawdzian, który to trzyma: `select` porównujący `category_counts().total_cnt`
   z `count(*)` ze `search_offers_v2` dla każdej niepustej kategorii ma zwracać zero wierszy.
+- **Filtr trybu pokazuje tylko tryby, które w tej gałęzi istnieją.** `market.tryby_ofert(slug)`
+  (migracja `20260925140000`) liczy oferty per `purchase_mode` dokładnie tak, jak liczy je
+  `search_offers_v2` — ten sam status i te same złączenia. W Fotowoltaice wszystkie 36 ofert
+  to zakup, więc „Usługi", „Wynajem" i „Do rezerwacji" były trzema przyciskami do pustej listy;
+  teraz cały blok „Jak chcesz skorzystać?" znika, gdy zostaje jedna droga zakupu. Wybrany tryb
+  zostaje widoczny nawet przy zerze — inaczej nie dałoby się go odkliknąć.
 - **Pułapka:** `market.create_offer_v2` liczy „gałąź ogłoszeń" z **rodzica**, nie z korzenia
   (`coalesce(pc.slug, c.slug)`). Dziś `ogloszenia-lokalne` ma tylko dwa poziomy, więc to nie
   boli — ale pierwsza podkategoria trzeciego poziomu straci darmową publikację po cichu.
