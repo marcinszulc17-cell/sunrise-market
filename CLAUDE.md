@@ -216,6 +216,14 @@ pierwszeństwo przy każdej zmianie kodu. Nie wolno ich naruszać ani obchodzić
   nie do Gryzoni. Sprawdzone na 556 zaimportowanych ofertach: 545 bez zmian, 11 poprawionych.
   Test `tests/supplier-category-mapping.test.mjs` **uruchamia** klasyfikator na prawdziwych
   nazwach — nie sprawdza wyrażeń regularnych po wyglądzie.
+- **Licznik działu musi liczyć to, co pokazuje jego strona.** `liczby_dzialow()` (migracja
+  `20260925120000` — wcześniej funkcja istniała tylko w bazie, nie w repo): `zakupy` liczy
+  cały katalog, bo kafel prowadzi na `/sklep`, gdzie pasek działów pokazuje „Wszystkie";
+  doszedł klucz `noclegi`. `CategoryPortal` przeszukuje **korzeń działu**, nie jedną
+  podkategorię — przy `motoryzacja-samochody-osobowe` kafel mówił „4 oferty", a portal
+  pokazywał dwie (części i wynajem były niewidoczne).
+- Sprawdzian, który to trzyma: `select` porównujący `category_counts().total_cnt`
+  z `count(*)` ze `search_offers_v2` dla każdej niepustej kategorii ma zwracać zero wierszy.
 - **Pułapka:** `market.create_offer_v2` liczy „gałąź ogłoszeń" z **rodzica**, nie z korzenia
   (`coalesce(pc.slug, c.slug)`). Dziś `ogloszenia-lokalne` ma tylko dwa poziomy, więc to nie
   boli — ale pierwsza podkategoria trzeciego poziomu straci darmową publikację po cichu.
