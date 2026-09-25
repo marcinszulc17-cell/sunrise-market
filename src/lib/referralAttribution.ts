@@ -37,6 +37,76 @@ const KLUCZ_PROBA = "sunrise_ref_attempt";
 
 const POPRAWNY_KOD = /^[A-Za-z0-9_-]{4,64}$/;
 
+/* ─────────────────── LICZENIE KLIKNIĘĆ ───────────────────
+ * `mme_ref_clicks` w MySunrise miało 117 kliknięć i ANI JEDNEGO ze źródłem
+ * `sunrise_market`. Ambasador promujący Market widział w statystykach zero,
+ * niezależnie od tego, ile osób kliknęło w jego link.
+ *
+ * DLACZEGO WPROST Z PRZEGLĄDARKI, A NIE PRZEZ MOST SERWEROWY.
+ * `mme_log_ref_click` jest SECURITY DEFINER i czyta `request.headers`, żeby
+ * ustalić user-agent, IP i kraj. Gdyby wołała ją funkcja brzegowa Marketu,
+ * RPC zobaczyłaby nagłówki tej funkcji — pusty UA i IP centrum danych — i
+ * oznaczyła KAŻDE kliknięcie z Marketu jako `is_suspect` z powodem „ruch spoza
+ * PL". Statystyki byłyby gorsze niż ich brak. Wołanie z przeglądarki daje
+ * prawdziwe nagłówki gościa; dokładnie tak robi to front MySunrise
+ * (src/lib/referral.ts). `anon` ma prawo EXECUTE na tej funkcji.
+ *
+ * Bezpieczeństwo: RPC sama waliduje kod (musi istnieć), tnie po 300 kliknięć
+ * na godzinę na kod, odsiewa duble w 15 s i wykrywa boty. Wstawia wyłącznie
+ * wiersz do dziennika kliknięć — nic poza tym.
+ */
+const MS_URL = import.meta.env.VITE_MYSUNRISE_URL as string | undefined;
+const MS_ANON = import.meta.env.VITE_MYSUNRISE_ANON_KEY as string | undefined;
+/** Dławik lokalny: max 1 zgłoszenie na kod na godzinę z tej przeglądarki. */
+const KLUCZ_KLIK = "sunrise_ref_click_log";
+const DLAWIK_MS = 60 * 60 * 1000;
+
+function czysty(v: string | null, max = 120): string | null {
+  const t = (v || "").trim().slice(0, max);
+  return t || null;
+}
+
+function zalogujKlikniecie(kod: string): void {
+  if (!MS_URL || !MS_ANON) {
+    // Głośno, bo cicha utrata statystyk polecenia to dokładnie ten błąd,
+    // który ten moduł naprawia.
+    console.warn("[polecenia] brak VITE_MYSUNRISE_URL / VITE_MYSUNRISE_ANON_KEY — kliknięcie nie zostanie policzone");
+    return;
+  }
+  try {
+    const teraz = Date.now();
+    const raw = localStorage.getItem(KLUCZ_KLIK);
+    const log: Record<string, number> = raw ? JSON.parse(raw) : {};
+    if (teraz - Number(log[kod] || 0) < DLAWIK_MS) return;
+    log[kod] = teraz;
+    localStorage.setItem(KLUCZ_KLIK, JSON.stringify(log));
+  } catch { /* prywatne okno — logujemy mimo wszystko, RPC ma własny dławik */ }
+
+  const sp = new URLSearchParams(window.location.search);
+  void fetch(`${MS_URL}/rest/v1/rpc/mme_log_ref_click`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", apikey: MS_ANON, Authorization: `Bearer ${MS_ANON}` },
+    body: JSON.stringify({
+      p_code: kod,
+      p_module: "market",
+      p_source: "sunrise_market",
+      p_referrer: document.referrer || null,
+      p_utm_source: czysty(sp.get("utm_source"), 60),
+      p_utm_medium: czysty(sp.get("utm_medium"), 60),
+      p_utm_campaign: czysty(sp.get("utm_campaign")),
+      p_utm_content: czysty(sp.get("utm_content")),
+      p_path: czysty(window.location.pathname),
+    }),
+    keepalive: true,
+  })
+    .then((r) => {
+      // Odpowiedź sprawdzamy, bo cicha porażka to dokładnie ten błąd, który ten
+      // moduł naprawia: łańcuch „wygląda, że działa", a w bazie zero wierszy.
+      if (!r.ok) console.warn("[polecenia] kliknięcie nie zapisane:", r.status);
+    })
+    .catch(() => { /* statystyka nie może przeszkodzić w zakupach */ });
+}
+
 export function zapamietanyKod(): string | null {
   try {
     const raw = localStorage.getItem(KLUCZ)?.trim() || "";
@@ -63,10 +133,18 @@ export function zapamietajKodZAdresu(): boolean {
     const zZapytania = new URLSearchParams(window.location.search).get("ref");
     const zSciezki = window.location.pathname.match(/^\/r\/([A-Za-z0-9_-]{4,64})\/?$/);
     const kod = (zZapytania && zZapytania.trim()) || (zSciezki && zSciezki[1]) || "";
-    if (kod && !zapamietanyKod()) {
-      localStorage.setItem(KLUCZ, kod.trim().slice(0, 64));
-      // Nowy kod = nowa szansa na przypisanie, nawet jeśli poprzednia próba padła.
-      localStorage.removeItem(KLUCZ_PROBA);
+    if (kod) {
+      const czysteKod = kod.trim().slice(0, 64);
+      // Kliknięcie liczymy ZAWSZE, gdy link je niósł — także wtedy, gdy kod
+      // polecającego jest już zapamiętany. Kliknięcie to zdarzenie marketingowe
+      // (ktoś wszedł z linku), a nie zmiana atrybucji; zasada „pierwszy wygrywa"
+      // dotyczy wyłącznie tej drugiej.
+      if (POPRAWNY_KOD.test(czysteKod)) zalogujKlikniecie(czysteKod);
+      if (!zapamietanyKod()) {
+        localStorage.setItem(KLUCZ, czysteKod);
+        // Nowy kod = nowa szansa na przypisanie, nawet jeśli poprzednia próba padła.
+        localStorage.removeItem(KLUCZ_PROBA);
+      }
     }
     return Boolean(zSciezki);
   } catch {
