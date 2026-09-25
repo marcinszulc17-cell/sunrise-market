@@ -29,3 +29,13 @@ test("empty stay search sends the owner to the stay wizard", () => {
   assert.match(noclegi, /\/sprzedawca\/wystaw\?typ=nocleg/);
   assert.doesNotMatch(noclegi, /wystaw\?typ=produkt&mode=daily/);
 });
+
+// market.configure_booking_offer (stay_readiness) nie opublikuje noclegu poniżej 5 zdjęć
+// i 200 znaków opisu. Kreator musi to powiedzieć zawczasu, a nie pozwolić zapisać ofertę,
+// której potem nie da się aktywować.
+test("stay wizard enforces the same thresholds as publication", () => {
+  assert.match(dedykowany, /const isNocleg = type === "nocleg"/);
+  assert.match(dedykowany, /MIN_ZDJEC_NOCLEG = 5, MIN_OPIS_NOCLEG = 200/);
+  assert.match(dedykowany, /isNocleg && images\.length < MIN_ZDJEC_NOCLEG/);
+  assert.match(dedykowany, /isNocleg && description\.trim\(\)\.length < MIN_OPIS_NOCLEG/);
+});
