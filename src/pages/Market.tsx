@@ -4,6 +4,7 @@ import ThemeToggle from "../components/ThemeToggle";
 import { cena, zl, pkt } from "../lib/money";
 import { getMarketConfig, cashbackFor } from "../lib/marketConfig";
 import { subscriptionInfo } from "../lib/subscription";
+import { czystaPolskaPlusInfo } from "../lib/czystaPolskaPlus";
 import { getRecent } from "../lib/recent";
 import { searchOffers, searchOffersWithAttributes, homePromoted, categoryCounts, filtryKategorii, recommendedOffers, sponsoredOffers, toggleWatch, watchedIds, myWatchlist, bannersFor, bannerView, bannerClick } from "../lib/api";
 import { supabase } from "../lib/supabase";
@@ -150,6 +151,10 @@ function OfferCard({ o, fav, onToggleFav, badge, rate = 0.03 }: { o: Offer; fav:
   const isTest = isTestProduct(o.title);      // katalog testowy — bez mozliwosci zakupu
   const shownTitle = cleanTitle(o.title);
   const sub = subscriptionInfo(o.attributes, o.title);
+  // Czysta Polska Plus — promocja Green Eco World (rabat albo zwrot na portfel), NIE dotacja.
+  // Modul od poczatku przewidywal plakietke na karcie, ale nikt jej tu nie renderowal, wiec
+  // klient widzial oznaczenie dopiero po wejsciu w oferte (zgloszenie wlasciciela 2026-09-25).
+  const cpp = czystaPolskaPlusInfo(o.attributes as Record<string, unknown> | undefined);
 
   // Dodanie do koszyka bez opuszczania katalogu — wcześniej każda karta wypychała
   // użytkownika na stronę produktu, nawet gdy już wiedział, czego chce.
@@ -197,6 +202,12 @@ function OfferCard({ o, fav, onToggleFav, badge, rate = 0.03 }: { o: Offer; fav:
                 style={{ background: "rgba(122,184,154,.12)", color: "var(--green)" }}>
             Cashback +{pkt(cashback)} pkt
           </span>
+          )}
+          {cpp && (
+            <span className="text-[11px] font-semibold px-2 py-1 rounded-full" title={cpp.note}
+                  style={{ background: "rgba(122,184,154,.12)", color: "var(--green)" }}>
+              🌱 {cpp.badge}
+            </span>
           )}
           {freeShip && (
             <span className="text-[11px] font-semibold px-2 py-1 rounded-full" style={{ background: "rgba(232,137,26,.12)", color: "var(--gold)" }}>

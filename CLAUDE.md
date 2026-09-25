@@ -260,6 +260,31 @@ pierwszeństwo przy każdej zmianie kodu. Nie wolno ich naruszać ani obchodzić
   (`coalesce(pc.slug, c.slug)`). Dziś `ogloszenia-lokalne` ma tylko dwa poziomy, więc to nie
   boli — ale pierwsza podkategoria trzeciego poziomu straci darmową publikację po cichu.
 
+## 2i. Czysta Polska Plus — oznaczenie w Market (zgłoszenie właściciela 2026-09-25)
+
+- Objaw: „nadal nie ma informacji o Czystej Polsce". Front był gotowy od dawna
+  (`src/lib/czystaPolskaPlus.ts`, plakietka na stronie oferty), ale **wdrożona wersja
+  `mysunrise-sync` w ogóle nie przenosiła `cpp_eligible`** — kod z tym był w repo
+  i w commicie, tylko funkcji brzegowej nikt nie wdrożył. W MySunrise 49 z 96 aktywnych
+  produktów ma `cpp_eligible = true`, w Market było zero ofert z `attributes.cpp`.
+- Łańcuch: `MySunrise.shop_products.cpp_eligible` / `cpp_note` → `mysunrise-sync` →
+  `offers.attributes.cpp = { eligible, note? }` → `czystaPolskaPlusInfo()` → plakietka.
+  `atrybuty_publiczne()` **nie wycina** `cpp`, więc atrybut dochodzi do przeglądarki.
+- Plakietka jest teraz także **na kartach** w `/sklep` i w wyszukiwarce — moduł od początku
+  przewidywał `badge` „na karcie w katalogu", ale nikt go tam nie renderował.
+- **TO JEST PROMOCJA GREEN ECO WORLD, NIE DOTACJA.** W treści dla klienta piszemy „rabat
+  lub zwrot na portfel MySunrise" i ani razu „dofinansowanie", „dotacja" czy „program
+  rządowy" — słowo „dofinansowanie" ma w Polsce jedno znaczenie (pieniądze publiczne
+  z „Czystego Powietrza") i klient zacznie pytać o wniosek, urząd i termin naboru.
+  Pilnuje tego `tests/czysta-polska-plus-widoczna.test.mjs`.
+- Wycofanie produktu z programu musi **jawnie kasować** `attributes.cpp` — sync scala
+  atrybuty, więc sam brak klucza zostawiłby starą plakietkę na zawsze.
+- **Pułapka przy wdrażaniu:** niezapięte `jsr:@supabase/supabase-js@2` wskazuje od
+  2026-09-25 na 2.117.2, które zależy od `@supabase/postgrest-js` 2.117.2 — a ta paczka
+  nigdy nie trafiła do npm (latest 2.117.1). Bundler Supabase wywala się wtedy na
+  „Could not find npm package". `mysunrise-sync` ma z tego powodu wersję zapiętą na
+  `@2.117.1`. **Każda inna funkcja brzegowa uderzy w to samo przy najbliższym wdrożeniu.**
+
 ## 3. Zasady sprzedawców (decyzja właściciela 2026-09-05: dwa poziomy)
 
 - **Sprzedawca** (`sellers.seller_type = 'private_partner'`): uproszczone centrum,

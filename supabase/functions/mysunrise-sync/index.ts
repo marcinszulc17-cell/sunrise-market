@@ -8,7 +8,12 @@
 //   Produkty z shop_products.subscription_interval dostają attributes.subscription (płatne z góry, ciągłe).
 //   Atrybuty są SCALANE (VAT, promo, price_locked zostają); cena z MySunrise pomijana przy price_locked/promo.
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
-import { createClient } from "jsr:@supabase/supabase-js@2";
+// Wersja zapieta swiadomie. Niezapiete "@2" wskazuje dzis na supabase-js 2.117.2, ktore
+// zalezy od @supabase/postgrest-js 2.117.2 — a ta paczka nigdy nie trafila do npm (latest
+// to 2.117.1). Bundler Supabase wywala sie wtedy na "Could not find npm package". To nie jest
+// nasz blad, tylko stan rejestru z 2026-09-25; przy nastepnym wdrozeniu warto sprawdzic, czy
+// 2.117.2 juz sie naprawilo, i wtedy wrocic do "@2".
+import { createClient } from "jsr:@supabase/supabase-js@2.117.1";
 
 const CORS = { "Access-Control-Allow-Origin": "*", "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-sync-secret", "Access-Control-Allow-Methods": "POST, OPTIONS" };
 const json = (b, s = 200) => new Response(JSON.stringify(b), { status: s, headers: { ...CORS, "Content-Type": "application/json" } });
