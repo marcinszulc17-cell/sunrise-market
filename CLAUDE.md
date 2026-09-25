@@ -242,6 +242,16 @@ pierwszeństwo przy każdej zmianie kodu. Nie wolno ich naruszać ani obchodzić
     i klient utknąłby na pustej liście bez wyjścia.
   - **To dotyczy wyłącznie filtrowania.** Kreatory ofert czytają `category_attributes` osobno
     i muszą pokazywać komplet pól — tam sprzedawca te dane dopiero tworzy.
+- **Filtr lokalizacji nie ukrywa towaru wysyłkowego.** 605 z 700 aktywnych ofert nie ma ani
+  `location`, ani promienia dojazdu (to towar od dostawców, jedzie kurierem), a `offer_serves`
+  wymagało jednego albo drugiego — więc wybór regionu w nagłówku ścinał katalog do 92 pozycji.
+  `market.oferta_bez_miejsca(attrs)` (migracja `20260925150000`) traktuje ofertę bez
+  zadeklarowanego miejsca jako dostępną wszędzie i jest dołożona **tylko** do klauzuli
+  `location` w `search_offers_v2`. **`offer_serves` zostaje nietknięte** — korzystają z niego
+  strony miast (`city_offers`, SEO), gdzie mają być wyłącznie oferty naprawdę związane
+  z miastem, a nie cały katalog powielony na 78 podstronach. Wyjątek **nie obejmuje**
+  `appointment` ani `daily`: nocleg albo auto bez podanego miasta nie może wyskakiwać
+  w każdym województwie.
   - Ta sama zasada poza wyszukiwarką: `/sklep` używa tego samego `pola`, portal działu bez ofert
     nie renderuje formularza (metraż i pokoje w pustych Nieruchomościach), a `/noclegi` nie
     pokazuje dwunastu chipów udogodnień, dopóki nie ma ani jednego obiektu (pasek

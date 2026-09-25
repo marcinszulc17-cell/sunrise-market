@@ -71,3 +71,24 @@ test("noclegi bez ani jednego obiektu nie pokazują chipów udogodnień", () => 
   // Pasek „dokąd / termin / osoby" zostaje — to jest sens tej strony, nie filtr do niczego.
   assert.match(noclegi, /Dokąd jedziesz\?/);
 });
+
+// Wybór regionu w nagłówku ścinał katalog z 700 ofert do 92, bo 605 pozycji to towar
+// wysyłkowy bez zadeklarowanego miejsca. Oferta bez miejsca nie jest „gdzie indziej".
+const lokalizacja = await readFile(new URL("../supabase/migrations/20260925150000_filtr_lokalizacji_nie_ukrywa_wysylki.sql", import.meta.url), "utf8");
+
+test("filtr lokalizacji nie ukrywa towaru wysyłkowego", () => {
+  assert.match(lokalizacja, /create or replace function market\.oferta_bez_miejsca/);
+  assert.match(lokalizacja, /nullif\(p_attrs->>'location',''\) is null/);
+  assert.match(lokalizacja, /nullif\(p_attrs->>'service_radius_km',''\) is null/);
+});
+
+test("wyjątek nie obejmuje rezerwacji i wynajmu", () => {
+  // Nocleg albo auto bez podanego miasta nie może wyskakiwać w każdym województwie.
+  assert.match(lokalizacja, /coalesce\(nullif\(p_attrs->>'purchase_mode',''\),'purchase'\) = 'purchase'/);
+});
+
+test("podmiana w search_offers_v2 jest zabezpieczona przed trafieniem w złe miejsce", () => {
+  assert.match(lokalizacja, /raise exception 'Oczekiwałem dokładnie jednego wystąpienia klauzuli lokalizacji/);
+  // offer_serves zostaje nietknięte — używają go strony miast (SEO).
+  assert.doesNotMatch(lokalizacja, /create or replace function market\.offer_serves/);
+});
