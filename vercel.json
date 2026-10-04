@@ -213,10 +213,6 @@
       "destination": "/api/feed"
     },
     {
-      "source": "/",
-      "destination": "/api/start"
-    },
-    {
       "source": "/(.*)",
       "destination": "/index.html"
     }
