@@ -78,12 +78,35 @@ function danePlacowki(o: Offer, url: string, obraz: string) {
     };
   }
 
+  // Identyfikatory towaru. 600 ofert z hurtowni ma w atrybutach `ean` i `sku`. Bez nich
+  // Google traktuje kartę jako produkt nierozpoznany i nie dopuszcza jej do zestawień
+  // cenowych ani do bezpłatnych list zakupowych. EAN podajemy dopiero po sprawdzeniu
+  // długości — błędny gtin to ostrzeżenie dla całej domeny, nie dla jednej oferty.
+  const ean = String(A.ean ?? "").replace(/\D/g, "");
+  const gtin = [8, 12, 13, 14].includes(ean.length) ? ean : "";
+  const sku = String(A.sku ?? "").trim();
+
+  // Stan towaru. Domyślnie nowy; motoryzacja leci jako używana, chyba że atrybut mówi
+  // inaczej. Zgadywanie w drugą stronę — używane podane jako nowe — byłoby wprowadzaniem
+  // kupującego w błąd, więc przy wątpliwości wybieramy wariant ostrożniejszy.
+  const stanTekst = String(A.condition ?? A.stan ?? "").toLowerCase();
+  const nowy = "https://schema.org/NewCondition", uzywany = "https://schema.org/UsedCondition";
+  const stan = stanTekst.includes("now") ? nowy
+    : /uzyw|używ|used/.test(stanTekst) || slug.startsWith("motoryzacja") ? uzywany
+    : nowy;
+
+  // Data ważności ceny: bez niej karta produktu dostaje w Search Console ostrzeżenie
+  // i wypada z wyników z ceną. Pół roku — dłużej i tak nie trzymamy cennika w ryzach.
+  const cenaWaznaDo = new Date(Date.now() + 182 * 864e5).toISOString().slice(0, 10);
+
   const wspolne = {
     "@context": "https://schema.org",
     name: o.title,
     description: plain(o.description, 1200) || `${o.category} · ${o.seller}`,
     image: obraz ? [obraz] : undefined,
     url,
+    ...(sku ? { sku, mpn: sku } : {}),
+    ...(gtin ? { gtin } : {}),
     ...(o.review_count > 0 ? {
       aggregateRating: { "@type": "AggregateRating", ratingValue: o.avg_rating, reviewCount: o.review_count },
     } : {}),
@@ -91,6 +114,8 @@ function danePlacowki(o: Offer, url: string, obraz: string) {
       offers: {
         "@type": "Offer", price: cena, priceCurrency: "PLN", url,
         availability: (o.stock ?? 0) > 0 ? "https://schema.org/InStock" : "https://schema.org/PreOrder",
+        itemCondition: stan,
+        priceValidUntil: cenaWaznaDo,
         seller: { "@type": "Organization", name: o.seller || "Sunrise Market" },
       },
     } : {}),
