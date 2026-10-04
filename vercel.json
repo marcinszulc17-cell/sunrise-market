@@ -201,6 +201,14 @@
       "destination": "/api/temat?temat=:temat&miasto=:miasto"
     },
     {
+      "source": "/miasto",
+      "destination": "/api/miasto"
+    },
+    {
+      "source": "/miasto/:slug",
+      "destination": "/api/miasto?slug=:slug"
+    },
+    {
       "source": "/(.*)",
       "destination": "/index.html"
     }
