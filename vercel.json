@@ -209,8 +209,18 @@
       "destination": "/api/miasto?slug=:slug"
     },
     {
+      "source": "/feed.xml",
+      "destination": "/api/feed"
+    },
+    {
       "source": "/(.*)",
       "destination": "/index.html"
+    }
+  ],
+  "crons": [
+    {
+      "path": "/api/indexnow",
+      "schedule": "0 5 * * *"
     }
   ]
 }
