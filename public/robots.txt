@@ -4,3 +4,7 @@ Disallow: /operator
 Disallow: /sprzedawca/rozliczenia
 
 Sitemap: https://sunrisemarket.pl/sitemap.xml
+
+# Plik produktowy (Merchant Center, Ceneo, Bing Shopping)
+# Nie jest sitemapą, więc nie zgłaszamy go dyrektywą Sitemap — podaje się go
+# wprost w panelu danej usługi: https://sunrisemarket.pl/feed.xml
