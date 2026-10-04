@@ -3,28 +3,46 @@
 Rzeczy, których nie da się zrobić z repozytorium ani z MCP, bo wymagają zalogowania
 na konto właściciela. Każda pozycja ma dokładną ścieżkę, żeby nie szukać.
 
-Stan na 2026-10-04.
+Stan na 2026-10-04, po wejściu do Search Console i sprawdzeniu faktów.
 
 ---
 
-## 1. Google Search Console — domena nie jest zweryfikowana (priorytet 1)
+## 1. Search Console — ZROBIONE, byłem w błędzie
 
-Dziś nikt nie wie, czy i co Google ma w indeksie, ile stron odrzucił i z jakimi
-błędami. Sitemapa z 1344 adresami nie jest nigdzie zgłoszona.
+Domena **jest zweryfikowana od sierpnia** jako zasób domenowy (`sc-domain:sunrisemarket.pl`,
+weryfikacja przez DNS) i **sitemapa jest zgłoszona** — 12 sierpnia, ostatni odczyt
+2 października, stan „Sukces", 1344 wykryte strony. Wcześniejsza wersja tego pliku
+twierdziła inaczej, bo wnioskowała z braku tagu `google-site-verification` w kodzie —
+a zasób domenowy takiego tagu nie używa. Żaden kod weryfikacyjny nie jest potrzebny.
 
-1. https://search.google.com/search-console → **Dodaj zasób** → **Prefiks adresu
-   URL** → `https://sunrisemarket.pl`.
-2. Wybierz metodę **Tag HTML** i skopiuj wartość `content` z meta tagu.
-3. Wklej ją w `index.html` jako
-   `<meta name="google-site-verification" content="…">` i wypchnij na `main`.
-   (Albo przekaż samą wartość — wstawienie to jedna linijka.)
-4. Po weryfikacji: **Sitemapy** → dodaj `sitemap.xml`.
-5. Sprawdź **Strony → Dlaczego strony nie są indeksowane** po tygodniu.
+**Prawdziwy stan indeksacji (dane GSC z 21.09.2026):**
+
+| | |
+|---|---|
+| W indeksie | **52** |
+| Poza indeksem | **776** |
+| → „wykryta, obecnie niezindeksowana" | 767 |
+| → zeskanowana, jeszcze niezindeksowana | 5 |
+| → alternatywna z canonicalem / noindex / przekierowanie | 4 |
+| Kliknięcia z wyszukiwarki (3 miesiące) | 8 |
+
+To nie jest usterka techniczna — Google zna te adresy z sitemapy i świadomie ich
+nie indeksuje. Inspektor adresu dla `/miasto` pokazał dlaczego: **„Strona odsyłająca:
+nie wykryto"**. Strona główna oddawała robotom pusty `<div id="root">`, więc graf
+linków całego serwisu zaczynał się od zera. Naprawione 2026-10-04 (`api/start.ts`
+plus `middleware.ts`) — strona główna ma teraz 150 linków w surowym HTML, w tym
+60 ogłoszeń i 78 miast.
+
+**Czego się po tym spodziewać:** odbudowa indeksu to tygodnie, nie dni, i sam
+HTML nie wystarczy. 767 niezindeksowanych pozycji to w większości ogłoszenia
+hurtowe o opisach zbliżonych do setek innych sklepów. Dwie dźwignie, których
+nie da się zrobić kodem: **unikalne opisy** przy pozycjach, na których nam zależy,
+oraz **linki z zewnątrz** — domena nie ma dziś praktycznie żadnych.
 
 ## 2. Bing Webmaster Tools
 
-https://www.bing.com/webmasters → **Import from Google Search Console** (po punkcie 1
-to jedno kliknięcie, przenosi weryfikację i sitemapy).
+https://www.bing.com/webmasters → **Import from Google Search Console** (jedno
+kliknięcie, przenosi weryfikację i sitemapy).
 
 IndexNow **już działa i nie wymaga tego kroku** — klucz leży pod
 `https://sunrisemarket.pl/4cf5c5682ec9e52e0ae8d10316a8013e.txt`, a `/api/indexnow`
@@ -36,7 +54,11 @@ zgłasza nowe ogłoszenia codziennie o 5:00. Pierwsze zgłoszenie 613 adresów p
 `https://sunrisemarket.pl/feed.xml` jest gotowy: 671 pozycji, 598 z numerem EAN,
 bez danych kosztowych.
 
-1. https://merchants.google.com → załóż konto dla sunrisemarket.pl.
+Google **sam wykrył 381 produktów** na sunrisemarket.pl i proponuje start w Search
+Console (Zakupy → Możliwości dla sprzedawców → „Rozpocznij"). Konta nie zakładam
+w Twoim imieniu — wymaga akceptacji regulaminu Google.
+
+1. https://merchants.google.com albo przycisk „Rozpocznij" w Search Console.
 2. **Produkty → Źródła danych → Dodaj źródło danych → Zaplanowane pobieranie**.
 3. Adres: `https://sunrisemarket.pl/feed.xml`, kraj: Polska, waluta: PLN,
    częstotliwość: codziennie.
