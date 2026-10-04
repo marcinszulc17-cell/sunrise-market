@@ -45,10 +45,15 @@ bez danych kosztowych.
 5. Konto wymaga potwierdzenia witryny (ten sam mechanizm co Search Console)
    oraz uzupełnienia danych o wysyłce i zwrotach w ustawieniach konta.
 
-**Czego świadomie nie ma w pliku:** `shipping` i `return_policy`. Nie wymyślam
-warunków dostawy ani zwrotów — to deklaracja handlowa wobec klienta. Ustaw je
-raz w panelu Merchant Center (dotyczą całego konta) albo podaj stawki, to
-dopiszemy je do pliku.
+**Dostawa jest już w pliku** — stawki lecą z `market.shipping_methods` przy każdym
+wygenerowaniu (Paczkomat InPost 15,99, kurierzy DPD/InPost 17,99, strefa PL).
+Jak zmienisz je w bazie, plik pójdzie za nimi.
+
+**Zwrotów w pliku nie ma i być nie może** — Google wiąże je z polityką zdefiniowaną
+w samym Merchant Center (`return_policy_label` tylko na nią wskazuje). Przy zakładaniu
+konta wpisz to, co stoi w regulaminie §8 i w `/legal/zwroty.html`:
+**14 dni na odstąpienie** przy zakupie od przedsiębiorcy, **koszt odesłania po stronie
+kupującego**, chyba że zwrot wynika z wady lub naszego błędu — wtedy pokrywamy go my.
 
 ## 4. Supabase Auth — ochrona przed wyciekłymi hasłami jest wyłączona
 
