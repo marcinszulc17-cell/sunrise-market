@@ -49,6 +49,29 @@ export default async function handler(req: Request): Promise<Response> {
     if (r.ok) wiersze = await r.json();
   } catch { /* pusty plik jest lepszy niż 500 — Merchant Center ponowi */ }
 
+  // Koszty dostawy bierzemy z market.shipping_methods, a nie z palca. Google porównuje
+  // deklarację z pliku z tym, co kupujący widzi w koszyku — rozjazd to ostrzeżenie
+  // dla całego konta. Stawki są globalne (shipping_settings nie ma nadpisań per
+  // sprzedawca), więc jeden zestaw opisuje wszystkie pozycje. Odbiór osobisty nie
+  // jest dostawą i do pliku nie trafia.
+  let wysylka: { nazwa: string; cena: number }[] = [];
+  try {
+    const r = await fetch(`${SUPABASE_URL}/rest/v1/shipping_methods?select=name,price_gross,zone_code,lanes&active=eq.true&zone_code=eq.PL`, {
+      headers: { apikey: ANON, Authorization: `Bearer ${ANON}`, "Accept-Profile": "market" },
+    });
+    if (r.ok) {
+      const metody = (await r.json()) as any[];
+      wysylka = metody
+        .filter((m) => Number(m.price_gross) > 0 && (m.lanes ?? []).includes("ours"))
+        .map((m) => ({ nazwa: String(m.name), cena: Number(m.price_gross) }))
+        .sort((a, b) => a.cena - b.cena);
+    }
+  } catch { /* bez bloku shipping — Merchant Center weźmie stawki z ustawień konta */ }
+
+  const blokWysylki = wysylka
+    .map((w) => `<g:shipping><g:country>PL</g:country><g:service>${esc(w.nazwa)}</g:service><g:price>${w.cena.toFixed(2)} PLN</g:price></g:shipping>`)
+    .join("");
+
   const pozycje: string[] = [];
   for (const o of wiersze) {
     const slug = String(o.category_slug || "");
@@ -92,6 +115,7 @@ export default async function handler(req: Request): Promise<Response> {
       sku ? `<g:mpn>${esc(czysty(sku, 70))}</g:mpn>` : "",
       bezIdentyfikatora ? "<g:identifier_exists>no</g:identifier_exists>" : "",
       `<g:product_type>${esc(czysty(o.category, 100))}</g:product_type>`,
+      blokWysylki,
       "</item>",
     ].filter(Boolean).join(""));
   }
