@@ -143,13 +143,14 @@ async function settleAmbassadorCommission(sb: any, orderId: string, email: strin
   try {
     await sb.rpc("enqueue_ambassador_commission", { p_order: orderId });
     const { data: outbox, error } = await sb.from("ambassador_commission_outbox")
-      .select("id,status,amount_net,attempts")
+      .select("id,status,eligible_gross,amount_net,attempts")
       .eq("order_id", orderId)
       .maybeSingle();
     if (error) throw error;
-    if (!outbox || ["sent", "pending_vat", "pending_identity", "reversed"].includes(String(outbox.status))) return;
+    if (!outbox || ["sent", "pending_identity", "reversed"].includes(String(outbox.status))) return;
 
-    const amountNet = Math.round(Math.max(0, Number(outbox.amount_net ?? 0)) * 100) / 100;
+    // Podstawa prowizji = BRUTTO (decyzja wlasciciela 2026-10-12); parametr RPC nazywa sie amount_net historycznie.
+    const amountNet = Math.round(Math.max(0, Number(outbox.eligible_gross ?? outbox.amount_net ?? 0)) * 100) / 100;
     if (amountNet <= 0) return;
     const attempts = Number(outbox.attempts ?? 0) + 1;
     const now = new Date().toISOString();

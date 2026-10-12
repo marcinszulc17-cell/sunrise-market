@@ -152,7 +152,7 @@ export default function SellerOffersManage() {
         attributes: { ...(edit.attributes ?? {}), full_vat_invoice: edit.full_vat_invoice, vat_rate: Number(edit.vat_rate) },
       });
       await reload();
-      setMsg("Oferta zapisana ✅ Stawka VAT jest używana jako podstawa netto dla nowych zamówień i prowizji.");
+      setMsg("Oferta zapisana ✅ Stawka VAT służy do rozliczeń podatkowych; prowizje ambasadorskie liczone są zawsze od kwoty brutto.");
     } catch (e) { setMsg("Nie udało się zapisać: " + (e as Error).message); }
     finally { setSaving(false); }
   }

@@ -60,6 +60,14 @@ pierwszeństwo przy każdej zmianie kodu. Nie wolno ich naruszać ani obchodzić
   (moduł `sunrise_market`, koperta 40%). `sunrise_market_ext` ma kopertę 0 — towar
   sprzedawców zewnętrznych i hurtowni nie daje ambasadorowi nic.
 
+## 2c-quater. PODSTAWA PROWIZJI = BRUTTO (decyzja właściciela 2026-10-12)
+
+- Prowizja ambasadora jest **zawsze liczona od kwoty brutto**, którą klient faktycznie zapłacił („brutto od brutto").
+  `market.enqueue_ambassador_commission` wpisuje do `ambassador_commission_outbox.amount_net` kwotę **brutto**
+  (nazwa kolumny i parametru RPC `p_amount_net` są historyczne — nie zmieniaj ich bez równoczesnej zmiany
+  w MySunrise `mkt_referral_sale`/`hub_record_sale`). Brak stawki VAT **nie blokuje** prowizji (status
+  `pending_vat` już nie powstaje). Migracja `20261012090000`. Nie wracaj do podstawy netto w żadnym materiale ani kodzie.
+
 ## 2c-ter. Stawki Ambassador Club (odczytane z `public.mme_config`, 2026-09-15)
 
 - Prowizja bezpośrednia wg statusu (`public.mme_direct_rate`): member 0%, **ambassador 0%**,
