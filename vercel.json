@@ -189,6 +189,10 @@
       "destination": "/api/sitemap"
     },
     {
+      "source": "/sitemap-:czesc.xml",
+      "destination": "/api/sitemap?czesc=:czesc"
+    },
+    {
       "source": "/produkt/:id",
       "destination": "/api/oferta?id=:id"
     },
