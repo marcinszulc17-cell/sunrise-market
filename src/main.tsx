@@ -197,7 +197,8 @@ function AppChrome() {
   // Asystent Suri (Sunny) na stronach klienta; nie w panelu sprzedawcy/operatora ani w koszyku (nie zasłania płatności).
   // SUNNY_ENABLED=false — asystent ukryty na życzenie właściciela (2026-09-07), do czasu doładowania salda AI.
   // Włączenie: zmień na true (nic więcej nie trzeba, kod asystenta zostaje w repo).
-  const SUNNY_ENABLED = false;
+  // Włączony ponownie 2026-10-22: hub mkt-ai (OpenAI) odpowiada, saldo doładowane.
+  const SUNNY_ENABLED = true;
   const assistant = SUNNY_ENABLED && !/^\/(sprzedawca|operator|koszyk|verify|potwierdz-zakup)/.test(pathname);
   return <><MobileAppNav /><PwaInstallPrompt />{assistant && <SuriChat />}</>;
 }
