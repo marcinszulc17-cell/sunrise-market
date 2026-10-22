@@ -10,7 +10,7 @@ import { zl } from "../lib/money";
 export const ASSISTANT_NAME = "Sunny";
 type Msg = { role: "user" | "suri"; text: string };
 type Rec = { offer_id: string; title: string; price: number; reason?: string };
-const GREETING: Msg = { role: "suri", text: `Cześć, jestem ${ASSISTANT_NAME} — asystent Suri w Sunrise Market ☀️ Powiedz, czego szukasz albo o co chcesz zapytać: znajdę oferty, wyjaśnię płatność, cashback, Ochronę Kupujących czy rezerwację.` };
+const GREETING: Msg = { role: "suri", text: `Cześć, jestem ${ASSISTANT_NAME} — asystent zakupowy Sunrise Market ☀️ Powiedz, czego szukasz albo o co chcesz zapytać: znajdę oferty, wyjaśnię płatność, cashback, Ochronę Kupujących czy rezerwację.` };
 const QUICK = ["Szukam auta do 20 tys. zł", "Fotowoltaika do domu", "Wynajem auta na weekend", "Jak działa Ochrona Kupujących?", "Ile wynosi cashback?"];
 
 function guestSid(): string {
@@ -73,16 +73,16 @@ export default function SuriChat({ initialPrompt }: { initialPrompt?: string }) 
           style={{ bottom: "calc(84px + env(safe-area-inset-bottom))", background: "linear-gradient(135deg,#F5A623,#E8891A)", boxShadow: "0 12px 30px -8px rgba(232,137,26,.75)", border: "2px solid rgba(255,255,255,.35)" }}>
           <span className="text-2xl leading-none">×</span>
         </button>
-      : <button type="button" onClick={() => setOpen(true)} aria-label={`${ASSISTANT_NAME} — asystent Suri`} aria-expanded={false}
+      : <button type="button" onClick={() => setOpen(true)} aria-label={`${ASSISTANT_NAME} — asystent Sunrise Market`} aria-expanded={false}
           className="sunny-fab fixed right-2 z-[45] transition hover:scale-105 active:scale-95 sm:bottom-4 sm:right-4"
           style={{ bottom: "calc(76px + env(safe-area-inset-bottom))", background: "transparent" }}>
           <img src="/sunny/sunny-full.webp" alt="" width={85} height={100} className="block h-[88px] w-auto sm:h-[100px]" style={{ filter: "drop-shadow(0 10px 14px rgba(0,0,0,.35))" }} draggable={false} />
         </button>)}
 
-    {open && <div role="dialog" aria-label={`${ASSISTANT_NAME} — asystent Suri`} className="fixed inset-x-0 z-[46] flex max-h-[78dvh] flex-col overflow-hidden rounded-t-3xl sm:inset-auto sm:!bottom-24 sm:right-6 sm:h-[560px] sm:w-[380px] sm:rounded-3xl" style={{ bottom: "calc(72px + env(safe-area-inset-bottom))", background: "var(--bg)", border: "1px solid var(--line)", boxShadow: "0 30px 80px rgba(0,0,0,.5)" }}>
+    {open && <div role="dialog" aria-label={`${ASSISTANT_NAME} — asystent Sunrise Market`} className="fixed inset-x-0 z-[46] flex max-h-[78dvh] flex-col overflow-hidden rounded-t-3xl sm:inset-auto sm:!bottom-24 sm:right-6 sm:h-[560px] sm:w-[380px] sm:rounded-3xl" style={{ bottom: "calc(72px + env(safe-area-inset-bottom))", background: "var(--bg)", border: "1px solid var(--line)", boxShadow: "0 30px 80px rgba(0,0,0,.5)" }}>
       <div className="flex items-center gap-3 px-4 py-3" style={{ borderBottom: "1px solid var(--line)" }}>
         <img src="/sunny/sunny-full.webp" alt="" className="h-11 w-auto" draggable={false} />
-        <div className="min-w-0 flex-1"><div className="font-semibold leading-tight">{ASSISTANT_NAME}</div><div className="text-[11px]" style={{ color: "var(--mut)" }}>asystent Suri · Sunrise Market</div></div>
+        <div className="min-w-0 flex-1"><div className="font-semibold leading-tight">{ASSISTANT_NAME}</div><div className="text-[11px]" style={{ color: "var(--mut)" }}>asystent zakupowy · Sunrise Market</div></div>
         <button type="button" onClick={() => setOpen(false)} className="grid h-9 w-9 place-items-center rounded-lg text-xl" style={{ color: "var(--mut)" }} aria-label="Zamknij">×</button>
       </div>
 

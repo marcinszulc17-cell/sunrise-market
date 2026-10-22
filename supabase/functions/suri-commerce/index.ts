@@ -2,6 +2,7 @@
 // w Market działa jej asystent — persona „Sunny”. Model językowy: hub MySunrise `mkt-ai` (X-Sunrise-Service-Token), a gdy hub
 // nie odpowie — ANTHROPIC_API_KEY (jeśli ustawiony). Bez AI asystent nadal działa: pokazuje dopasowane oferty (suri_recommend).
 // Akcje: chat (domyślna) | history | seller_reply (podpowiedź odpowiedzi sprzedawcy w Wiadomościach; wymaga JWT).
+// Klientom przedstawia się wyłącznie jako Sunny, asystent Sunrise Market — bez nazwy „Suri” (decyzja właściciela 2026-10-22).
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const cors = { "Access-Control-Allow-Origin": "*", "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type" };
@@ -12,7 +13,7 @@ const ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY") ?? "";
 const HUB = (Deno.env.get("MYSUNRISE_PAY_BASE_URL") ?? "https://lvmrhgpxhqvfuoftblky.supabase.co/functions/v1").replace(/\/$/, "");
 export const ASSISTANT_NAME = "Sunny";
 
-const SYSTEM = `Jesteś ${ASSISTANT_NAME} — asystent Suri w Sunrise Market. Suri to mózg operacyjny ekosystemu Sunrise; Ty pomagasz klientom w Sunrise Market (sunrisemarket.pl) — marketplace dla wszystkich: sprzedawcy prywatni, firmy i marki własne Sunrise. Mówisz po polsku, ciepło i konkretnie, zawsze w interesie kupującego; 1 emoji maksymalnie, bez lania wody. Krótko: 2–5 zdań.
+const SYSTEM = `Jesteś ${ASSISTANT_NAME} — asystent zakupowy Sunrise Market. Pomagasz klientom w Sunrise Market (sunrisemarket.pl) — marketplace dla wszystkich: sprzedawcy prywatni, firmy i marki własne Sunrise. Mówisz po polsku, ciepło i konkretnie, zawsze w interesie kupującego; 1 emoji maksymalnie, bez lania wody. Krótko: 2–5 zdań.
 
 Fakty o Sunrise Market (nie wymyślaj innych):
 • Płatność: portfel Sunrise Pay (promowany) albo karta przez Stripe. Cashback 3% wraca na portfel przy KAŻDEJ metodzie płatności.
@@ -23,7 +24,7 @@ Fakty o Sunrise Market (nie wymyślaj innych):
 • Ulubione, porównywarka, zapisane wyszukiwania z alertem o nowych ogłoszeniach, logowanie Face ID.
 • Sprzedawanie: Sprzedawca (bez NIP, 299 zł/rok) i Partner Handlowy (firma, 499 zł/rok) — pierwszy rok gratis; prowizja 7,9% (Sunrise Pay) / 12,9% (karta).
 • Jedno konto Sunrise (MySunrise) działa w całym ekosystemie.
-Proponuj wyłącznie oferty z podanej listy (z ceną), nie obiecuj terminów dostawy ani parametrów, których nie ma. Gdy lista jest pusta, powiedz to wprost i zaproponuj doprecyzowanie (kategoria, budżet, miasto) albo zapisanie wyszukiwania. Pamiętaj, co klient mówił wcześniej.`;
+Proponuj wyłącznie oferty z podanej listy (z ceną), nie obiecuj terminów dostawy ani parametrów, których nie ma. Gdy lista jest pusta, powiedz to wprost i zaproponuj doprecyzowanie (kategoria, budżet, miasto) albo zapisanie wyszukiwania. Pamiętaj, co klient mówił wcześniej. Przedstawiaj się wyłącznie jako ${ASSISTANT_NAME}, asystent Sunrise Market — nie wspominaj o „Suri”.`;
 
 async function serviceToken(sb: any): Promise<string> {
   const env = Deno.env.get("SUNRISE_MARKET_SERVICE_TOKEN"); if (env) return env;
@@ -93,7 +94,13 @@ function faqReply(message: string): string | null { for (const [re, a] of FAQ) i
 function fallbackReply(offers: any[], message: string, intent?: any): string {
   if (!offers.length && !intent?.category_slug && !intent?.mode) { const f = faqReply(message); if (f) return f; }
   const what = [intent?.mode === "daily" ? "wynajem" : intent?.mode === "appointment" ? "usługa z terminem" : null, intent?.category_slug ? ({ motoryzacja: "motoryzacja", nieruchomosci: "nieruchomości", "oze-i-energia": "OZE i energia", "uslugi-i-reklama": "usługi", noclegi: "noclegi" } as Record<string, string>)[intent.category_slug] ?? intent.category_slug : null, intent?.budget ? `do ${Math.round(intent.budget).toLocaleString("pl-PL")} zł` : null].filter(Boolean).join(", ");
-  if (offers.length) return `Rozumiem: ${what || `„${message.slice(0, 60)}”`}. Mam ${offers.length === 1 ? "jedną ofertę" : `${offers.length} oferty`} — zobacz poniżej. Chcesz zawęzić (budżet, miasto, rocznik)?`;
+  // Podpowiedź zawężenia zależna od działu — „rocznik” przy zaworze kulowym brzmiał jak pomyłka.
+  const narrow = intent?.category_slug === "motoryzacja" ? "budżet, miasto, rocznik"
+    : intent?.category_slug === "nieruchomosci" || intent?.category_slug === "noclegi" || intent?.mode === "daily" || intent?.mode === "appointment" ? "budżet, miasto, termin"
+    : "budżet, marka, rozmiar";
+  const n = offers.length;
+  const ile = n === 1 ? "jedną ofertę" : n < 5 ? `${n} oferty` : `${n} ofert`;
+  if (offers.length) return `Rozumiem: ${what || `„${message.slice(0, 60)}”`}. Mam ${ile} — zobacz poniżej. Chcesz zawęzić (${narrow})?`;
   return `Rozumiem: ${what || `„${message.slice(0, 60)}”`} — na razie nie mam takiej oferty. Zmień kryteria albo zapisz wyszukiwanie w wyszukiwarce, a dam znać, gdy coś się pojawi.`;
 }
 
@@ -142,7 +149,7 @@ Deno.serve(async (req) => {
       const { data: msgs } = await sb.from("messages").select("sender_user,body,created_at").eq("conversation_id", conversationId).order("created_at", { ascending: true }).limit(20);
       const me = u.user.id;
       const thread = (msgs ?? []).map((m: any) => `${m.sender_user === me ? "JA" : "ROZMÓWCA"}: ${String(m.body).slice(0, 400)}`).join("\n");
-      const sys = `Jesteś ${ASSISTANT_NAME}, asystent Suri w Sunrise Market. Pomagasz ${isSeller ? "SPRZEDAWCY" : "KUPUJĄCEMU"} napisać odpowiedź w rozmowie o ofercie. Po polsku, uprzejmie, konkretnie, 1–3 zdania na propozycję, bez wymyślania faktów (cen, terminów, parametrów), których nie ma w ofercie ani w rozmowie. Zwróć TYLKO JSON: {"replies":["...","..."]} — 2 różne propozycje (np. rzeczowa i krótka).`;
+      const sys = `Jesteś ${ASSISTANT_NAME}, asystent Sunrise Market. Pomagasz ${isSeller ? "SPRZEDAWCY" : "KUPUJĄCEMU"} napisać odpowiedź w rozmowie o ofercie. Po polsku, uprzejmie, konkretnie, 1–3 zdania na propozycję, bez wymyślania faktów (cen, terminów, parametrów), których nie ma w ofercie ani w rozmowie. Zwróć TYLKO JSON: {"replies":["...","..."]} — 2 różne propozycje (np. rzeczowa i krótka).`;
       const ctx = `Oferta: ${offer?.title ?? "?"} — ${offer?.price_gross ?? "?"} zł.\nOpis (fragment): ${String(offer?.description ?? "").slice(0, 600)}\nAtrybuty: ${JSON.stringify(offer?.attributes ?? {}).slice(0, 500)}\n\nRozmowa:\n${thread || "(pusta)"}\n\nNapisz propozycje odpowiedzi na ostatnią wiadomość rozmówcy.`;
       const out = await llm(sb, sys, [{ role: "user", content: ctx }], { json: true, max_tokens: 400, temperature: 0.6 });
       if (!out.text) return json({ error: "Asystent jest chwilowo niedostępny", replies: [] }, 503);
