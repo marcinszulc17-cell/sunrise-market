@@ -23,7 +23,7 @@ function hints(o: OfferRow): { text: string; kind: "price" | "photos" | "desc" |
     out.push({ kind: "price", text: `Cena jest ${Math.round((1 - o.price_gross / med) * 100)}% poniżej mediany kategorii (${zl(med)}) przy dobrym zainteresowaniu — jest miejsce na wyższą cenę.` });
   }
   if (o.photos < 3) out.push({ kind: "photos", text: o.photos === 0 ? "Brak zdjęć — ogłoszenia ze zdjęciami dostają zdecydowanie więcej wyświetleń." : `Tylko ${o.photos} ${o.photos === 1 ? "zdjęcie" : "zdjęcia"} — dodaj kilka z różnych stron.` });
-  if (o.description_len < 200) out.push({ kind: "desc", text: "Krótki opis — dopisz stan, wyposażenie i warunki (asystent Suri napisze go ze zdjęć)." });
+  if (o.description_len < 200) out.push({ kind: "desc", text: "Krótki opis — dopisz stan, wyposażenie i warunki (asystent Sunny napisze go ze zdjęć)." });
   if (o.views_prev7 > 0 && o.views7 < o.views_prev7 * 0.6) out.push({ kind: "trend", text: `Wyświetlenia spadły o ${Math.round((1 - o.views7 / o.views_prev7) * 100)}% wobec poprzedniego tygodnia — odśwież zdjęcie główne albo promuj.` });
   if (!out.length) out.push({ kind: "ok", text: "Wygląda dobrze — cena w normie dla kategorii, zdjęcia i opis są." });
   return out;

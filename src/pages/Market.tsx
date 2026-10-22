@@ -541,7 +541,7 @@ export default function Market() {
         </h1>
         <p className="mt-4 text-base sm:text-lg max-w-xl mx-auto" style={{ color: "var(--mut)" }}>
           Marketplace ekosystemu Sunrise. Płacisz portfelem, dostajesz 3% z powrotem,
-          a Suri pomaga wybrać najlepszą ofertę.
+          a asystent Sunny pomaga wybrać najlepszą ofertę.
         </p>
       </section>
 

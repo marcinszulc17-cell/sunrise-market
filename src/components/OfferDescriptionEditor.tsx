@@ -36,7 +36,7 @@ export default function OfferDescriptionEditor({value,onChange,title,category,co
     onChange(String(data.description));
   }
 
-  const aiLabel:Record<AiAction,string>={generate:"✨ Napisz (asystent Suri)",improve:"Popraw",shorten:"Skróć",expand:"Rozwiń"};
+  const aiLabel:Record<AiAction,string>={generate:"✨ Napisz (asystent Sunny)",improve:"Popraw",shorten:"Skróć",expand:"Rozwiń"};
   return <div>
     <div className="mb-2 flex flex-wrap items-center gap-1.5">
       <button type="button" title="Pogrubienie" onClick={()=>wrap("**")} className="rounded-lg px-2.5 py-1.5 text-sm font-bold" style={{border:"1px solid var(--line)"}}>B</button>
