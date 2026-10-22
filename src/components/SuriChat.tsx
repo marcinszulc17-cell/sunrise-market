@@ -66,15 +66,22 @@ export default function SuriChat({ initialPrompt }: { initialPrompt?: string }) 
 
   return <>
     {/* Uwaga: atrybut hidden nie działa z klasą .grid (Tailwind), dlatego warunkowe renderowanie. */}
-    {!(hidden && !open) && <button type="button" onClick={() => setOpen((o) => !o)} aria-label={open ? "Zamknij asystenta" : `${ASSISTANT_NAME} — asystent Suri`} aria-expanded={open}
-      className="fixed right-4 z-[45] grid h-14 w-14 place-items-center rounded-full text-black shadow-2xl transition active:scale-95 sm:bottom-6 sm:right-6"
-      style={{ bottom: "calc(84px + env(safe-area-inset-bottom))", background: "linear-gradient(135deg,#F5A623,#E8891A)", boxShadow: "0 12px 30px -8px rgba(232,137,26,.75)", border: "2px solid rgba(255,255,255,.35)" }}>
-      {open ? <span className="text-2xl leading-none">×</span> : <img src="/sunny/sunny-head.png" alt="" className="h-12 w-12 object-contain drop-shadow" draggable={false} />}
-    </button>}
+    {/* Zamknięty: cała sylwetka Sunny (decyzja właściciela 2026-10-22, zamiast samej głowy w kółku). Otwarty: okrągły przycisk ×. */}
+    {!(hidden && !open) && (open
+      ? <button type="button" onClick={() => setOpen(false)} aria-label="Zamknij asystenta" aria-expanded
+          className="fixed right-4 z-[45] grid h-14 w-14 place-items-center rounded-full text-black shadow-2xl transition active:scale-95 sm:bottom-6 sm:right-6"
+          style={{ bottom: "calc(84px + env(safe-area-inset-bottom))", background: "linear-gradient(135deg,#F5A623,#E8891A)", boxShadow: "0 12px 30px -8px rgba(232,137,26,.75)", border: "2px solid rgba(255,255,255,.35)" }}>
+          <span className="text-2xl leading-none">×</span>
+        </button>
+      : <button type="button" onClick={() => setOpen(true)} aria-label={`${ASSISTANT_NAME} — asystent Suri`} aria-expanded={false}
+          className="sunny-fab fixed right-2 z-[45] transition hover:scale-105 active:scale-95 sm:bottom-4 sm:right-4"
+          style={{ bottom: "calc(76px + env(safe-area-inset-bottom))", background: "transparent" }}>
+          <img src="/sunny/sunny-full.webp" alt="" width={85} height={100} className="block h-[88px] w-auto sm:h-[100px]" style={{ filter: "drop-shadow(0 10px 14px rgba(0,0,0,.35))" }} draggable={false} />
+        </button>)}
 
     {open && <div role="dialog" aria-label={`${ASSISTANT_NAME} — asystent Suri`} className="fixed inset-x-0 z-[46] flex max-h-[78dvh] flex-col overflow-hidden rounded-t-3xl sm:inset-auto sm:!bottom-24 sm:right-6 sm:h-[560px] sm:w-[380px] sm:rounded-3xl" style={{ bottom: "calc(72px + env(safe-area-inset-bottom))", background: "var(--bg)", border: "1px solid var(--line)", boxShadow: "0 30px 80px rgba(0,0,0,.5)" }}>
       <div className="flex items-center gap-3 px-4 py-3" style={{ borderBottom: "1px solid var(--line)" }}>
-        <img src="/sunny/sunny-head.png" alt="" className="h-10 w-10 rounded-full object-cover" style={{ background: "linear-gradient(135deg,#F5A623,#E8891A)" }} draggable={false} />
+        <img src="/sunny/sunny-full.webp" alt="" className="h-11 w-auto" draggable={false} />
         <div className="min-w-0 flex-1"><div className="font-semibold leading-tight">{ASSISTANT_NAME}</div><div className="text-[11px]" style={{ color: "var(--mut)" }}>asystent Suri · Sunrise Market</div></div>
         <button type="button" onClick={() => setOpen(false)} className="grid h-9 w-9 place-items-center rounded-lg text-xl" style={{ color: "var(--mut)" }} aria-label="Zamknij">×</button>
       </div>

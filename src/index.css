@@ -174,3 +174,8 @@ img[src*="/storage/v1/render/image/public/"][src*="resize=contain"] {
   .grid { min-width: 0; }
   img, video, canvas, svg { max-width: 100%; }
 }
+
+/* Sunny — delikatne „unoszenie się” pływającej sylwetki asystenta (SuriChat). */
+@keyframes sunny-float { 0%,100% { transform: translateY(0) } 50% { transform: translateY(-6px) } }
+.sunny-fab img { animation: sunny-float 3.2s ease-in-out infinite; }
+@media (prefers-reduced-motion: reduce) { .sunny-fab img { animation: none; } }
