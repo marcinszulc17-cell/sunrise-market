@@ -7,6 +7,7 @@ import LocationMap, { locationKind } from "../components/LocationMap";
 import { Link } from "react-router-dom";
 import { useOfferId } from "../lib/offerId";
 import SwipeGallery from "../components/SwipeGallery";
+import RichDescription, { OfferDocuments } from "../components/RichDescription";
 import { addReview, getOffer, offerCancellationTerms, offerMedia, offerReviews, offerSellerBadge, offerStayDetails, similarOffers, trackView, type CancellationTerms, type SellerBadge, type StayDetails } from "../lib/api";
 import { addToCart, cleanTitle, isTestProduct } from "../lib/cart";
 import { zl, pkt } from "../lib/money";
@@ -233,7 +234,9 @@ export default function Product() {
           </section>
         )}
 
-        {o.description && <section className="mt-10 rounded-2xl p-5 sm:p-6" style={CARD}><SectionTitle className="mb-4">Opis {isBooking ? "oferty" : "produktu"}</SectionTitle><div className="flex max-w-3xl flex-col gap-4">{o.description.split(/\n\s*\n/).filter(Boolean).map((par,i)=><p key={i} className="leading-relaxed" style={{ color: "var(--ink)" }}>{par.trim()}</p>)}</div></section>}
+        {o.description && <section className="mt-10 rounded-2xl p-5 sm:p-6" style={CARD}><SectionTitle className="mb-4">Opis {isBooking ? "oferty" : "produktu"}</SectionTitle><RichDescription text={o.description} /></section>}
+
+        {Array.isArray((o.attributes as any)?.documents) && (o.attributes as any).documents.length > 0 && <section className="mt-6 rounded-2xl p-5 sm:p-6" style={CARD}><SectionTitle className="mb-4">Karty katalogowe i dokumenty</SectionTitle><div className="max-w-3xl"><OfferDocuments docs={(o.attributes as any).documents} /></div></section>}
 
         {(features.length > 0 || Object.keys(specs).length > 0 || packing.length > 0) && <section className="mt-6 grid gap-6 md:grid-cols-2">{features.length > 0 && <div className="rounded-2xl p-5 md:col-span-2" style={CARD}><SectionTitle className="mb-4">Najważniejsze cechy</SectionTitle><ul className="flex flex-col gap-2">{features.map((f,i)=><li key={i} className="flex gap-2"><span style={{ color: "var(--green)" }}>✓</span><span>{f}</span></li>)}</ul></div>}{Object.keys(specs).length > 0 && <div className="rounded-2xl p-5" style={CARD}><SectionTitle className="mb-4">Specyfikacja</SectionTitle><div className="overflow-hidden rounded-2xl" style={{ border: "1px solid var(--line)" }}>{Object.entries(specs).map(([k,v],i)=><div key={k} className="flex justify-between gap-4 px-4 py-2.5 text-sm" style={{ background: i%2 ? "transparent" : "var(--glass)", borderBottom: "1px solid var(--line)" }}><span style={{ color: "var(--mut)" }}>{k}</span><span className="text-right font-medium">{String(v)}</span></div>)}</div></div>}{packing.length > 0 && <div className="rounded-2xl p-5" style={CARD}><SectionTitle className="mb-4">Zawartość zestawu</SectionTitle><ul className="flex flex-col gap-2">{packing.map((p,i)=><li key={i} className="flex gap-2 text-sm"><span style={{ color: "var(--gold)" }}>•</span><span>{p}</span></li>)}</ul></div>}</section>}
 
