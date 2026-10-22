@@ -86,7 +86,10 @@ export default async function handler(req: Request): Promise<Response> {
     const A = o.attributes ?? {};
     const ean = String(A.ean ?? "").replace(/\D/g, "");
     const gtin = [8, 12, 13, 14].includes(ean.length) ? ean : "";
-    const sku = String(A.sku ?? "").trim();
+    // MPN = numer części PRODUCENTA. Dostawcy hurtowi (Onninen) trzymają w `sku` własny
+    // indeks magazynowy, który dla Google nie jest identyfikatorem produktu — dlatego
+    // najpierw kod producenta, a `sku` tylko jako ostatnia deska ratunku.
+    const sku = String(A.mpn ?? A.manufacturer_code ?? A.sku ?? "").trim();
     const marka = String(A.brand ?? A.make ?? "").trim();
 
     const stanTekst = String(A.condition ?? A.stan ?? "").toLowerCase();
