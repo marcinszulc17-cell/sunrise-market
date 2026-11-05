@@ -9,8 +9,13 @@ export const config = { runtime: "edge" };
 import { rpc } from "./_shared";
 
 const pad = (n: number) => String(n).padStart(2, "0");
-const day = (d: Date) => `${d.getUTCFullYear()}${pad(d.getUTCMonth() + 1)}${pad(d.getUTCDate())}`;
-const stamp = (d: Date) => `${day(d)}T${pad(d.getUTCHours())}${pad(d.getUTCMinutes())}${pad(d.getUTCSeconds())}Z`;
+// Data kalendarzowa w strefie Europe/Warsaw, nie w UTC: rezerwacja od północy
+// czasu polskiego to w UTC 23:00 poprzedniego dnia, więc liczenie w UTC
+// przesuwało cały pobyt/najem o dzień wcześniej i zwalniało ostatni dzień.
+const WAW = new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/Warsaw", year: "numeric", month: "2-digit", day: "2-digit" });
+const day = (d: Date) => WAW.format(d).replace(/-/g, "");
+const utcDay = (d: Date) => `${d.getUTCFullYear()}${pad(d.getUTCMonth() + 1)}${pad(d.getUTCDate())}`;
+const stamp = (d: Date) => `${utcDay(d)}T${pad(d.getUTCHours())}${pad(d.getUTCMinutes())}${pad(d.getUTCSeconds())}Z`;
 const esc = (s: unknown) =>
   String(s ?? "").replace(/\\/g, "\\\\").replace(/;/g, "\\;").replace(/,/g, "\\,").replace(/\r?\n/g, "\\n");
 
