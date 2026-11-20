@@ -175,7 +175,27 @@ img[src*="/storage/v1/render/image/public/"][src*="resize=contain"] {
   img, video, canvas, svg { max-width: 100%; }
 }
 
-/* Sunny — delikatne „unoszenie się” pływającej sylwetki asystenta (SuriChat). */
+/* Sunny — „żywy” asystent (SuriChat, 20.11.2026: „jak pies InPostu”). Postać się nie zmienia, rusza się tylko CSS:
+   unosi się i oddycha, co kilka sekund rozgląda się (lekki przechył), macha (poza z grafiki właściciela),
+   podskakuje przy dodaniu do koszyka, wchodzi z boku przy pierwszym pojawieniu się, cień pod stopami „żyje” razem z nim. */
 @keyframes sunny-float { 0%,100% { transform: translateY(0) } 50% { transform: translateY(-6px) } }
-.sunny-fab img { animation: sunny-float 3.2s ease-in-out infinite; }
-@media (prefers-reduced-motion: reduce) { .sunny-fab img { animation: none; } }
+@keyframes sunny-oddech { 0%,100% { transform: scale(1,1) } 50% { transform: scale(1.015,.985) } }
+@keyframes sunny-rozglada { 0%,82%,100% { transform: rotate(0) } 86% { transform: rotate(-6deg) } 91% { transform: rotate(5deg) } 95% { transform: rotate(-2deg) } }
+@keyframes sunny-cien { 0%,100% { transform: translateX(-50%) scale(1); opacity: .45 } 50% { transform: translateX(-50%) scale(.82); opacity: .28 } }
+@keyframes sunny-wejscie { 0% { transform: translateX(120%) rotate(12deg) } 60% { transform: translateX(-8%) rotate(-4deg) } 100% { transform: translateX(0) rotate(0) } }
+@keyframes sunny-macha { 0% { transform: scale(.92) rotate(-4deg) } 40% { transform: scale(1.06) rotate(3deg) } 70% { transform: scale(.98) rotate(-1deg) } 100% { transform: scale(1) rotate(0) } }
+@keyframes sunny-skok { 0% { transform: translateY(0) scale(1,1) } 15% { transform: translateY(0) scale(1.12,.86) } 45% { transform: translateY(-34px) scale(.92,1.1) rotate(-6deg) } 70% { transform: translateY(0) scale(1.1,.9) } 85% { transform: translateY(-6px) scale(.98,1.02) } 100% { transform: translateY(0) scale(1,1) } }
+@keyframes sunny-dymek { 0% { opacity: 0; transform: translateY(8px) scale(.85) } 100% { opacity: 1; transform: none } }
+.sunny-fab { animation: sunny-wejscie .9s cubic-bezier(.2,.9,.3,1.2) both; }
+.sunny-fab .sunny-cialo { transform-origin: 50% 100%; animation: sunny-float 3.2s ease-in-out infinite; }
+.sunny-fab img { transform-origin: 50% 100%; animation: sunny-oddech 2.6s ease-in-out infinite, sunny-rozglada 9s ease-in-out 3s infinite; }
+.sunny-fab[data-poza="macha"] img { animation: sunny-macha .6s ease-out both, sunny-oddech 2.6s ease-in-out .6s infinite; }
+.sunny-fab[data-poza="skacze"] .sunny-cialo { animation: sunny-skok .9s cubic-bezier(.3,.7,.4,1) both; }
+.sunny-fab .sunny-cien { position: absolute; left: 50%; bottom: 2px; width: 46px; height: 8px; border-radius: 50%; background: rgba(0,0,0,.55); filter: blur(3px); animation: sunny-cien 3.2s ease-in-out infinite; pointer-events: none; }
+.sunny-dymek { transform-origin: 90% 100%; animation: sunny-dymek .28s ease-out both; }
+.sunny-dymek::after { content: ""; position: absolute; right: 22px; bottom: -6px; width: 12px; height: 12px; background: inherit; border-right: 1px solid var(--line); border-bottom: 1px solid var(--line); transform: rotate(45deg); }
+@media (hover: hover) { .sunny-fab:hover .sunny-cialo { animation-duration: 1.6s; } }
+@media (prefers-reduced-motion: reduce) {
+  .sunny-fab, .sunny-fab .sunny-cialo, .sunny-fab img, .sunny-fab .sunny-cien, .sunny-dymek,
+  .sunny-fab[data-poza] img, .sunny-fab[data-poza] .sunny-cialo { animation: none !important; }
+}

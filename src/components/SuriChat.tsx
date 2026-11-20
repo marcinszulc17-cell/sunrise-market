@@ -4,7 +4,9 @@
 // (suri_sessions / suri_messages). Nazwa persony w jednym miejscu: ASSISTANT_NAME. Postać: grafiki właściciela (public/sunny/*):
 // głowa w przycisku, poza „wskazuje” w nagłówku, film powitalny (5 s, bez dźwięku) przy pierwszym otwarciu, „macha” gdy brak wyników.
 import { useEffect, useRef, useState } from "react";
+import { useLocation } from "react-router-dom";
 import { askSuri, suriHistory } from "../lib/api";
+import { DYMEK_MS, ZACZEPKA_MS, ZDARZENIE_KOSZYK, dymekDlaStrony, dymekKoszyk, juzPowiedzial, zapamietaj, type SunnyDymek, type SunnyPoza } from "../lib/sunnyZycie";
 import { zl } from "../lib/money";
 
 export const ASSISTANT_NAME = "Sunny";
@@ -30,6 +32,31 @@ export default function SuriChat({ initialPrompt }: { initialPrompt?: string }) 
     check(); window.addEventListener("scroll", check, { passive: true }); window.addEventListener("popstate", check);
     return () => { window.removeEventListener("scroll", check); window.removeEventListener("popstate", check); };
   }, []);
+  // „Żywy” Sunny (20.11.2026, „jak pies InPostu”): oddycha, rozgląda się, macha, podskakuje przy koszyku i zagaduje dymkiem.
+  const { pathname } = useLocation();
+  const [dymek, setDymek] = useState<SunnyDymek | null>(null);
+  const [poza, setPoza] = useState<SunnyPoza>("stoi");
+  const zegary = useRef<number[]>([]);
+  const wyczysc = () => { zegary.current.forEach((t) => window.clearTimeout(t)); zegary.current = []; };
+  const pokaz = (d: SunnyDymek) => {
+    wyczysc(); setDymek(d); setPoza(d.poza);
+    zegary.current.push(window.setTimeout(() => setPoza("stoi"), d.poza === "skacze" ? 900 : 2600));
+    zegary.current.push(window.setTimeout(() => setDymek(null), DYMEK_MS));
+  };
+  useEffect(() => {
+    if (open) return;
+    const d = dymekDlaStrony(pathname);
+    if (juzPowiedzial(d.klucz)) return;
+    const t = window.setTimeout(() => { if (!juzPowiedzial(d.klucz)) { zapamietaj(d.klucz); pokaz(d); } }, ZACZEPKA_MS);
+    return () => window.clearTimeout(t);
+  }, [pathname, open]); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => {
+    const naKoszyk = (e: Event) => pokaz(dymekKoszyk((e as CustomEvent).detail?.title));
+    window.addEventListener(ZDARZENIE_KOSZYK, naKoszyk);
+    return () => { window.removeEventListener(ZDARZENIE_KOSZYK, naKoszyk); wyczysc(); };
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => { if (open) { wyczysc(); setDymek(null); setPoza("stoi"); } }, [open]);
+  useEffect(() => { const img = new Image(); img.src = "/sunny/sunny-wave.webp"; }, []); // poza „macha” bez mignięcia
   const [msgs, setMsgs] = useState<Msg[]>([GREETING]);
   const [recs, setRecs] = useState<Rec[]>([]);
   const [input, setInput] = useState("");
@@ -73,11 +100,17 @@ export default function SuriChat({ initialPrompt }: { initialPrompt?: string }) 
           style={{ bottom: "calc(84px + env(safe-area-inset-bottom))", background: "linear-gradient(135deg,#F5A623,#E8891A)", boxShadow: "0 12px 30px -8px rgba(232,137,26,.75)", border: "2px solid rgba(255,255,255,.35)" }}>
           <span className="text-2xl leading-none">×</span>
         </button>
-      : <button type="button" onClick={() => setOpen(true)} aria-label={`${ASSISTANT_NAME} — asystent Sunrise Market`} aria-expanded={false}
-          className="sunny-fab fixed right-2 z-[45] transition hover:scale-105 active:scale-95 sm:bottom-4 sm:right-4"
-          style={{ bottom: "calc(76px + env(safe-area-inset-bottom))", background: "transparent" }}>
-          <img src="/sunny/sunny-full.webp" alt="" width={85} height={100} className="block h-[88px] w-auto sm:h-[100px]" style={{ filter: "drop-shadow(0 10px 14px rgba(0,0,0,.35))" }} draggable={false} />
-        </button>)}
+      : <div className="fixed right-2 z-[45] sm:right-4" style={{ bottom: "calc(76px + env(safe-area-inset-bottom))" }}>
+          {dymek && <button type="button" onClick={() => setOpen(true)} className="sunny-dymek absolute bottom-full right-1 mb-1 w-max max-w-[min(240px,70vw)] rounded-2xl rounded-br-md px-3 py-2 text-left text-[13px] font-medium leading-snug shadow-xl" style={{ background: "var(--bg)", color: "var(--ink)", border: "1px solid var(--line)" }} role="status" aria-live="polite">{dymek.tekst}</button>}
+          <button type="button" onClick={() => setOpen(true)} onMouseEnter={() => { if (poza === "stoi") { setPoza("macha"); zegary.current.push(window.setTimeout(() => setPoza("stoi"), 1800)); } }}
+            aria-label={`${ASSISTANT_NAME} — asystent Sunrise Market`} aria-expanded={false} data-poza={poza}
+            className="sunny-fab relative block transition active:scale-95" style={{ background: "transparent" }}>
+            <span className="sunny-cien" aria-hidden />
+            <span className="sunny-cialo block">
+              <img src={poza === "macha" ? "/sunny/sunny-wave.webp" : "/sunny/sunny-full.webp"} alt="" width={85} height={100} className="block h-[88px] w-auto sm:h-[100px]" style={{ filter: "drop-shadow(0 10px 14px rgba(0,0,0,.35))" }} draggable={false} />
+            </span>
+          </button>
+        </div>)}
 
     {open && <div role="dialog" aria-label={`${ASSISTANT_NAME} — asystent Sunrise Market`} className="fixed inset-x-0 z-[46] flex max-h-[78dvh] flex-col overflow-hidden rounded-t-3xl sm:inset-auto sm:!bottom-24 sm:right-6 sm:h-[560px] sm:w-[380px] sm:rounded-3xl" style={{ bottom: "calc(72px + env(safe-area-inset-bottom))", background: "var(--bg)", border: "1px solid var(--line)", boxShadow: "0 30px 80px rgba(0,0,0,.5)" }}>
       <div className="flex items-center gap-3 px-4 py-3" style={{ borderBottom: "1px solid var(--line)" }}>

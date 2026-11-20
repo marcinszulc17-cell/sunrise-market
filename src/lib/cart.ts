@@ -71,6 +71,8 @@ export function addToCart(it: Omit<CartItem, "qty">, qty = 1) {
   const f = c.find((x) => x.offer_id === it.offer_id && (x.variant || "") === (it.variant || ""));
   if (f) f.qty += qty; else c.push({ ...it, qty });
   save(c);
+  // Sunny (SuriChat) podskakuje i gratuluje — patrz src/lib/sunnyZycie.ts.
+  try { window.dispatchEvent(new CustomEvent("sunrise:cart-added", { detail: { title: it.title } })); } catch { /* SSR / brak window */ }
   return true;
 }
 
