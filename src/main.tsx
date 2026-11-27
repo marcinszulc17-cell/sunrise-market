@@ -12,6 +12,7 @@ import AdvancedSearchUniversal from "./pages/AdvancedSearchUniversal";
 import Koszyk from "./pages/Koszyk";
 import Konto from "./pages/Konto";
 import PwaInstallPrompt from "./components/PwaInstallPrompt";
+import BlackWeekendPopup from "./components/BlackWeekendPopup";
 import MobileAppNav from "./components/MobileAppNav";
 import { PageSkeleton } from "./components/Skeleton";
 import SuriChat from "./components/SuriChat";
@@ -200,7 +201,7 @@ function AppChrome() {
   // Włączony ponownie 2026-10-22: hub mkt-ai (OpenAI) odpowiada, saldo doładowane.
   const SUNNY_ENABLED = true;
   const assistant = SUNNY_ENABLED && !/^\/(sprzedawca|operator|koszyk|verify|potwierdz-zakup)/.test(pathname);
-  return <><MobileAppNav /><PwaInstallPrompt />{assistant && <SuriChat />}</>;
+  return <><MobileAppNav /><PwaInstallPrompt /><BlackWeekendPopup />{assistant && <SuriChat />}</>;
 }
 
 ReactDOM.createRoot(document.getElementById("root")!).render(
